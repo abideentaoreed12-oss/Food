@@ -1,7 +1,10 @@
 import { Restaurant, Order, OrderStatus, UserRole } from '../types';
 
 // Central HTTP fetch client with native browser httpOnly cookie credentials inclusion
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const BASE_URL =
+  (typeof process !== 'undefined' && (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.VITE_API_BASE_URL)) ||
+  (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_API_BASE_URL) ||
+  '';
 
 async function request(url: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('veyrang_jwt_token') : null;

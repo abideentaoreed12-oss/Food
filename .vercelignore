@@ -1,5 +1,2 @@
 .aistudio/
 .gmp_cache/
-bun.lock
-server.ts
-vite.config.ts
