@@ -15,6 +15,7 @@ import {
 } from '../types';
 import { api } from '../services/api';
 import { useAuth } from './AuthContext';
+import { DELIVERY_ZONES } from '../utils/format';
 
 interface DeliveryContextType {
   platformSettings: Record<string, string>;
@@ -177,7 +178,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     minimum_order_ngn: '2500',
     minimum_order_usd: '10.00'
   });
-  const [deliveryZones, setDeliveryZones] = useState<any[]>([]);
+  const [deliveryZones, setDeliveryZones] = useState<any[]>(DELIVERY_ZONES);
   const [adminActiveTab, setAdminActiveTab] = useState<string>('dashboard');
 
   // Dynamic Service Fee calculated from D1 live settings based on current currency
@@ -417,6 +418,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const liveZones = Array.isArray(zonesRes) ? zonesRes : (zonesRes?.data || []);
       if (liveZones && liveZones.length > 0) {
         setDeliveryZones(liveZones);
+      } else {
+        setDeliveryZones(DELIVERY_ZONES);
       }
 
       if (user) {

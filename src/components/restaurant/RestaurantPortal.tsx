@@ -40,7 +40,7 @@ export const RestaurantPortal: React.FC = () => {
   const [ticketPrinted, setTicketPrinted] = useState<string | null>(null);
 
   const currentRestaurant =
-    restaurants.find((r) => r.id === selectedRestaurantForPortal) || restaurants[0];
+    restaurants.find((r) => r.id === selectedRestaurantForPortal) || restaurants[0] || { id: 'temp-portal', name: 'Merchant Kitchen', commissionPercent: 15 };
 
   const restaurantOrders = orders.filter((o) => o.restaurantId === currentRestaurant.id);
 
