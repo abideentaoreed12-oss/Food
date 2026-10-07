@@ -3,6 +3,7 @@ import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 import { DriverChatModal } from './DriverChatModal';
 import { formatCurrency } from '../../utils/format';
+import { generateOrderReceiptPDF, printOrderReceiptWindow } from '../../utils/pdfGenerator';
 import {
   X,
   Phone,
@@ -142,12 +143,16 @@ export const OrderTrackingModal: React.FC = () => {
   const progressPercent = Math.min(100, Math.max(10, ((currentIdx + 1) / milestones.length) * 100));
 
   const handlePrintReceipt = () => {
-    window.print();
+    printOrderReceiptWindow(order);
+  };
+
+  const handleDownloadPdf = () => {
+    generateOrderReceiptPDF(order);
   };
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
-      <div className="printable-receipt relative w-full max-w-xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col text-slate-900">
+      <div className="relative w-full max-w-xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col text-slate-900">
         {/* Header bar */}
         <div className="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between no-print">
           <div>
@@ -163,13 +168,22 @@ export const OrderTrackingModal: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handlePrintReceipt}
-              title="Download PDF / Print Receipt"
-              aria-label="Download PDF / Print Receipt"
-              className="px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#FF5500] text-xs font-bold transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer"
+              onClick={handleDownloadPdf}
+              title="Download Receipt PDF"
+              aria-label="Download Receipt PDF"
+              className="px-2.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#FF5500] text-xs font-bold transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
             >
-              <Printer className="w-4 h-4" />
-              <span className="hidden sm:inline">Print / Save PDF</span>
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Save PDF</span>
+            </button>
+            <button
+              onClick={handlePrintReceipt}
+              title="Print Receipt Window"
+              aria-label="Print Receipt Window"
+              className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Print</span>
             </button>
             <button
               onClick={closeTracking}
@@ -370,34 +384,49 @@ export const OrderTrackingModal: React.FC = () => {
                   <p className="text-[10px] text-slate-400 font-mono">Ref: {order.transactionRef || order.id}</p>
                 </div>
               </div>
-              <button
-                onClick={handlePrintReceipt}
-                className="px-3 py-1.5 bg-[#FF5500] hover:bg-orange-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Save PDF</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDownloadPdf}
+                  className="px-2.5 py-1.5 bg-[#FF5500] hover:bg-orange-600 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
+                  title="Save PDF file"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Save PDF</span>
+                </button>
+                <button
+                  onClick={handlePrintReceipt}
+                  className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
+                  title="Print receipt window"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print</span>
+                </button>
+              </div>
             </div>
 
             <div className="p-4 sm:p-5 space-y-4 text-xs">
-              {/* Customer & Address Details */}
+              {/* Merchant & Customer Details */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
-                    Delivery Address
+                    Merchant & Date
                   </span>
-                  <p className="font-bold text-slate-900 flex items-start gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-[#FF5500] shrink-0 mt-0.5" />
-                    <span>{order.customerAddress} {order.customerApartment ? `(${order.customerApartment})` : ''}</span>
+                  <p className="font-bold text-slate-900">{order.restaurantName || 'Veyrang Partner Kitchen'}</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">
+                    {order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString()}
                   </p>
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
-                    Customer & Payment
+                    Customer & Destination
                   </span>
                   <p className="font-bold text-slate-900">{order.customerName} ({order.customerPhone})</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5 flex items-start gap-1">
+                    <MapPin className="w-3 h-3 text-[#FF5500] shrink-0 mt-0.5" />
+                    <span>{order.customerAddress} {order.customerApartment ? `(${order.customerApartment})` : ''}</span>
+                  </p>
                   <p className="text-slate-500 text-[11px] mt-0.5">
-                    Paid via <strong className="text-slate-800 capitalize">{order.paymentMethod || 'Wallet'}</strong>
+                    Paid via <strong className="text-slate-800 capitalize">{order.paymentMethod || 'Wallet'}</strong> ({order.paymentStatus || 'paid'})
                   </p>
                 </div>
               </div>

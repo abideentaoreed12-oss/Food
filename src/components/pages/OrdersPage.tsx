@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/format';
+import { generateOrderReceiptPDF, printOrderReceiptWindow } from '../../utils/pdfGenerator';
 import { Order, OrderStatus } from '../../types';
 import {
   ShoppingBag,
@@ -482,48 +483,63 @@ export const OrdersPage: React.FC = () => {
 
                   {/* Expandable Final Receipt Breakdown Drawer */}
                   {isExpanded && (
-                    <div className="printable-receipt border-t border-slate-100 bg-slate-50/70 p-4 sm:p-5 space-y-4 animate-in fade-in slide-in-from-top-2">
-                      <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                    <div className="border-t border-slate-100 bg-slate-50/70 p-4 sm:p-5 space-y-4 animate-in fade-in slide-in-from-top-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
                         <div className="flex items-center gap-2">
                           <Receipt className="w-4 h-4 text-[#FF5500]" />
                           <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
                             Official Itemized Receipt
                           </span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-mono text-slate-500">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono text-slate-500 mr-1">
                             Ref: {order.transactionRef || order.id}
                           </span>
                           <button
-                            onClick={() => window.print()}
-                            className="no-print px-2.5 py-1 bg-[#FF5500] hover:bg-orange-600 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            onClick={() => generateOrderReceiptPDF(order)}
+                            className="px-2.5 py-1 bg-[#FF5500] hover:bg-orange-600 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                            title="Download PDF"
+                          >
+                            <Download className="w-3 h-3" />
+                            <span>Save PDF</span>
+                          </button>
+                          <button
+                            onClick={() => printOrderReceiptWindow(order)}
+                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                            title="Print window"
                           >
                             <Printer className="w-3 h-3" />
-                            <span>Save PDF</span>
+                            <span>Print</span>
                           </button>
                         </div>
                       </div>
 
-                      {/* Customer & Delivery Destination Info */}
+                      {/* Merchant & Customer Info */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white p-3 rounded-2xl border border-slate-200/80">
                         <div className="space-y-1">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            Delivery Address
+                            Merchant & Date
                           </span>
-                          <p className="font-semibold text-slate-800 flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-[#FF5500] shrink-0" />
-                            <span>{order.customerAddress} {order.customerApartment ? `(${order.customerApartment})` : ''}</span>
+                          <p className="font-semibold text-slate-900">
+                            {order.restaurantName || 'Veyrang Partner Kitchen'}
+                          </p>
+                          <p className="text-[11px] text-slate-500">
+                            {order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString()}
                           </p>
                         </div>
 
                         <div className="space-y-1">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            Payment & Recipient
+                            Payment & Destination
                           </span>
                           <p className="font-semibold text-slate-800">
                             {order.customerName} ({order.customerPhone})
                           </p>
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-[#FF5500] shrink-0" />
+                            <span>{order.customerAddress} {order.customerApartment ? `(${order.customerApartment})` : ''}</span>
+                          </p>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
                             Paid via <strong className="text-slate-700">{order.paymentMethod}</strong> ({order.paymentStatus || 'paid'})
                           </p>
                         </div>

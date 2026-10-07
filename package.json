@@ -33,6 +33,7 @@
     "express": "^4.21.2",
     "geolib": "^3.3.14",
     "jsonwebtoken": "^9.0.3",
+    "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.546.0",
     "maplibre-gl": "^6.12.0",
