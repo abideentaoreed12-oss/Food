@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "dev:next": "next dev -p 3000",
-    "build": "next build",
+    "build": "next build && node -e \"try{require('fs').cpSync('.next','dist',{recursive:true})}catch(e){}\"",
     "start": "next start -p 3000",
     "clean": "rm -rf .next dist server.js",
     "lint": "tsc --noEmit",
