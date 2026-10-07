@@ -548,28 +548,10 @@ export async function GET(req: NextRequest) {
   }
 
   // 4. Delivery Zones
+  // 4. Delivery Zones
   if (pathname === '/settings/zones' || pathname === '/admin/delivery-zones') {
     const d1Res = await d1.query('SELECT * FROM delivery_zones ORDER BY created_at DESC').catch(() => ({ results: [] }));
-    let zones = d1Res.results || [];
-
-    if (zones.length === 0) {
-      const initialZones = [
-        { id: 'zone-1', name: 'Downtown Core (Metropolitan Area)', code: 'LEKKI', city: 'Lagos', country: 'Nigeria', currency: 'NGN', base_delivery_fee: 500, per_km_fee: 150, is_active: 1 },
-        { id: 'zone-2', name: 'Victoria Island / Ikoyi Financial Hub', code: 'VI', city: 'Lagos', country: 'Nigeria', currency: 'NGN', base_delivery_fee: 800, per_km_fee: 200, is_active: 1 },
-        { id: 'zone-3', name: 'Ikeja GRA / Mainland Hub', code: 'IKEJA', city: 'Lagos', country: 'Nigeria', currency: 'NGN', base_delivery_fee: 600, per_km_fee: 180, is_active: 1 }
-      ];
-      for (const iz of initialZones) {
-        await d1.query(
-          `INSERT INTO delivery_zones (id, name, code, city, country, currency, base_delivery_fee, per_km_fee, is_active, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-           ON CONFLICT(id) DO NOTHING`,
-          [iz.id, iz.name, iz.code, iz.city, iz.country, iz.currency, iz.base_delivery_fee, iz.per_km_fee, iz.is_active, new Date().toISOString(), new Date().toISOString()]
-        ).catch(() => {});
-      }
-      zones = initialZones;
-    }
-
-    return NextResponse.json({ success: true, data: zones });
+    return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
   // 5. Live Restaurants
@@ -628,6 +610,7 @@ export async function GET(req: NextRequest) {
     if (!decoded || decoded.role !== 'admin') {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
+    console.log('Updating role for user:', userId, 'to:', role);
     await d1.query('UPDATE users SET role = ? WHERE id = ?', [role, userId]);
     return NextResponse.json({ success: true, message: 'User role updated' });
   }

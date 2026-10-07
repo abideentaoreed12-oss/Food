@@ -48,7 +48,7 @@ export const LandingPage: React.FC = () => {
 
   const activeZoneConfig = (deliveryZones && deliveryZones.length > 0)
     ? (deliveryZones.find((z: any) => z.id === selectedZone || z.code === selectedZone) || deliveryZones[0])
-    : (DELIVERY_ZONES.find((z) => z.id === selectedZone) || DELIVERY_ZONES[0]);
+    : null;
 
   const handleExploreStorefront = () => {
     setActiveRole('customer');

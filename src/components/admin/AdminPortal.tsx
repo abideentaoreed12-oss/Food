@@ -98,7 +98,7 @@ export const AdminPortal: React.FC = () => {
   const [isPingingD1, setIsPingingD1] = useState<boolean>(false);
   const [platformSettings, setPlatformSettings] = useState<Record<string, string>>({});
   const [cmsDrafts, setCmsDrafts] = useState<Record<string, string>>({});
-  const [cmsCategory, setCmsCategory] = useState<'hero' | 'dishes' | 'steps' | 'partner' | 'help' | 'contact' | 'legal' | 'footer' | 'images'>('hero');
+  const [cmsCategory, setCmsCategory] = useState<'hero' | 'dishes' | 'steps' | 'partner' | 'help' | 'contact' | 'legal' | 'footer' | 'images' | 'cms'>('hero');
   const [isSavingAllCMS, setIsSavingAllCMS] = useState<boolean>(false);
   const [deliveryZonesList, setDeliveryZonesList] = useState<any[]>([]);
 
@@ -264,7 +264,7 @@ export const AdminPortal: React.FC = () => {
   const [replyText, setReplyText] = useState('');
 
   // Developer SQL Console State
-  const [devSqlQuery, setDevSqlQuery] = useState('SELECT id, name, role, email FROM users LIMIT 10;');
+  const [devSqlQuery, setDevSqlQuery] = useState('');
   const [devSqlResult, setDevSqlResult] = useState<any | null>(null);
   const [isExecutingSql, setIsExecutingSql] = useState(false);
 
@@ -442,6 +442,7 @@ export const AdminPortal: React.FC = () => {
       return;
     }
     try {
+      console.log('AdminPortal: Updating role for userId:', userId, 'to:', newRole);
       await api.admin.updateUserRole(userId, newRole);
       setUsersList((prev) =>
         prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
@@ -449,6 +450,7 @@ export const AdminPortal: React.FC = () => {
       showActionFeedback(`✓ Role updated to "${newRole}" in Platform D1!`);
       fetchData();
     } catch (err: any) {
+      console.error('AdminPortal: Role update error:', err);
       showActionFeedback(`Role update note: ${err.message}`);
     }
   };
@@ -1168,7 +1170,7 @@ export const AdminPortal: React.FC = () => {
               <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-xs text-slate-700">
                 <div className="px-4 py-2 border-b border-slate-100">
                   <div className="font-bold text-slate-900">{user?.name || 'Administrator'}</div>
-                  <div className="text-[11px] text-slate-500 truncate">{user?.email || 'admin@veyrang.com'}</div>
+                  <div className="text-[11px] text-slate-500 truncate">{user?.email || 'N/A'}</div>
                   <div className="text-[10px] font-bold text-[#FF5500] uppercase mt-0.5">{user?.role === 'sub_admin' ? 'Sub Admin' : 'Super Admin'}</div>
                 </div>
                 {!isSubAdmin && (
@@ -2211,8 +2213,29 @@ export const AdminPortal: React.FC = () => {
                   rows={4}
                   value={devSqlQuery}
                   onChange={(e) => setDevSqlQuery(e.target.value)}
+                  placeholder="Write raw SQL here or select a template below..."
                   className="w-full bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl p-3.5 border border-slate-800 focus:border-[#FF5500] outline-none"
                 />
+                <div className="flex flex-wrap gap-2 items-center text-[10px] pb-1">
+                  <span className="text-slate-500 font-bold">Quick Templates:</span>
+                  {[
+                    { label: '👥 Users', sql: 'SELECT id, email, name, role, phone, wallet_balance_ngn FROM users LIMIT 10;' },
+                    { label: '📦 Orders', sql: 'SELECT id, customer_id, status, total_amount, created_at FROM orders ORDER BY created_at DESC LIMIT 10;' },
+                    { label: '⚙️ CMS Settings', sql: 'SELECT * FROM platform_settings;' },
+                    { label: '📍 Delivery Zones', sql: 'SELECT * FROM delivery_zones;' },
+                    { label: '🍳 Restaurants', sql: 'SELECT id, name, cuisine, rating, is_open FROM restaurants;' },
+                    { label: '💳 Wallet Tx', sql: 'SELECT id, user_id, amount, description, created_at FROM wallet_transactions ORDER BY created_at DESC LIMIT 10;' }
+                  ].map((tpl) => (
+                    <button
+                      key={tpl.label}
+                      type="button"
+                      onClick={() => setDevSqlQuery(tpl.sql)}
+                      className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold rounded-lg border border-slate-200 cursor-pointer transition-colors"
+                    >
+                      {tpl.label}
+                    </button>
+                  ))}
+                </div>
                 <button
                   type="submit"
                   disabled={isExecutingSql}
@@ -3686,7 +3709,8 @@ export const AdminPortal: React.FC = () => {
                     { id: 'contact', label: '📞 Contact & Hours' },
                     { id: 'legal', label: '📜 Terms & Privacy' },
                     { id: 'footer', label: '🎨 Footer & Promos' },
-                    { id: 'images', label: '🖼️ Public Banners & R2' }
+                    { id: 'images', label: '🖼️ Public Banners & R2' },
+                    { id: 'cms', label: '⚙️ CMS Settings' }
                   ].map((sub) => (
                     <button
                       key={sub.id}
@@ -3891,6 +3915,22 @@ export const AdminPortal: React.FC = () => {
                   </div>
                 )}
 
+                {cmsCategory === 'cms' && (
+                  <div className="mb-6">
+                    <button 
+                      onClick={async () => {
+                        if (window.confirm('Are you sure you want to permanently delete all CMS content from the database? This cannot be undone.')) {
+                          await api.admin.runDeveloperQuery('DELETE FROM platform_settings');
+                          showActionFeedback('All CMS content deleted successfully.');
+                          fetchData();
+                        }
+                      }}
+                      className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      Clear All Website CMS Content
+                    </button>
+                  </div>
+                )}
                 {/* Section 9: Public Banners & R2 Assets */}
                 {cmsCategory === 'images' && (
                   <div className="space-y-4">

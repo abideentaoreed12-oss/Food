@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
-import { DELIVERY_ZONES } from '../../utils/format';
+// import removed
 import { ActivePage, DeliveryZone, UserRole } from '../../types';
 import {
   X,
@@ -208,7 +208,7 @@ export const RightDrawer: React.FC = () => {
     }
   ];
 
-  const activeZoneConfig = DELIVERY_ZONES.find((z) => z.id === selectedZone) || DELIVERY_ZONES[0];
+  const activeZoneConfig = (deliveryZones && deliveryZones.length > 0) ? (deliveryZones.find((z: any) => z.id === selectedZone || z.code === selectedZone) || deliveryZones[0]) : null;
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
@@ -339,7 +339,7 @@ export const RightDrawer: React.FC = () => {
                       <div className="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                         Select Delivery Zone
                       </div>
-                      {(deliveryZones && deliveryZones.length > 0 ? deliveryZones : DELIVERY_ZONES).map((zone: any) => {
+                      {(deliveryZones && deliveryZones.length > 0 ? deliveryZones : []).map((zone: any) => {
                         const zoneId = zone.id || zone.code;
                         const zoneName = zone.name;
                         const city = zone.city || 'Lagos';
