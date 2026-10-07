@@ -1,0 +1,3 @@
+[install]
+# Ensure bun links packages properly for build tools like TypeScript
+link = true
