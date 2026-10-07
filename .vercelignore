@@ -4,5 +4,4 @@ server/
 server.ts
 vite.config.ts
 bun.lock
-bun.lockb
-.bunfig.toml
+scripts/
