@@ -34,35 +34,27 @@ export const OrderTrackingModal: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showItems, setShowItems] = useState(true);
 
-  if (!user || !isTrackingModalOpen || !activeTrackingOrder) return null;
-
-  const order = activeTrackingOrder;
-  const isDelivered = order.status === 'delivered';
-
-  // Live countdown calculation based on order creation timestamp + estimated arrival minutes (distance + 15m admin prep buffer)
-  const totalEtaMins = order.estimatedArrivalMinutes || 25;
-  const orderTimeMs = new Date(order.createdAt).getTime();
-  const validOrderTime = isNaN(orderTimeMs) ? Date.now() : orderTimeMs;
-  const targetArrivalMs = validOrderTime + totalEtaMins * 60 * 1000;
-
-  const calculateSecondsLeft = () => {
-    if (isDelivered) return 0;
-    const diff = Math.floor((targetArrivalMs - Date.now()) / 1000);
-    return Math.max(0, diff);
-  };
-
-  const [secondsLeft, setSecondsLeft] = useState<number>(calculateSecondsLeft);
+  // Live countdown state
+  const [secondsLeft, setSecondsLeft] = useState<number>(0);
 
   // Live Courier GPS Location & Connection Health Polling
   const [courierLoc, setCourierLoc] = useState<{ lat: number; lng: number; updatedAt?: string } | null>(null);
   const [signalStatus, setSignalStatus] = useState<'live' | 'paused' | 'searching'>('searching');
 
+  const order = activeTrackingOrder;
+  const isDelivered = order?.status === 'delivered';
+  const orderId = order?.id;
+  const orderStatus = order?.status;
+  const orderCreatedAt = order?.createdAt;
+  const totalEtaMins = order?.estimatedArrivalMinutes || 25;
+
+  // Live Courier GPS Location & Connection Health Polling Effect
   useEffect(() => {
-    if (!order.id || isDelivered) return;
+    if (!orderId || isDelivered) return;
 
     const fetchLiveTracking = async () => {
       try {
-        const res = await fetch(`/api/orders/${order.id}/tracking`);
+        const res = await fetch(`/api/orders/${orderId}/tracking`);
         const json = await res.json();
         if (json.success && json.tracking) {
           if (json.tracking.location) {
@@ -78,19 +70,32 @@ export const OrderTrackingModal: React.FC = () => {
     fetchLiveTracking();
     const trackingInterval = setInterval(fetchLiveTracking, 5000);
     return () => clearInterval(trackingInterval);
-  }, [order.id, isDelivered]);
+  }, [orderId, isDelivered]);
 
+  // Live countdown timer Effect
   useEffect(() => {
-    if (isDelivered) {
+    if (!orderId || isDelivered || !orderCreatedAt) {
       setSecondsLeft(0);
       return;
     }
+
+    const orderTimeMs = new Date(orderCreatedAt).getTime();
+    const validOrderTime = isNaN(orderTimeMs) ? Date.now() : orderTimeMs;
+    const targetArrivalMs = validOrderTime + totalEtaMins * 60 * 1000;
+
+    const calculateSecondsLeft = () => {
+      const diff = Math.floor((targetArrivalMs - Date.now()) / 1000);
+      return Math.max(0, diff);
+    };
+
     setSecondsLeft(calculateSecondsLeft());
     const timer = setInterval(() => {
       setSecondsLeft(calculateSecondsLeft());
     }, 1000);
     return () => clearInterval(timer);
-  }, [order.id, order.status, order.createdAt, totalEtaMins]);
+  }, [orderId, orderStatus, orderCreatedAt, totalEtaMins, isDelivered]);
+
+  if (!user || !isTrackingModalOpen || !order) return null;
 
   const mins = Math.floor(secondsLeft / 60);
   const secs = secondsLeft % 60;
