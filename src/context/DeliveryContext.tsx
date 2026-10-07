@@ -13,7 +13,6 @@ import {
   DeliveryZone,
   SavedAddress
 } from '../types';
-import { INITIAL_RESTAURANTS } from '../data/mockData';
 import { api } from '../services/api';
 import { useAuth } from './AuthContext';
 
@@ -343,7 +342,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [platformSettings, cmsContent]);
 
   // Server-managed catalog & server-managed orders
-  const [restaurants, setRestaurants] = useState<Restaurant[]>(INITIAL_RESTAURANTS);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
 
   // Cart persistence (loads from localStorage so guests & users never lose items)

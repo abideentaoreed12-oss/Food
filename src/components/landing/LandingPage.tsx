@@ -91,7 +91,7 @@ export const LandingPage: React.FC = () => {
                       onChange={(e) => setSelectedZone(e.target.value as DeliveryZone)}
                       className="w-full bg-transparent text-xs font-bold text-slate-900 focus:outline-none cursor-pointer"
                     >
-                      {(deliveryZones && deliveryZones.length > 0 ? deliveryZones : DELIVERY_ZONES).map((zone: any) => {
+                      {deliveryZones.map((zone: any) => {
                         const zoneId = zone.id || zone.code;
                         const fee = zone.base_delivery_fee ?? zone.deliveryFee ?? 500;
                         return (

@@ -1,4 +1,3 @@
-import { jsPDF } from 'jspdf';
 import { Order } from '../types';
 
 function formatPdfCurrency(amount: number | string | undefined | null, currency: string = 'NGN'): string {
@@ -10,7 +9,10 @@ function formatPdfCurrency(amount: number | string | undefined | null, currency:
   return `NGN ${Math.round(safeAmount).toLocaleString('en-US')}`;
 }
 
-export function generateOrderReceiptPDF(order: Order): void {
+export async function generateOrderReceiptPDF(order: Order): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const { jsPDF } = await import('jspdf');
+
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -58,133 +60,116 @@ export function generateOrderReceiptPDF(order: Order): void {
   const boxHeight = 34;
   doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
   doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
-  doc.roundedRect(margin, y, pageWidth - margin * 2, boxHeight, 3, 3, 'FD');
+  doc.roundedRect(margin, y, pageWidth - (margin * 2), boxHeight, 3, 3, 'FD');
 
-  const halfWidth = (pageWidth - margin * 2) / 2;
-
-  // Merchant Info
+  doc.setFontSize(8.5);
   doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('RESTAURANT MERCHANT', margin + 5, y + 6);
-
-  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-  doc.setFontSize(10);
-  doc.text(order.restaurantName || 'Veyrang Partner Kitchen', margin + 5, y + 11);
-
-  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-  doc.setFontSize(8);
-  doc.text('ORDER DATE & TIME', margin + 5, y + 18);
-
-  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-  doc.setFontSize(9);
-  const formattedDate = order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString();
-  doc.text(formattedDate, margin + 5, y + 23);
-
-  // Customer Info
-  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.text('CUSTOMER & DESTINATION', margin + halfWidth + 5, y + 6);
-
-  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-  doc.setFontSize(9);
-  doc.text(`${order.customerName} (${order.customerPhone})`, margin + halfWidth + 5, y + 11);
+  doc.text('CUSTOMER', margin + 5, y + 8);
+  doc.text('RESTAURANT', margin + 65, y + 8);
+  doc.text('DELIVERY ADDRESS', margin + 125, y + 8);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  const addrStr = `${order.customerAddress || 'Customer Address'}${order.customerApartment ? ` (${order.customerApartment})` : ''}`;
-  const splitAddr = doc.splitTextToSize(addrStr, halfWidth - 10);
-  doc.text(splitAddr, margin + halfWidth + 5, y + 16);
+  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+  doc.text(order.customerName || 'Valued Customer', margin + 5, y + 15);
+  doc.text(order.customerPhone || '+234 800 000 0000', margin + 5, y + 21);
 
-  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-  doc.text(`Payment Method: ${order.paymentMethod || 'Wallet'} (${order.paymentStatus || 'paid'})`, margin + halfWidth + 5, y + 28);
+  doc.text(order.restaurantName || 'Veyrang Partner Kitchen', margin + 65, y + 15);
+  doc.text(`Payment: ${(order.paymentMethod || 'Wallet').toUpperCase()}`, margin + 65, y + 21);
+
+  const splitAddress = doc.splitTextToSize(order.customerAddress || 'Lagos, Nigeria', 50);
+  doc.text(splitAddress, margin + 125, y + 15);
 
   y += boxHeight + 8;
 
   // 3. Items Table Header
   doc.setFillColor(darkColor[0], darkColor[1], darkColor[2]);
-  doc.rect(margin, y, pageWidth - margin * 2, 7, 'F');
+  doc.rect(margin, y, pageWidth - (margin * 2), 8, 'F');
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text('ITEM DESCRIPTION & CUSTOMIZATIONS', margin + 4, y + 5.5);
+  doc.text('QTY', pageWidth - margin - 45, y + 5.5, { align: 'center' });
+  doc.text('PRICE', pageWidth - margin - 4, y + 5.5, { align: 'right' });
 
-  doc.text('ITEM DESCRIPTION', margin + 4, y + 5);
-  doc.text('QTY', margin + 115, y + 5);
-  doc.text('AMOUNT', pageWidth - margin - 4, y + 5, { align: 'right' });
+  y += 8;
 
-  y += 7;
-
-  // 4. Items List
+  // 4. Items Rows
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-
+  const items = Array.isArray(order.items) ? order.items : [];
   const curr = order.currency || 'NGN';
 
-  (order.items || []).forEach((item, i) => {
-    const itemName = item?.menuItem?.name || (item as any)?.name || 'Dish Item';
-    const itemTotal = item.itemTotal || (item.menuItem?.price || 0) * (item.quantity || 1);
-    const optionsText = item.selectedOptions && item.selectedOptions.length > 0
-      ? `+ ${item.selectedOptions.map((o) => o.optionName).join(', ')}`
-      : '';
-
-    if (i % 2 === 1) {
-      doc.setFillColor(250, 250, 250);
-      doc.rect(margin, y, pageWidth - margin * 2, optionsText ? 11 : 7, 'F');
+  items.forEach((item: any, idx: number) => {
+    if (y > 270) {
+      doc.addPage();
+      y = 20;
     }
 
-    doc.setFont('helvetica', 'bold');
-    doc.text(itemName, margin + 4, y + 4.5);
+    if (idx % 2 === 1) {
+      doc.setFillColor(252, 252, 253);
+      doc.rect(margin, y, pageWidth - (margin * 2), 12, 'F');
+    }
 
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+    doc.text(item.name || item.menuItem?.name || 'Dish Item', margin + 4, y + 5);
+
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text(String(item.quantity || 1), margin + 115, y + 4.5);
+    doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+    
+    let optStr = '';
+    if (item.selectedOptions && Array.isArray(item.selectedOptions) && item.selectedOptions.length > 0) {
+      optStr = item.selectedOptions.map((o: any) => o.name).join(', ');
+    } else if (item.instructions) {
+      optStr = `Note: ${item.instructions}`;
+    }
+    if (optStr) {
+      doc.text(optStr, margin + 4, y + 9.5);
+    }
 
     doc.setFont('helvetica', 'bold');
-    doc.text(formatPdfCurrency(itemTotal, curr), pageWidth - margin - 4, y + 4.5, { align: 'right' });
+    doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+    doc.text(String(item.quantity || 1), pageWidth - margin - 45, y + 7, { align: 'center' });
 
-    if (optionsText) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-      doc.text(optionsText, margin + 4, y + 8.5);
-      doc.setFontSize(9);
-      doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
-      y += 11;
-    } else {
-      y += 7;
-    }
+    const itemTotal = (Number(item.price || 0) * Number(item.quantity || 1));
+    doc.text(formatPdfCurrency(itemTotal, curr), pageWidth - margin - 4, y + 7, { align: 'right' });
+
+    doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+    doc.line(margin, y + 12, pageWidth - margin, y + 12);
+
+    y += 12;
   });
 
-  doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
-  doc.line(margin, y + 2, pageWidth - margin, y + 2);
-  y += 6;
+  y += 4;
 
-  // 5. Financial Summary Breakdown
-  const summaryWidth = 85;
-  const summaryX = pageWidth - margin - summaryWidth;
-  const valX = pageWidth - margin - 4;
+  // 5. Summary / Totals
+  const summaryX = pageWidth - margin - 70;
+  const summaryWidth = 70;
 
-  const addSummaryRow = (label: string, valStr: string, isBold = false, isHighlight = false) => {
-    if (isHighlight) {
-      doc.setFillColor(255, 241, 235);
-      doc.rect(summaryX, y - 1, summaryWidth, 7.5, 'F');
-      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  const addSummaryRow = (label: string, val: string, isBold: boolean = false, isGreen: boolean = false) => {
+    if (y > 275) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+    doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+    doc.text(label, summaryX, y);
+
+    if (isGreen) {
+      doc.setTextColor(5, 150, 105);
     } else {
       doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
     }
-
-    doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-    doc.setFontSize(isBold ? 9.5 : 8.5);
-    doc.text(label, summaryX + 2, y + 4);
-    doc.text(valStr, valX, y + 4, { align: 'right' });
-    y += 6.5;
+    doc.text(val, pageWidth - margin - 4, y, { align: 'right' });
+    y += 6;
   };
 
   addSummaryRow('Subtotal:', formatPdfCurrency(order.subtotal, curr));
   addSummaryRow('Delivery Fee:', formatPdfCurrency(order.deliveryFee, curr));
-
   if ((order.serviceFee || 0) > 0) {
     addSummaryRow('Service & Tech Fee:', formatPdfCurrency(order.serviceFee, curr));
   }
@@ -192,102 +177,122 @@ export function generateOrderReceiptPDF(order: Order): void {
     addSummaryRow('Driver Tip:', formatPdfCurrency(order.tip, curr));
   }
   if ((order.discountAmount || 0) > 0) {
-    addSummaryRow(`Discount (${order.promoCode || 'Promo'}):`, `- ${formatPdfCurrency(order.discountAmount, curr)}`);
+    addSummaryRow(`Discount (${order.promoCode || 'Promo'}):`, `-${formatPdfCurrency(order.discountAmount, curr)}`, false, true);
   }
   if ((order.walletDeduction || 0) > 0) {
-    addSummaryRow('Wallet Balance Applied:', `- ${formatPdfCurrency(order.walletDeduction, curr)}`);
+    addSummaryRow('Wallet Applied:', `-${formatPdfCurrency(order.walletDeduction, curr)}`, false, false);
   }
 
   y += 2;
-  addSummaryRow('TOTAL AMOUNT PAID:', formatPdfCurrency(order.total, curr), true, true);
+  doc.setDrawColor(darkColor[0], darkColor[1], darkColor[2]);
+  doc.setLineWidth(0.5);
+  doc.line(summaryX, y - 3, pageWidth - margin, y - 3);
 
-  // 6. Footer
-  y = Math.max(y + 12, 265);
-  doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
-  doc.line(margin, y, pageWidth - margin, y);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+  doc.text('Total Paid:', summaryX, y + 3);
+  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+  doc.text(formatPdfCurrency(order.total, curr), pageWidth - margin - 4, y + 3, { align: 'right' });
 
+  y += 16;
+
+  // 6. Footer Note & Handover PIN Verification
+  if (y > 255) {
+    doc.addPage();
+    y = 20;
+  }
+
+  doc.setFillColor(254, 243, 199); // amber-100
+  doc.setDrawColor(245, 158, 11); // amber-500
+  doc.roundedRect(margin, y, pageWidth - (margin * 2), 16, 2, 2, 'FD');
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(180, 83, 9); // amber-800
+  doc.text(`Doorstep Handover Security PIN: ${order.handoverPin || '####'}`, margin + 4, y + 6);
+
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-  doc.text('Thank you for ordering with Veyrang Food Express!', pageWidth / 2, y + 5, { align: 'center' });
-  doc.text('For support or feedback, please contact support@veyrang.com', pageWidth / 2, y + 9, { align: 'center' });
+  doc.text('Share this 4-digit PIN with your delivery courier only upon receiving your sealed meal package.', margin + 4, y + 11.5);
 
-  // Download PDF file
-  const filename = `Veyrang-Receipt-${order.transactionRef || order.shortId || order.id}.pdf`;
+  y += 24;
+
+  doc.setFontSize(7.5);
+  doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+  doc.text('Thank you for ordering with Veyrang Food Express! For support, email support@veyrang.com', pageWidth / 2, y, { align: 'center' });
+
+  // Save PDF
+  const filename = `Veyrang-Receipt-${order.shortId || order.id || 'order'}.pdf`;
   doc.save(filename);
 }
 
 export function printOrderReceiptWindow(order: Order): void {
+  if (typeof window === 'undefined') return;
+
   const printWindow = window.open('', '_blank', 'width=800,height=900');
   if (!printWindow) {
-    // Fallback if popups blocked
-    window.print();
+    alert('Please allow popups to print your receipt.');
     return;
   }
 
-  const formattedDate = order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString();
+  const items = Array.isArray(order.items) ? order.items : [];
   const curr = order.currency || 'NGN';
 
   const html = `<!DOCTYPE html>
 <html>
 <head>
-  <title>Receipt - ${order.transactionRef || order.shortId || order.id}</title>
+  <title>Veyrang Receipt - ${order.shortId || order.id}</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; color: #0f172a; background: #fff; }
-    .receipt-container { max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; }
-    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ff5500; padding-bottom: 16px; margin-bottom: 20px; }
-    .brand { font-size: 20px; font-weight: 800; color: #ff5500; text-transform: uppercase; letter-spacing: 0.5px; }
-    .subhead { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }
-    .ref { font-family: monospace; font-size: 13px; font-weight: 700; color: #0f172a; text-align: right; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; font-size: 12px; }
-    .section-title { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
-    .val { font-weight: 700; color: #0f172a; }
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #0f172a; margin: 0; padding: 24px; background: #fff; }
+    .receipt { max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 16px; }
+    .logo { font-size: 20px; font-weight: 900; color: #ff5500; letter-spacing: -0.5px; }
+    .subtitle { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+    .meta { text-align: right; font-size: 12px; color: #334155; }
+    .meta-ref { font-weight: bold; color: #0f172a; font-family: monospace; }
+    .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #64748b; margin-bottom: 6px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8fafc; padding: 12px; border-radius: 12px; margin-bottom: 20px; font-size: 12px; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
-    th { background: #0f172a; color: white; text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-    th:last-child { text-align: right; }
-    td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
-    td:last-child { text-align: right; font-family: monospace; font-weight: 700; }
+    th { background: #0f172a; color: #fff; text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; }
+    td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
     .summary { width: 260px; margin-left: auto; font-size: 12px; }
-    .summary-row { display: flex; justify-content: space-between; padding: 4px 0; color: #475569; }
-    .summary-row.total { font-size: 14px; font-weight: 800; color: #ff5500; border-top: 2px solid #0f172a; padding-top: 8px; margin-top: 6px; }
-    .footer { text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; margin-top: 24px; padding-top: 16px; }
-    @media print {
-      body { padding: 0; }
-      .receipt-container { border: none; padding: 0; }
-    }
+    .summary-row { display: flex; justify-content: space-between; padding: 4px 0; color: #64748b; }
+    .summary-row.total { font-size: 14px; font-weight: bold; color: #0f172a; border-top: 2px solid #0f172a; padding-top: 8px; margin-top: 4px; }
+    .pin-box { background: #fef3c7; border: 1px solid #f59e0b; padding: 10px 14px; border-radius: 8px; margin-bottom: 20px; font-size: 12px; color: #b45309; }
+    .footer { text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 24px; }
   </style>
 </head>
 <body>
-  <div class="receipt-container">
+  <div class="receipt">
     <div class="header">
       <div>
-        <div class="brand">VEYRANG FOOD EXPRESS</div>
-        <div class="subhead">Official Payment Receipt & Invoice</div>
+        <div class="logo">VEYRANG FOOD EXPRESS</div>
+        <div class="subtitle">Official Payment & Delivery Receipt</div>
       </div>
-      <div class="ref">
-        Ref: ${order.transactionRef || order.shortId || order.id}<br/>
-        <span style="font-size: 11px; color: #ff5500;">STATUS: ${(order.status || 'PAID').replace(/_/g, ' ').toUpperCase()}</span>
+      <div class="meta">
+        <div class="meta-ref">${order.shortId || order.id}</div>
+        <div>${new Date(order.createdAt || Date.now()).toLocaleString()}</div>
+        <div style="font-weight: bold; color: #ff5500; margin-top: 2px;">STATUS: ${(order.status || 'PAID').toUpperCase()}</div>
       </div>
     </div>
 
     <div class="grid">
       <div>
-        <div class="section-title">Merchant / Restaurant</div>
-        <div class="val">${order.restaurantName || 'Veyrang Partner Kitchen'}</div>
-        <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${order.restaurantAddress || ''}</div>
-        <div class="section-title" style="margin-top: 8px;">Date & Time</div>
-        <div class="val">${formattedDate}</div>
+        <div class="section-title">Customer Details</div>
+        <strong>${order.customerName || 'Valued Customer'}</strong><br/>
+        <span style="color: #64748b;">${order.customerPhone || ''}</span>
       </div>
       <div>
-        <div class="section-title">Delivery Customer</div>
-        <div class="val">${order.customerName} (${order.customerPhone})</div>
-        <div style="font-size: 11px; color: #475569; margin-top: 2px;">
-          ${order.customerAddress || ''} ${order.customerApartment ? `(${order.customerApartment})` : ''}
-        </div>
-        <div style="font-size: 11px; color: #64748b; margin-top: 6px;">
-          Paid via <strong>${order.paymentMethod || 'Wallet'}</strong> (${order.paymentStatus || 'paid'})
-        </div>
+        <div class="section-title">Restaurant & Payment</div>
+        <strong>${order.restaurantName || 'Veyrang Partner'}</strong><br/>
+        <span style="color: #64748b;">Method: ${(order.paymentMethod || 'Wallet').toUpperCase()}</span>
       </div>
+    </div>
+
+    <div class="pin-box">
+      <strong>🔑 Doorstep Handover PIN: ${order.handoverPin || '####'}</strong>
+      <div style="font-size: 11px; margin-top: 2px;">Show this secret code to your courier rider upon receiving your package.</div>
     </div>
 
     <table>
@@ -295,27 +300,20 @@ export function printOrderReceiptWindow(order: Order): void {
         <tr>
           <th>Item Description</th>
           <th style="text-align: center;">Qty</th>
-          <th>Amount</th>
+          <th style="text-align: right;">Amount</th>
         </tr>
       </thead>
       <tbody>
-        ${(order.items || []).map((item) => {
-          const itemName = item?.menuItem?.name || (item as any)?.name || 'Dish Item';
-          const itemTotal = item.itemTotal || (item.menuItem?.price || 0) * (item.quantity || 1);
-          const optionsText = item.selectedOptions && item.selectedOptions.length > 0
-            ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">+ ${item.selectedOptions.map((o) => o.optionName).join(', ')}</div>`
-            : '';
-          return `
-            <tr>
-              <td>
-                <div style="font-weight: 700;">${itemName}</div>
-                ${optionsText}
-              </td>
-              <td style="text-align: center; font-weight: 600;">${item.quantity || 1}</td>
-              <td>${formatPdfCurrency(itemTotal, curr)}</td>
-            </tr>
-          `;
-        }).join('')}
+        ${items.map((i: any) => `
+          <tr>
+            <td>
+              <strong>${i.name || i.menuItem?.name || 'Item'}</strong>
+              ${i.selectedOptions?.length ? `<div style="font-size: 11px; color: #64748b;">${i.selectedOptions.map((o: any) => o.name).join(', ')}</div>` : ''}
+            </td>
+            <td style="text-align: center;">${i.quantity || 1}</td>
+            <td style="text-align: right; font-family: monospace;">${formatPdfCurrency((Number(i.price || 0) * Number(i.quantity || 1)), curr)}</td>
+          </tr>
+        `).join('')}
       </tbody>
     </table>
 

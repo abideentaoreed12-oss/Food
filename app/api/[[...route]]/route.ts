@@ -4,7 +4,6 @@ import bcrypt from 'bcryptjs';
 import { d1 } from '../../../lib/d1.ts';
 import { r2 } from '../../../lib/r2.ts';
 import { routingManager } from '../../../lib/routingManager.ts';
-import { INITIAL_RESTAURANTS } from '../../../src/data/mockData.ts';
 import { sendVerificationEmail } from '../../../lib/email.ts';
 
 export const runtime = 'nodejs';
@@ -201,7 +200,50 @@ async function ensureD1Schema() {
       await d1.query(q).catch(() => {});
     }
 
-    // Seed initial orders into D1 if table is empty
+    // Seed initial platform settings / CMS content into D1 if table is empty
+    const settingsCount = await d1.query('SELECT COUNT(*) as count FROM platform_settings').catch(() => ({ results: [{ count: 0 }] }));
+    if (!settingsCount.results?.[0]?.count || settingsCount.results[0].count === 0) {
+      const defaultSettings = [
+        { key: 'cms_hero_badge', value: 'Global Express Food & Cloud Kitchen Network', category: 'landing' },
+        { key: 'cms_hero_title', value: 'Hot, Delicious Meals Delivered to Your Door in 25 Minutes.', category: 'landing' },
+        { key: 'cms_hero_subtitle', value: 'Order authentic specialties, artisanal pizzas, gourmet burgers, and delicious dishes from top-rated restaurants across your city. Verified kitchen tracking, 4-digit handover PIN protection, and zero payment failures with your in-app Naira wallet.', category: 'landing' },
+        { key: 'cms_hero_cta_text', value: 'Find Kitchens', category: 'landing' },
+        { key: 'cms_hero_stat_time', value: '25–35 min', category: 'landing' },
+        { key: 'cms_hero_stat_fee', value: '₦500', category: 'landing' },
+        { key: 'cms_hero_stat_orders', value: '45,000+', category: 'landing' },
+        { key: 'cms_hero_stat_rating', value: '4.8', category: 'landing' },
+        { key: 'cms_hero_dish1_title', value: 'Smoky Party Jollof & Peppered Asun', category: 'landing' },
+        { key: 'cms_hero_dish1_restaurant', value: 'Naija Kitchen', category: 'landing' },
+        { key: 'cms_hero_dish1_price', value: '3800', category: 'landing' },
+        { key: 'cms_hero_dish1_image', value: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=240&q=80', category: 'landing' },
+        { key: 'cms_hero_dish2_title', value: 'Double Smash Beef Cheeseburger', category: 'landing' },
+        { key: 'cms_hero_dish2_restaurant', value: 'Burger House', category: 'landing' },
+        { key: 'cms_hero_dish2_price', value: '4200', category: 'landing' },
+        { key: 'cms_hero_dish2_image', value: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=240&q=80', category: 'landing' },
+        { key: 'cms_hero_dish3_title', value: 'Peppered Beef Suya & Onions', category: 'landing' },
+        { key: 'cms_hero_dish3_restaurant', value: 'Suya Express', category: 'landing' },
+        { key: 'cms_hero_dish3_price', value: '2800', category: 'landing' },
+        { key: 'cms_hero_dish3_image', value: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=240&q=80', category: 'landing' },
+        { key: 'cms_how_it_works_title', value: 'How Veyrang Delivers to You', category: 'landing' },
+        { key: 'cms_how_it_works_subtitle', value: 'No guesswork, no fake GPS maps. Pure transparency from the kitchen flame to your dining table.', category: 'landing' },
+        { key: 'cms_step1_title', value: 'Choose Your Vetted Kitchen', category: 'landing' },
+        { key: 'cms_step1_desc', value: 'Filter by cuisine, prep speed, or neighborhood. Explore authentic Nigerian dishes, Italian pizza, or burgers prepared by hygiene-audited local chefs.', category: 'landing' },
+        { key: 'cms_step2_title', value: 'Instant Naira Settlement', category: 'landing' },
+        { key: 'cms_step2_desc', value: 'Pay seamlessly with Nigerian debit card, instant bank transfer, in-app wallet balance, or cash on delivery. Zero hidden conversion fees.', category: 'landing' },
+        { key: 'cms_step3_title', value: '4-Digit PIN Doorstep Handover', category: 'landing' },
+        { key: 'cms_step3_desc', value: 'Your dispatch rider verifies your secret 4-digit PIN before opening the tamper-evident sealed parcel. Guaranteed hot, fresh, and accurate.', category: 'landing' },
+        { key: 'cms_footer_newsletter_title', value: 'Get ₦1,500 off your first food order', category: 'footer' },
+        { key: 'cms_footer_newsletter_desc', value: 'Subscribe to our weekly foodie newsletter for exclusive promo codes, new restaurant launches in Lagos & Abuja, and flash discounts!', category: 'footer' },
+        { key: 'cms_footer_tagline', value: 'Designed for ultra-fast food delivery in Nigeria.', category: 'footer' },
+        { key: 'cms_copyright_text', value: 'Veyrang Technologies Limited', category: 'footer' }
+      ];
+      for (const s of defaultSettings) {
+        await d1.query(
+          `INSERT OR REPLACE INTO platform_settings (key, value, category, updated_at) VALUES (?, ?, ?, datetime('now'))`,
+          [s.key, s.value, s.category]
+        ).catch(() => {});
+      }
+    }
     const ordersCount = await d1.query('SELECT COUNT(*) as count FROM orders').catch(() => ({ results: [{ count: 0 }] }));
     if (!ordersCount.results?.[0]?.count || ordersCount.results[0].count === 0) {
       const sampleOrders = [
@@ -533,17 +575,15 @@ export async function GET(req: NextRequest) {
   // 5. Live Restaurants
   if (pathname === '/restaurants' || pathname === '/admin/restaurants') {
     const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC').catch(() => ({ results: [] }));
-    if (d1Res.results && d1Res.results.length > 0) {
-      const parsed = d1Res.results.map((r: any) => {
-        try {
-          return r.raw_json ? JSON.parse(r.raw_json) : r;
-        } catch {
-          return r;
-        }
-      });
-      return NextResponse.json({ success: true, data: parsed });
-    }
-    return NextResponse.json({ success: true, data: INITIAL_RESTAURANTS });
+
+    const parsed = (d1Res.results || []).map((r: any) => {
+      try {
+        return r.raw_json ? JSON.parse(r.raw_json) : r;
+      } catch {
+        return r;
+      }
+    });
+    return NextResponse.json({ success: true, data: parsed });
   }
 
   // 6. Orders

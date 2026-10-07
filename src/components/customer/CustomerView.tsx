@@ -83,22 +83,24 @@ export const CustomerView: React.FC = () => {
 
   const activeZoneConfig = (deliveryZones && deliveryZones.length > 0)
     ? (deliveryZones.find((z: any) => z.id === selectedZone || z.code === selectedZone) || deliveryZones[0])
-    : (DELIVERY_ZONES.find((z) => z.id === selectedZone) || DELIVERY_ZONES[0]);
+    : null;
 
   // Active in-transit or preparing order
   const activeOrder = orders.find(
     (o) => o.status === 'in_transit' || o.status === 'preparing' || o.status === 'placed'
   );
 
-  const categories = [
-    { id: 'All', label: 'All', icon: LayoutGrid },
-    { id: 'Burgers', label: 'Burgers', icon: UtensilsCrossed },
-    { id: 'Pizza', label: 'Pizza', icon: Pizza },
-    { id: 'Asian', label: 'Asian', icon: Soup },
-    { id: 'Healthy', label: 'Healthy', icon: Leaf },
-    { id: 'Suya', label: 'Suya & BBQ', icon: Flame },
-    { id: 'Nigerian', label: 'Naija Kitchen', icon: Soup }
-  ];
+  const [categories, setCategories] = useState<{ id: string; label: string; icon: any }[]>([]);
+
+  useEffect(() => {
+    api.admin.getCategories?.().then((res: any) => {
+      const list = Array.isArray(res) ? res : (res?.data || []);
+      setCategories([
+        { id: 'All', label: 'All', icon: LayoutGrid },
+        ...list.map((c: any) => ({ id: c.name, label: c.name, icon: UtensilsCrossed }))
+      ]);
+    }).catch(() => {});
+  }, []);
 
   // Food images map for each restaurant
   const restaurantImageMap: Record<string, string> = {

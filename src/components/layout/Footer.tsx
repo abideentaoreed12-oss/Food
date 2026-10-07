@@ -24,7 +24,7 @@ import {
 import { VeyrangLogo } from '../common/VeyrangLogo.tsx';
 
 export const Footer: React.FC = () => {
-  const { setActiveRole, setActivePage, platformSettings } = useDelivery();
+  const { setActiveRole, setActivePage, platformSettings, deliveryZones } = useDelivery();
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
 
@@ -152,36 +152,17 @@ export const Footer: React.FC = () => {
               <span>Delivery Zones</span>
             </h4>
             <ul className="space-y-2.5 text-slate-400">
-              <li>
-                <button onClick={() => handleNavClick('search')} className="hover:text-white transition-colors cursor-pointer">
-                  Lekki Phase 1 & Chevron
-                </button>
-              </li>
-              <li>
-                <button onClick={() => handleNavClick('search')} className="hover:text-white transition-colors cursor-pointer">
-                  Victoria Island & Ikoyi
-                </button>
-              </li>
-              <li>
-                <button onClick={() => handleNavClick('search')} className="hover:text-white transition-colors cursor-pointer">
-                  Ikeja GRA & Maryland
-                </button>
-              </li>
-              <li>
-                <button onClick={() => handleNavClick('search')} className="hover:text-white transition-colors cursor-pointer">
-                  Surulere & Yaba Tech
-                </button>
-              </li>
-              <li>
-                <button onClick={() => handleNavClick('search')} className="hover:text-white transition-colors cursor-pointer">
-                  Abuja Wuse 2 & Maitama
-                </button>
-              </li>
-              <li>
-                <button onClick={() => handleNavClick('search')} className="hover:text-white transition-colors cursor-pointer">
-                  Gwarinpa & Asokoro, Abuja
-                </button>
-              </li>
+              {deliveryZones && deliveryZones.length > 0 ? (
+                deliveryZones.map((zone: any) => (
+                  <li key={zone.id}>
+                    <button onClick={() => handleNavClick('search')} className="hover:text-white transition-colors cursor-pointer">
+                      {zone.name || zone.code}
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <li>No active delivery zones</li>
+              )}
             </ul>
           </div>
 
