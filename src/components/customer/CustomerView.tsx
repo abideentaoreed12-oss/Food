@@ -47,7 +47,8 @@ export const CustomerView: React.FC = () => {
     appliedPromo,
     applyPromoCode,
     addToCart,
-    platformSettings
+    platformSettings,
+    deliveryZones
   } = useDelivery();
 
   const { user, setIsAuthModalOpen } = useAuth();
@@ -80,7 +81,9 @@ export const CustomerView: React.FC = () => {
     return 'Good evening';
   };
 
-  const activeZoneConfig = DELIVERY_ZONES.find((z) => z.id === selectedZone) || DELIVERY_ZONES[0];
+  const activeZoneConfig = (deliveryZones && deliveryZones.length > 0)
+    ? (deliveryZones.find((z: any) => z.id === selectedZone || z.code === selectedZone) || deliveryZones[0])
+    : (DELIVERY_ZONES.find((z) => z.id === selectedZone) || DELIVERY_ZONES[0]);
 
   // Active in-transit or preparing order
   const activeOrder = orders.find(

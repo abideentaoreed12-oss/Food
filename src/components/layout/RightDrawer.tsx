@@ -61,7 +61,8 @@ export const RightDrawer: React.FC = () => {
     walletBalanceNGN,
     adminActiveTab,
     setAdminActiveTab,
-    selectedAddress
+    selectedAddress,
+    deliveryZones
   } = useDelivery();
 
   const { user, logout, setIsAuthModalOpen } = useAuth();
@@ -338,28 +339,34 @@ export const RightDrawer: React.FC = () => {
                       <div className="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                         Select Delivery Zone
                       </div>
-                      {DELIVERY_ZONES.map((zone) => (
-                        <button
-                          key={zone.id}
-                          onClick={() => {
-                            setSelectedZone(zone.id as DeliveryZone);
-                            setIsZoneDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between hover:bg-[#FFF1E8]/50 transition-colors cursor-pointer ${
-                            selectedZone === zone.id
-                              ? 'font-bold text-[#FF5500] bg-[#FFF1E8]'
-                              : 'text-slate-700'
-                          }`}
-                        >
-                          <div>
-                            <div className="font-semibold">{zone.name}</div>
-                            <div className="text-[11px] text-slate-400 font-normal">{zone.city} · {zone.averageSpeedMin} min ETA</div>
-                          </div>
-                          <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                            ₦{zone.deliveryFee} fee
-                          </span>
-                        </button>
-                      ))}
+                      {(deliveryZones && deliveryZones.length > 0 ? deliveryZones : DELIVERY_ZONES).map((zone: any) => {
+                        const zoneId = zone.id || zone.code;
+                        const zoneName = zone.name;
+                        const city = zone.city || 'Lagos';
+                        const fee = zone.base_delivery_fee ?? zone.baseFee ?? zone.deliveryFee ?? 500;
+                        return (
+                          <button
+                            key={zoneId}
+                            onClick={() => {
+                              setSelectedZone(zoneId);
+                              setIsZoneDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between hover:bg-[#FFF1E8]/50 transition-colors cursor-pointer ${
+                              selectedZone === zoneId || selectedZone === zone.code
+                                ? 'font-bold text-[#FF5500] bg-[#FFF1E8]'
+                                : 'text-slate-700'
+                            }`}
+                          >
+                            <div>
+                              <div className="font-semibold">{zoneName}</div>
+                              <div className="text-[11px] text-slate-400 font-normal">{city}</div>
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                              ₦{Number(fee).toLocaleString()} fee
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

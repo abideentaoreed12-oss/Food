@@ -178,17 +178,18 @@ export const Navbar: React.FC = () => {
             </nav>
           </div>
 
-          {/* Right Action Icons: Shopping Cart + Hamburger Menu */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          {/* Right Action Icons: [ Shopping Cart ] [ Sign In / User Profile ] [ Hamburger Menu ] */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* 1. Shopping Cart Icon Trigger */}
             <button
               onClick={() => {
                 closeDropdowns();
                 setIsCartOpen(true);
               }}
               aria-label={`Cart with ${totalCartCount} items`}
-              className="relative p-2 text-slate-900 hover:text-[#FF5500] transition-colors cursor-pointer flex items-center justify-center"
+              className="relative p-2 text-slate-900 hover:text-[#FF5500] hover:bg-orange-50/70 rounded-full transition-colors cursor-pointer flex items-center justify-center"
             >
-              <ShoppingCart className="w-6 h-6 stroke-[2]" />
+              <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2]" />
               {totalCartCount > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-[#FF5500] text-white text-[11px] font-extrabold rounded-full flex items-center justify-center shadow-xs">
                   {totalCartCount}
@@ -196,13 +197,161 @@ export const Navbar: React.FC = () => {
               )}
             </button>
 
+            {/* 2. Sign In / User Profile Pill */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  if (user) {
+                    toggleUserDropdown();
+                  } else {
+                    closeDropdowns();
+                    setIsAuthModalOpen(true);
+                  }
+                }}
+                className="flex items-center gap-1.5 focus:outline-none cursor-pointer active:scale-95 transition-all"
+              >
+                {user ? (
+                  <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-orange-200 bg-[#FFF1E8]/80 hover:bg-[#FFF1E8] text-slate-900 transition-all shadow-2xs">
+                    <div className="w-6 h-6 rounded-full font-extrabold text-[11px] flex items-center justify-center shrink-0 bg-[#FF5500] text-white shadow-2xs">
+                      {initials}
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold text-slate-900 truncate max-w-[80px] sm:max-w-none">Hi, {firstName}</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-[#FF5500] stroke-[2.5] shrink-0" />
+                  </div>
+                ) : (
+                  <div className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#FF5500] hover:bg-[#EA4C00] text-white text-xs sm:text-sm font-bold transition-all shadow-xs hover:shadow-md cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95">
+                    <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                    <span>Sign In</span>
+                  </div>
+                )}
+              </button>
+
+              {/* User Profile Dropdown Menu */}
+              {isUserDropdownOpen && user && (
+                <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 py-2 text-xs animate-in fade-in">
+                  <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/70 rounded-t-2xl">
+                    <p className="font-bold text-slate-900 truncate">{displayName}</p>
+                    <p className="text-[11px] text-slate-500 truncate font-mono">{user.email}</p>
+                    <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-[#FF5500] px-2 py-0.5 rounded-md">
+                      {user.role}
+                    </span>
+                  </div>
+
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        closeDropdowns();
+                        setIsWalletModalOpen(true);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-[#FFF1E8]/50 flex items-center justify-between text-slate-700 cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Wallet className="w-4 h-4 text-[#FF5500]" />
+                        <span>In-App Wallet</span>
+                      </span>
+                      <span className="font-bold font-mono text-emerald-600">
+                        ₦{walletBalanceNGN.toLocaleString('en-NG')}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        closeDropdowns();
+                        setActiveRole('customer');
+                        setActivePage('orders');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-[#FFF1E8]/50 flex items-center gap-2 text-slate-700 cursor-pointer"
+                    >
+                      <ShoppingBag className="w-4 h-4 text-slate-500" />
+                      <span>My Past Orders</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        closeDropdowns();
+                        setActiveRole('customer');
+                        setActivePage('account');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-[#FFF1E8]/50 flex items-center gap-2 text-slate-700 cursor-pointer"
+                    >
+                      <User className="w-4 h-4 text-slate-500" />
+                      <span>Profile & Addresses</span>
+                    </button>
+
+                    {['admin', 'sub_admin', 'restaurant', 'courier'].includes(user.role) && (() => {
+                      let label = 'Admin Console';
+                      let badge = 'A-Z Master';
+                      let targetRole: 'admin' | 'restaurant' | 'courier' = 'admin';
+                      let IconComponent = ShieldAlert;
+                      let textClass = 'text-amber-600 hover:text-amber-700';
+
+                      if (user.role === 'sub_admin') {
+                        label = 'Admin Console';
+                        badge = 'Sub Admin';
+                        targetRole = 'admin';
+                        textClass = 'text-indigo-600 hover:text-indigo-700';
+                      } else if (user.role === 'restaurant') {
+                        label = 'Kitchen Portal';
+                        badge = 'Merchant';
+                        targetRole = 'restaurant';
+                        IconComponent = ChefHat;
+                        textClass = 'text-emerald-600 hover:text-emerald-700';
+                      } else if (user.role === 'courier') {
+                        label = 'Rider Portal';
+                        badge = 'Courier';
+                        targetRole = 'courier';
+                        textClass = 'text-sky-600 hover:text-sky-700';
+                      }
+
+                      return (
+                        <button
+                          onClick={() => {
+                            closeDropdowns();
+                            setActiveRole(targetRole);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className={`w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center justify-between border-t border-slate-100 mt-1 cursor-pointer font-bold ${textClass}`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <IconComponent className="w-4 h-4 shrink-0" />
+                            <span>{label}</span>
+                          </span>
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-800 uppercase tracking-wide">
+                            {badge}
+                          </span>
+                        </button>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-1 mt-1">
+                    <button
+                      onClick={async () => {
+                        closeDropdowns();
+                        await logout();
+                        setActiveRole('customer');
+                        setActivePage('home');
+                      }}
+                      className="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-semibold"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Hamburger Menu Icon Trigger */}
             <button
               onClick={() => {
                 closeDropdowns();
                 setIsRightDrawerOpen(true);
               }}
               aria-label="Open navigation menu with all pages"
-              className="group relative p-2 text-slate-900 hover:text-[#FF5500] transition-colors cursor-pointer flex items-center justify-center"
+              className="group relative p-2 text-slate-900 hover:text-[#FF5500] hover:bg-orange-50/70 rounded-full transition-colors cursor-pointer flex items-center justify-center"
               title="Open Menu"
             >
               <div className="flex flex-col justify-center items-center gap-1 w-5 h-4.5">
@@ -214,155 +363,8 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
 
-        {/* Row 2: Left: User Greeting / Sign In | Right: Deliver to Location */}
-        <div className="pb-2.5 pt-0.5 flex items-center justify-between gap-2 border-t border-slate-100 sm:border-0 relative">
-          {/* Left: User Profile Dropdown or Sign In Button */}
-          <div className="relative shrink-0">
-            <button
-              onClick={() => {
-                if (user) {
-                  toggleUserDropdown();
-                } else {
-                  closeDropdowns();
-                  setIsAuthModalOpen(true);
-                }
-              }}
-              className="flex items-center gap-2 hover:opacity-90 transition-opacity cursor-pointer text-left"
-            >
-              {user ? (
-                <>
-                  <div className="w-8 h-8 rounded-full font-extrabold text-xs flex items-center justify-center shrink-0 border bg-[#FFF1E8] text-[#FF5500] border-orange-200/80 shadow-2xs">
-                    {initials}
-                  </div>
-                  <div className="flex items-center gap-1 text-xs sm:text-sm font-semibold text-slate-800">
-                    <span className="truncate max-w-[100px] sm:max-w-none">Hi, {firstName}</span>
-                    <ChevronDown className="w-3.5 h-3.5 text-[#FF5500] stroke-[2.5] shrink-0" />
-                  </div>
-                </>
-              ) : (
-                <div className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#FF5500] to-[#FF7700] hover:from-[#EA4C00] hover:to-[#FF5500] text-white text-xs font-bold shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 active:scale-95">
-                  <User className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Sign In</span>
-                </div>
-              )}
-            </button>
-
-            {isUserDropdownOpen && user && (
-              <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 py-2 text-xs animate-in fade-in">
-                <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/70 rounded-t-2xl">
-                  <p className="font-bold text-slate-900 truncate">{displayName}</p>
-                  <p className="text-[11px] text-slate-500 truncate font-mono">{user.email}</p>
-                  <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-[#FF5500] px-2 py-0.5 rounded-md">
-                    {user.role}
-                  </span>
-                </div>
-
-                <div className="py-1">
-                  <button
-                    onClick={() => {
-                      closeDropdowns();
-                      setIsWalletModalOpen(true);
-                    }}
-                    className="w-full text-left px-4 py-2 hover:bg-[#FFF1E8]/50 flex items-center justify-between text-slate-700 cursor-pointer"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Wallet className="w-4 h-4 text-[#FF5500]" />
-                      <span>In-App Wallet</span>
-                    </span>
-                    <span className="font-bold font-mono text-emerald-600">
-                      ₦{walletBalanceNGN.toLocaleString('en-NG')}
-                    </span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      closeDropdowns();
-                      setActiveRole('customer');
-                      setActivePage('orders');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="w-full text-left px-4 py-2 hover:bg-[#FFF1E8]/50 flex items-center gap-2 text-slate-700 cursor-pointer"
-                  >
-                    <ShoppingBag className="w-4 h-4 text-slate-500" />
-                    <span>My Past Orders</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      closeDropdowns();
-                      setActiveRole('customer');
-                      setActivePage('account');
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="w-full text-left px-4 py-2 hover:bg-[#FFF1E8]/50 flex items-center gap-2 text-slate-700 cursor-pointer"
-                  >
-                    <User className="w-4 h-4 text-slate-500" />
-                    <span>Profile & Addresses</span>
-                  </button>
-
-                  {['admin', 'sub_admin', 'restaurant', 'courier'].includes(user.role) && (() => {
-                    let label = 'Admin Console';
-                    let badge = 'A-Z Master';
-                    let targetRole: 'admin' | 'restaurant' | 'courier' = 'admin';
-                    let IconComponent = ShieldAlert;
-                    let textClass = 'text-amber-600 hover:text-amber-700';
-
-                    if (user.role === 'sub_admin') {
-                      label = 'Admin Console';
-                      badge = 'Sub Admin';
-                      targetRole = 'admin';
-                      textClass = 'text-indigo-600 hover:text-indigo-700';
-                    } else if (user.role === 'restaurant') {
-                      label = 'Kitchen Portal';
-                      badge = 'Merchant';
-                      targetRole = 'restaurant';
-                      IconComponent = ChefHat;
-                      textClass = 'text-emerald-600 hover:text-emerald-700';
-                    } else if (user.role === 'courier') {
-                      label = 'Rider Portal';
-                      badge = 'Courier';
-                      targetRole = 'courier';
-                      IconComponent = Bike;
-                      textClass = 'text-sky-600 hover:text-sky-700';
-                    }
-
-                    return (
-                      <button
-                        onClick={() => {
-                          closeDropdowns();
-                          setActiveRole(targetRole);
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className={`w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center justify-between border-t border-slate-100 mt-1 cursor-pointer font-bold ${textClass}`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <IconComponent className="w-4 h-4 shrink-0" />
-                          <span>{label}</span>
-                        </span>
-                        <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-800 uppercase tracking-wide">
-                          {badge}
-                        </span>
-                      </button>
-                    );
-                  })()}
-                </div>
-
-                <div className="border-t border-slate-100 pt-1 mt-1">
-                  <button
-                    onClick={async () => {
-                      closeDropdowns();
-                      await logout();
-                      setActiveRole('customer');
-                      setActivePage('home');
-                    }}
-                    className="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-semibold"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Sign Out</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+        {/* Row 2: Delivery Location Bar */}
+        <div className="pb-2 pt-0.5 flex items-center justify-start border-t border-slate-100 sm:border-0 relative">
 
           {/* Right: Deliver to Address Location Button */}
           {user && (
