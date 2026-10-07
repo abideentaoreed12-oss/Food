@@ -217,11 +217,17 @@ export async function GET(req: NextRequest) {
   // 1. Health Audit Endpoints
   if (pathname === '/' || pathname === '/health') {
     return NextResponse.json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      d1: d1.getDetails(),
-      r2: r2.getDetails()
+      status: 'ok',
+      timestamp: new Date().toISOString()
     });
+  }
+
+  // Admin Auth Guard for all GET /admin/* endpoints
+  if (pathname.startsWith('/admin')) {
+    const decoded = verifyToken(req);
+    if (!decoded || (decoded.role !== 'admin' && decoded.email !== ADMIN_EMAIL)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
   }
 
   if (pathname === '/health/d1' || pathname === '/health/d1/ping') {
@@ -344,11 +350,21 @@ export async function GET(req: NextRequest) {
 
   // 3. Platform Settings & CMS Content
   if (pathname === '/settings' || pathname === '/admin/settings') {
+    const decoded = verifyToken(req);
+    const isAdmin = decoded && (decoded.role === 'admin' || decoded.email === ADMIN_EMAIL);
+
+    if (pathname === '/admin/settings' && !isAdmin) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const d1Res = await d1.query('SELECT key, value, category, description FROM platform_settings').catch(() => ({ results: [] }));
     const settingsMap: Record<string, any> = {};
 
     if (d1Res.results && d1Res.results.length > 0) {
       d1Res.results.forEach((row: any) => {
+        if (!isAdmin && (row.key === 'platform_commission_percent' || row.key.includes('commission'))) {
+          return;
+        }
         try {
           settingsMap[row.key] = JSON.parse(row.value);
         } catch {
@@ -539,6 +555,13 @@ export async function POST(req: NextRequest) {
   await ensureD1Schema();
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
   const body = await req.json().catch(() => ({}));
+
+  if (pathname.startsWith('/admin')) {
+    const decoded = verifyToken(req);
+    if (!decoded || (decoded.role !== 'admin' && decoded.email !== ADMIN_EMAIL)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+  }
 
   // 1. Cloudflare R2 Asset Upload (/api/storage/upload)
   if (pathname === '/storage/upload') {
@@ -913,6 +936,13 @@ export async function PUT(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
   const body = await req.json().catch(() => ({}));
 
+  if (pathname.startsWith('/admin')) {
+    const decoded = verifyToken(req);
+    if (!decoded || (decoded.role !== 'admin' && decoded.email !== ADMIN_EMAIL)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+  }
+
   if (pathname === '/settings/update' || pathname === '/admin/cms') {
     const { key, value } = body;
     const now = new Date().toISOString();
@@ -933,6 +963,13 @@ export async function PATCH(req: NextRequest) {
   await ensureD1Schema();
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
   const body = await req.json().catch(() => ({}));
+
+  if (pathname.startsWith('/admin')) {
+    const decoded = verifyToken(req);
+    if (!decoded || (decoded.role !== 'admin' && decoded.email !== ADMIN_EMAIL)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+  }
 
   // 1. Update Profile Details (/api/auth/profile)
   if (pathname === '/auth/profile') {
@@ -1011,6 +1048,13 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   await ensureD1Schema();
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
+
+  if (pathname.startsWith('/admin')) {
+    const decoded = verifyToken(req);
+    if (!decoded || (decoded.role !== 'admin' && decoded.email !== ADMIN_EMAIL)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+  }
 
   // 1. Storage File Delete (/api/storage/file/[key])
   if (pathname.startsWith('/storage/file/')) {
