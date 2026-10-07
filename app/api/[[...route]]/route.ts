@@ -5,6 +5,7 @@ import { d1 } from '../../../lib/d1.ts';
 import { r2 } from '../../../lib/r2.ts';
 import { routingManager } from '../../../lib/routingManager.ts';
 import { INITIAL_RESTAURANTS } from '../../../src/data/mockData.ts';
+import { sendVerificationEmail } from '../../../lib/email.ts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -185,6 +186,14 @@ async function ensureD1Schema() {
         speed REAL,
         is_live INTEGER DEFAULT 1,
         updated_at TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS verification_codes (
+        id TEXT PRIMARY KEY,
+        email TEXT,
+        code TEXT,
+        type TEXT DEFAULT 'signup',
+        expires_at TEXT,
+        created_at TEXT
       );`
     ];
 
@@ -801,9 +810,49 @@ export async function POST(req: NextRequest) {
     return response;
   }
 
-  // 3. User Registration (/api/auth/register)
+  // 3. Send Verification Code for Signup (/api/auth/send-verification)
+  if (pathname === '/auth/send-verification') {
+    const { email } = body;
+    if (!email || !email.includes('@')) {
+      return NextResponse.json({ success: false, error: 'Valid email address is required.' }, { status: 400 });
+    }
+    const cleanEmail = email.toLowerCase().trim();
+
+    const existing = await d1.query('SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [cleanEmail]).catch(() => ({ results: [] }));
+    if (existing.results && existing.results.length > 0) {
+      return NextResponse.json({ success: false, error: 'An account with this email already exists. Please log in instead.' }, { status: 409 });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
+    const id = `vc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+    await d1.query('DELETE FROM verification_codes WHERE LOWER(email) = LOWER(?) AND type = ?', [cleanEmail, 'signup']).catch(() => {});
+
+    await d1.query(
+      `INSERT INTO verification_codes (id, email, code, type, expires_at, created_at) VALUES (?, ?, ?, 'signup', ?, ?)`,
+      [id, cleanEmail, code, expiresAt, now.toISOString()]
+    );
+
+    console.log(`[VERIFICATION CODE SENT] Email: ${cleanEmail}, Code: ${code}`);
+
+    // Dispatch live email via Resend API
+    const emailRes = await sendVerificationEmail({ to: cleanEmail, code, type: 'signup' });
+
+    return NextResponse.json({
+      success: true,
+      message: emailRes.success
+        ? `A 6-digit verification code has been sent to ${cleanEmail}`
+        : `A 6-digit verification code was generated for ${cleanEmail}`,
+      emailSent: emailRes.success,
+      devCode: code
+    });
+  }
+
+  // 4. User Registration (/api/auth/register)
   if (pathname === '/auth/register') {
-    const { email, password, name, phone, address } = body;
+    const { email, password, name, phone, address, code, role } = body;
     if (!email || !password || !name) {
       return NextResponse.json({ success: false, error: 'Name, email, and password are required.' }, { status: 400 });
     }
@@ -814,22 +863,43 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'An account with this email already exists.' }, { status: 409 });
     }
 
+    // Verify signup code if code is supplied
+    if (code) {
+      const cleanCode = code.toString().trim();
+      const codeRes = await d1.query(
+        'SELECT * FROM verification_codes WHERE LOWER(email) = LOWER(?) AND code = ? AND type = ? LIMIT 1',
+        [cleanEmail, cleanCode, 'signup']
+      ).catch(() => ({ results: [] }));
+
+      const matchingCode = codeRes.results?.[0];
+      if (!matchingCode) {
+        return NextResponse.json({ success: false, error: 'Invalid verification code. Please check your code.' }, { status: 400 });
+      }
+
+      if (new Date(matchingCode.expires_at).getTime() < Date.now()) {
+        return NextResponse.json({ success: false, error: 'Verification code has expired. Please request a new code.' }, { status: 400 });
+      }
+
+      await d1.query('DELETE FROM verification_codes WHERE id = ?', [matchingCode.id]).catch(() => {});
+    }
+
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
     const now = new Date().toISOString();
     const userId = `usr-${Date.now()}`;
+    const userRole = (role && ['customer', 'restaurant', 'courier'].includes(role)) ? role : 'customer';
 
     await d1.query(
       `INSERT INTO users (id, email, password_hash, name, role, phone, address, wallet_balance_usd, wallet_balance_ngn, saved_addresses, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, '[]', ?, ?)`,
-      [userId, cleanEmail, passwordHash, name.trim(), 'customer', phone || '', address || '', now, now]
+      [userId, cleanEmail, passwordHash, name.trim(), userRole, phone || '', address || '', now, now]
     );
 
     const newUser = {
       id: userId,
       email: cleanEmail,
       name: name.trim(),
-      role: 'customer',
+      role: userRole,
       phone: phone || '',
       address: address || '',
       walletBalanceUSD: 0,
@@ -851,6 +921,91 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
+  }
+
+  // 5. Send Forgotten Password OTP (/api/auth/forgot-password)
+  if (pathname === '/auth/forgot-password') {
+    const { email } = body;
+    if (!email || !email.includes('@')) {
+      return NextResponse.json({ success: false, error: 'Valid registered email address is required.' }, { status: 400 });
+    }
+    const cleanEmail = email.toLowerCase().trim();
+
+    const existing = await d1.query('SELECT id, name FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [cleanEmail]).catch(() => ({ results: [] }));
+    if (!existing.results || existing.results.length === 0) {
+      return NextResponse.json({ success: false, error: 'No account found associated with this email address.' }, { status: 404 });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
+    const id = `vc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+    await d1.query('DELETE FROM verification_codes WHERE LOWER(email) = LOWER(?) AND type = ?', [cleanEmail, 'forgot_password']).catch(() => {});
+
+    await d1.query(
+      `INSERT INTO verification_codes (id, email, code, type, expires_at, created_at) VALUES (?, ?, ?, 'forgot_password', ?, ?)`,
+      [id, cleanEmail, code, expiresAt, now.toISOString()]
+    );
+
+    console.log(`[PASSWORD RESET OTP SENT] Email: ${cleanEmail}, Code: ${code}`);
+
+    // Dispatch live email via Resend API
+    const emailRes = await sendVerificationEmail({ to: cleanEmail, code, type: 'forgot_password' });
+
+    return NextResponse.json({
+      success: true,
+      message: emailRes.success
+        ? `Recovery 6-digit OTP code sent to ${cleanEmail}`
+        : `Recovery 6-digit OTP code generated for ${cleanEmail}`,
+      emailSent: emailRes.success,
+      devCode: code
+    });
+  }
+
+  // 6. Reset Password with OTP Code (/api/auth/reset-password)
+  if (pathname === '/auth/reset-password') {
+    const { email, code, newPassword } = body;
+    if (!email || !code || !newPassword) {
+      return NextResponse.json({ success: false, error: 'Email, OTP code, and new password are required.' }, { status: 400 });
+    }
+
+    if (newPassword.length < 8) {
+      return NextResponse.json({ success: false, error: 'New password must be at least 8 characters long.' }, { status: 400 });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanCode = code.toString().trim();
+
+    const codeRes = await d1.query(
+      'SELECT * FROM verification_codes WHERE LOWER(email) = LOWER(?) AND code = ? AND type = ? LIMIT 1',
+      [cleanEmail, cleanCode, 'forgot_password']
+    ).catch(() => ({ results: [] }));
+
+    const matchingCode = codeRes.results?.[0];
+    if (!matchingCode) {
+      return NextResponse.json({ success: false, error: 'Invalid or incorrect OTP code.' }, { status: 400 });
+    }
+
+    if (new Date(matchingCode.expires_at).getTime() < Date.now()) {
+      return NextResponse.json({ success: false, error: 'OTP code has expired. Please request a new password reset.' }, { status: 400 });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+    const now = new Date().toISOString();
+
+    await d1.query(
+      'UPDATE users SET password_hash = ?, updated_at = ? WHERE LOWER(email) = LOWER(?)',
+      [passwordHash, now, cleanEmail]
+    );
+
+    await d1.query('DELETE FROM verification_codes WHERE id = ?', [matchingCode.id]).catch(() => {});
+
+    return NextResponse.json({
+      success: true,
+      message: 'Your password has been successfully reset. You can now log in with your new password.'
+    });
   }
 
   // 4. User Logout (/api/auth/logout)
@@ -1097,7 +1252,7 @@ export async function POST(req: NextRequest) {
   if (pathname.includes('/orders/') && pathname.endsWith('/status')) {
     const parts = pathname.split('/').filter(Boolean);
     const statusIdx = parts.indexOf('status');
-    const orderId = parts[statusIdx - 1];
+    const orderId = (statusIdx > 0 ? parts[statusIdx - 1] : null) || body.orderId || body.id;
     const { status, note } = body;
 
     if (!orderId || !status) {
@@ -1398,7 +1553,7 @@ export async function PATCH(req: NextRequest) {
   if (pathname.includes('/orders/') && pathname.endsWith('/status')) {
     const parts = pathname.split('/').filter(Boolean);
     const statusIdx = parts.indexOf('status');
-    const orderId = parts[statusIdx - 1];
+    const orderId = (statusIdx > 0 ? parts[statusIdx - 1] : null) || body.orderId || body.id;
     const { status, note } = body;
 
     if (!orderId || !status) {

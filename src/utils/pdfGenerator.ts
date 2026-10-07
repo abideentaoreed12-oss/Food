@@ -47,7 +47,7 @@ export function generateOrderReceiptPDF(order: Order): void {
   const refText = `Ref: ${order.transactionRef || order.shortId || order.id}`;
   doc.text(refText, pageWidth - margin - doc.getTextWidth(refText), 12);
 
-  const statusText = `STATUS: ${(order.status || 'PAID').toUpperCase()}`;
+  const statusText = `STATUS: ${(order.status || 'PAID').replace(/_/g, ' ').toUpperCase()}`;
   doc.setFontSize(8.5);
   doc.setTextColor(255, 255, 255);
   doc.text(statusText, pageWidth - margin - doc.getTextWidth(statusText), 18);
@@ -266,7 +266,7 @@ export function printOrderReceiptWindow(order: Order): void {
       </div>
       <div class="ref">
         Ref: ${order.transactionRef || order.shortId || order.id}<br/>
-        <span style="font-size: 11px; color: #ff5500;">STATUS: ${(order.status || 'PAID').toUpperCase()}</span>
+        <span style="font-size: 11px; color: #ff5500;">STATUS: ${(order.status || 'PAID').replace(/_/g, ' ').toUpperCase()}</span>
       </div>
     </div>
 

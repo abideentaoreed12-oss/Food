@@ -113,7 +113,15 @@ export const AuthModal: React.FC = () => {
       const res = await forgotPassword(email);
       if (res.success) {
         setIsForgotCodeSent(true);
-        setResetSuccessMsg(`Recovery 6-digit OTP code has been sent to ${email}. Please check your inbox and spam folder.`);
+        if ((res as any)?.emailSent) {
+          setResetSuccessMsg(`Recovery 6-digit OTP code has been sent directly to your email inbox at ${email}. Please check your inbox and spam folder!`);
+        } else if ((res as any)?.devCode) {
+          const code = (res as any).devCode;
+          setForgotCode(code);
+          setResetSuccessMsg(`Recovery code generated for ${email}. (Dev Code: ${code})`);
+        } else {
+          setResetSuccessMsg(`Recovery 6-digit OTP code has been sent to ${email}. Please check your email.`);
+        }
       } else {
         setError(res.error || 'Failed to send recovery OTP code.');
       }
@@ -193,7 +201,15 @@ export const AuthModal: React.FC = () => {
           const res = await sendVerification(email);
           if (res.success) {
             setIsVerificationCodeSent(true);
-            setResetSuccessMsg(`A 6-digit verification code has been sent to your email address: ${email}. Please enter it below to complete registration!`);
+            if ((res as any)?.emailSent) {
+              setResetSuccessMsg(`A 6-digit verification code has been sent directly to your email inbox at ${email}. Please check your inbox and spam folder!`);
+            } else if ((res as any)?.devCode) {
+              const code = (res as any).devCode;
+              setSignupCode(code);
+              setResetSuccessMsg(`Verification code generated for ${email}. (Dev Code: ${code})`);
+            } else {
+              setResetSuccessMsg(`A 6-digit verification code has been sent to your email address: ${email}. Please enter it below!`);
+            }
           } else {
             setError(res.error || 'Failed to send verification code.');
           }
