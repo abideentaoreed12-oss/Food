@@ -2,21 +2,9 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig, Plugin } from 'vite';
-import { createServerApp } from './server/app.ts';
-
-function expressApiPlugin(): Plugin {
-  return {
-    name: 'express-api-plugin',
-    configureServer(server) {
-      const app = createServerApp();
-      server.middlewares.use(app);
-    },
-  };
-}
-
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss(), expressApiPlugin()],
+    plugins: [react(), tailwindcss()],
     define: {
       'import.meta.env.GOOGLE_MAPS_API_KEY': JSON.stringify(
         process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || ''

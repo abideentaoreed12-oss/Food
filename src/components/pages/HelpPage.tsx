@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { HelpCircle, ChevronDown, Phone, MessageSquare, ShieldCheck, Clock } from 'lucide-react';
+import { useDelivery } from '../../context/DeliveryContext';
 
 export const HelpPage: React.FC = () => {
+  const { platformSettings } = useDelivery();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  const faqs = [
+  const whatsappNumber = (platformSettings['cms_whatsapp_phone'] || '2348007842524').replace(/\D/g, '');
+  const supportPhone = platformSettings['cms_support_phone'] || '+234 800 839 7264';
+
+  const defaultFaqs = [
     {
       q: 'How long does doorstep delivery take in Lagos?',
       a: 'Average delivery takes between 25 to 35 minutes depending on traffic and your delivery zone (Lekki Phase 1, Victoria Island, Ikoyi, Ikeja). You can monitor your order progress in real-time in the My Orders tab.'
@@ -31,21 +36,48 @@ export const HelpPage: React.FC = () => {
     }
   ];
 
+  const faqs = [
+    {
+      q: platformSettings['cms_faq1_q'] || defaultFaqs[0].q,
+      a: platformSettings['cms_faq1_a'] || defaultFaqs[0].a
+    },
+    {
+      q: platformSettings['cms_faq2_q'] || defaultFaqs[1].q,
+      a: platformSettings['cms_faq2_a'] || defaultFaqs[1].a
+    },
+    {
+      q: platformSettings['cms_faq3_q'] || defaultFaqs[2].q,
+      a: platformSettings['cms_faq3_a'] || defaultFaqs[2].a
+    },
+    {
+      q: platformSettings['cms_faq4_q'] || defaultFaqs[3].q,
+      a: platformSettings['cms_faq4_a'] || defaultFaqs[3].a
+    },
+    {
+      q: platformSettings['cms_faq5_q'] || defaultFaqs[4].q,
+      a: platformSettings['cms_faq5_a'] || defaultFaqs[4].a
+    },
+    {
+      q: platformSettings['cms_faq6_q'] || defaultFaqs[5].q,
+      a: platformSettings['cms_faq6_a'] || defaultFaqs[5].a
+    }
+  ];
+
   return (
     <div className="max-w-xl sm:max-w-2xl md:max-w-4xl lg:max-w-6xl mx-auto space-y-6 pb-20">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 font-display">
-          Help & Support
+          {platformSettings['cms_help_title'] || 'Help & Support'}
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Frequently asked questions, delivery policies, and customer support
+          {platformSettings['cms_help_subtitle'] || 'Frequently asked questions, delivery policies, and customer support'}
         </p>
       </div>
 
       {/* Direct Support Channels */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <a
-          href="https://wa.me/2348007842524"
+          href={`https://wa.me/${whatsappNumber}`}
           target="_blank"
           rel="noopener noreferrer"
           className="p-4 rounded-3xl bg-emerald-50 border border-emerald-200 hover:border-emerald-300 transition-all flex items-center gap-3.5 cursor-pointer"
@@ -56,21 +88,21 @@ export const HelpPage: React.FC = () => {
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">WhatsApp Support</div>
             <div className="text-sm font-bold text-emerald-950">Chat with Customer Care</div>
-            <div className="text-[11px] text-emerald-600">Available 8am – 11pm WAT</div>
+            <div className="text-[11px] text-emerald-600">{platformSettings['cms_whatsapp_desc'] || 'Available 8am – 11pm WAT'}</div>
           </div>
         </a>
 
         <a
-          href="tel:+23418002483"
+          href={`tel:${supportPhone.replace(/\s+/g, '')}`}
           className="p-4 rounded-3xl bg-orange-50 border border-orange-200 hover:border-orange-300 transition-all flex items-center gap-3.5 cursor-pointer"
         >
           <div className="w-10 h-10 rounded-2xl bg-orange-600 text-white flex items-center justify-center shrink-0">
             <Phone className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-orange-700">Toll-Free Hotline</div>
-            <div className="text-sm font-bold text-orange-950">0800-VEYRANG</div>
-            <div className="text-[11px] text-orange-600">Direct telephone support</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-orange-700">Customer Hotline</div>
+            <div className="text-sm font-bold text-orange-950 font-mono">{supportPhone}</div>
+            <div className="text-[11px] text-orange-600">{platformSettings['cms_support_phone_desc'] || 'Direct telephone support'}</div>
           </div>
         </a>
       </div>

@@ -5,7 +5,7 @@ import { api } from '../../services/api';
 import { Tag, Copy, Check, Percent, ShoppingBag, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export const OffersPage: React.FC = () => {
-  const { applyPromoCode, setIsCartOpen, cart } = useDelivery();
+  const { applyPromoCode, setIsCartOpen, cart, platformSettings } = useDelivery();
   const { user, setIsAuthModalOpen } = useAuth();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [applyMessage, setApplyMessage] = useState<string | null>(null);
@@ -64,14 +64,14 @@ export const OffersPage: React.FC = () => {
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 font-display">
-            Offers & Promo Codes
+            {platformSettings?.cms_offers_title || 'Offers & Promo Codes'}
           </h1>
           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
             Active Deals
           </span>
         </div>
         <p className="text-xs text-slate-500 mt-0.5">
-          Apply any of these verified promo codes at checkout for instant savings
+          {platformSettings?.cms_offers_subtitle || 'Apply any of these verified promo codes at checkout for instant savings'}
         </p>
       </div>
 
@@ -82,8 +82,12 @@ export const OffersPage: React.FC = () => {
               <Tag className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs sm:text-sm font-bold text-slate-900">Sign in to unlock exclusive member cashback</div>
-              <div className="text-[11px] text-slate-500">Save your favourite codes and enjoy automated ₦500 welcome discounts.</div>
+              <div className="text-xs sm:text-sm font-bold text-slate-900">
+                {platformSettings?.cms_offers_member_title || 'Sign in to unlock exclusive member cashback'}
+              </div>
+              <div className="text-[11px] text-slate-500">
+                {platformSettings?.cms_offers_member_desc || 'Save your favourite codes and enjoy automated ₦500 welcome discounts.'}
+              </div>
             </div>
           </div>
           <button

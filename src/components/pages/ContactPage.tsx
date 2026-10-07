@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { PhoneCall, Mail, MapPin, Clock, MessageSquare, CheckCircle2, Send } from 'lucide-react';
+import { useDelivery } from '../../context/DeliveryContext';
 
 export const ContactPage: React.FC = () => {
+  const { platformSettings } = useDelivery();
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', subject: 'Order Inquiry', message: '' });
 
@@ -14,10 +16,10 @@ export const ContactPage: React.FC = () => {
     <div className="max-w-xl sm:max-w-2xl md:max-w-4xl lg:max-w-6xl mx-auto space-y-6 pb-20">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 font-display">
-          Contact Customer Care
+          {platformSettings?.cms_contact_title || 'Contact Customer Care'}
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          We are here to assist with your orders, payments, and delivery inquiries
+          {platformSettings?.cms_contact_subtitle || 'We are here to assist with your orders, payments, and delivery inquiries'}
         </p>
       </div>
 
@@ -28,8 +30,8 @@ export const ContactPage: React.FC = () => {
             <PhoneCall className="w-4 h-4" />
           </div>
           <h3 className="text-sm font-bold text-slate-900">Telephone Line</h3>
-          <p className="text-xs font-mono text-slate-700 mt-1">0800-VEYRANG</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">+234 1 800 2483</p>
+          <p className="text-xs font-mono text-slate-700 mt-1">{platformSettings?.cms_support_phone || '+234 800 839 7264'}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Toll-free 24/7 Dispatch Desk</p>
         </div>
 
         <div className="p-4 rounded-3xl bg-white border border-slate-200/90 shadow-2xs">
@@ -37,7 +39,7 @@ export const ContactPage: React.FC = () => {
             <Mail className="w-4 h-4" />
           </div>
           <h3 className="text-sm font-bold text-slate-900">Email Inquiries</h3>
-          <p className="text-xs text-slate-700 mt-1 font-mono">support@veyrang.com</p>
+          <p className="text-xs text-slate-700 mt-1 font-mono">{platformSettings?.cms_support_email || 'support@veyrang.com'}</p>
           <p className="text-[11px] text-slate-400 mt-0.5">Average reply in 15 mins</p>
         </div>
 
@@ -46,15 +48,15 @@ export const ContactPage: React.FC = () => {
             <MapPin className="w-4 h-4" />
           </div>
           <h3 className="text-sm font-bold text-slate-900">Lagos Head Office</h3>
-          <p className="text-xs text-slate-700 mt-1">14 Admiralty Way</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Lekki Phase 1, Lagos</p>
+          <p className="text-xs text-slate-700 mt-1">{platformSettings?.cms_support_address || '14 Adeola Odeku St, Victoria Island, Lagos'}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Corporate & Dispatch Hub</p>
         </div>
       </div>
 
       {/* Support Hours Alert */}
       <div className="p-3.5 rounded-2xl bg-orange-50 border border-orange-200/80 flex items-center gap-2.5 text-xs text-orange-950 font-medium">
         <Clock className="w-4 h-4 text-orange-600 shrink-0" />
-        <span>Live Dispatch & Support Hours: <strong>8:00 AM – 11:00 PM WAT</strong> (Monday to Sunday)</span>
+        <span>Live Dispatch & Support Hours: <strong>{platformSettings?.cms_support_hours || '8:00 AM – 11:00 PM WAT (Monday to Sunday)'}</strong></span>
       </div>
 
       {/* Message Form */}

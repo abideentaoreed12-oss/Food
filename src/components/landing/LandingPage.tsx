@@ -40,7 +40,8 @@ export const LandingPage: React.FC = () => {
     restaurants,
     setSelectedRestaurantId,
     currency,
-    deliveryZones
+    deliveryZones,
+    platformSettings
   } = useDelivery();
 
   const { setIsAuthModalOpen } = useAuth();
@@ -64,15 +65,15 @@ export const LandingPage: React.FC = () => {
             {/* Left Hero Copy & Actions */}
             <div className="lg:col-span-7 space-y-6 text-center lg:text-left flex flex-col items-center lg:items-start">
               <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#FFF1E8] border border-orange-200 text-[#FF5500] text-xs font-bold tracking-tight">
-                <span>Global Express Food & Cloud Kitchen Network</span>
+                <span>{platformSettings['cms_hero_badge'] || 'Global Express Food & Cloud Kitchen Network'}</span>
               </div>
 
               <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 font-display tracking-tight leading-[1.12]">
-                Hot, Delicious Meals Delivered to Your Door in <span className="text-[#FF5500]">25 Minutes</span>.
+                {platformSettings['cms_hero_title'] || 'Hot, Delicious Meals Delivered to Your Door in 25 Minutes.'}
               </h1>
 
               <p className="text-sm sm:text-base text-slate-600 max-w-xl leading-relaxed">
-                Order authentic specialties, artisanal pizzas, gourmet burgers, and delicious dishes from top-rated restaurants across your city. Verified kitchen tracking, 4-digit handover PIN protection, and zero payment failures with your in-app Naira wallet.
+                {platformSettings['cms_hero_subtitle'] || 'Order authentic specialties, artisanal pizzas, gourmet burgers, and delicious dishes from top-rated restaurants across your city. Verified kitchen tracking, 4-digit handover PIN protection, and zero payment failures with your in-app Naira wallet.'}
               </p>
 
               {/* Delivery Zone Selector & Quick Storefront CTA */}
@@ -105,31 +106,39 @@ export const LandingPage: React.FC = () => {
                   onClick={handleExploreStorefront}
                   className="px-6 py-3.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-2xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-orange-500/25 cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
                 >
-                  <span>Find Kitchens</span>
+                  <span>{platformSettings['cms_hero_cta_text'] || 'Find Kitchens'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Unboxed Metadata Stats (Zero-Pill Compliance) */}
+              {/* Dynamic Metadata Stats from Cloudflare D1 CMS */}
               <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-y-2 gap-x-4 sm:gap-x-6 text-xs text-slate-600 font-medium">
                 <div>
-                  <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">25–35 min</span>
+                  <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
+                    {platformSettings['cms_hero_stat_time'] || '25–35 min'}
+                  </span>
                   <span className="ml-1 text-slate-500">average delivery</span>
                 </div>
                 <span className="text-slate-300 font-bold" aria-hidden="true">·</span>
                 <div>
-                  <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">₦500</span>
+                  <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
+                    {platformSettings['cms_hero_stat_fee'] || '₦500'}
+                  </span>
                   <span className="ml-1 text-slate-500">flat delivery in Lekki/VI</span>
                 </div>
                 <span className="text-slate-300 font-bold" aria-hidden="true">·</span>
                 <div>
-                  <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">45,000+</span>
+                  <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
+                    {platformSettings['cms_hero_stat_orders'] || '45,000+'}
+                  </span>
                   <span className="ml-1 text-slate-500">meals fulfilled</span>
                 </div>
                 <span className="text-slate-300 font-bold" aria-hidden="true">·</span>
                 <div className="flex items-center gap-1">
                   <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                  <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">4.8</span>
+                  <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
+                    {platformSettings['cms_hero_stat_rating'] || '4.8'}
+                  </span>
                   <span className="text-slate-500">(3,200+ reviews)</span>
                 </div>
               </div>
@@ -149,24 +158,28 @@ export const LandingPage: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Hero Featured Dish 1: Naija Kitchen Jollof */}
+                {/* Hero Featured Dish 1 */}
                 <div
                   onClick={handleExploreStorefront}
                   className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-orange-300 hover:bg-orange-50/30 transition-all cursor-pointer"
                 >
                   <img
-                    src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=240&q=80"
-                    alt="Smoky Party Jollof & Asun"
+                    src={platformSettings['cms_hero_dish1_image'] || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=240&q=80'}
+                    alt={platformSettings['cms_hero_dish1_title'] || 'Smoky Party Jollof & Asun'}
                     className="w-16 h-16 rounded-xl object-cover shrink-0"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#FF5500] truncate">
-                        Smoky Party Jollof & Peppered Asun
+                        {platformSettings['cms_hero_dish1_title'] || 'Smoky Party Jollof & Peppered Asun'}
                       </h4>
-                      <span className="text-xs font-bold font-mono text-slate-900">₦3,800</span>
+                      <span className="text-xs font-bold font-mono text-slate-900">
+                        ₦{Number(platformSettings['cms_hero_dish1_price'] || 3800).toLocaleString('en-NG')}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">Naija Kitchen · 20–30 min</p>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                      {platformSettings['cms_hero_dish1_restaurant'] || 'Naija Kitchen'} · 20–30 min
+                    </p>
                     <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-600">
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                       <span className="font-bold">4.9</span>
@@ -176,24 +189,28 @@ export const LandingPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Hero Featured Dish 2: Burger House Classic */}
+                {/* Hero Featured Dish 2 */}
                 <div
                   onClick={handleExploreStorefront}
                   className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-orange-300 hover:bg-orange-50/30 transition-all cursor-pointer"
                 >
                   <img
-                    src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=240&q=80"
-                    alt="Classic Smash Cheese Burger"
+                    src={platformSettings['cms_hero_dish2_image'] || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=240&q=80'}
+                    alt={platformSettings['cms_hero_dish2_title'] || 'Classic Smash Cheese Burger'}
                     className="w-16 h-16 rounded-xl object-cover shrink-0"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#FF5500] truncate">
-                        Double Smash Beef Cheeseburger
+                        {platformSettings['cms_hero_dish2_title'] || 'Double Smash Beef Cheeseburger'}
                       </h4>
-                      <span className="text-xs font-bold font-mono text-slate-900">₦4,200</span>
+                      <span className="text-xs font-bold font-mono text-slate-900">
+                        ₦{Number(platformSettings['cms_hero_dish2_price'] || 4200).toLocaleString('en-NG')}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">Burger House · 25–35 min</p>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                      {platformSettings['cms_hero_dish2_restaurant'] || 'Burger House'} · 25–35 min
+                    </p>
                     <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-600">
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                       <span className="font-bold">4.8</span>
@@ -203,24 +220,28 @@ export const LandingPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Hero Featured Dish 3: Suya Express */}
+                {/* Hero Featured Dish 3 */}
                 <div
                   onClick={handleExploreStorefront}
                   className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-orange-300 hover:bg-orange-50/30 transition-all cursor-pointer"
                 >
                   <img
-                    src="https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=240&q=80"
-                    alt="Suya Beef Skewers"
+                    src={platformSettings['cms_hero_dish3_image'] || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=240&q=80'}
+                    alt={platformSettings['cms_hero_dish3_title'] || 'Suya Beef Skewers'}
                     className="w-16 h-16 rounded-xl object-cover shrink-0"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#FF5500] truncate">
-                        Peppered Beef Suya & Onions
+                        {platformSettings['cms_hero_dish3_title'] || 'Peppered Beef Suya & Onions'}
                       </h4>
-                      <span className="text-xs font-bold font-mono text-slate-900">₦2,800</span>
+                      <span className="text-xs font-bold font-mono text-slate-900">
+                        ₦{Number(platformSettings['cms_hero_dish3_price'] || 2800).toLocaleString('en-NG')}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">Suya Express · 15–25 min</p>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                      {platformSettings['cms_hero_dish3_restaurant'] || 'Suya Express'} · 15–25 min
+                    </p>
                     <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-600">
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                       <span className="font-bold">4.7</span>
@@ -255,10 +276,10 @@ export const LandingPage: React.FC = () => {
               Simple & Honest Logistics
             </span>
             <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 font-display">
-              How Veyrang Delivers to You
+              {platformSettings['cms_how_it_works_title'] || 'How Veyrang Delivers to You'}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
-              No guesswork, no fake GPS maps. Pure transparency from the kitchen flame to your dining table.
+              {platformSettings['cms_how_it_works_subtitle'] || 'No guesswork, no fake GPS maps. Pure transparency from the kitchen flame to your dining table.'}
             </p>
           </div>
 
@@ -269,10 +290,10 @@ export const LandingPage: React.FC = () => {
                 01
               </div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                Choose Your Vetted Kitchen
+                {platformSettings['cms_step1_title'] || 'Choose Your Vetted Kitchen'}
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Filter by cuisine, prep speed, or neighborhood. Explore authentic Nigerian dishes, Italian pizza, or burgers prepared by hygiene-audited local chefs.
+                {platformSettings['cms_step1_desc'] || 'Filter by cuisine, prep speed, or neighborhood. Explore authentic Nigerian dishes, Italian pizza, or burgers prepared by hygiene-audited local chefs.'}
               </p>
             </div>
 
@@ -282,10 +303,10 @@ export const LandingPage: React.FC = () => {
                 02
               </div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                Instant Naira Settlement
+                {platformSettings['cms_step2_title'] || 'Instant Naira Settlement'}
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Pay seamlessly with Nigerian debit card, instant bank transfer, in-app wallet balance, or cash on delivery. Zero hidden conversion fees.
+                {platformSettings['cms_step2_desc'] || 'Pay seamlessly with Nigerian debit card, instant bank transfer, in-app wallet balance, or cash on delivery. Zero hidden conversion fees.'}
               </p>
             </div>
 
@@ -295,10 +316,10 @@ export const LandingPage: React.FC = () => {
                 03
               </div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                4-Digit PIN Doorstep Handover
+                {platformSettings['cms_step3_title'] || '4-Digit PIN Doorstep Handover'}
               </h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Your dispatch rider verifies your secret 4-digit PIN before opening the tamper-evident sealed parcel. Guaranteed hot, fresh, and accurate.
+                {platformSettings['cms_step3_desc'] || 'Your dispatch rider verifies your secret 4-digit PIN before opening the tamper-evident sealed parcel. Guaranteed hot, fresh, and accurate.'}
               </p>
             </div>
           </div>
@@ -323,7 +344,7 @@ export const LandingPage: React.FC = () => {
               onClick={handleExploreStorefront}
               className="text-xs font-bold text-[#FF5500] hover:text-[#EA4C00] flex items-center gap-1 cursor-pointer"
             >
-              <span>View all 250+ places</span>
+              <span>View all places</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -338,17 +359,10 @@ export const LandingPage: React.FC = () => {
                 <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
                   <img
                     src={
-                      restaurant.id === 'rest-1'
-                        ? 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80'
-                        : restaurant.id === 'rest-2'
-                        ? 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?auto=format&fit=crop&w=600&q=80'
-                        : restaurant.id === 'rest-3'
-                        ? 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
-                        : restaurant.id === 'rest-4'
-                        ? 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80'
-                        : restaurant.id === 'rest-5'
-                        ? 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80'
-                        : 'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=600&q=80'
+                      restaurant.bannerUrl ||
+                      (restaurant as any).banner_r2_url ||
+                      restaurant.logoUrl ||
+                      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80'
                     }
                     alt={restaurant.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

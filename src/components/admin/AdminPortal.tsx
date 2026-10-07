@@ -69,7 +69,8 @@ export const AdminPortal: React.FC = () => {
   const {
     adminActiveTab: activeTab,
     setAdminActiveTab: setActiveTab,
-    setIsRightDrawerOpen
+    setIsRightDrawerOpen,
+    refreshData
   } = useDelivery();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState<boolean>(false);
@@ -94,6 +95,9 @@ export const AdminPortal: React.FC = () => {
   const [d1HealthData, setD1HealthData] = useState<any>(null);
   const [isPingingD1, setIsPingingD1] = useState<boolean>(false);
   const [platformSettings, setPlatformSettings] = useState<Record<string, string>>({});
+  const [cmsDrafts, setCmsDrafts] = useState<Record<string, string>>({});
+  const [cmsCategory, setCmsCategory] = useState<'hero' | 'dishes' | 'steps' | 'partner' | 'help' | 'contact' | 'legal' | 'footer' | 'images'>('hero');
+  const [isSavingAllCMS, setIsSavingAllCMS] = useState<boolean>(false);
   const [deliveryZonesList, setDeliveryZonesList] = useState<any[]>([]);
 
   const [loading, setLoading] = useState<boolean>(true);
@@ -143,6 +147,21 @@ export const AdminPortal: React.FC = () => {
   const [newRestTagline, setNewRestTagline] = useState('Authentic dishes prepared fresh to order');
   const [newRestBannerUrl, setNewRestBannerUrl] = useState('');
   const [newRestZone, setNewRestZone] = useState('Lekki / Victoria Island');
+
+  // Edit Restaurant Branch State
+  const [isEditRestaurantModalOpen, setIsEditRestaurantModalOpen] = useState<boolean>(false);
+  const [editingRestaurant, setEditingRestaurant] = useState<any | null>(null);
+  const [editRestName, setEditRestName] = useState('');
+  const [editRestAddress, setEditRestAddress] = useState('');
+  const [editRestCuisine, setEditRestCuisine] = useState('');
+  const [editRestDeliveryFee, setEditRestDeliveryFee] = useState('');
+  const [editRestDeliveryMin, setEditRestDeliveryMin] = useState('');
+  const [editRestDeliveryMax, setEditRestDeliveryMax] = useState('');
+  const [editRestRating, setEditRestRating] = useState('');
+  const [editRestTagline, setEditRestTagline] = useState('');
+  const [editRestBannerUrl, setEditRestBannerUrl] = useState('');
+  const [editRestLogoUrl, setEditRestLogoUrl] = useState('');
+  const [editRestZone, setEditRestZone] = useState('');
 
   // Add Delivery Zone Form State
   const [isAddZoneModalOpen, setIsAddZoneModalOpen] = useState<boolean>(false);
@@ -352,10 +371,12 @@ export const AdminPortal: React.FC = () => {
       setRestaurantsList(Array.isArray(rests) ? rests : []);
       setCmsCopy(cms || {});
 
-      if (settingsRes?.settings) {
-        setPlatformSettings(settingsRes.settings);
-      } else if (settingsRes?.data?.settings) {
-        setPlatformSettings(settingsRes.data.settings);
+      const extractedSettings = settingsRes?.settings || settingsRes?.data?.settings || settingsRes;
+      if (extractedSettings && typeof extractedSettings === 'object') {
+        const finalMap = extractedSettings.settings || extractedSettings;
+        setPlatformSettings(finalMap);
+        setCmsCopy(finalMap);
+        setCmsDrafts(finalMap);
       }
 
       if (Array.isArray(zonesRes)) {
@@ -363,6 +384,9 @@ export const AdminPortal: React.FC = () => {
       } else if (zonesRes?.data && Array.isArray(zonesRes.data)) {
         setDeliveryZonesList(zonesRes.data);
       }
+
+      // Automatically sync public storefront & customer context in real time
+      refreshData().catch(() => {});
     } catch (e) {
       console.error('Admin fetch error:', e);
     } finally {
@@ -877,6 +901,49 @@ export const AdminPortal: React.FC = () => {
     }
   };
 
+  const handleOpenEditRestaurant = (rest: any) => {
+    setEditingRestaurant(rest);
+    setEditRestName(rest.name || '');
+    setEditRestAddress(rest.address || '');
+    setEditRestCuisine(rest.cuisine || '');
+    setEditRestDeliveryFee(String(rest.deliveryFee || rest.delivery_fee || 1000));
+    setEditRestDeliveryMin(String(rest.deliveryTimeMin || rest.delivery_time_min || 20));
+    setEditRestDeliveryMax(String(rest.deliveryTimeMax || rest.delivery_time_max || 40));
+    setEditRestRating(String(rest.rating || 4.8));
+    setEditRestTagline(rest.tagline || '');
+    setEditRestBannerUrl(rest.bannerUrl || rest.banner_r2_url || '');
+    setEditRestLogoUrl(rest.logoUrl || '');
+    setEditRestZone(rest.zone || 'Lekki / Victoria Island');
+    setIsEditRestaurantModalOpen(true);
+  };
+
+  const handleSaveEditRestaurant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRestaurant || !editRestName.trim() || !editRestAddress.trim()) return;
+    try {
+      await api.admin.updateRestaurant(editingRestaurant.id, {
+        name: editRestName.trim(),
+        address: editRestAddress.trim(),
+        cuisine: editRestCuisine.trim(),
+        deliveryFee: Number(editRestDeliveryFee || 1000),
+        deliveryTimeMin: Number(editRestDeliveryMin || 20),
+        deliveryTimeMax: Number(editRestDeliveryMax || 40),
+        rating: Number(editRestRating || 4.8),
+        tagline: editRestTagline.trim(),
+        bannerUrl: editRestBannerUrl.trim(),
+        logoUrl: editRestLogoUrl.trim(),
+        zone: editRestZone.trim()
+      });
+      showActionFeedback(`✓ Restaurant "${editRestName}" updated permanently in Cloudflare D1!`);
+      setIsEditRestaurantModalOpen(false);
+      setEditingRestaurant(null);
+      await refreshData();
+      await fetchData();
+    } catch (err: any) {
+      showActionFeedback(`Failed to update restaurant: ${err.message}`);
+    }
+  };
+
   // Reviews Moderation Handlers
   const handleReplyReview = async (id: string) => {
     if (!replyText.trim()) return;
@@ -950,13 +1017,33 @@ export const AdminPortal: React.FC = () => {
     setSavingKey(key);
     try {
       await api.admin.updateCMS(key, value);
-      showActionFeedback(`Live setting "${key}" updated in Platform D1!`);
+      showActionFeedback(`✓ Live setting "${key}" saved directly to Platform D1!`);
       setCmsCopy((prev) => ({ ...prev, [key]: value }));
-      fetchData();
+      setCmsDrafts((prev) => ({ ...prev, [key]: value }));
+      setPlatformSettings((prev) => ({ ...prev, [key]: value }));
+      await refreshData();
+      await fetchData();
     } catch (err: any) {
       showActionFeedback(`Failed to update setting: ${err.message}`);
     } finally {
       setSavingKey(null);
+    }
+  };
+
+  const handleSaveAllCMS = async () => {
+    setIsSavingAllCMS(true);
+    try {
+      const merged = { ...platformSettings, ...cmsDrafts };
+      await api.admin.bulkUpdateCMS(merged);
+      showActionFeedback('✓ All CMS & text changes saved successfully to Cloudflare D1!');
+      setPlatformSettings((prev) => ({ ...prev, ...merged }));
+      setCmsCopy((prev) => ({ ...prev, ...merged }));
+      await refreshData();
+      await fetchData();
+    } catch (err: any) {
+      showActionFeedback(`Failed to bulk save CMS: ${err.message}`);
+    } finally {
+      setIsSavingAllCMS(false);
     }
   };
 
@@ -3219,6 +3306,127 @@ export const AdminPortal: React.FC = () => {
                 </div>
               )}
 
+              {isEditRestaurantModalOpen && editingRestaurant && (
+                <div className="p-4 bg-indigo-50/60 rounded-2xl border border-indigo-200 space-y-4 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold uppercase text-slate-900 flex items-center gap-1.5">
+                        <Edit3 className="w-4 h-4 text-indigo-600" />
+                        <span>Edit Restaurant: {editingRestaurant.name}</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-500">Updates will be saved directly into Cloudflare D1 and reflected publicly on the site.</p>
+                    </div>
+                    <button onClick={() => setIsEditRestaurantModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <form onSubmit={handleSaveEditRestaurant} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Restaurant Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={editRestName}
+                        onChange={(e) => setEditRestName(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Physical Address *</label>
+                      <input
+                        type="text"
+                        required
+                        value={editRestAddress}
+                        onChange={(e) => setEditRestAddress(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Cuisine / Category</label>
+                      <input
+                        type="text"
+                        value={editRestCuisine}
+                        onChange={(e) => setEditRestCuisine(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Delivery Fee (NGN ₦)</label>
+                      <input
+                        type="number"
+                        value={editRestDeliveryFee}
+                        onChange={(e) => setEditRestDeliveryFee(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Min Delivery Time (mins)</label>
+                      <input
+                        type="number"
+                        value={editRestDeliveryMin}
+                        onChange={(e) => setEditRestDeliveryMin(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Max Delivery Time (mins)</label>
+                      <input
+                        type="number"
+                        value={editRestDeliveryMax}
+                        onChange={(e) => setEditRestDeliveryMax(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Rating (1.0 to 5.0)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="1"
+                        max="5"
+                        value={editRestRating}
+                        onChange={(e) => setEditRestRating(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Tagline</label>
+                      <input
+                        type="text"
+                        value={editRestTagline}
+                        onChange={(e) => setEditRestTagline(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Banner Image URL (Cloudflare R2 or direct URL)</label>
+                      <input
+                        type="url"
+                        placeholder="https://... or Cloudflare R2 object URL"
+                        value={editRestBannerUrl}
+                        onChange={(e) => setEditRestBannerUrl(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditRestaurantModalOpen(false)}
+                        className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm"
+                      >
+                        Save Restaurant to D1
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 text-slate-600 uppercase border-b border-slate-200 font-bold text-[11px]">
@@ -3235,7 +3443,18 @@ export const AdminPortal: React.FC = () => {
                   <tbody className="divide-y divide-slate-100 text-slate-700">
                     {restaurantsList.map((rest) => (
                       <tr key={rest.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="p-3 font-semibold text-slate-900">{rest.name}</td>
+                        <td className="p-3 font-semibold text-slate-900">
+                          <div className="flex items-center gap-2">
+                            {(rest.bannerUrl || rest.banner_r2_url) && (
+                              <img
+                                src={rest.bannerUrl || rest.banner_r2_url}
+                                alt={rest.name}
+                                className="w-7 h-7 rounded-lg object-cover"
+                              />
+                            )}
+                            <span>{rest.name}</span>
+                          </div>
+                        </td>
                         <td className="p-3 text-slate-600 max-w-[200px] truncate">{rest.address}</td>
                         <td className="p-3 text-slate-600">{rest.cuisine || 'Continental'}</td>
                         <td className="p-3 font-bold text-amber-600">⭐ {Number(rest.rating || 4.8).toFixed(1)}</td>
@@ -3251,13 +3470,22 @@ export const AdminPortal: React.FC = () => {
                           </button>
                         </td>
                         <td className="p-3">
-                          <button
-                            onClick={() => handleDeleteRestaurant(rest.id, rest.name)}
-                            className="text-rose-600 hover:text-rose-800 p-1 cursor-pointer"
-                            title="Delete branch"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleOpenEditRestaurant(rest)}
+                              className="text-indigo-600 hover:text-indigo-800 p-1 cursor-pointer rounded-lg hover:bg-indigo-50 transition-colors"
+                              title="Edit restaurant details & image"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRestaurant(rest.id, rest.name)}
+                              className="text-rose-600 hover:text-rose-800 p-1 cursor-pointer rounded-lg hover:bg-rose-50 transition-colors"
+                              title="Delete branch"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -3329,58 +3557,331 @@ export const AdminPortal: React.FC = () => {
           )}
 
           {/* CMS WEBSITE CONTENT */}
-          {activeTab === 'cms' && !isSubAdmin && (
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-6">
-              <div className="border-b border-slate-100 pb-4">
-                <h3 className="text-base font-bold text-slate-900">Website CMS & Homepage Copy</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Dynamic headline, announcement banners, and support contact details saved in Platform D1.</p>
-              </div>
+          {activeTab === 'cms' && !isSubAdmin && (() => {
+            const renderCmsInput = (key: string, label: string, defaultVal: string, isTextarea = false, isImage = false) => {
+              const currentValue = cmsDrafts[key] ?? (platformSettings[key] || defaultVal);
+              const isSaving = savingKey === key;
+              return (
+                <div key={key} className="space-y-1.5 p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-2xl flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <label className="text-xs font-bold text-slate-800">{label}</label>
+                      <span className="text-[10px] font-mono text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200/60 truncate max-w-[140px]">{key}</span>
+                    </div>
+                    {isTextarea ? (
+                      <textarea
+                        rows={3}
+                        value={currentValue}
+                        onChange={(e) => setCmsDrafts((prev) => ({ ...prev, [key]: e.target.value }))}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none transition-colors"
+                      />
+                    ) : (
+                      <input
+                        type={isImage ? 'url' : 'text'}
+                        value={currentValue}
+                        onChange={(e) => setCmsDrafts((prev) => ({ ...prev, [key]: e.target.value }))}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none transition-colors"
+                      />
+                    )}
+                    {isImage && currentValue && (
+                      <div className="flex items-center gap-2.5 pt-1.5">
+                        <img
+                          src={currentValue}
+                          alt={label}
+                          className="w-14 h-10 object-cover rounded-lg border border-slate-200 bg-slate-100"
+                          onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
+                        />
+                        <span className="text-[10px] text-slate-500 font-medium">Live thumbnail preview</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200/50 mt-1">
+                    <span className="text-[10px] text-slate-400">
+                      {platformSettings[key] ? '✓ Live D1' : 'Default'}
+                    </span>
+                    <button
+                      onClick={() => handleSaveCMS(key, currentValue)}
+                      disabled={isSaving}
+                      className="px-3 py-1.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-xs disabled:opacity-50 transition-colors"
+                    >
+                      {isSaving ? 'Saving...' : 'Save to D1'}
+                    </button>
+                  </div>
+                </div>
+              );
+            };
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Homepage Headline</label>
-                  <input
-                    type="text"
-                    defaultValue={platformSettings['cms_hero_title'] || 'Hot Gourmet Meals Delivered in Minutes'}
-                    onBlur={(e) => handleSaveCMS('cms_hero_title', e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
-                  />
-                  <span className="text-[10px] text-slate-400">Saves on blur to D1</span>
+            return (
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-6">
+                {/* CMS Header & Batch Save */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                      <span>Website CMS & Public Content Manager</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                        Cloudflare D1 Live
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Control every public headline, description, dish showcase, FAQ, contact info, and banner image. Single source of truth.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleSaveAllCMS}
+                    disabled={isSavingAllCMS}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>{isSavingAllCMS ? 'Saving All to D1...' : '💾 Save All CMS Changes to D1'}</span>
+                  </button>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Announcement Top Banner</label>
-                  <input
-                    type="text"
-                    defaultValue={platformSettings['cms_announcement_banner'] || 'Free Delivery on Orders Over ₦5,000 | Code: FREEDROP'}
-                    onBlur={(e) => handleSaveCMS('cms_announcement_banner', e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
-                  />
-                  <span className="text-[10px] text-slate-400">Saves on blur to D1</span>
+
+                {/* Sub-Category Navigation Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                  {[
+                    { id: 'hero', label: '🏠 Homepage Hero' },
+                    { id: 'dishes', label: '🍲 Featured Dishes' },
+                    { id: 'steps', label: '🚀 How It Works' },
+                    { id: 'partner', label: '🤝 Partner Program' },
+                    { id: 'help', label: '❓ Help & FAQs' },
+                    { id: 'contact', label: '📞 Contact & Hours' },
+                    { id: 'legal', label: '📜 Terms & Privacy' },
+                    { id: 'footer', label: '🎨 Footer & Promos' },
+                    { id: 'images', label: '🖼️ Public Banners & R2' }
+                  ].map((sub) => (
+                    <button
+                      key={sub.id}
+                      onClick={() => setCmsCategory(sub.id as any)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer transition-all border ${
+                        cmsCategory === sub.id
+                          ? 'bg-[#FF5500] text-white border-[#FF5500] shadow-xs'
+                          : 'bg-slate-50 text-slate-600 border-slate-200/80 hover:bg-slate-100'
+                      }`}
+                    >
+                      {sub.label}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Customer Support Hotline</label>
-                  <input
-                    type="text"
-                    defaultValue={platformSettings['cms_support_phone'] || '+234 800 839 7264'}
-                    onBlur={(e) => handleSaveCMS('cms_support_phone', e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#FF5500] outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Support Email Address</label>
-                  <input
-                    type="email"
-                    defaultValue={platformSettings['cms_support_email'] || 'support@veyrang.com'}
-                    onBlur={(e) => handleSaveCMS('cms_support_email', e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#FF5500] outline-none"
-                  />
+
+                {/* Section 1: Homepage Hero & Headlines */}
+                {cmsCategory === 'hero' && (
+                  <div className="space-y-4">
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Hero Section Headlines & Stats</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {renderCmsInput('cms_hero_badge', 'Hero Badge Pill', 'Global Express Food & Cloud Kitchen Network')}
+                      {renderCmsInput('cms_hero_title', 'Hero Main Title', 'Hot, Delicious Meals Delivered to Your Door in 25 Minutes.')}
+                      {renderCmsInput('cms_hero_subtitle', 'Hero Subtitle Description', 'Order authentic specialties, artisanal pizzas, gourmet burgers, and delicious dishes from top-rated restaurants across your city.', true)}
+                      {renderCmsInput('cms_hero_cta_text', 'Hero Explore Button Label', 'Find Kitchens')}
+                      {renderCmsInput('cms_hero_stat_time', 'Delivery Speed Stat', '25–35 min')}
+                      {renderCmsInput('cms_hero_stat_fee', 'Delivery Fee Stat', '₦500')}
+                      {renderCmsInput('cms_hero_stat_orders', 'Orders Fulfilled Stat', '45,000+')}
+                      {renderCmsInput('cms_hero_stat_rating', 'Platform Rating Stat', '4.8')}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 2: Featured Hero Dish Cards */}
+                {cmsCategory === 'dishes' && (
+                  <div className="space-y-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Featured Dish Cards (Homepage Visual Showcase)</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {/* Dish 1 */}
+                      <div className="p-4 bg-orange-50/40 border border-orange-200/70 rounded-2xl space-y-3">
+                        <div className="text-xs font-bold text-orange-900">Featured Dish #1</div>
+                        {renderCmsInput('cms_hero_dish1_title', 'Dish Name', 'Smoky Party Jollof & Peppered Asun')}
+                        {renderCmsInput('cms_hero_dish1_restaurant', 'Kitchen Name', 'Naija Kitchen')}
+                        {renderCmsInput('cms_hero_dish1_price', 'Price in Naira', '3800')}
+                        {renderCmsInput('cms_hero_dish1_image', 'Dish Image URL', 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=240&q=80', false, true)}
+                      </div>
+
+                      {/* Dish 2 */}
+                      <div className="p-4 bg-amber-50/40 border border-amber-200/70 rounded-2xl space-y-3">
+                        <div className="text-xs font-bold text-amber-900">Featured Dish #2</div>
+                        {renderCmsInput('cms_hero_dish2_title', 'Dish Name', 'Double Smash Beef Cheeseburger')}
+                        {renderCmsInput('cms_hero_dish2_restaurant', 'Kitchen Name', 'Burger House')}
+                        {renderCmsInput('cms_hero_dish2_price', 'Price in Naira', '4200')}
+                        {renderCmsInput('cms_hero_dish2_image', 'Dish Image URL', 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=240&q=80', false, true)}
+                      </div>
+
+                      {/* Dish 3 */}
+                      <div className="p-4 bg-rose-50/40 border border-rose-200/70 rounded-2xl space-y-3">
+                        <div className="text-xs font-bold text-rose-900">Featured Dish #3</div>
+                        {renderCmsInput('cms_hero_dish3_title', 'Dish Name', 'Peppered Beef Suya & Onions')}
+                        {renderCmsInput('cms_hero_dish3_restaurant', 'Kitchen Name', 'Suya Express')}
+                        {renderCmsInput('cms_hero_dish3_price', 'Price in Naira', '2800')}
+                        {renderCmsInput('cms_hero_dish3_image', 'Dish Image URL', 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=240&q=80', false, true)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 3: How It Works */}
+                {cmsCategory === 'steps' && (
+                  <div className="space-y-4">
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400">How Veyrang Works (3-Step Customer Journey)</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {renderCmsInput('cms_how_it_works_title', 'Section Headline', 'How Veyrang Delivers to You')}
+                      {renderCmsInput('cms_how_it_works_subtitle', 'Section Subtitle', 'No guesswork, no fake GPS maps. Pure transparency from the kitchen flame to your dining table.', true)}
+                      {renderCmsInput('cms_step1_title', 'Step 1 Title', 'Choose Your Vetted Kitchen')}
+                      {renderCmsInput('cms_step1_desc', 'Step 1 Description', 'Filter by cuisine, prep speed, or neighborhood. Explore authentic Nigerian dishes, Italian pizza, or burgers prepared by hygiene-audited local chefs.', true)}
+                      {renderCmsInput('cms_step2_title', 'Step 2 Title', 'Instant Naira Settlement')}
+                      {renderCmsInput('cms_step2_desc', 'Step 2 Description', 'Pay seamlessly with Nigerian debit card, instant bank transfer, in-app wallet balance, or cash on delivery. Zero hidden conversion fees.', true)}
+                      {renderCmsInput('cms_step3_title', 'Step 3 Title', '4-Digit PIN Doorstep Handover')}
+                      {renderCmsInput('cms_step3_desc', 'Step 3 Description', 'Your dispatch rider verifies your secret 4-digit PIN before opening the tamper-evident sealed parcel. Guaranteed hot, fresh, and accurate.', true)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 4: Partner Page */}
+                {cmsCategory === 'partner' && (
+                  <div className="space-y-4">
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Partner With Us Page CMS</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {renderCmsInput('cms_partner_page_title', 'Partner Page Headline', 'Partner with Veyrang')}
+                      {renderCmsInput('cms_partner_page_subtitle', 'Partner Page Subtitle', 'Grow your culinary business with thousands of food lovers across Nigeria', true)}
+                      {renderCmsInput('cms_partner_benefit1_title', 'Benefit 1 Title', 'Increase Sales')}
+                      {renderCmsInput('cms_partner_benefit1_desc', 'Benefit 1 Description', 'Boost daily order volume by up to 40% with doorstep dispatch.', true)}
+                      {renderCmsInput('cms_partner_benefit2_title', 'Benefit 2 Title', 'New Customers')}
+                      {renderCmsInput('cms_partner_benefit2_desc', 'Benefit 2 Description', 'Reach corporate workers and residents across Lekki, VI & Ikeja.', true)}
+                      {renderCmsInput('cms_partner_benefit3_title', 'Benefit 3 Title', 'Fast Settlements')}
+                      {renderCmsInput('cms_partner_benefit3_desc', 'Benefit 3 Description', 'Automated direct bank payouts with transparent 15% commission.', true)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 5: Help & FAQs */}
+                {cmsCategory === 'help' && (
+                  <div className="space-y-4">
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Help Center & Frequently Asked Questions</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {renderCmsInput('cms_help_title', 'Help Center Headline', 'Help & Support')}
+                      {renderCmsInput('cms_help_subtitle', 'Help Center Subtitle', 'Frequently asked questions, delivery policies, and customer support')}
+                      {renderCmsInput('cms_whatsapp_phone', 'WhatsApp Support Phone', '+234 800 839 7264')}
+                      {renderCmsInput('cms_whatsapp_desc', 'WhatsApp Hours Note', 'Available 8am – 11pm WAT')}
+                    </div>
+                    <div className="space-y-3 pt-2">
+                      <div className="text-xs font-bold text-slate-700">FAQ Accordion Items</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {renderCmsInput('cms_faq1_q', 'FAQ 1 Question', 'How long does doorstep delivery take in Lagos?')}
+                        {renderCmsInput('cms_faq1_a', 'FAQ 1 Answer', 'Average delivery takes between 25 to 35 minutes depending on traffic and your delivery zone. Monitor live progress in the My Orders tab.', true)}
+                        {renderCmsInput('cms_faq2_q', 'FAQ 2 Question', 'What payment methods do you accept?')}
+                        {renderCmsInput('cms_faq2_a', 'FAQ 2 Answer', 'Veyrang accepts all debit cards, instant Bank Transfer / Virtual Accounts, and Veyrang in-app Wallet balances.', true)}
+                        {renderCmsInput('cms_faq3_q', 'FAQ 3 Question', 'How does the Handover PIN work?')}
+                        {renderCmsInput('cms_faq3_a', 'FAQ 3 Answer', 'Every delivery is assigned a unique 4-digit Handover PIN. Share this code with your rider when they arrive to verify order release.', true)}
+                        {renderCmsInput('cms_faq4_q', 'FAQ 4 Question', 'Can I cancel or modify my food order after placing it?')}
+                        {renderCmsInput('cms_faq4_a', 'FAQ 4 Answer', 'You can cancel within 60 seconds before kitchen accepts the ticket. Once cooking begins, cancellations cannot be accepted to prevent waste.', true)}
+                        {renderCmsInput('cms_faq5_q', 'FAQ 5 Question', 'How do refunds work if an item is missing or sold out?')}
+                        {renderCmsInput('cms_faq5_a', 'FAQ 5 Answer', 'Refunds are instantly credited to your Veyrang Wallet balance with zero deduction, ready for your next meal or bank payout.', true)}
+                        {renderCmsInput('cms_faq6_q', 'FAQ 6 Question', 'What is the delivery fee and minimum order?')}
+                        {renderCmsInput('cms_faq6_a', 'FAQ 6 Answer', 'Delivery fees start at ₦500 within your local neighborhood zone. Minimum order values vary by restaurant (typically ₦1,500 to ₦2,000).', true)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 6: Contact & Support */}
+                {cmsCategory === 'contact' && (
+                  <div className="space-y-4">
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Customer Support & Headquarters Contact</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {renderCmsInput('cms_contact_title', 'Contact Page Headline', 'Contact Customer Care')}
+                      {renderCmsInput('cms_contact_subtitle', 'Contact Page Subtitle', 'We are here to assist with your orders, payments, and delivery inquiries')}
+                      {renderCmsInput('cms_support_phone', 'Primary Support Phone / Hotline', '+234 800 839 7264')}
+                      {renderCmsInput('cms_support_email', 'Official Support Email', 'support@veyrang.com')}
+                      {renderCmsInput('cms_support_address', 'Headquarters Physical Address', '14 Adeola Odeku St, Victoria Island, Lagos')}
+                      {renderCmsInput('cms_support_hours', 'Support Desk Hours Notice', '8:00 AM – 11:00 PM WAT (Monday to Sunday)')}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 7: Terms & Privacy */}
+                {cmsCategory === 'legal' && (
+                  <div className="space-y-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Terms of Service & Privacy Policy Copy</div>
+                    <div className="p-4 bg-slate-50 rounded-2xl space-y-4">
+                      <div className="text-xs font-bold text-slate-900">Terms of Service Articles</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {renderCmsInput('cms_terms_effective_date', 'Terms Effective Date Note', 'Effective date: October 2026 · Governing food delivery operations across Nigeria')}
+                        {renderCmsInput('cms_terms_s1_title', 'Section 1 Title', '1. Platform Overview & Ordering Rules')}
+                        {renderCmsInput('cms_terms_s1_content', 'Section 1 Content', 'Veyrang operates a multi-restaurant culinary marketplace connecting consumers with vetted Nigerian restaurants, cloud kitchens, and independent couriers.', true)}
+                        {renderCmsInput('cms_terms_s2_title', 'Section 2 Title', '2. Delivery Times & Handover PIN Verification')}
+                        {renderCmsInput('cms_terms_s2_content', 'Section 2 Content', 'Estimated arrival times (ETAs) are calculated algorithmically based on kitchen prep velocity and real-time traffic conditions in Lagos and Abuja.', true)}
+                        {renderCmsInput('cms_terms_s3_title', 'Section 3 Title', '3. Cancellation & Refund Policy')}
+                        {renderCmsInput('cms_terms_s3_content', 'Section 3 Content', 'Orders can be cancelled free of charge within 60 seconds of checkout before the merchant accepts the ticket.', true)}
+                        {renderCmsInput('cms_terms_s4_title', 'Section 4 Title', '4. Dietary Allergic Requirements')}
+                        {renderCmsInput('cms_terms_s4_content', 'Section 4 Content', 'While restaurant partners list ingredients and dietary indicators, cross-contamination in shared commercial kitchens may occur.', true)}
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 rounded-2xl space-y-4">
+                      <div className="text-xs font-bold text-slate-900">Privacy Policy (NDPA Compliance)</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {renderCmsInput('cms_privacy_subtitle', 'Privacy Policy Subtitle', 'How Veyrang protects your personal data under the Nigeria Data Protection Act (NDPA)')}
+                        {renderCmsInput('cms_privacy_s1_title', 'Section 1 Title', '1. Information We Collect')}
+                        {renderCmsInput('cms_privacy_s1_content', 'Section 1 Content', 'Veyrang collects your name, Nigerian mobile phone number, email address, and delivery coordinates strictly to fulfill orders and verify doorstep handovers.', true)}
+                        {renderCmsInput('cms_privacy_s2_title', 'Section 2 Title', '2. Courier Access & Privacy Masking')}
+                        {renderCmsInput('cms_privacy_s2_content', 'Section 2 Content', 'Assigned courier riders only receive your destination delivery address and phone number for the active duration of the trip.', true)}
+                        {renderCmsInput('cms_privacy_s3_title', 'Section 3 Title', '3. Payment Security & PCI-DSS Compliance')}
+                        {renderCmsInput('cms_privacy_s3_content', 'Section 3 Content', 'Veyrang never stores raw debit card numbers or bank account PINs on our servers. All financial transactions are tokenized.', true)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 8: Footer, Promos & Social */}
+                {cmsCategory === 'footer' && (
+                  <div className="space-y-4">
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Footer Taglines, Promos & Social Media</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {renderCmsInput('cms_announcement_banner', 'Top Site Announcement Ticker', 'Free Delivery on Orders Over ₦5,000 | Code: FREEDROP')}
+                      {renderCmsInput('cms_storefront_promo_badge', 'Storefront Promo Badge', 'Veyrang Feasts')}
+                      {renderCmsInput('cms_storefront_promo_text', 'Storefront Promo Description', 'Check our Offers page for verified food coupons & seasonal discounts!')}
+                      {renderCmsInput('cms_offers_title', 'Offers Page Headline', 'Offers & Promo Codes')}
+                      {renderCmsInput('cms_offers_subtitle', 'Offers Page Subtitle', 'Apply any of these verified promo codes at checkout for instant savings')}
+                      {renderCmsInput('cms_offers_member_title', 'Offers Member Banner Title', 'Sign in to unlock exclusive member cashback')}
+                      {renderCmsInput('cms_offers_member_desc', 'Offers Member Banner Description', 'Save your favourite codes and enjoy automated ₦500 welcome discounts.')}
+                      {renderCmsInput('cms_footer_newsletter_title', 'Newsletter Box Title', 'Get ₦1,500 off your first food order')}
+                      {renderCmsInput('cms_footer_newsletter_desc', 'Newsletter Box Description', 'Subscribe to our weekly foodie newsletter for exclusive promo codes, new restaurant launches in Lagos & Abuja, and flash discounts!', true)}
+                      {renderCmsInput('cms_footer_tagline', 'Footer Bottom Tagline', 'Premium food delivery platform with live GPS doorstep tracking and real-time kitchen portals.')}
+                      {renderCmsInput('cms_copyright_text', 'Copyright Legal Name', 'Veyrang Technologies Limited')}
+                      {renderCmsInput('cms_social_instagram', 'Instagram Profile Link', 'https://instagram.com/veyrang')}
+                      {renderCmsInput('cms_social_twitter', 'Twitter X Profile Link', 'https://twitter.com/veyrang')}
+                      {renderCmsInput('cms_social_facebook', 'Facebook Page Link', 'https://facebook.com/veyrang')}
+                      {renderCmsInput('cms_social_linkedin', 'LinkedIn Profile Link', 'https://linkedin.com/company/veyrang')}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 9: Public Banners & R2 Assets */}
+                {cmsCategory === 'images' && (
+                  <div className="space-y-4">
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Public Hero Images & Marketing Banners (Cloudflare R2 / CDN)</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {renderCmsInput('cms_hero_image_url', 'Hero Banner Visual URL', 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200', false, true)}
+                      {renderCmsInput('cms_partner_banner_url', 'Partner Section Visual URL', 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1000', false, true)}
+                      {renderCmsInput('cms_hero_dish1_image', 'Hero Featured Dish 1 Image URL', 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=240&q=80', false, true)}
+                      {renderCmsInput('cms_hero_dish2_image', 'Hero Featured Dish 2 Image URL', 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=240&q=80', false, true)}
+                      {renderCmsInput('cms_hero_dish3_image', 'Hero Featured Dish 3 Image URL', 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=240&q=80', false, true)}
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-xs text-emerald-700 font-semibold bg-emerald-50 p-3.5 rounded-xl border border-emerald-200 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>✓ Real-time single source of truth: Edits persist directly to Cloudflare D1 platform_settings table and broadcast to all routes, user sessions, and public storefronts immediately.</span>
+                  </div>
+                  <button
+                    onClick={handleSaveAllCMS}
+                    disabled={isSavingAllCMS}
+                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shrink-0 cursor-pointer disabled:opacity-50"
+                  >
+                    Save All
+                  </button>
                 </div>
               </div>
-              <div className="text-xs text-emerald-700 font-semibold bg-emerald-50 p-3 rounded-xl border border-emerald-200">
-                ✓ Live edge CMS: Any edits are immediately persisted to the Platform D1 platform_settings table.
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* SEO & MARKETING METADATA */}
           {activeTab === 'seo' && !isSubAdmin && (

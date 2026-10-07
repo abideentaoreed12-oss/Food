@@ -19,7 +19,7 @@ export type Currency = 'USD' | 'NGN';
 
 export type FulfillmentType = 'delivery' | 'pickup' | 'scheduled';
 
-export type DeliveryZone = 'LEKKI' | 'VI' | 'IKOYI' | 'IKEJA' | 'YABA' | 'ABUJA' | 'NYC' | 'LAGOS';
+export type DeliveryZone = 'LEKKI' | 'VI' | 'IKOYI' | 'IKEJA' | 'YABA' | 'ABUJA' | 'NYC' | 'LAGOS' | string;
 
 export type DietaryTag = 'Vegan' | 'Vegetarian' | 'Halal' | 'Gluten-Free' | 'Chef Special';
 
@@ -101,6 +101,11 @@ export interface Restaurant {
   isBusyPaused?: boolean;
   commissionPercent?: number;
   zone?: DeliveryZone;
+  bannerUrl?: string;
+  logoUrl?: string;
+  banner_r2_url?: string;
+  logo_r2_url?: string;
+  image_url?: string;
   categories: MenuCategory[];
 }
 

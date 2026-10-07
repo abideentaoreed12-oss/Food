@@ -4,13 +4,18 @@ import { Restaurant, Order, OrderStatus, UserRole } from '../types';
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 async function request(url: string, options: RequestInit = {}) {
-  const headers = {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('veyrang_jwt_token') : null;
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
     'Pragma': 'no-cache',
     'Expires': '0',
-    ...(options.headers || {})
+    ...(options.headers as any || {})
   };
+
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   const response = await fetch(`${BASE_URL}${url}`, { ...options, headers, credentials: 'include', cache: 'no-store' });
   if (!response.ok) {
@@ -39,6 +44,9 @@ export const api = {
 
       const json = await res.json();
       const { user, token } = json.data;
+      if (token && typeof window !== 'undefined') {
+        localStorage.setItem('veyrang_jwt_token', token);
+      }
       return { user, token };
     },
 
@@ -69,6 +77,9 @@ export const api = {
 
       const json = await res.json();
       const { user, token } = json.data;
+      if (token && typeof window !== 'undefined') {
+        localStorage.setItem('veyrang_jwt_token', token);
+      }
       if (user && user.isApproved === false) {
         return { user: null, token: null, pendingApproval: true, message: 'Your account is pending Super Admin approval.' };
       }
@@ -583,7 +594,7 @@ export const api = {
     getCMS: async () => {
       try {
         const res = await request('/api/settings');
-        return res?.settings || {};
+        return res?.settings || res?.data?.settings || res || {};
       } catch {
         return {};
       }
@@ -592,6 +603,12 @@ export const api = {
       return request('/api/settings/update', {
         method: 'PUT',
         body: JSON.stringify({ key, value })
+      });
+    },
+    bulkUpdateCMS: async (settings: Record<string, string>) => {
+      return request('/api/settings/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ settings })
       });
     },
     runDeveloperQuery: async (sql: string) => {

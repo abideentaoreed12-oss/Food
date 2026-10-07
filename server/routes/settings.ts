@@ -23,7 +23,7 @@ router.get('/', async (req: Request, res: Response) => {
     ];
 
     const settingsMap: Record<string, string> = {};
-    const safeRows = [];
+    const safeRows: any[] = [];
 
     for (const row of results.results) {
       const keyLower = String(row.key).toLowerCase();
@@ -178,8 +178,49 @@ const handleSettingUpdate = async (req: AuthRequest, res: Response) => {
   }
 };
 
+const handleBulkSettingsUpdate = async (req: AuthRequest, res: Response) => {
+  try {
+    const { settings } = req.body;
+    if (!settings || typeof settings !== 'object') {
+      return res.status(400).json({ success: false, error: 'Settings object is required' });
+    }
+
+    const now = new Date().toISOString();
+    for (const [key, val] of Object.entries(settings)) {
+      if (val !== undefined && val !== null) {
+        await d1Client.query(
+          `INSERT INTO platform_settings (key, value, description, category, updated_at)
+           VALUES (?, ?, ?, 'general', ?)
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;`,
+          [key, String(val), key, now]
+        );
+      }
+    }
+
+    await db.logAudit({
+      userId: req.user!.id,
+      userEmail: req.user!.email,
+      userRole: req.user!.role,
+      action: 'PLATFORM_SETTINGS_BULK_UPDATED',
+      resource: 'PLATFORM_SETTINGS',
+      details: { keys: Object.keys(settings) },
+      ip: req.ip
+    });
+
+    return res.json({
+      success: true,
+      message: 'All settings updated successfully in Cloudflare D1',
+      data: settings
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 router.put('/update', requireAuth, requireRole(['admin', 'sub_admin']), handleSettingUpdate);
 router.post('/update', requireAuth, requireRole(['admin', 'sub_admin']), handleSettingUpdate);
+router.post('/bulk', requireAuth, requireRole(['admin', 'sub_admin']), handleBulkSettingsUpdate);
+router.put('/bulk', requireAuth, requireRole(['admin', 'sub_admin']), handleBulkSettingsUpdate);
 
 // 4. Update Delivery Zone Surge or Base Fee (Admin Guarded)
 const handleZoneUpdate = async (req: AuthRequest, res: Response) => {

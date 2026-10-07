@@ -108,7 +108,12 @@ export const FavouritesPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {favRestaurants.map((restaurant) => {
-            const imageUrl = restaurantImageMap[restaurant.id] || restaurantImageMap['rest-1'];
+            const imageUrl =
+              restaurant.bannerUrl ||
+              (restaurant as any).banner_r2_url ||
+              restaurant.logoUrl ||
+              restaurantImageMap[restaurant.id] ||
+              'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80';
 
             return (
               <article

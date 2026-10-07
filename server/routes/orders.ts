@@ -95,10 +95,10 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
 
     // SERVER-SIDE FINANCIAL CALCULATION: Re-calculate all item prices from trusted DB
     let verifiedSubtotal = 0;
-    const validatedItems = [];
+    const validatedItems: any[] = [];
 
     for (const rawItem of rawItems) {
-      let matchedItem = null;
+      let matchedItem: any = null;
       for (const cat of restaurant.categories) {
         const found = cat.items.find((it) => it.id === rawItem.menuItemId);
         if (found) {
@@ -144,7 +144,7 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
     verifiedSubtotal = Math.round(verifiedSubtotal * 100) / 100;
 
     // REAL-TIME GOOGLE MAPS DISTANCE MATRIX CALCULATION
-    let distanceMetrics = null;
+    let distanceMetrics: any = null;
     let deliveryFee = 0;
     let estimatedArrivalMinutes = (restaurant.deliveryTimeMin || 25) + 5;
 
@@ -366,7 +366,7 @@ router.post('/quote', async (req: AuthRequest, res: Response) => {
       }
     }
 
-    let distanceMetrics = null;
+    let distanceMetrics: any = null;
     let deliveryFee = 0;
     let estimatedArrivalMinutes = (restaurant.deliveryTimeMin || 25) + 5;
 

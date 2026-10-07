@@ -24,7 +24,7 @@ import {
 import { VeyrangLogo } from '../common/VeyrangLogo.tsx';
 
 export const Footer: React.FC = () => {
-  const { setActiveRole, setActivePage } = useDelivery();
+  const { setActiveRole, setActivePage, platformSettings } = useDelivery();
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
 
@@ -59,10 +59,10 @@ export const Footer: React.FC = () => {
                 <VeyrangLogo iconSize="md" textSize="md" lightMode={true} />
               </div>
               <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight mb-2">
-                Get ₦1,500 off your first food order
+                {platformSettings['cms_footer_newsletter_title'] || 'Get ₦1,500 off your first food order'}
               </h3>
               <p className="text-sm text-slate-400 max-w-xl">
-                Subscribe to our weekly foodie newsletter for exclusive promo codes, new restaurant launches in Lagos & Abuja, and flash discounts!
+                {platformSettings['cms_footer_newsletter_desc'] || 'Subscribe to our weekly foodie newsletter for exclusive promo codes, new restaurant launches in Lagos & Abuja, and flash discounts!'}
               </p>
             </div>
 
@@ -262,7 +262,7 @@ export const Footer: React.FC = () => {
               <div className="flex items-start gap-2.5">
                 <Phone className="w-4 h-4 text-[#FF5500] shrink-0 mt-0.5" />
                 <div>
-                  <div className="text-white font-bold">+234 (0) 800 784 2524</div>
+                  <div className="text-white font-bold">{platformSettings['cms_support_phone'] || '+234 (0) 800 784 2524'}</div>
                   <div className="text-[11px] text-slate-500">Toll-free 24/7 Dispatch Desk</div>
                 </div>
               </div>
@@ -270,7 +270,7 @@ export const Footer: React.FC = () => {
               <div className="flex items-start gap-2.5">
                 <Mail className="w-4 h-4 text-[#FF5500] shrink-0 mt-0.5" />
                 <div>
-                  <div className="text-white font-bold">support@veyrang.com</div>
+                  <div className="text-white font-bold">{platformSettings['cms_support_email'] || 'support@veyrang.com'}</div>
                   <div className="text-[11px] text-slate-500">10-min average response time</div>
                 </div>
               </div>
@@ -278,7 +278,7 @@ export const Footer: React.FC = () => {
               <div className="flex items-start gap-2.5">
                 <Clock className="w-4 h-4 text-[#FF5500] shrink-0 mt-0.5" />
                 <div>
-                  <div className="text-white font-bold">Mon – Sun: 24 Hours</div>
+                  <div className="text-white font-bold">{platformSettings['cms_support_hours'] || 'Mon – Sun: 24 Hours'}</div>
                   <div className="text-[11px] text-slate-500">Live GPS Doorstep Tracking</div>
                 </div>
               </div>
@@ -286,16 +286,40 @@ export const Footer: React.FC = () => {
 
             {/* Social Links */}
             <div className="flex items-center gap-3 text-slate-400">
-              <a href="#instagram" aria-label="Instagram" className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#FF5500] hover:text-white hover:border-[#FF5500] transition-colors">
+              <a
+                href={platformSettings['cms_social_instagram'] || 'https://instagram.com/veyrang'}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#FF5500] hover:text-white hover:border-[#FF5500] transition-colors"
+              >
                 <Instagram className="w-4 h-4" />
               </a>
-              <a href="#twitter" aria-label="Twitter X" className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#FF5500] hover:text-white hover:border-[#FF5500] transition-colors">
+              <a
+                href={platformSettings['cms_social_twitter'] || 'https://twitter.com/veyrang'}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Twitter X"
+                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#FF5500] hover:text-white hover:border-[#FF5500] transition-colors"
+              >
                 <Twitter className="w-4 h-4" />
               </a>
-              <a href="#facebook" aria-label="Facebook" className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#FF5500] hover:text-white hover:border-[#FF5500] transition-colors">
+              <a
+                href={platformSettings['cms_social_facebook'] || 'https://facebook.com/veyrang'}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Facebook"
+                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#FF5500] hover:text-white hover:border-[#FF5500] transition-colors"
+              >
                 <Facebook className="w-4 h-4" />
               </a>
-              <a href="#linkedin" aria-label="LinkedIn" className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#FF5500] hover:text-white hover:border-[#FF5500] transition-colors">
+              <a
+                href={platformSettings['cms_social_linkedin'] || 'https://linkedin.com/company/veyrang'}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="LinkedIn"
+                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#FF5500] hover:text-white hover:border-[#FF5500] transition-colors"
+              >
                 <Linkedin className="w-4 h-4" />
               </a>
             </div>
@@ -320,10 +344,10 @@ export const Footer: React.FC = () => {
 
           <div className="text-center md:text-right">
             <div>
-              © {new Date().getFullYear()} <span className="text-white font-bold">Veyrang Technologies Limited</span>. All rights reserved.
+              © {new Date().getFullYear()} <span className="text-white font-bold">{platformSettings['cms_copyright_text'] || 'Veyrang Technologies Limited'}</span>. All rights reserved.
             </div>
-            <div className="text-[11px] text-slate-600 mt-0.5">
-              Designed for ultra-fast food delivery in Nigeria.
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              {platformSettings['cms_footer_tagline'] || 'Designed for ultra-fast food delivery in Nigeria.'}
             </div>
           </div>
 

@@ -327,4 +327,115 @@ router.patch(
   }
 );
 
+// Admin & Merchant: Update Restaurant Profile & Branding in Cloudflare D1
+const handleUpdateRestaurant = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    if (req.user!.role === 'restaurant' && req.user!.restaurantId && req.user!.restaurantId !== id) {
+      return res.status(403).json({
+        success: false,
+        error: 'You can only update details for your designated kitchen.'
+      });
+    }
+
+    // 1. Fetch current D1 restaurant record
+    const existingRes = await d1Client.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id]);
+    if (!existingRes.results || existingRes.results.length === 0) {
+      return res.status(404).json({ success: false, error: 'Restaurant not found in D1' });
+    }
+
+    const current = existingRes.results[0];
+    let rawData: any = {};
+    if (current.raw_json) {
+      try {
+        rawData = JSON.parse(current.raw_json);
+      } catch (e) {
+        rawData = {};
+      }
+    }
+
+    // 2. Merge updates into raw_json
+    const mergedData = {
+      ...rawData,
+      id,
+      name: updates.name !== undefined ? updates.name : (rawData.name || current.name),
+      cuisine: updates.cuisine !== undefined ? updates.cuisine : (rawData.cuisine || current.cuisine),
+      address: updates.address !== undefined ? updates.address : (rawData.address || current.address),
+      tagline: updates.tagline !== undefined ? updates.tagline : (rawData.tagline || ''),
+      deliveryFee: updates.deliveryFee !== undefined ? Number(updates.deliveryFee) : (rawData.deliveryFee ?? current.delivery_fee ?? 1000),
+      deliveryTimeMin: updates.deliveryTimeMin !== undefined ? Number(updates.deliveryTimeMin) : (rawData.deliveryTimeMin ?? current.delivery_time_min ?? 20),
+      deliveryTimeMax: updates.deliveryTimeMax !== undefined ? Number(updates.deliveryTimeMax) : (rawData.deliveryTimeMax ?? current.delivery_time_max ?? 40),
+      rating: updates.rating !== undefined ? Number(updates.rating) : (rawData.rating ?? current.rating ?? 4.8),
+      bannerUrl: updates.bannerUrl !== undefined ? updates.bannerUrl : (updates.banner_r2_url || rawData.bannerUrl || rawData.banner_r2_url || current.banner_r2_url || ''),
+      logoUrl: updates.logoUrl !== undefined ? updates.logoUrl : (rawData.logoUrl || ''),
+      isOpen: updates.isOpen !== undefined ? Boolean(updates.isOpen) : (rawData.isOpen ?? (current.is_open === 1)),
+      isBusyPaused: updates.isBusyPaused !== undefined ? Boolean(updates.isBusyPaused) : (rawData.isBusyPaused ?? (current.is_busy_paused === 1)),
+      zone: updates.zone !== undefined ? updates.zone : (rawData.zone || current.zone || 'Lekki Phase 1')
+    };
+
+    // 3. Update D1 restaurants table
+    await d1Client.query(
+      `UPDATE restaurants SET
+        name = ?,
+        cuisine = ?,
+        rating = ?,
+        raw_json = ?
+       WHERE id = ?`,
+      [
+        mergedData.name,
+        mergedData.cuisine,
+        mergedData.rating,
+        JSON.stringify(mergedData),
+        id
+      ]
+    );
+
+    // Optional column sync in D1 if columns exist
+    await d1Client.query(
+      `UPDATE restaurants SET
+        delivery_fee = ?,
+        delivery_time_min = ?,
+        delivery_time_max = ?,
+        address = ?,
+        banner_r2_url = ?,
+        is_open = ?
+       WHERE id = ?`,
+      [
+        mergedData.deliveryFee,
+        mergedData.deliveryTimeMin,
+        mergedData.deliveryTimeMax,
+        mergedData.address,
+        mergedData.bannerUrl,
+        mergedData.isOpen ? 1 : 0,
+        id
+      ]
+    ).catch(() => {});
+
+    await db.logAudit({
+      userId: req.user!.id,
+      userEmail: req.user!.email,
+      userRole: req.user!.role,
+      action: 'RESTAURANT_UPDATED',
+      resource: 'RESTAURANT',
+      resourceId: id,
+      details: updates,
+      ip: req.ip
+    });
+
+    return res.json({
+      success: true,
+      message: `Restaurant "${mergedData.name}" updated successfully in Cloudflare D1`,
+      data: mergedData
+    });
+  } catch (error: any) {
+    console.error('Restaurant update error:', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to update restaurant' });
+  }
+};
+
+router.put('/:id', requireAuth, requireRole(['restaurant', 'admin']), handleUpdateRestaurant);
+router.patch('/:id', requireAuth, requireRole(['restaurant', 'admin']), handleUpdateRestaurant);
+
 export default router;

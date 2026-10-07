@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Store, CheckCircle2, TrendingUp, Users, DollarSign } from 'lucide-react';
+import { useDelivery } from '../../context/DeliveryContext';
 
 export const PartnerPage: React.FC = () => {
+  const { platformSettings } = useDelivery();
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     businessName: '',
@@ -19,14 +21,16 @@ export const PartnerPage: React.FC = () => {
     setSubmitted(true);
   };
 
+  const commissionRate = platformSettings['platform_commission_percent'] || '15';
+
   return (
     <div className="max-w-xl sm:max-w-2xl md:max-w-4xl lg:max-w-6xl mx-auto space-y-6 pb-20">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 font-display">
-          Partner with Veyrang
+          {platformSettings['cms_partner_page_title'] || 'Partner with Veyrang'}
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Grow your culinary business with thousands of food lovers across Nigeria
+          {platformSettings['cms_partner_page_subtitle'] || 'Grow your culinary business with thousands of food lovers across Nigeria'}
         </p>
       </div>
 
@@ -36,9 +40,11 @@ export const PartnerPage: React.FC = () => {
           <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center mb-2.5">
             <TrendingUp className="w-4 h-4" />
           </div>
-          <h3 className="text-sm font-bold text-slate-900">Increase Sales</h3>
+          <h3 className="text-sm font-bold text-slate-900">
+            {platformSettings['cms_partner_benefit1_title'] || 'Increase Sales'}
+          </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Boost daily order volume by up to 40% with doorstep dispatch.
+            {platformSettings['cms_partner_benefit1_desc'] || 'Boost daily order volume by up to 40% with doorstep dispatch.'}
           </p>
         </div>
 
@@ -46,9 +52,11 @@ export const PartnerPage: React.FC = () => {
           <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-2.5">
             <Users className="w-4 h-4" />
           </div>
-          <h3 className="text-sm font-bold text-slate-900">New Customers</h3>
+          <h3 className="text-sm font-bold text-slate-900">
+            {platformSettings['cms_partner_benefit2_title'] || 'New Customers'}
+          </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Reach corporate workers and residents across Lekki, VI & Ikeja.
+            {platformSettings['cms_partner_benefit2_desc'] || 'Reach corporate workers and residents across Lekki, VI & Ikeja.'}
           </p>
         </div>
 
@@ -56,9 +64,11 @@ export const PartnerPage: React.FC = () => {
           <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-2.5">
             <DollarSign className="w-4 h-4" />
           </div>
-          <h3 className="text-sm font-bold text-slate-900">Fast Settlements</h3>
+          <h3 className="text-sm font-bold text-slate-900">
+            {platformSettings['cms_partner_benefit3_title'] || 'Fast Settlements'}
+          </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Automated direct bank payouts with transparent 15% commission.
+            {platformSettings['cms_partner_benefit3_desc'] || `Automated direct bank payouts with transparent ${commissionRate}% commission.`}
           </p>
         </div>
       </div>

@@ -32,6 +32,7 @@ export class CloudflareD1Client {
   private databaseId: string;
   private apiToken: string;
   private isSchemaInitialized: boolean = false;
+  private isInitializing: boolean = false;
 
   constructor() {
     this.accountId = CLOUDFLARE_ACCOUNT_ID;
@@ -45,15 +46,7 @@ export class CloudflareD1Client {
     if (apiToken) this.apiToken = apiToken;
   }
 
-  public async query<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
-    if (!this.isSchemaInitialized && !sql.includes('CREATE TABLE') && !sql.includes('SELECT 1')) {
-      try {
-        await this.initializeTables();
-      } catch (e) {
-        // ignore init failure during offline fallback
-      }
-    }
-
+  public async queryDirect<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
     const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/d1/database/${this.databaseId}/query`;
     
     const response = await fetch(url, {
@@ -80,13 +73,29 @@ export class CloudflareD1Client {
     return data.result[0];
   }
 
+  public async query<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
+    try {
+      return await this.queryDirect<T>(sql, params);
+    } catch (err: any) {
+      if (err.message?.toLowerCase().includes('no such table') && !this.isInitializing) {
+        try {
+          await this.initializeTables();
+          return await this.queryDirect<T>(sql, params);
+        } catch {
+          // ignore retry fail
+        }
+      }
+      throw err;
+    }
+  }
+
   public async testConnection(): Promise<{
     connected: boolean;
     error?: string;
     details?: any;
   }> {
     try {
-      const res = await this.query('SELECT 1 as live_status, CURRENT_TIMESTAMP as cf_timestamp;');
+      const res = await this.queryDirect('SELECT 1 as live_status, CURRENT_TIMESTAMP as cf_timestamp;');
       return {
         connected: true,
         details: res.results[0]
@@ -100,7 +109,9 @@ export class CloudflareD1Client {
   }
 
   public async initializeTables(): Promise<void> {
-    if (this.isSchemaInitialized) return;
+    if (this.isSchemaInitialized || this.isInitializing) return;
+    this.isInitializing = true;
+    this.isSchemaInitialized = true;
 
     const schemaStatements = [
       `CREATE TABLE IF NOT EXISTS users (
@@ -317,12 +328,8 @@ export class CloudflareD1Client {
 
       for (const r of INITIAL_RESTAURANTS) {
         await this.query(
-          `INSERT INTO restaurants (id, name, cuisine, rating, raw_json, created_at)
-           VALUES (?, ?, ?, ?, ?, ?)
-           ON CONFLICT(id) DO UPDATE SET
-             name = excluded.name,
-             cuisine = excluded.cuisine,
-             raw_json = excluded.raw_json;`,
+          `INSERT OR IGNORE INTO restaurants (id, name, cuisine, rating, raw_json, created_at)
+           VALUES (?, ?, ?, ?, ?, ?);`,
           [r.id, r.name, r.cuisine, r.rating, JSON.stringify(r), now]
         );
       }
@@ -331,6 +338,7 @@ export class CloudflareD1Client {
     }
 
     this.isSchemaInitialized = true;
+    this.isInitializing = false;
   }
 }
 

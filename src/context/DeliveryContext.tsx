@@ -338,9 +338,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }).catch(() => {});
   }, []);
 
-  const getCmsText = (key: string, defaultText: string) => {
-    return cmsContent[key] || defaultText;
-  };
+  const getCmsText = useCallback((key: string, defaultText: string): string => {
+    return platformSettings[key] || cmsContent[key] || defaultText;
+  }, [platformSettings, cmsContent]);
 
   // Server-managed catalog & server-managed orders
   const [restaurants, setRestaurants] = useState<Restaurant[]>(INITIAL_RESTAURANTS);
@@ -403,14 +403,21 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         api.settings.getZones().catch(() => null)
       ]);
 
-      if (serverRestaurants && serverRestaurants.length > 0) {
-        setRestaurants(serverRestaurants);
+      const rests = Array.isArray(serverRestaurants)
+        ? serverRestaurants
+        : (serverRestaurants?.data && Array.isArray(serverRestaurants.data) ? serverRestaurants.data : []);
+      if (rests.length > 0) {
+        setRestaurants(rests);
       }
-      if (settingsRes?.data?.settings) {
-        setPlatformSettings(settingsRes.data.settings);
+      const liveSettings = settingsRes?.settings || settingsRes?.data?.settings || settingsRes;
+      if (liveSettings && typeof liveSettings === 'object') {
+        const extracted = liveSettings.settings || liveSettings;
+        setPlatformSettings((prev) => ({ ...prev, ...extracted }));
+        setCmsContent((prev) => ({ ...prev, ...extracted }));
       }
-      if (zonesRes?.data) {
-        setDeliveryZones(zonesRes.data);
+      const liveZones = Array.isArray(zonesRes) ? zonesRes : (zonesRes?.data || []);
+      if (liveZones && liveZones.length > 0) {
+        setDeliveryZones(liveZones);
       }
 
       if (user) {

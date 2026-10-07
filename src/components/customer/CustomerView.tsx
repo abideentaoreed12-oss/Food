@@ -46,7 +46,8 @@ export const CustomerView: React.FC = () => {
     setSelectedZone,
     appliedPromo,
     applyPromoCode,
-    addToCart
+    addToCart,
+    platformSettings
   } = useDelivery();
 
   const { user, setIsAuthModalOpen } = useAuth();
@@ -118,7 +119,7 @@ export const CustomerView: React.FC = () => {
         list.push({
           item: r.categories[0].items[0],
           restaurantName: r.name || 'Restaurant',
-          imageUrl: restaurantImageMap[r.id] || restaurantImageMap['rest-1'] || ''
+          imageUrl: r.bannerUrl || (r as any).banner_r2_url || r.logoUrl || restaurantImageMap[r.id] || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80'
         });
       }
     });
@@ -281,7 +282,7 @@ export const CustomerView: React.FC = () => {
           </div>
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-orange-100">
-              {activePromo ? 'Featured Offer' : 'Veyrang Feasts'}
+              {activePromo ? 'Featured Offer' : (platformSettings?.cms_storefront_promo_badge || 'Veyrang Feasts')}
             </div>
             <div className="text-sm font-bold">
               {activePromo ? (
@@ -289,7 +290,7 @@ export const CustomerView: React.FC = () => {
                   ? `Use code ${activePromo.code} for ${activePromo.value}% off your order!`
                   : `Use code ${activePromo.code} for ₦${Number(activePromo.value).toLocaleString('en-NG')} off your order!`
               ) : (
-                'Check our Offers page for verified food coupons & seasonal discounts!'
+                platformSettings?.cms_storefront_promo_text || 'Check our Offers page for verified food coupons & seasonal discounts!'
               )}
             </div>
           </div>
@@ -437,9 +438,13 @@ export const CustomerView: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {filteredRestaurants.map((restaurant) => {
-              const imageUrl = restaurantImageMap[restaurant.id] || restaurantImageMap['rest-1'];
+          filteredRestaurants.map((restaurant) => {
+            const imageUrl =
+              restaurant.bannerUrl ||
+                (restaurant as any).banner_r2_url ||
+                restaurant.logoUrl ||
+                restaurantImageMap[restaurant.id] ||
+                'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80';
               const isFav = isFavourite(restaurant.id);
 
               return (
@@ -526,10 +531,9 @@ export const CustomerView: React.FC = () => {
                   </button>
                 </article>
               );
-            })}
-          </div>
-        )}
+            })
+          )}
+        </div>
       </div>
-    </div>
   );
 };
