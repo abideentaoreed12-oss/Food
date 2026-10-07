@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/format';
@@ -17,7 +17,8 @@ import {
   ShieldCheck,
   AlertTriangle,
   Clock,
-  Package
+  Package,
+  Radio
 } from 'lucide-react';
 
 export const CourierView: React.FC = () => {
@@ -35,12 +36,77 @@ export const CourierView: React.FC = () => {
   const [pinError, setPinError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
 
+  // Live GPS Transmitter States
+  const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number; heading?: number; speed?: number } | null>({ lat: 6.5244, lng: 3.3792 });
+  const [gpsStatus, setGpsStatus] = useState<'transmitting' | 'acquiring' | 'error'>('acquiring');
+  const [pingCount, setPingCount] = useState<number>(0);
+  const [gpsErrorMsg, setGpsErrorMsg] = useState<string | null>(null);
+
   // Find assigned active order for courier
   const activeDelivery = orders.find(
     (o) => o.status === 'in_transit' || o.status === 'ready_for_pickup' || o.status === 'preparing'
   ) || orders.find((o) => o.status === 'delivered') || orders[0];
 
   const readyForPickupOrders = orders.filter((o) => o.status === 'ready_for_pickup');
+
+  // Real-Time HTML5 Driver Geolocation Watcher & Production Backend Broadcast
+  useEffect(() => {
+    if (!isOnline) {
+      setGpsStatus('acquiring');
+      return;
+    }
+
+    if (!('geolocation' in navigator)) {
+      setGpsStatus('error');
+      setGpsErrorMsg('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    const sendLocationUpdate = async (lat: number, lng: number, heading = 0, speed = 0) => {
+      try {
+        await fetch('/api/couriers/location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            courierId: user?.id || 'RIDER-842',
+            orderId: activeDelivery?.id || 'active',
+            lat,
+            lng,
+            heading,
+            speed
+          })
+        });
+        setPingCount((prev) => prev + 1);
+        setGpsStatus('transmitting');
+      } catch (err) {
+        console.warn('Courier location broadcast error:', err);
+      }
+    };
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude, heading, speed } = position.coords;
+        setCurrentCoords({ lat: latitude, lng: longitude, heading: heading || 0, speed: speed || 0 });
+        sendLocationUpdate(latitude, longitude, heading || 0, speed || 0);
+      },
+      (error) => {
+        console.warn('GPS position error:', error.message);
+        setGpsStatus('error');
+        setGpsErrorMsg(error.message || 'GPS permission denied or unavailable');
+        // Fallback simulation ping with Lagos default center if permissions denied
+        sendLocationUpdate(6.5244, 3.3792);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 5000
+      }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, [isOnline, activeDelivery?.id, user?.id]);
 
   const handleVerifyHandover = async () => {
     if (!activeDelivery || !enteredPin.trim()) return;
@@ -126,6 +192,33 @@ export const CourierView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Live GPS Telemetry Transmitter Indicator */}
+      {isOnline && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center justify-center shrink-0">
+              <Radio className="w-4 h-4 animate-pulse text-emerald-400" />
+            </div>
+            <div>
+              <div className="font-bold text-white flex items-center gap-2">
+                <span>Live GPS Broadcast Active</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-900/80 text-emerald-300 border border-emerald-700">
+                  {pingCount} Pings Sent
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                Current Position: {currentCoords?.lat.toFixed(5)}, {currentCoords?.lng.toFixed(5)} · Accuracy: High Precision HTML5 GPS
+              </p>
+            </div>
+          </div>
+
+          <div className="text-[11px] font-mono text-emerald-400 bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-800 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span>Broadcasting to Customer Tracking View</span>
+          </div>
+        </div>
+      )}
 
       {/* Main Courier Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

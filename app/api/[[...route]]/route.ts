@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { d1 } from '../../../lib/d1.ts';
 import { r2 } from '../../../lib/r2.ts';
+import { routingManager } from '../../../lib/routingManager.ts';
 import { INITIAL_RESTAURANTS } from '../../../src/data/mockData.ts';
 
 export const runtime = 'nodejs';
@@ -173,6 +174,17 @@ async function ensureD1Schema() {
         details TEXT,
         ip_address TEXT,
         created_at TEXT
+      );`,
+      `CREATE TABLE IF NOT EXISTS courier_locations (
+        id TEXT PRIMARY KEY,
+        courier_id TEXT,
+        order_id TEXT,
+        lat REAL,
+        lng REAL,
+        heading REAL,
+        speed REAL,
+        is_live INTEGER DEFAULT 1,
+        updated_at TEXT
       );`
     ];
 
@@ -233,6 +245,45 @@ export async function GET(req: NextRequest) {
       r2Connected: r2.isConfigured(),
       details: r2.getDetails(),
       timestamp: new Date().toISOString()
+    });
+  }
+
+  // Routing Manager Health Endpoint (/api/routing/health)
+  if (pathname === '/routing/health' || pathname === '/admin/routing/health') {
+    return NextResponse.json({
+      success: true,
+      health: routingManager.getHealth(),
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // Order Live GPS Courier Location Tracking (/api/orders/:id/tracking or /api/tracking/:orderId)
+  if (pathname.includes('/tracking')) {
+    const parts = pathname.split('/').filter(Boolean);
+    const orderId = parts.find((p) => p !== 'orders' && p !== 'tracking' && p !== 'api') || 'active';
+
+    const locRes = await d1.query(
+      `SELECT * FROM courier_locations WHERE order_id = ? OR order_id = 'active' ORDER BY updated_at DESC LIMIT 1`,
+      [orderId]
+    ).catch(() => ({ results: [] }));
+
+    const latestLoc = locRes.results?.[0] || null;
+    const isLive = latestLoc ? (Date.now() - new Date(latestLoc.updated_at).getTime()) < 120000 : false;
+
+    return NextResponse.json({
+      success: true,
+      tracking: {
+        orderId,
+        isLive,
+        location: latestLoc ? {
+          lat: Number(latestLoc.lat),
+          lng: Number(latestLoc.lng),
+          heading: Number(latestLoc.heading || 0),
+          speed: Number(latestLoc.speed || 0),
+          updatedAt: latestLoc.updated_at
+        } : null,
+        signalStatus: isLive ? 'live' : (latestLoc ? 'paused' : 'searching')
+      }
     });
   }
 
@@ -818,6 +869,40 @@ export async function POST(req: NextRequest) {
     ).catch(() => {});
 
     return NextResponse.json({ success: true, message: 'Wallet updated in D1' });
+  }
+
+  // 12. Calculate Distance & Routing Provider Engine (/api/restaurants/calculate-distance, /api/routing/calculate)
+  if (pathname === '/restaurants/calculate-distance' || pathname === '/routing/calculate') {
+    const { origin, destination, userLat, userLng, restaurantLat, restaurantLng } = body;
+    const startCoord = origin || { lat: Number(userLat || 6.5244), lng: Number(userLng || 3.3792) };
+    const endCoord = destination || { lat: Number(restaurantLat || 6.6018), lng: Number(restaurantLng || 3.3515) };
+
+    const routeResult = await routingManager.calculateRoute(startCoord, endCoord);
+    return NextResponse.json({
+      success: true,
+      data: routeResult,
+      distanceKm: Number((routeResult.distanceMeters / 1000).toFixed(2)),
+      estimatedMinutes: Math.ceil(routeResult.durationSeconds / 60),
+      providerUsed: routeResult.provider
+    });
+  }
+
+  // 13. Courier Live GPS Broadcast Location Endpoint (/api/couriers/location)
+  if (pathname === '/couriers/location') {
+    const { courierId, orderId, lat, lng, heading, speed } = body;
+    if (!courierId || !lat || !lng) {
+      return NextResponse.json({ success: false, error: 'Courier ID, lat, and lng required' }, { status: 400 });
+    }
+    const locId = `loc-${Date.now()}`;
+    const now = new Date().toISOString();
+
+    await d1.query(
+      `INSERT INTO courier_locations (id, courier_id, order_id, lat, lng, heading, speed, is_live, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+      [locId, String(courierId), String(orderId || 'active'), Number(lat), Number(lng), Number(heading || 0), Number(speed || 0), now]
+    ).catch(() => {});
+
+    return NextResponse.json({ success: true, message: 'Courier GPS location recorded', timestamp: now });
   }
 
   return NextResponse.json({ ok: true, message: 'Action processed' });

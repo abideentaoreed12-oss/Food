@@ -18,6 +18,8 @@ import {
   ArrowRight,
   Search,
   Receipt,
+  Printer,
+  Download,
   Calendar,
   MapPin,
   CreditCard,
@@ -480,7 +482,7 @@ export const OrdersPage: React.FC = () => {
 
                   {/* Expandable Final Receipt Breakdown Drawer */}
                   {isExpanded && (
-                    <div className="border-t border-slate-100 bg-slate-50/70 p-4 sm:p-5 space-y-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="printable-receipt border-t border-slate-100 bg-slate-50/70 p-4 sm:p-5 space-y-4 animate-in fade-in slide-in-from-top-2">
                       <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
                         <div className="flex items-center gap-2">
                           <Receipt className="w-4 h-4 text-[#FF5500]" />
@@ -488,9 +490,18 @@ export const OrdersPage: React.FC = () => {
                             Official Itemized Receipt
                           </span>
                         </div>
-                        <span className="text-xs font-mono text-slate-500">
-                          Ref: {order.transactionRef || order.id}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-mono text-slate-500">
+                            Ref: {order.transactionRef || order.id}
+                          </span>
+                          <button
+                            onClick={() => window.print()}
+                            className="no-print px-2.5 py-1 bg-[#FF5500] hover:bg-orange-600 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Printer className="w-3 h-3" />
+                            <span>Save PDF</span>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Customer & Delivery Destination Info */}

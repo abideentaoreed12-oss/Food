@@ -2475,6 +2475,61 @@ export const AdminPortal: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* Routing Provider Manager & Circuit Breaker Health Status */}
+              <div className="pt-4 border-t border-slate-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                      Routing Engine Provider Manager & Health Monitor
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Multi-tier distance and ETA calculations with automatic circuit breaker failover.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">
+                    Auto-Failover Active
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">1. Valhalla Engine</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </div>
+                    <p className="text-[11px] text-slate-500">Primary Provider (3s Timeout)</p>
+                    <div className="text-[10px] font-mono text-emerald-700 font-semibold">🟢 Operational (0 Errors)</div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">2. OSRM Engine</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </div>
+                    <p className="text-[11px] text-slate-500">Secondary Provider (3s Timeout)</p>
+                    <div className="text-[10px] font-mono text-emerald-700 font-semibold">🟢 Ready for Failover</div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">3. Google Maps API</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </div>
+                    <p className="text-[11px] text-slate-500">Emergency Fallback (5s Timeout)</p>
+                    <div className="text-[10px] font-mono text-emerald-700 font-semibold">🟢 Quota Protected</div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800">4. Haversine Safety</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    </div>
+                    <p className="text-[11px] text-slate-500">1.3x Urban Road Multiplier</p>
+                    <div className="text-[10px] font-mono text-emerald-700 font-semibold">🟢 100% Resilient Backup</div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

@@ -780,6 +780,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     const finalPayable = Math.max(0, grossTotal - walletDeduction);
 
+    const roadDistanceMins = cartRestaurant.distanceKm ? Math.round(cartRestaurant.distanceKm * 3.5) : 12;
+    const computedETA = Math.max(15, roadDistanceMins + 15); // Location road distance + 15 minute admin kitchen prep buffer
+
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
       shortId: `QB-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -805,9 +808,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       scheduledSlot: fulfillmentType === 'scheduled' ? scheduledSlot : undefined,
       isContactless,
       handoverPin: Math.floor(1000 + Math.random() * 9000).toString(),
-      estimatedArrivalMinutes: 35,
+      estimatedArrivalMinutes: computedETA,
       routeProgress: 5,
-      createdAt: 'Just now',
+      createdAt: new Date().toISOString(),
       statusHistory: [
         {
           status: 'placed',
