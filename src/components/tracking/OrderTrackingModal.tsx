@@ -27,7 +27,8 @@ export const OrderTrackingModal: React.FC = () => {
     isTrackingModalOpen,
     closeTracking,
     activeTrackingOrder,
-    currency
+    currency,
+    refreshData
   } = useDelivery();
 
   const { user } = useAuth();
@@ -56,11 +57,16 @@ export const OrderTrackingModal: React.FC = () => {
       try {
         const res = await fetch(`/api/orders/${orderId}/tracking`);
         const json = await res.json();
-        if (json.success && json.tracking) {
-          if (json.tracking.location) {
+        if (json.success) {
+          if (json.tracking?.location) {
             setCourierLoc(json.tracking.location);
           }
-          setSignalStatus(json.tracking.signalStatus || 'searching');
+          if (json.tracking?.signalStatus) {
+            setSignalStatus(json.tracking.signalStatus || 'searching');
+          }
+          if (json.order?.status && json.order.status !== orderStatus) {
+            refreshData();
+          }
         }
       } catch (err) {
         console.warn('Live tracking fetch error:', err);

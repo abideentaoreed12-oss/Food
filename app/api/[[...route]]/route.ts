@@ -191,6 +191,109 @@ async function ensureD1Schema() {
     for (const q of tableQueries) {
       await d1.query(q).catch(() => {});
     }
+
+    // Seed initial orders into D1 if table is empty
+    const ordersCount = await d1.query('SELECT COUNT(*) as count FROM orders').catch(() => ({ results: [{ count: 0 }] }));
+    if (!ordersCount.results?.[0]?.count || ordersCount.results[0].count === 0) {
+      const sampleOrders = [
+        {
+          id: 'ord-1001',
+          shortId: '#1001',
+          createdAt: new Date(Date.now() - 3600000).toISOString(),
+          customerId: 'usr-admin-1',
+          customerName: 'Abideen Taoreed',
+          customerPhone: '+234 800 123 4567',
+          customerAddress: '15 Ikeja Way, Victoria Island, Lagos',
+          restaurantId: 'rest-1',
+          restaurantName: 'Ibadan Gourmet Bistro',
+          restaurantAddress: 'Bodija Market Road, Ibadan',
+          items: [
+            { id: 'item-1', menuItemId: 'm-1', name: 'Amala & Gbegiri Special', price: 3500, quantity: 2, selectedOptions: [] }
+          ],
+          subtotal: 7000,
+          deliveryFee: 500,
+          serviceFee: 350,
+          tip: 500,
+          total: 8350,
+          currency: 'NGN',
+          fulfillmentType: 'delivery',
+          paymentMethod: 'wallet',
+          paymentStatus: 'paid',
+          status: 'in_transit',
+          statusHistory: [
+            { status: 'placed', timestamp: '12:00 PM', note: 'Order placed by customer' },
+            { status: 'confirmed', timestamp: '12:05 PM', note: 'Restaurant accepted ticket' },
+            { status: 'preparing', timestamp: '12:10 PM', note: 'Kitchen started cooking meal' },
+            { status: 'ready_for_pickup', timestamp: '12:30 PM', note: 'Packaged & waiting for dispatch rider' },
+            { status: 'in_transit', timestamp: '12:35 PM', note: 'Rider picked up meal & is en route' }
+          ],
+          handoverPin: '4829',
+          courier: { id: 'cour-1', name: 'Tunde Bakare', phone: '+234 802 333 4444', vehicleModel: 'Honda Ace 125', rating: 4.9 },
+          routeProgress: 65,
+          estimatedArrivalMinutes: 12,
+          messages: []
+        },
+        {
+          id: 'ord-1002',
+          shortId: '#1002',
+          createdAt: new Date(Date.now() - 7200000).toISOString(),
+          customerId: 'usr-admin-1',
+          customerName: 'Abideen Taoreed',
+          customerPhone: '+234 800 123 4567',
+          customerAddress: '42 Marina Street, Lagos Island',
+          restaurantId: 'rest-2',
+          restaurantName: 'Jollof Express',
+          restaurantAddress: 'Allen Avenue, Ikeja',
+          items: [
+            { id: 'item-2', menuItemId: 'm-2', name: 'Smokey Party Jollof & Chicken', price: 4000, quantity: 1, selectedOptions: [] }
+          ],
+          subtotal: 4000,
+          deliveryFee: 500,
+          serviceFee: 200,
+          tip: 0,
+          total: 4700,
+          currency: 'NGN',
+          fulfillmentType: 'delivery',
+          paymentMethod: 'card',
+          paymentStatus: 'paid',
+          status: 'preparing',
+          statusHistory: [
+            { status: 'placed', timestamp: '11:00 AM', note: 'Order placed by customer' },
+            { status: 'confirmed', timestamp: '11:02 AM', note: 'Restaurant accepted ticket' },
+            { status: 'preparing', timestamp: '11:05 AM', note: 'Kitchen started cooking meal' }
+          ],
+          handoverPin: '1294',
+          courier: { id: 'cour-2', name: 'Kazeem Ade', phone: '+234 803 111 2222', vehicleModel: 'TVS Neo 110', rating: 4.8 },
+          routeProgress: 20,
+          estimatedArrivalMinutes: 25,
+          messages: []
+        }
+      ];
+
+      for (const ord of sampleOrders) {
+        await d1.query(
+          `INSERT INTO orders (id, customer_id, restaurant_id, status, total_amount, subtotal, delivery_fee, service_fee, payment_method, payment_status, delivery_address, items_json, raw_json, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            ord.id,
+            ord.customerId,
+            ord.restaurantId,
+            ord.status,
+            ord.total,
+            ord.subtotal,
+            ord.deliveryFee,
+            ord.serviceFee,
+            ord.paymentMethod,
+            ord.paymentStatus,
+            ord.customerAddress,
+            JSON.stringify(ord.items),
+            JSON.stringify(ord),
+            ord.createdAt,
+            ord.createdAt
+          ]
+        ).catch(() => {});
+      }
+    }
   } catch (err) {
     console.warn('D1 Schema Bootstrap Warning:', err);
   }
@@ -268,6 +371,18 @@ export async function GET(req: NextRequest) {
     const parts = pathname.split('/').filter(Boolean);
     const orderId = parts.find((p) => p !== 'orders' && p !== 'tracking' && p !== 'api') || 'active';
 
+    const orderRes = await d1.query('SELECT * FROM orders WHERE id = ? LIMIT 1', [orderId]).catch(() => ({ results: [] }));
+    let orderData: any = null;
+    if (orderRes.results && orderRes.results[0]) {
+      try {
+        orderData = orderRes.results[0].raw_json ? JSON.parse(orderRes.results[0].raw_json) : orderRes.results[0];
+        if (orderRes.results[0].status) orderData.status = orderRes.results[0].status;
+        if (orderRes.results[0].updated_at) orderData.updatedAt = orderRes.results[0].updated_at;
+      } catch {
+        orderData = orderRes.results[0];
+      }
+    }
+
     const locRes = await d1.query(
       `SELECT * FROM courier_locations WHERE order_id = ? OR order_id = 'active' ORDER BY updated_at DESC LIMIT 1`,
       [orderId]
@@ -278,6 +393,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      order: orderData,
       tracking: {
         orderId,
         isLive,
@@ -428,17 +544,23 @@ export async function GET(req: NextRequest) {
     let params: any[] = [];
 
     if (decoded && decoded.role === 'customer') {
-      query = 'SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC';
+      query = 'SELECT * FROM orders WHERE customer_id = ? OR customer_id IS NULL OR customer_id = "" ORDER BY created_at DESC';
       params = [decoded.id];
     }
 
     const d1Res = await d1.query(query, params).catch(() => ({ results: [] }));
     const orders = (d1Res.results || []).map((o: any) => {
+      let parsedObj: any = null;
       try {
-        return o.raw_json ? JSON.parse(o.raw_json) : o;
+        parsedObj = o.raw_json ? JSON.parse(o.raw_json) : o;
       } catch {
-        return o;
+        parsedObj = o;
       }
+      if (parsedObj && typeof parsedObj === 'object') {
+        if (o.status) parsedObj.status = o.status;
+        if (o.updated_at) parsedObj.updatedAt = o.updated_at;
+      }
+      return parsedObj;
     });
     return NextResponse.json({ success: true, data: orders });
   }
@@ -928,6 +1050,236 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Courier GPS location recorded', timestamp: now });
   }
 
+  // 14. Create New Order (/api/orders)
+  if (pathname === '/orders') {
+    const orderPayload = body;
+    const orderId = orderPayload.id || `ord-${Date.now().toString().slice(-6)}`;
+    const now = new Date().toISOString();
+
+    const fullOrder = {
+      ...orderPayload,
+      id: orderId,
+      shortId: orderPayload.shortId || `#${orderId.slice(-4).toUpperCase()}`,
+      createdAt: orderPayload.createdAt || now,
+      status: orderPayload.status || 'placed',
+      statusHistory: orderPayload.statusHistory || [
+        { status: 'placed', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), note: 'Order placed by customer' }
+      ]
+    };
+
+    await d1.query(
+      `INSERT INTO orders (id, customer_id, restaurant_id, status, total_amount, subtotal, delivery_fee, service_fee, payment_method, payment_status, delivery_address, items_json, raw_json, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET status = excluded.status, raw_json = excluded.raw_json, updated_at = excluded.updated_at`,
+      [
+        orderId,
+        fullOrder.customerId || null,
+        fullOrder.restaurantId || 'rest-1',
+        fullOrder.status,
+        Number(fullOrder.total || 0),
+        Number(fullOrder.subtotal || 0),
+        Number(fullOrder.deliveryFee || 0),
+        Number(fullOrder.serviceFee || 0),
+        fullOrder.paymentMethod || 'wallet',
+        fullOrder.paymentStatus || 'paid',
+        fullOrder.customerAddress || '',
+        JSON.stringify(fullOrder.items || []),
+        JSON.stringify(fullOrder),
+        fullOrder.createdAt,
+        now
+      ]
+    ).catch(() => {});
+
+    return NextResponse.json({ success: true, data: fullOrder });
+  }
+
+  // 15. Update Order Status via POST (/api/admin/orders/:id/status, /api/orders/:id/status)
+  if (pathname.includes('/orders/') && pathname.endsWith('/status')) {
+    const parts = pathname.split('/').filter(Boolean);
+    const statusIdx = parts.indexOf('status');
+    const orderId = parts[statusIdx - 1];
+    const { status, note } = body;
+
+    if (!orderId || !status) {
+      return NextResponse.json({ success: false, error: 'Order ID and status are required' }, { status: 400 });
+    }
+
+    const now = new Date().toISOString();
+    const nowTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const d1Res = await d1.query('SELECT * FROM orders WHERE id = ? LIMIT 1', [orderId]).catch(() => ({ results: [] }));
+    let existingOrder: any = null;
+
+    if (d1Res.results && d1Res.results[0]) {
+      try {
+        existingOrder = d1Res.results[0].raw_json ? JSON.parse(d1Res.results[0].raw_json) : d1Res.results[0];
+      } catch {
+        existingOrder = d1Res.results[0];
+      }
+    }
+
+    const descMap: Record<string, string> = {
+      placed: 'Order placed by customer',
+      confirmed: 'Restaurant accepted ticket',
+      preparing: 'Kitchen started cooking meal',
+      ready_for_pickup: 'Packaged & waiting for dispatch rider',
+      in_transit: 'Rider picked up meal & is en route',
+      delivered: 'Handover PIN verified & delivered to doorstep',
+      cancelled: 'Order was cancelled'
+    };
+
+    const statusNote = note || descMap[status] || `Order status updated to ${status}`;
+
+    if (existingOrder) {
+      existingOrder.status = status;
+      existingOrder.updatedAt = now;
+      if (!Array.isArray(existingOrder.statusHistory)) existingOrder.statusHistory = [];
+
+      const lastHist = existingOrder.statusHistory[existingOrder.statusHistory.length - 1];
+      if (!lastHist || lastHist.status !== status) {
+        existingOrder.statusHistory.push({
+          status,
+          timestamp: nowTimeStr,
+          note: statusNote
+        });
+      }
+
+      await d1.query(
+        `UPDATE orders SET status = ?, raw_json = ?, updated_at = ? WHERE id = ?`,
+        [status, JSON.stringify(existingOrder), now, orderId]
+      ).catch(() => {});
+
+      return NextResponse.json({ success: true, data: existingOrder, message: `Order ${orderId} status updated to ${status} in D1` });
+    } else {
+      const newOrder = {
+        id: orderId,
+        shortId: `#${orderId.slice(-4).toUpperCase()}`,
+        status,
+        createdAt: now,
+        updatedAt: now,
+        statusHistory: [{ status, timestamp: nowTimeStr, note: statusNote }]
+      };
+
+      await d1.query(
+        `INSERT INTO orders (id, status, raw_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET status = excluded.status, raw_json = excluded.raw_json, updated_at = excluded.updated_at`,
+        [orderId, status, JSON.stringify(newOrder), now, now]
+      ).catch(() => {});
+
+      return NextResponse.json({ success: true, data: newOrder, message: `Order ${orderId} created in D1 with status ${status}` });
+    }
+  }
+
+  // 16. Verify Handover PIN (/api/orders/:id/verify-handover)
+  if (pathname.includes('/orders/') && pathname.endsWith('/verify-handover')) {
+    const parts = pathname.split('/').filter(Boolean);
+    const orderId = parts[parts.indexOf('verify-handover') - 1];
+    const now = new Date().toISOString();
+    const nowTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const d1Res = await d1.query('SELECT * FROM orders WHERE id = ? LIMIT 1', [orderId]).catch(() => ({ results: [] }));
+    let existingOrder: any = null;
+
+    if (d1Res.results && d1Res.results[0]) {
+      try {
+        existingOrder = d1Res.results[0].raw_json ? JSON.parse(d1Res.results[0].raw_json) : d1Res.results[0];
+      } catch {
+        existingOrder = d1Res.results[0];
+      }
+    }
+
+    if (existingOrder) {
+      existingOrder.status = 'delivered';
+      existingOrder.updatedAt = now;
+      if (!Array.isArray(existingOrder.statusHistory)) existingOrder.statusHistory = [];
+      existingOrder.statusHistory.push({
+        status: 'delivered',
+        timestamp: nowTimeStr,
+        note: 'Handover PIN verified & delivered to doorstep'
+      });
+
+      await d1.query(
+        `UPDATE orders SET status = 'delivered', raw_json = ?, updated_at = ? WHERE id = ?`,
+        [JSON.stringify(existingOrder), now, orderId]
+      ).catch(() => {});
+
+      return NextResponse.json({ success: true, data: existingOrder, message: 'Handover verified and order delivered' });
+    }
+
+    return NextResponse.json({ success: true, message: 'Handover pin verified' });
+  }
+
+  // 17. Refund Order (/api/orders/:id/refund, /api/admin/orders/:id/refund)
+  if (pathname.includes('/orders/') && pathname.endsWith('/refund')) {
+    const parts = pathname.split('/').filter(Boolean);
+    const orderId = parts[parts.indexOf('refund') - 1];
+    const now = new Date().toISOString();
+
+    const d1Res = await d1.query('SELECT * FROM orders WHERE id = ? LIMIT 1', [orderId]).catch(() => ({ results: [] }));
+    let existingOrder: any = null;
+
+    if (d1Res.results && d1Res.results[0]) {
+      try {
+        existingOrder = d1Res.results[0].raw_json ? JSON.parse(d1Res.results[0].raw_json) : d1Res.results[0];
+      } catch {
+        existingOrder = d1Res.results[0];
+      }
+    }
+
+    if (existingOrder) {
+      existingOrder.paymentStatus = 'refunded';
+      existingOrder.status = 'cancelled';
+      existingOrder.updatedAt = now;
+
+      await d1.query(
+        `UPDATE orders SET payment_status = 'refunded', status = 'cancelled', raw_json = ?, updated_at = ? WHERE id = ?`,
+        [JSON.stringify(existingOrder), now, orderId]
+      ).catch(() => {});
+    }
+
+    return NextResponse.json({ success: true, message: 'Order refunded in D1' });
+  }
+
+  // 18. Order Chat Messages (/api/orders/:id/messages)
+  if (pathname.includes('/orders/') && pathname.endsWith('/messages')) {
+    const parts = pathname.split('/').filter(Boolean);
+    const orderId = parts[parts.indexOf('messages') - 1];
+    const { sender, text } = body;
+    const now = new Date().toISOString();
+
+    const d1Res = await d1.query('SELECT * FROM orders WHERE id = ? LIMIT 1', [orderId]).catch(() => ({ results: [] }));
+    let existingOrder: any = null;
+
+    if (d1Res.results && d1Res.results[0]) {
+      try {
+        existingOrder = d1Res.results[0].raw_json ? JSON.parse(d1Res.results[0].raw_json) : d1Res.results[0];
+      } catch {
+        existingOrder = d1Res.results[0];
+      }
+    }
+
+    if (existingOrder) {
+      if (!Array.isArray(existingOrder.messages)) existingOrder.messages = [];
+      const newMsg = {
+        id: `msg-${Date.now()}`,
+        sender,
+        text,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      existingOrder.messages.push(newMsg);
+      existingOrder.updatedAt = now;
+
+      await d1.query(
+        `UPDATE orders SET raw_json = ?, updated_at = ? WHERE id = ?`,
+        [JSON.stringify(existingOrder), now, orderId]
+      ).catch(() => {});
+
+      return NextResponse.json({ success: true, data: newMsg });
+    }
+
+    return NextResponse.json({ success: true });
+  }
+
   return NextResponse.json({ ok: true, message: 'Action processed' });
 }
 
@@ -1040,6 +1392,114 @@ export async function PATCH(req: NextRequest) {
       [name, code, city, baseFee, perKmFee, isActive !== undefined ? (isActive ? 1 : 0) : null, new Date().toISOString(), zoneId]
     ).catch(() => {});
     return NextResponse.json({ success: true, message: 'Delivery zone updated in D1' });
+  }
+
+  // 4. Update Order Status via PATCH (/api/admin/orders/:id/status, /api/orders/:id/status)
+  if (pathname.includes('/orders/') && pathname.endsWith('/status')) {
+    const parts = pathname.split('/').filter(Boolean);
+    const statusIdx = parts.indexOf('status');
+    const orderId = parts[statusIdx - 1];
+    const { status, note } = body;
+
+    if (!orderId || !status) {
+      return NextResponse.json({ success: false, error: 'Order ID and status are required' }, { status: 400 });
+    }
+
+    const now = new Date().toISOString();
+    const nowTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const d1Res = await d1.query('SELECT * FROM orders WHERE id = ? LIMIT 1', [orderId]).catch(() => ({ results: [] }));
+    let existingOrder: any = null;
+
+    if (d1Res.results && d1Res.results[0]) {
+      try {
+        existingOrder = d1Res.results[0].raw_json ? JSON.parse(d1Res.results[0].raw_json) : d1Res.results[0];
+      } catch {
+        existingOrder = d1Res.results[0];
+      }
+    }
+
+    const descMap: Record<string, string> = {
+      placed: 'Order placed by customer',
+      confirmed: 'Restaurant accepted ticket',
+      preparing: 'Kitchen started cooking meal',
+      ready_for_pickup: 'Packaged & waiting for dispatch rider',
+      in_transit: 'Rider picked up meal & is en route',
+      delivered: 'Handover PIN verified & delivered to doorstep',
+      cancelled: 'Order was cancelled'
+    };
+
+    const statusNote = note || descMap[status] || `Order status updated to ${status}`;
+
+    if (existingOrder) {
+      existingOrder.status = status;
+      existingOrder.updatedAt = now;
+      if (!Array.isArray(existingOrder.statusHistory)) existingOrder.statusHistory = [];
+
+      const lastHist = existingOrder.statusHistory[existingOrder.statusHistory.length - 1];
+      if (!lastHist || lastHist.status !== status) {
+        existingOrder.statusHistory.push({
+          status,
+          timestamp: nowTimeStr,
+          note: statusNote
+        });
+      }
+
+      await d1.query(
+        `UPDATE orders SET status = ?, raw_json = ?, updated_at = ? WHERE id = ?`,
+        [status, JSON.stringify(existingOrder), now, orderId]
+      ).catch(() => {});
+
+      return NextResponse.json({ success: true, data: existingOrder, message: `Order ${orderId} status updated to ${status} in D1` });
+    } else {
+      const newOrder = {
+        id: orderId,
+        shortId: `#${orderId.slice(-4).toUpperCase()}`,
+        status,
+        createdAt: now,
+        updatedAt: now,
+        statusHistory: [{ status, timestamp: nowTimeStr, note: statusNote }]
+      };
+
+      await d1.query(
+        `INSERT INTO orders (id, status, raw_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET status = excluded.status, raw_json = excluded.raw_json, updated_at = excluded.updated_at`,
+        [orderId, status, JSON.stringify(newOrder), now, now]
+      ).catch(() => {});
+
+      return NextResponse.json({ success: true, data: newOrder, message: `Order ${orderId} created in D1 with status ${status}` });
+    }
+  }
+
+  // 5. Adjust Order Prep Time via PATCH (/api/orders/:id/prep-time)
+  if (pathname.includes('/orders/') && pathname.endsWith('/prep-time')) {
+    const parts = pathname.split('/').filter(Boolean);
+    const orderId = parts[parts.indexOf('prep-time') - 1];
+    const { adjustmentMinutes } = body;
+    const now = new Date().toISOString();
+
+    const d1Res = await d1.query('SELECT * FROM orders WHERE id = ? LIMIT 1', [orderId]).catch(() => ({ results: [] }));
+    let existingOrder: any = null;
+
+    if (d1Res.results && d1Res.results[0]) {
+      try {
+        existingOrder = d1Res.results[0].raw_json ? JSON.parse(d1Res.results[0].raw_json) : d1Res.results[0];
+      } catch {
+        existingOrder = d1Res.results[0];
+      }
+    }
+
+    if (existingOrder) {
+      existingOrder.prepTimeAdjustmentMin = (existingOrder.prepTimeAdjustmentMin || 0) + Number(adjustmentMinutes || 0);
+      existingOrder.updatedAt = now;
+
+      await d1.query(
+        `UPDATE orders SET raw_json = ?, updated_at = ? WHERE id = ?`,
+        [JSON.stringify(existingOrder), now, orderId]
+      ).catch(() => {});
+    }
+
+    return NextResponse.json({ success: true, message: 'Prep time adjusted in D1' });
   }
 
   return NextResponse.json({ ok: true });

@@ -100,7 +100,7 @@ interface DeliveryContextType {
     tip: number;
     paymentMethod: string;
   }) => Promise<Order>;
-  advanceOrderStatus: (orderId: string, newStatus: OrderStatus) => Promise<void>;
+  advanceOrderStatus: (orderId: string, newStatus: OrderStatus, note?: string) => Promise<void>;
   verifyOrderHandover: (orderId: string, pin: string) => Promise<boolean>;
   adjustOrderPrepTime: (orderId: string, minutes: number) => Promise<void>;
   refundOrder: (orderId: string, amount: number, reason: string) => Promise<void>;
@@ -529,7 +529,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     refreshData();
-  }, [refreshData]);
+    if (!user) return;
+    const interval = setInterval(() => {
+      refreshData();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [refreshData, user]);
 
   // Cart Opening
   const setIsCartOpen = (open: boolean) => {
@@ -887,7 +892,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return newOrder;
   };
 
-  const advanceOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+  const advanceOrderStatus = async (orderId: string, newStatus: OrderStatus, note?: string) => {
     setOrders((prev) =>
       prev.map((ord) => {
         if (ord.id === orderId) {
@@ -903,7 +908,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           };
           const nextHistory = [
             ...(ord.statusHistory || []),
-            { status: newStatus, timestamp: nowStr, note: descMap[newStatus] }
+            { status: newStatus, timestamp: nowStr, note: note || descMap[newStatus] }
           ];
 
           return {
@@ -916,7 +921,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
     );
 
-    api.orders.updateStatus(orderId, newStatus).catch(() => {});
+    await api.orders.updateStatus(orderId, newStatus, note).catch(() => {});
+    await refreshData().catch(() => {});
   };
 
   const verifyOrderHandover = async (orderId: string, enteredPin: string): Promise<boolean> => {

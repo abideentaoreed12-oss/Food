@@ -71,7 +71,8 @@ export const AdminPortal: React.FC = () => {
     adminActiveTab: activeTab,
     setAdminActiveTab: setActiveTab,
     setIsRightDrawerOpen,
-    refreshData
+    refreshData,
+    advanceOrderStatus
   } = useDelivery();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState<boolean>(false);
@@ -474,6 +475,8 @@ export const AdminPortal: React.FC = () => {
       setOrdersList((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
       );
+      await advanceOrderStatus(orderId, newStatus);
+      await refreshData();
       showActionFeedback(`Order status updated to "${newStatus}" in D1.`);
     } catch (err: any) {
       showActionFeedback(`Failed to update order: ${err.message}`);
