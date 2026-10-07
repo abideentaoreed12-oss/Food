@@ -1,25 +1,6 @@
 {
-  "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "rewrites": [
-    {
-      "source": "/api",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/[...route]"
-    },
-    {
-      "source": "/\\.(.*)",
-      "destination": "/404-blocked-sensitive-path"
-    },
-    {
-      "source": "/((?!api/|sitemap\\.xml|robots\\.txt).*)",
-      "destination": "/index.html"
-    }
-  ],
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
   "headers": [
     {
       "source": "/(.*)",
