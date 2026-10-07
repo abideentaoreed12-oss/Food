@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
-    "@tailwindcss/vite": "^4.3.3",
     "@turf/turf": "^7.4.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/cookie-parser": "^1.4.10",
@@ -29,7 +28,6 @@
     "@types/react-dom": "^19.3.0",
     "@vercel/analytics": "^2.0.1",
     "@vis.gl/react-google-maps": "^1.10.1",
-    "@vitejs/plugin-react": "^6.1.1",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.3",
@@ -50,10 +48,8 @@
     "@types/google.maps": "^3.66.5",
     "@types/node-geocoder": "^4.2.6",
     "autoprefixer": "^10.4.21",
-    "esbuild": "^0.25.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
-    "vitest": "^5.0.3",
     "typescript": "^5.7.3"
   }
 }
