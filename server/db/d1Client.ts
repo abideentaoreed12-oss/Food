@@ -299,32 +299,34 @@ export class CloudflareD1Client {
 
     // Ensure default admin user and initial restaurants exist in D1
     try {
-      const salt = bcrypt.genSaltSync(10);
-      const adminEmail = CONFIG.ADMIN_EMAIL || 'abideentaoreed12@gmail.com';
-      const adminPasswordHash = bcrypt.hashSync(CONFIG.ADMIN_PASSWORD || 'Teeplus1029', salt);
       const now = new Date().toISOString();
+      if (CONFIG.ADMIN_EMAIL && CONFIG.ADMIN_PASSWORD) {
+        const salt = bcrypt.genSaltSync(10);
+        const adminEmail = CONFIG.ADMIN_EMAIL.toLowerCase().trim();
+        const adminPasswordHash = bcrypt.hashSync(CONFIG.ADMIN_PASSWORD, salt);
 
-      await this.query(
-        `INSERT INTO users (id, email, password_hash, name, role, phone, wallet_balance_usd, wallet_balance_ngn, saved_addresses, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET
-           email = excluded.email,
-           password_hash = excluded.password_hash,
-           role = excluded.role;`,
-        [
-          'usr-admin-1',
-          adminEmail.toLowerCase().trim(),
-          adminPasswordHash,
-          'System Administrator',
-          'admin',
-          '+1 (555) 900-0001',
-          250.0,
-          350000,
-          '[]',
-          now,
-          now
-        ]
-      );
+        await this.query(
+          `INSERT INTO users (id, email, password_hash, name, role, phone, wallet_balance_usd, wallet_balance_ngn, saved_addresses, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             email = excluded.email,
+             password_hash = excluded.password_hash,
+             role = excluded.role;`,
+          [
+            'usr-admin-1',
+            adminEmail,
+            adminPasswordHash,
+            'System Administrator',
+            'admin',
+            '+1 (555) 900-0001',
+            250.0,
+            350000,
+            '[]',
+            now,
+            now
+          ]
+        );
+      }
 
       for (const r of INITIAL_RESTAURANTS) {
         await this.query(

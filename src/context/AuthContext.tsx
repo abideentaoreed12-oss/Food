@@ -69,13 +69,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function sanitizeUser(rawUser: any): AuthUser {
-  if (!rawUser) return rawUser;
+function sanitizeUser(rawUser: any): AuthUser | null {
+  if (!rawUser) return null;
   const actualUser = rawUser.user && typeof rawUser.user === 'object' && !Array.isArray(rawUser.user) ? rawUser.user : rawUser;
+  if (!actualUser || typeof actualUser !== 'object' || !actualUser.email) return null;
   return {
     ...actualUser,
     id: actualUser.id || actualUser._id || 'usr-default',
-    email: actualUser.email || '',
+    email: actualUser.email,
     role: (actualUser.role as UserRole) || 'customer',
     name: actualUser.name || (actualUser.email ? actualUser.email.split('@')[0] : 'User'),
     walletBalanceUSD: typeof actualUser.walletBalanceUSD === 'number' ? actualUser.walletBalanceUSD : 0,
@@ -114,9 +115,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await api.auth.login(email, password);
       if (res && res.user) {
         const sanitized = sanitizeUser(res.user);
-        setUser(sanitized);
-        setIsAuthModalOpen(false);
-        return { success: true, user: sanitized };
+        if (sanitized) {
+          setUser(sanitized);
+          setIsAuthModalOpen(false);
+          return { success: true, user: sanitized };
+        }
       }
       return { success: false, error: 'Invalid login response from server' };
     } catch (err: any) {
@@ -220,6 +223,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await api.auth.getMe();
       if (res && res.user) {
         setUser(sanitizeUser(res.user));
+      } else {
+        setUser(null);
       }
     } catch (e) {
       console.warn('refreshUser failed:', e);

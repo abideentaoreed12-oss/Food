@@ -47,6 +47,8 @@
     "scripts",
     "server",
     "server.ts",
+    "vite.config.ts",
+    "tests",
     "dist"
   ]
 }

@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 import { z } from 'zod';
 import { db } from '../db/index.ts';
 import { d1Client } from '../db/d1Client.ts';
@@ -340,14 +341,30 @@ router.patch('/profile', requireAuth, async (req: AuthRequest, res: Response) =>
     const userId = req.user!.id;
     const now = new Date().toISOString();
 
-    const updates: string[] = ['updated_at = ?'];
-    const values: any[] = [now];
+    const updates: string[] = [];
+    const values: any[] = [];
 
-    if (name !== undefined) { updates.push('name = ?'); values.push(name.trim()); }
-    if (phone !== undefined) { updates.push('phone = ?'); values.push(phone.trim()); }
-    if (address !== undefined) { updates.push('address = ?'); values.push(address.trim()); }
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(typeof name === 'string' ? name.trim().slice(0, 100) : '');
+    }
+    if (phone !== undefined) {
+      updates.push('phone = ?');
+      values.push(typeof phone === 'string' ? phone.trim().slice(0, 30) : '');
+    }
+    if (address !== undefined) {
+      updates.push('address = ?');
+      values.push(typeof address === 'string' ? address.trim().slice(0, 300) : '');
+    }
 
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, error: 'No valid profile fields provided for update.' });
+    }
+
+    updates.push('updated_at = ?');
+    values.push(now);
     values.push(userId);
+
     await d1Client.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values);
 
     // Refresh from D1
@@ -608,8 +625,8 @@ router.post('/send-verification', otpLimiter, async (req, res) => {
       });
     }
 
-    // Generate a secure 6-digit OTP
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate a cryptographically secure 6-digit OTP
+    const code = crypto.randomInt(100000, 1000000).toString();
     await db.saveOtp(email, code, 'register');
 
     // Send email via Resend
@@ -657,7 +674,7 @@ router.post('/forgot-password', forgotLimiter, async (req, res) => {
       });
     }
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = crypto.randomInt(100000, 1000000).toString();
     await db.saveOtp(email, code, 'forgot');
 
     await sendEmail({

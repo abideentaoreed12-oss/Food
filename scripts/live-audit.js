@@ -6,7 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'veyrang-jwt-secret-key-production-
 const adminToken = jwt.sign(
   {
     id: 'usr-admin-1',
-    email: 'abideentaoreed12@gmail.com',
+    email: process.env.ADMIN_EMAIL || 'admin@veyrang.com',
     role: 'admin',
     name: 'Platform Super Admin',
   },

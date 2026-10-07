@@ -73,3 +73,17 @@ button, a, input, select, textarea, [role="button"], label, div {
     font-size: 16px !important;
   }
 }
+
+/* Hide Next.js Development Indicator Badge */
+nextjs-portal,
+[data-nextjs-dev-tools-button],
+[data-nextjs-toast],
+[data-nextjs-toast-wrapper],
+div[class*="nextjs-toast"],
+div[class*="nextjs-dev-tools"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+

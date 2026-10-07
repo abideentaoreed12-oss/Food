@@ -130,9 +130,18 @@ export const api = {
 
     getMe: async () => {
       try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('veyrang_jwt_token') : null;
+        if (!token) {
+          return { user: null };
+        }
         const res = await request('/api/auth/me');
-        const user = res && res.user ? res.user : res;
-        return { user };
+        if (res && res.user && res.user.email) {
+          return { user: res.user };
+        }
+        if (res && res.email && res.id) {
+          return { user: res };
+        }
+        return { user: null };
       } catch (err) {
         return { user: null };
       }
