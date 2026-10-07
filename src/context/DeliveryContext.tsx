@@ -421,10 +421,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
 
       if (user) {
-        const [serverOrders, txRes, addressesRes] = await Promise.all([
+        const [serverOrders, txRes, addressesRes, meRes] = await Promise.all([
           api.orders.getAll().catch(() => null),
           api.auth.getWalletTransactions().catch(() => null),
-          api.auth.getAddresses().catch(() => null)
+          api.auth.getAddresses().catch(() => null),
+          api.auth.getMe().catch(() => null)
         ]);
         if (serverOrders && Array.isArray(serverOrders)) {
           setOrders(serverOrders);
@@ -446,7 +447,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (addressesRes?.data && Array.isArray(addressesRes.data)) {
           await syncUserAddresses(user, addressesRes.data);
         }
-        setWalletBalanceNGN(user.walletBalanceNGN ?? 0);
+        const liveUser = (meRes as any)?.data?.user || (meRes as any)?.user;
+        if (liveUser && liveUser.walletBalanceNGN !== undefined) {
+          setWalletBalanceNGN(Number(liveUser.walletBalanceNGN || 0));
+        } else if (user.walletBalanceNGN !== undefined) {
+          setWalletBalanceNGN(Number(user.walletBalanceNGN || 0));
+        }
         setFavourites([]);
       } else {
         setOrders([]);

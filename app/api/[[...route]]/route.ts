@@ -515,14 +515,32 @@ export async function POST(req: NextRequest) {
     const cleanEmail = email.toLowerCase().trim();
 
     if (ADMIN_EMAIL && cleanEmail === ADMIN_EMAIL && ADMIN_PASSWORD && password === ADMIN_PASSWORD) {
+      const d1AdminRes = await d1.query('SELECT * FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [cleanEmail]).catch(() => ({ results: [] }));
+      let adminRecord = d1AdminRes.results?.[0];
+
+      if (!adminRecord) {
+        const now = new Date().toISOString();
+        const pwdHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
+        await d1.query(
+          `INSERT INTO users (id, email, password_hash, name, role, phone, address, wallet_balance_usd, wallet_balance_ngn, saved_addresses, created_at, updated_at)
+           VALUES (?, ?, ?, 'System Administrator', 'admin', '+234 800 000 0000', 'Lagos, Nigeria', 0, 0, '[]', ?, ?)
+           ON CONFLICT(id) DO NOTHING`,
+          ['usr-admin-1', ADMIN_EMAIL, pwdHash, now, now]
+        ).catch(() => {});
+
+        const refetchAdmin = await d1.query('SELECT * FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [cleanEmail]).catch(() => ({ results: [] }));
+        adminRecord = refetchAdmin.results?.[0];
+      }
+
       const adminUser = {
-        id: 'usr-admin-1',
+        id: adminRecord?.id || 'usr-admin-1',
         email: ADMIN_EMAIL,
-        name: 'System Administrator',
+        name: adminRecord?.name || 'System Administrator',
         role: 'admin',
-        phone: '+234 800 000 0000',
-        walletBalanceUSD: 500,
-        walletBalanceNGN: 750000,
+        phone: adminRecord?.phone || '+234 800 000 0000',
+        address: adminRecord?.address || 'Lagos, Nigeria',
+        walletBalanceUSD: Number(adminRecord?.wallet_balance_usd ?? 0),
+        walletBalanceNGN: Number(adminRecord?.wallet_balance_ngn ?? 0),
         savedAddresses: []
       };
 

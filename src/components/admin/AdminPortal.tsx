@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
+import { deliveryService } from '../../services/deliveryService';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole, OrderStatus } from '../../types';
 import { useDelivery } from '../../context/DeliveryContext';
@@ -351,7 +352,7 @@ export const AdminPortal: React.FC = () => {
         api.admin.getRestaurants().catch(() => []),
         api.admin.getCMS().catch(() => ({})),
         api.settings.get().catch(() => null),
-        api.settings.getZones().catch(() => null)
+        deliveryService.getDeliveryZones().catch(() => [])
       ]);
 
       setAnalytics(overview);
@@ -379,10 +380,8 @@ export const AdminPortal: React.FC = () => {
         setCmsDrafts(finalMap);
       }
 
-      if (Array.isArray(zonesRes)) {
+      if (Array.isArray(zonesRes) && zonesRes.length > 0) {
         setDeliveryZonesList(zonesRes);
-      } else if (zonesRes?.data && Array.isArray(zonesRes.data)) {
-        setDeliveryZonesList(zonesRes.data);
       }
 
       // Automatically sync public storefront & customer context in real time
@@ -580,7 +579,7 @@ export const AdminPortal: React.FC = () => {
     e.preventDefault();
     if (!newZoneName || !newZoneCode) return;
     try {
-      await api.admin.createDeliveryZone({
+      await deliveryService.createZone({
         name: newZoneName,
         code: newZoneCode.toUpperCase().trim(),
         city: newZoneCity,
@@ -592,7 +591,7 @@ export const AdminPortal: React.FC = () => {
         surgeMultiplier: Number(newZoneSurge || 1.0),
         centerLat: Number(newZoneCenterLat || 6.5244),
         centerLng: Number(newZoneCenterLng || 3.3792),
-        mapImageR2Url: newZoneMapR2Url || null
+        mapImageR2Url: newZoneMapR2Url || undefined
       });
       showActionFeedback(`Delivery zone "${newZoneName}" created in Platform D1!`);
       setIsAddZoneModalOpen(false);
@@ -607,7 +606,7 @@ export const AdminPortal: React.FC = () => {
   const handleDeleteZone = async (id: string, name: string) => {
     if (!window.confirm(`Permanently remove delivery zone "${name}" from Platform D1?`)) return;
     try {
-      await api.admin.deleteDeliveryZone(id);
+      await deliveryService.deleteZone(id);
       showActionFeedback(`Delivery zone "${name}" removed.`);
       fetchData();
     } catch (err: any) {
@@ -617,9 +616,9 @@ export const AdminPortal: React.FC = () => {
 
   const handleToggleZoneActive = async (id: string) => {
     try {
-      const res = await api.admin.toggleDeliveryZone(id);
+      const res = await deliveryService.toggleZoneStatus(id);
       setDeliveryZonesList((prev) =>
-        prev.map((z) => (z.id === id ? { ...z, is_active: res.isActive ? 1 : 0 } : z))
+        prev.map((z) => (z.id === id ? { ...z, is_active: res.isActive ? 1 : 0, isActive: res.isActive } : z))
       );
       showActionFeedback(`Zone status updated in D1.`);
     } catch (err: any) {

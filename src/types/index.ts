@@ -21,6 +21,26 @@ export type FulfillmentType = 'delivery' | 'pickup' | 'scheduled';
 
 export type DeliveryZone = 'LEKKI' | 'VI' | 'IKOYI' | 'IKEJA' | 'YABA' | 'ABUJA' | 'NYC' | 'LAGOS' | string;
 
+export interface ZoneConfig {
+  id: string;
+  name: string;
+  code?: string;
+  city: string;
+  country?: string;
+  currency?: Currency;
+  defaultCurrency?: Currency;
+  baseFee?: number;
+  deliveryFee?: number;
+  perKmFee?: number;
+  radiusKm?: number;
+  surgeMultiplier?: number;
+  centerLat?: number;
+  centerLng?: number;
+  averageSpeedMin?: number;
+  isActive?: boolean;
+  mapImageR2Url?: string;
+}
+
 export type DietaryTag = 'Vegan' | 'Vegetarian' | 'Halal' | 'Gluten-Free' | 'Chef Special';
 
 export type PriceTier = '$' | '$$' | '$$$';

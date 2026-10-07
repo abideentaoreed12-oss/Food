@@ -1,0 +1,6 @@
+{
+  "summary":  "Audit and analysis report detailing all worker types across the application (Cloudflare Workers, Delivery Couriers/Drivers, and Node/Web Workers).",
+  "updatedAt":  "2026-10-07T14:27:35.901451327Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

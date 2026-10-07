@@ -84,12 +84,6 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-100 shadow-xs">
-      {/* Top Dynamic Announcement Ticker from Cloudflare D1 CMS */}
-      {platformSettings?.cms_announcement_banner && (
-        <div className="bg-[#FF5500] text-white text-center py-1.5 px-4 text-xs font-bold tracking-tight">
-          {platformSettings.cms_announcement_banner}
-        </div>
-      )}
 
       {/* Invisible backdrop to dismiss open user dropdown when clicking outside */}
       {isUserDropdownOpen && (
