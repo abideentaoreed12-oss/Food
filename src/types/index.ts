@@ -1,5 +1,28 @@
 export type UserRole = 'customer' | 'restaurant' | 'courier' | 'admin' | 'sub_admin';
 
+export const USER_ROLES = [
+  { value: 'customer', label: 'Customer' },
+  { value: 'restaurant', label: 'Restaurant Merchant' },
+  { value: 'courier', label: 'Courier Dispatch' },
+  { value: 'sub_admin', label: 'Sub Admin (Operations)' },
+  { value: 'admin', label: 'Super Admin' }
+];
+
+export const ORDER_STATUSES = [
+  { value: 'placed', label: 'Placed' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'preparing', label: 'Preparing' },
+  { value: 'ready_for_pickup', label: 'Ready for Pickup' },
+  { value: 'in_transit', label: 'In Transit' },
+  { value: 'delivered', label: 'Delivered' },
+  { value: 'cancelled', label: 'Cancelled' }
+];
+
+export const DISCOUNT_TYPES = [
+  { value: 'percentage', label: 'Percentage (%)' },
+  { value: 'fixed', label: 'Fixed NGN (₦)' }
+];
+
 export type ActivePage =
   | 'landing'
   | 'home'

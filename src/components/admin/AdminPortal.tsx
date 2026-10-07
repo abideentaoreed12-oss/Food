@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { deliveryService } from '../../services/deliveryService';
 import { useAuth } from '../../context/AuthContext';
-import { UserRole, OrderStatus } from '../../types';
+import { UserRole, OrderStatus, USER_ROLES, ORDER_STATUSES, DISCOUNT_TYPES } from '../../types';
 import { useDelivery } from '../../context/DeliveryContext';
 import {
   ShieldAlert,
@@ -1493,13 +1493,7 @@ export const AdminPortal: React.FC = () => {
                     onChange={(e) => setOrderStatusFilter(e.target.value)}
                     className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-medium cursor-pointer"
                   >
-                    <option value="all">All Statuses</option>
-                    <option value="placed">Placed</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="preparing">Preparing</option>
-                    <option value="in_transit">In Transit</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="cancelled">Cancelled</option>
+                    {ORDER_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                   </select>
                 </div>
               </div>
@@ -1547,13 +1541,7 @@ export const AdminPortal: React.FC = () => {
                             onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value as OrderStatus)}
                             className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 font-medium cursor-pointer"
                           >
-                            <option value="placed">placed</option>
-                            <option value="confirmed">confirmed</option>
-                            <option value="preparing">preparing</option>
-                            <option value="ready_for_pickup">ready for pickup</option>
-                            <option value="in_transit">in transit</option>
-                            <option value="delivered">delivered</option>
-                            <option value="cancelled">cancelled</option>
+                            {ORDER_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                           </select>
                         </td>
                         <td className="p-3">
@@ -1646,10 +1634,9 @@ export const AdminPortal: React.FC = () => {
                           onChange={(e) => setNewStaffRole(e.target.value as UserRole)}
                           className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold cursor-pointer focus:border-[#FF5500] outline-none"
                         >
-                          <option value="sub_admin">1. Sub Admin (Operations & Orders)</option>
-                          <option value="admin">2. Super Admin (Full Platform Master)</option>
-                          <option value="restaurant">3. Restaurant Merchant (Kitchen Portal)</option>
-                          <option value="courier">4. Courier Dispatch (Rider Portal)</option>
+{USER_ROLES.map(role => (
+                            <option key={role.value} value={role.value}>{role.label}</option>
+                          ))}
                         </select>
                       </div>
                       <div>
@@ -1738,11 +1725,9 @@ export const AdminPortal: React.FC = () => {
                               onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
                               className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 font-semibold cursor-pointer focus:border-[#FF5500] outline-none"
                             >
-                              <option value="sub_admin">Sub Admin (Ops)</option>
-                              <option value="admin">Super Admin</option>
-                              <option value="restaurant">Restaurant Merchant</option>
-                              <option value="courier">Courier Dispatch</option>
-                              <option value="customer">Customer</option>
+                              {USER_ROLES.map(role => (
+                                <option key={role.value} value={role.value}>{role.label}</option>
+                              ))}
                             </select>
                           ) : (
                             <span className="text-slate-500 font-medium">Standard Permissions</span>
@@ -2940,11 +2925,9 @@ export const AdminPortal: React.FC = () => {
                                 onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
                                 className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[11px] text-slate-800 font-semibold cursor-pointer focus:border-[#FF5500] outline-none"
                               >
-                                <option value="customer">Customer</option>
-                                <option value="restaurant">Restaurant Merchant</option>
-                                <option value="courier">Courier Dispatch</option>
-                                <option value="sub_admin">Sub Admin (Ops)</option>
-                                <option value="admin">Super Admin</option>
+                                {USER_ROLES.map(role => (
+                                  <option key={role.value} value={role.value}>{role.label}</option>
+                                ))}
                               </select>
                             ) : (
                               <span className="px-2 py-0.5 bg-slate-100 rounded text-[10px] font-bold uppercase text-slate-700">
@@ -3193,8 +3176,7 @@ export const AdminPortal: React.FC = () => {
                         onChange={(e) => setNewPromoType(e.target.value)}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
                       >
-                        <option value="percentage">Percentage (%)</option>
-                        <option value="fixed">Fixed NGN (₦)</option>
+                        {DISCOUNT_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
                       </select>
                     </div>
                     <div>

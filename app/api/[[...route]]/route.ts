@@ -620,6 +620,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
+  // 7a. Update User Role
+  if (pathname.startsWith('/admin/users/') && pathname.endsWith('/role') && req.method === 'PATCH') {
+    const userId = pathname.split('/')[3];
+    const { role } = await req.json();
+    const decoded = verifyToken(req);
+    if (!decoded || decoded.role !== 'admin') {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    await d1.query('UPDATE users SET role = ? WHERE id = ?', [role, userId]);
+    return NextResponse.json({ success: true, message: 'User role updated' });
+  }
+
   // 8. Menu Items
   if (pathname === '/admin/menu' || pathname === '/admin/menu-items') {
     const d1Res = await d1.query('SELECT * FROM menu_items ORDER BY created_at DESC').catch(() => ({ results: [] }));
