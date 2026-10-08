@@ -29,17 +29,13 @@ export async function PATCH(
     return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
   }
   const { id } = await ctx.params;
-  const current = await d1
-    .query('SELECT is_active FROM promo_codes WHERE id = ? OR code = ? LIMIT 1', [id, id])
-    .catch(() => ({ results: [] as any[] }));
+  const current = await d1.query('SELECT is_active FROM promo_codes WHERE id = ? OR code = ? LIMIT 1', [id, id]);
+  if (!current.success) return NextResponse.json({ success: false, error: 'Promo database query failed' }, { status: 503 });
   if (!current.results?.length) {
     return NextResponse.json({ success: false, error: 'Promo not found in D1' }, { status: 404 });
   }
   const nextActive = current.results[0].is_active === 1 ? 0 : 1;
-  await d1.query('UPDATE promo_codes SET is_active = ? WHERE id = ? OR code = ?', [
-    nextActive,
-    id,
-    id
-  ]);
+  const updated = await d1.query('UPDATE promo_codes SET is_active = ? WHERE id = ? OR code = ?', [nextActive, id, id]);
+  if (!updated.success || updated.meta?.changes === 0) return NextResponse.json({ success: false, error: 'Promo status was not updated' }, { status: 503 });
   return NextResponse.json({ success: true, isActive: nextActive === 1, data: { isActive: nextActive === 1 } });
 }
