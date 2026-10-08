@@ -425,9 +425,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const rests = Array.isArray(serverRestaurants)
         ? serverRestaurants
         : (serverRestaurants?.data && Array.isArray(serverRestaurants.data) ? serverRestaurants.data : []);
-      if (rests.length > 0) {
-        setRestaurants(rests);
-      }
+      setRestaurants(rests);
+
       const liveSettings = settingsRes?.settings || settingsRes?.data?.settings || settingsRes;
       if (liveSettings && typeof liveSettings === 'object') {
         const extracted = liveSettings.settings || liveSettings;
@@ -435,9 +434,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setCmsContent((prev) => ({ ...prev, ...extracted }));
       }
       const liveZones = Array.isArray(zonesRes) ? zonesRes : (zonesRes?.data || []);
-      if (liveZones && liveZones.length > 0) {
-        setDeliveryZones(liveZones);
-      }
+      setDeliveryZones(liveZones);
 
       if (user) {
         const [serverOrders, txRes, addressesRes, meRes] = await Promise.all([
