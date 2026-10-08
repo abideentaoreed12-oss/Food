@@ -148,8 +148,6 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
       if (cap !== null && (!Number.isFinite(cap) || cap < 0)) return res.status(500).json({ success: false, error: 'Promo discount cap is invalid' });
       const rawDiscount = promo.discount_type === 'percentage' ? Math.round(verifiedSubtotal * (val / 100)) : val;
       discountAmount = cap === null ? rawDiscount : Math.min(cap, rawDiscount);
-      const usageUpdate = await d1Client.query('UPDATE promo_codes SET times_used = times_used + 1 WHERE id = ? AND is_active = 1 AND (usage_limit IS NULL OR times_used < usage_limit)', [promo.id]);
-      if (usageUpdate.meta?.changes === 0) return res.status(409).json({ success: false, error: 'Promo usage limit reached; please try again' });
     }
     const preWalletTotal = Math.max(0, Math.round((verifiedSubtotal + deliveryFee + serviceFee + (tip || 0) - discountAmount) * 100) / 100);
     const verifiedWalletDeduction = Math.min(preWalletTotal, Math.max(0, walletDeduction || 0));
@@ -197,7 +195,7 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
       statusHistory: [{ status: 'placed', timestamp: timeStr, note: 'Order received' }],
       routeProgress: 0,
       estimatedArrivalMinutes,
-      distanceKm: distanceMetrics?.distanceKm ?? restaurant.distanceKm ?? 2.4,
+      distanceKm: distanceMetrics?.distanceKm ?? null,
       courier: undefined,
       messages: [{ id: `msg-${Date.now()}`, sender: 'system', senderName: 'System', text: `Order #${shortNum} placed. Handover PIN: ${handoverPin}.`, timestamp: timeStr }],
       updatedAt: nowIso
@@ -205,11 +203,26 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
 
     await db.createOrder(newOrder);
 
+    if (promoCode) {
+      const codeUpper = String(promoCode).trim().toUpperCase();
+      const usageUpdate = await d1Client.query(
+        'UPDATE promo_codes SET times_used = times_used + 1 WHERE UPPER(code) = ? AND is_active = 1 AND (usage_limit IS NULL OR times_used < usage_limit)',
+        [codeUpper]
+      );
+      if (usageUpdate.meta?.changes === 0) {
+        console.error('[Order pricing] Promo usage counter did not update after order creation', { orderId: newOrder.id, code: codeUpper });
+      }
+    }
+
     if (verifiedWalletDeduction > 0 && req.user?.id) {
-      await d1Client.query(
+      const walletUpdate = await d1Client.query(
         'UPDATE users SET wallet_balance_ngn = MAX(0, COALESCE(wallet_balance_ngn, 0) - ?), updated_at = ? WHERE id = ?',
         [verifiedWalletDeduction, nowIso, req.user.id]
-      ).catch(() => {});
+      );
+      if (walletUpdate.meta?.changes === 0) {
+        console.error('[Order payment] Wallet deduction was not recorded after order creation', { orderId: newOrder.id, userId: req.user.id });
+        return res.status(503).json({ success: false, error: 'Wallet payment could not be confirmed. Contact support before retrying.', orderId: newOrder.id });
+      }
     }
 
     await db.createTransaction({
@@ -278,7 +291,7 @@ router.post('/quote', async (req: AuthRequest, res: Response) => {
         distanceMetrics = await calculateRestaurantDistanceMetrics(restaurant, customerAddress);
         deliveryFee = distanceMetrics.estimatedDeliveryFee;
       } catch {
-        deliveryFee = restaurant.deliveryFee || 500;
+        return res.status(503).json({ success: false, error: 'Delivery pricing is temporarily unavailable. Please try again.' });
       }
     }
     return res.json({
