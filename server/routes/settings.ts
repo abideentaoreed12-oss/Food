@@ -52,93 +52,26 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // 2. Get Live Dynamic Delivery Zones (Public)
-router.get('/zones', async (req: Request, res: Response) => {
+router.get('/zones', async (_req: Request, res: Response) => {
   try {
-    const checkSeeded = await d1Client.query('SELECT value FROM platform_settings WHERE key = ? LIMIT 1', ['seeded_delivery_zones']);
-    const isSeeded = checkSeeded.results && checkSeeded.results.length > 0;
-
-    if (!isSeeded) {
-      const now = new Date().toISOString();
-      const initialZones = [
-        ['zone-lekki', 'Lekki Phase 1', 'LEKKI', 'Lagos', 'Nigeria', 'NGN', 6.4474, 3.4723, 15, 1000, 200, 1.0, now],
-        ['zone-vi', 'Victoria Island', 'VI', 'Lagos', 'Nigeria', 'NGN', 6.4281, 3.4219, 15, 1200, 200, 1.0, now],
-        ['zone-ikoyi', 'Ikoyi', 'IKOYI', 'Lagos', 'Nigeria', 'NGN', 6.4549, 3.4411, 15, 1500, 250, 1.0, now],
-        ['zone-ikeja', 'Ikeja', 'IKEJA', 'Lagos', 'Nigeria', 'NGN', 6.5921, 3.3422, 20, 1800, 250, 1.0, now],
-        ['zone-yaba', 'Yaba District', 'YABA', 'Lagos', 'Nigeria', 'NGN', 6.5164, 3.3858, 15, 1200, 200, 1.0, now],
-        ['zone-abuja', 'Abuja Core', 'ABUJA', 'Abuja', 'Nigeria', 'NGN', 9.0765, 7.3986, 25, 1500, 250, 1.0, now],
-        ['zone-nyc', 'Manhattan NYC', 'NYC', 'New York', 'USA', 'USD', 40.7831, -73.9712, 10, 5, 1.5, 1.0, now]
-      ];
-      for (const z of initialZones) {
-        try {
-          await d1Client.query(
-            `INSERT OR IGNORE INTO delivery_zones (
-              id, name, code, city, country, currency, center_lat, center_lng, 
-              base_delivery_fee, per_km_fee, surge_multiplier, is_active, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-            [z[0], z[1], z[2], z[3], z[4], z[5], z[6], z[7], z[9], z[10], z[11], z[12]]
-          );
-        } catch (e) {
-          // Gracefully continue if columns are different
-        }
-      }
-      await d1Client.query(
-        `INSERT INTO platform_settings (key, value, description, category, updated_at)
-         VALUES (?, ?, ?, 'general', ?)
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;`,
-        ['seeded_delivery_zones', 'true', 'Seeded delivery zones default values', now]
-      ).catch(() => {});
-    }
-
     const results = await d1Client.query(
       'SELECT * FROM delivery_zones WHERE is_active = 1 ORDER BY name ASC'
     );
-    return res.json({
-      success: true,
-      data: results.results
-    });
+    return res.json({ success: true, data: results.results });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(503).json({ success: false, error: 'Delivery zone service is unavailable' });
   }
 });
 
-// 2b. Get Live Dynamic Promotional Codes (Protected from D1)
-router.get('/promos', requireAuth, async (req: AuthRequest, res: Response) => {
+// 2b. Read configured promotional codes; never seed invented codes on a read request.
+router.get('/promos', requireAuth, async (_req: AuthRequest, res: Response) => {
   try {
-    const checkSeeded = await d1Client.query('SELECT value FROM platform_settings WHERE key = ? LIMIT 1', ['seeded_promo_codes']);
-    const isSeeded = checkSeeded.results && checkSeeded.results.length > 0;
-
-    if (!isSeeded) {
-      const now = new Date().toISOString();
-      const initialPromos = [
-        ['promo-1', 'WELCOME500', 'fixed', 500, 2000, 500, 1, '2026-12-31', now],
-        ['promo-2', 'LEKKI20', 'percentage', 20, 2500, 1500, 1, '2026-12-31', now],
-        ['promo-3', 'FREEDROP', 'fixed', 1000, 3000, 1000, 1, '2026-12-31', now],
-        ['promo-4', 'NAIRAFEAST', 'fixed', 1000, 3500, 1000, 1, '2026-12-31', now]
-      ];
-      for (const p of initialPromos) {
-        await d1Client.query(
-          'INSERT OR IGNORE INTO promo_codes (id, code, discount_type, value, min_order_amount, max_discount_cap, is_active, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          p
-        ).catch(() => {});
-      }
-      await d1Client.query(
-        `INSERT INTO platform_settings (key, value, description, category, updated_at)
-         VALUES (?, ?, ?, 'general', ?)
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;`,
-        ['seeded_promo_codes', 'true', 'Seeded promo codes default values', now]
-      ).catch(() => {});
-    }
-
     const results = await d1Client.query(
       'SELECT id, code, discount_type, value, min_order_amount, max_discount_cap, is_active FROM promo_codes WHERE is_active = 1 ORDER BY created_at DESC'
     );
-
-    return res.json({
-      success: true,
-      data: results.results
-    });
-  } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    return res.json({ success: true, data: results.results });
+  } catch (_error: any) {
+    return res.status(503).json({ success: false, error: 'Promo service is unavailable' });
   }
 });
 
