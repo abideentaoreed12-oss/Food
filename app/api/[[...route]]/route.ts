@@ -87,13 +87,20 @@ export async function GET(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
 
   if (pathname === '/' || pathname === '/health') {
+    const d1Status = await d1.ping();
+    const r2Configured = r2.isConfigured();
+    const healthy = d1Status.connected && r2Configured;
     return NextResponse.json({
-      status: 'ok',
+      status: healthy ? 'ok' : 'degraded',
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
-      services: { d1: true, r2: r2.isConfigured(), routing: true },
+      services: {
+        d1: { connected: d1Status.connected, latencyMs: d1Status.latencyMs },
+        r2: { configured: r2Configured },
+        routing: true
+      },
       version: '2.6.0'
-    });
+    }, { status: healthy ? 200 : 503 });
   }
 
   if (pathname === '/auth/me') {
@@ -184,12 +191,12 @@ export async function GET(req: NextRequest) {
     }
     const isAdmin = user.role === 'admin' || user.role === 'sub_admin';
     const d1Res = isAdmin
-      ? await d1
-          .query('SELECT * FROM orders ORDER BY created_at DESC')
-          .catch(() => ({ results: [] as any[] }))
-      : await d1
-          .query('SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC', [user.id])
-          .catch(() => ({ results: [] as any[] }));
+      ? await d1.query('SELECT * FROM orders ORDER BY created_at DESC')
+      : await d1.query('SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC', [user.id]);
+    if (!d1Res.success) {
+      console.error('[Orders API] D1 order query failed');
+      return NextResponse.json({ success: false, error: 'Orders are temporarily unavailable because the database query failed' }, { status: 503 });
+    }
     const orders = (d1Res.results || []).map((o: any) => {
       try {
         return o.raw_json
