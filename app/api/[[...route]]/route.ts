@@ -207,6 +207,48 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: orders });
   }
 
+  if (pathname === '/admin/orders') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'admin' && user.role !== 'sub_admin') {
+      return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 });
+    }
+    const result = await d1.query('SELECT * FROM orders ORDER BY created_at DESC');
+    if (!result.success) {
+      console.error('[Admin orders] D1 query failed');
+      return NextResponse.json({ success: false, error: 'Order database is temporarily unavailable' }, { status: 503 });
+    }
+    const orders = (result.results || []).map((o: any) => {
+      let parsed: any = {};
+      try { if (o.raw_json) parsed = JSON.parse(o.raw_json); } catch { /* use authoritative columns */ }
+      let items: any[] = [];
+      try { items = Array.isArray(o.items) ? o.items : typeof o.items === 'string' ? JSON.parse(o.items) : []; } catch { /* use raw_json items below */ }
+      return {
+        ...parsed,
+        id: o.id,
+        shortId: o.short_id ?? parsed.shortId,
+        customerId: o.customer_id ?? parsed.customerId,
+        customerName: o.customer_name ?? parsed.customerName,
+        customerPhone: o.customer_phone ?? parsed.customerPhone,
+        customerAddress: o.customer_address ?? parsed.customerAddress,
+        restaurantId: o.restaurant_id ?? parsed.restaurantId,
+        restaurantName: o.restaurant_name ?? parsed.restaurantName,
+        items: items.length ? items : (Array.isArray(parsed.items) ? parsed.items : []),
+        subtotal: o.subtotal ?? parsed.subtotal,
+        deliveryFee: o.delivery_fee ?? parsed.deliveryFee,
+        serviceFee: o.service_fee ?? parsed.serviceFee,
+        total: o.total ?? parsed.total,
+        currency: o.currency ?? parsed.currency ?? 'NGN',
+        paymentMethod: o.payment_method ?? parsed.paymentMethod,
+        paymentStatus: o.payment_status ?? parsed.paymentStatus,
+        status: o.status ?? parsed.status,
+        createdAt: o.created_at ?? parsed.createdAt,
+        updatedAt: o.updated_at ?? parsed.updatedAt
+      };
+    });
+    return NextResponse.json({ success: true, data: orders });
+  }
+
   if (pathname === '/admin/users') {
     const user = await getUser(req);
     if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
@@ -446,6 +488,47 @@ export async function PATCH(req: NextRequest) {
       { success: false, error: 'A user ID is required in the route: /api/admin/users/:id/role' },
       { status: 400 }
     );
+  }
+
+  const adminOrderStatusMatch = pathname.match(/^\/admin\/orders\/([^/]+)\/status$/);
+  if (adminOrderStatusMatch) {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'admin' && user.role !== 'sub_admin') {
+      return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 });
+    }
+    let body: any;
+    try { body = await req.json(); } catch {
+      return NextResponse.json({ success: false, error: 'A valid JSON request body is required' }, { status: 400 });
+    }
+    const status = String(body?.status || '').trim();
+    const allowedStatuses = new Set(['placed', 'confirmed', 'preparing', 'ready', 'picked_up', 'out_for_delivery', 'delivered', 'cancelled', 'refunded']);
+    if (!allowedStatuses.has(status)) {
+      return NextResponse.json({ success: false, error: 'Invalid order status' }, { status: 400 });
+    }
+    let id: string;
+    try { id = decodeURIComponent(adminOrderStatusMatch[1]).trim(); } catch {
+      return NextResponse.json({ success: false, error: 'Invalid order ID' }, { status: 400 });
+    }
+    if (!id) return NextResponse.json({ success: false, error: 'Order ID is required' }, { status: 400 });
+    const current = await d1.query('SELECT * FROM orders WHERE id = ? LIMIT 1', [id]);
+    if (!current.success) return NextResponse.json({ success: false, error: 'Order database is temporarily unavailable' }, { status: 503 });
+    const row = current.results?.[0];
+    if (!row) return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    let parsed: any = {};
+    try { if (row.raw_json) parsed = JSON.parse(row.raw_json); } catch {
+      return NextResponse.json({ success: false, error: 'Stored order data is invalid; no changes were made' }, { status: 500 });
+    }
+    const now = new Date().toISOString();
+    const history = Array.isArray(parsed.statusHistory) ? parsed.statusHistory : [];
+    const updatedOrder = { ...parsed, id: row.id, status, updatedAt: now, statusHistory: [...history, { status, timestamp: now, note: typeof body.note === 'string' ? body.note.slice(0, 500) : 'Status updated by admin' }] };
+    const update = await d1.query('UPDATE orders SET status = ?, updated_at = ?, raw_json = ? WHERE id = ?', [status, now, JSON.stringify(updatedOrder), id]);
+    if (!update.success) return NextResponse.json({ success: false, error: 'Order status could not be saved to D1' }, { status: 503 });
+    const verify = await d1.query('SELECT status, updated_at, raw_json FROM orders WHERE id = ? LIMIT 1', [id]);
+    if (!verify.success || !verify.results?.[0] || verify.results[0].status !== status) {
+      return NextResponse.json({ success: false, error: 'Order status change could not be verified in D1' }, { status: 503 });
+    }
+    return NextResponse.json({ success: true, data: updatedOrder, message: 'Order status saved to D1' });
   }
 
   const roleMatch = pathname.match(/^\/admin\/users\/([^/]+)\/role$/);
