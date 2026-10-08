@@ -16,55 +16,29 @@ router.use(requireAuth, requireRole(['admin', 'sub_admin']));
 // ==========================================
 // 1. PLATFORM OVERVIEW & ANALYTICS
 // ==========================================
-router.get('/overview', async (req: AuthRequest, res: Response) => {
+router.get('/overview', async (_req: AuthRequest, res: Response) => {
   try {
-    let analytics: any = {
-      grossMerchandiseVolume: 0,
-      platformNetRevenue: 0,
-      activeOrders: 0,
-      totalOrders: 0,
-      totalUsers: 0
-    };
-    try {
-      analytics = await db.getAnalytics();
-    } catch (e) {}
+    const [ordersRes, usersRes, countRes, orderCountRes] = await Promise.all([
+      d1Client.query('SELECT status, count(*) as cnt, sum(total) as total_amt FROM orders GROUP BY status'),
+      d1Client.query('SELECT role, count(*) as cnt FROM users GROUP BY role'),
+      d1Client.query('SELECT count(*) as total_users, sum(wallet_balance_ngn) as total_wallet FROM users'),
+      d1Client.query('SELECT count(*) as total_orders FROM orders')
+    ]);
+    if (![ordersRes, usersRes, countRes, orderCountRes].every(result => result.success)) {
+      return res.status(503).json({ success: false, error: 'Admin analytics are temporarily unavailable because a database query failed' });
+    }
 
-    let statusCounts: Record<string, number> = {};
+    const statusCounts: Record<string, number> = {};
     let totalGMV = 0;
-    let userRoleBreakdown: any[] = [];
-    let totalUsersCount = 0;
-    let totalOrdersCount = 0;
-    let totalWalletBalanceNGN = 0;
-    
-    try {
-      const ordersRes = await d1Client.query('SELECT status, count(*) as cnt, sum(total) as total_amt FROM orders GROUP BY status');
-      if (ordersRes?.results) {
-        for (const row of ordersRes.results) {
-          statusCounts[row.status] = Number(row.cnt) || 0;
-          if (row.status !== 'cancelled') {
-            totalGMV += Number(row.total_amt) || 0;
-          }
-        }
-      }
-    } catch (e) {}
-
-    try {
-      const usersRes = await d1Client.query('SELECT role, count(*) as cnt FROM users GROUP BY role');
-      if (usersRes?.results) userRoleBreakdown = usersRes.results;
-      
-      const countRes = await d1Client.query('SELECT count(*) as total_users, sum(wallet_balance_ngn) as total_wallet FROM users');
-      if (countRes?.results?.[0]) {
-        totalUsersCount = Number(countRes.results[0].total_users) || 0;
-        totalWalletBalanceNGN = Number(countRes.results[0].total_wallet) || 0;
-      }
-      
-      const orderCountRes = await d1Client.query('SELECT count(*) as total_orders FROM orders');
-      if (orderCountRes?.results?.[0]) {
-        totalOrdersCount = Number(orderCountRes.results[0].total_orders) || 0;
-      }
-    } catch (e) {}
-
-    const activeCount = (statusCounts['placed'] || 0) + (statusCounts['confirmed'] || 0) + (statusCounts['preparing'] || 0) + (statusCounts['ready_for_pickup'] || 0) + (statusCounts['in_transit'] || 0);
+    for (const row of ordersRes.results || []) {
+      statusCounts[row.status] = Number(row.cnt) || 0;
+      if (row.status !== 'cancelled') totalGMV += Number(row.total_amt) || 0;
+    }
+    const totalUsersCount = Number(countRes.results?.[0]?.total_users) || 0;
+    const totalWalletBalanceNGN = Number(countRes.results?.[0]?.total_wallet) || 0;
+    const totalOrdersCount = Number(orderCountRes.results?.[0]?.total_orders) || 0;
+    const activeCount = ['placed', 'confirmed', 'preparing', 'ready_for_pickup', 'in_transit']
+      .reduce((sum, status) => sum + (statusCounts[status] || 0), 0);
 
     return res.json({
       success: true,
@@ -72,38 +46,17 @@ router.get('/overview', async (req: AuthRequest, res: Response) => {
         totalUsers: totalUsersCount,
         totalOrders: totalOrdersCount,
         grossMerchandiseVolume: totalGMV,
-        platformNetRevenue: Math.round(totalGMV * 0.15),
-        totalWalletBalanceNGN: totalWalletBalanceNGN,
         activeOrders: activeCount,
         orderStatusBreakdown: statusCounts,
-        userRoleBreakdown: userRoleBreakdown
+        userRoleBreakdown: usersRes.results || [],
+        totalWalletBalanceNGN
       }
     });
   } catch (error: any) {
-    return res.json({
-      success: true,
-      data: {
-        grossMerchandiseVolume: 0,
-        platformNetRevenue: 0,
-        activeOrders: 0,
-        orderStatusBreakdown: {},
-        userRoleBreakdown: []
-      }
-    });
+    console.error('[Admin overview] D1 query failed:', error?.message || error);
+    return res.status(503).json({ success: false, error: 'Admin analytics are temporarily unavailable' });
   }
 });
-
-function safeJsonParse<T>(val: any, fallback: T): T {
-  if (!val) return fallback;
-  if (typeof val !== 'string') return val as T;
-  try {
-    const trimmed = val.trim();
-    if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return fallback;
-    return JSON.parse(trimmed) as T;
-  } catch (e) {
-    return fallback;
-  }
-}
 
 // ==========================================
 // 2. USERS & STAFF MANAGEMENT
