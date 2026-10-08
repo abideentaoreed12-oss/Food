@@ -1,6 +1,5 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { db } from '../db/index.ts';
 import { d1Client } from '../db/d1Client.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { requireAuth, AuthRequest } from '../middleware/auth.ts';
@@ -16,7 +15,26 @@ const InitializeSchema = z.object({
   metadata: z.record(z.any()).optional()
 });
 
-/** Initialize official Paystack checkout (wallet top-up or order) */
+async function loadVirtualAccountFromD1(userId: string) {
+  const res = await d1Client
+    .query(
+      `SELECT account_number, bank_name, account_name
+       FROM user_virtual_accounts
+       WHERE user_id = ? AND is_active = 1
+       LIMIT 1`,
+      [userId]
+    )
+    .catch(() => ({ results: [] as any[] }));
+  const row = res.results?.[0];
+  if (!row?.account_number || !row?.bank_name) return null;
+  return {
+    accountNumber: String(row.account_number),
+    bankName: String(row.bank_name),
+    accountName: String(row.account_name || '')
+  };
+}
+
+/** Initialize official Paystack checkout */
 router.post('/initialize', requireAuth, validateBody(InitializeSchema), async (req: AuthRequest, res: Response) => {
   try {
     const { email, amount, callbackUrl, metadata } = req.body;
@@ -55,7 +73,24 @@ router.post('/initialize', requireAuth, validateBody(InitializeSchema), async (r
   }
 });
 
-/** Create or return Paystack Dedicated Virtual Account for the logged-in user (stored in D1) */
+/** GET — only from live D1 table user_virtual_accounts. No hardcoded fallback. */
+router.get('/virtual-account', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const va = await loadVirtualAccountFromD1(req.user!.id);
+    if (!va) {
+      return res.status(404).json({
+        success: false,
+        error: 'No virtual account yet',
+        data: null
+      });
+    }
+    return res.json({ success: true, data: va });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/** POST — create Paystack DVA once, store only in user_virtual_accounts */
 router.post('/virtual-account', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
@@ -64,25 +99,11 @@ router.post('/virtual-account', requireAuth, async (req: AuthRequest, res: Respo
       return res.status(503).json({ success: false, error: 'Payment gateway not configured' });
     }
 
-    // Already have VA in D1?
-    const existing = await d1Client.query(
-      'SELECT virtual_account_number, virtual_bank_name, virtual_account_name FROM users WHERE id = ? LIMIT 1',
-      [user.id]
-    ).catch(() => ({ results: [] as any[] }));
-
-    const row = existing.results?.[0];
-    if (row?.virtual_account_number && row?.virtual_bank_name) {
-      return res.json({
-        success: true,
-        data: {
-          accountNumber: row.virtual_account_number,
-          bankName: row.virtual_bank_name,
-          accountName: row.virtual_account_name || `VeyraNG / ${user.name}`
-        }
-      });
+    const existing = await loadVirtualAccountFromD1(user.id);
+    if (existing) {
+      return res.json({ success: true, data: existing });
     }
 
-    // Ensure Paystack customer
     const customerRes = await fetch('https://api.paystack.co/customer', {
       method: 'POST',
       headers: {
@@ -98,7 +119,7 @@ router.post('/virtual-account', requireAuth, async (req: AuthRequest, res: Respo
     });
     const customerJson: any = await customerRes.json().catch(() => ({}));
     let customerCode = customerJson?.data?.customer_code;
-    if (!customerCode && customerJson?.message?.includes('Customer already exists')) {
+    if (!customerCode) {
       const getCust = await fetch(`https://api.paystack.co/customer/${encodeURIComponent(user.email)}`, {
         headers: { Authorization: `Bearer ${secret}` }
       });
@@ -108,7 +129,7 @@ router.post('/virtual-account', requireAuth, async (req: AuthRequest, res: Respo
     if (!customerCode) {
       return res.status(400).json({
         success: false,
-        error: customerJson?.message || 'Could not create Paystack customer for virtual account'
+        error: customerJson?.message || 'Could not create Paystack customer'
       });
     }
 
@@ -135,13 +156,33 @@ router.post('/virtual-account', requireAuth, async (req: AuthRequest, res: Respo
     }
 
     const accountNumber = String(dvaJson.data.account_number);
-    const bankName = dvaJson.data.bank?.name || 'Wema Bank (Paystack DVA)';
-    const accountName = dvaJson.data.account_name || `VeyraNG / ${user.name}`;
+    const bankName = dvaJson.data.bank?.name || 'Wema Bank';
+    const accountName = dvaJson.data.account_name || `VeyraNG / ${user.name || 'Customer'}`;
+    const dedicatedId = dvaJson.data.id != null ? String(dvaJson.data.id) : null;
+    const nowIso = new Date().toISOString();
+    const rowId = `uva-${user.id}`;
 
+    await d1Client.query(
+      `INSERT INTO user_virtual_accounts (
+         id, user_id, account_number, bank_name, account_name, provider,
+         provider_customer_code, provider_dedicated_id, is_active, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, 'paystack', ?, ?, 1, ?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET
+         account_number = excluded.account_number,
+         bank_name = excluded.bank_name,
+         account_name = excluded.account_name,
+         provider_customer_code = excluded.provider_customer_code,
+         provider_dedicated_id = excluded.provider_dedicated_id,
+         is_active = 1,
+         updated_at = excluded.updated_at`,
+      [rowId, user.id, accountNumber, bankName, accountName, customerCode, dedicatedId, nowIso, nowIso]
+    );
+
+    // Optional mirror on users for older clients
     await d1Client
       .query(
         `UPDATE users SET virtual_account_number = ?, virtual_bank_name = ?, virtual_account_name = ?, updated_at = ? WHERE id = ?`,
-        [accountNumber, bankName, accountName, new Date().toISOString(), user.id]
+        [accountNumber, bankName, accountName, nowIso, user.id]
       )
       .catch(() => {});
 
@@ -151,29 +192,6 @@ router.post('/virtual-account', requireAuth, async (req: AuthRequest, res: Respo
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Virtual account error' });
-  }
-});
-
-router.get('/virtual-account', requireAuth, async (req: AuthRequest, res: Response) => {
-  try {
-    const existing = await d1Client.query(
-      'SELECT virtual_account_number, virtual_bank_name, virtual_account_name FROM users WHERE id = ? LIMIT 1',
-      [req.user!.id]
-    ).catch(() => ({ results: [] as any[] }));
-    const row = existing.results?.[0];
-    if (!row?.virtual_account_number) {
-      return res.status(404).json({ success: false, error: 'No virtual account yet. Generate one first.' });
-    }
-    return res.json({
-      success: true,
-      data: {
-        accountNumber: row.virtual_account_number,
-        bankName: row.virtual_bank_name,
-        accountName: row.virtual_account_name
-      }
-    });
-  } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
   }
 });
 
