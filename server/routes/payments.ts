@@ -12,7 +12,7 @@ const InitializeSchema = z.object({
   email: z.string().email(),
   amount: z.number().positive(),
   callbackUrl: z.string().url().optional(),
-  metadata: z.record(z.any()).optional()
+  metadata: z.record(z.string(), z.any()).optional()
 });
 
 async function loadVirtualAccountFromD1(userId: string) {
@@ -178,7 +178,6 @@ router.post('/virtual-account', requireAuth, async (req: AuthRequest, res: Respo
       [rowId, user.id, accountNumber, bankName, accountName, customerCode, dedicatedId, nowIso, nowIso]
     );
 
-    // Optional mirror on users for older clients
     await d1Client
       .query(
         `UPDATE users SET virtual_account_number = ?, virtual_bank_name = ?, virtual_account_name = ?, updated_at = ? WHERE id = ?`,
