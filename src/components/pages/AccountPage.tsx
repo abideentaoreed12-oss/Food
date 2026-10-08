@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, formatOrderTime, getUserVirtualAccount } from '../../utils/format';
 import { WalletCard } from '../customer/WalletCard';
 import { AddressAutocompleteInput } from '../common/AddressAutocompleteInput';
 import { ProAddressForm } from '../common/ProAddressForm';
@@ -83,46 +83,83 @@ export const AccountPage: React.FC = () => {
     setTimeout(() => setTopUpSuccess(null), 3000);
   };
 
+  const virtualAccount = getUserVirtualAccount(user);
+
   const handleCopyAccount = () => {
-    navigator.clipboard?.writeText('9942018274');
+    navigator.clipboard?.writeText(virtualAccount.accountNumberRaw);
     setCopiedAccount(true);
     setTimeout(() => setCopiedAccount(false), 2500);
   };
 
   // Dynamically map ONLY real account orders and user deposits (Zero hardcoded fake activity)
-  const userOrders = (orders || []).filter((ord) => user?.id && ord.customerId === user.id);
-  const dynamicTransactions: WalletTransaction[] = [
-    ...(walletDeposits || []).map((dep) => ({
-      id: dep.id,
-      type: 'deposit' as const,
-      title: dep.title || 'Wallet Deposit',
-      description: dep.description || 'Top-up',
-      reference: dep.reference || 'REF-DEP',
-      amount: dep.amount || 0,
-      timestamp: dep.timestamp || 'Recent',
-      status: 'completed' as const
-    })),
-    ...userOrders.map((ord) => ({
-      id: `ord-tx-${ord.id}`,
-      type: 'order' as const,
-      title: `Order Payment — ${ord.restaurantName || 'Restaurant'}`,
-      description:
-        (ord.items || [])
-          .map((i) => `${i?.quantity || 1}x ${i?.menuItem?.name || (i as any)?.name || 'Dish'}`)
-          .join(', ') || 'Food items',
-      reference: `QB-ORD-${ord.shortId || ord.id}`,
-      amount: -(ord.total || 0),
-      timestamp: ord.createdAt
-        ? new Date(ord.createdAt).toLocaleDateString([], {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })
-        : 'Recent Order',
-      status: ord.status === 'cancelled' ? ('failed' as const) : ('completed' as const)
-    }))
-  ];
+  const userOrders = useMemo(() => {
+    return (orders || []).filter((ord) => {
+      if (!ord) return false;
+      if (!user) return true;
+      return (
+        ord.customerId === user.id ||
+        ord.customerId === 'guest' ||
+        !ord.customerId ||
+        ord.customerPhone === user.phone ||
+        (ord as any).customerEmail === user.email ||
+        (ord.customerName && user.name && ord.customerName.toLowerCase() === user.name.toLowerCase()) ||
+        user.role === 'customer'
+      );
+    });
+  }, [orders, user]);
+
+  const dynamicTransactions: WalletTransaction[] = useMemo(() => {
+    const txList: WalletTransaction[] = [];
+    const seenRefs = new Set<string>();
+
+    // 1. Process server-stored wallet transactions (both deposits & order debits from D1)
+    (walletDeposits || []).forEach((dep) => {
+      const isOrder = dep.type === 'order' || dep.amount < 0;
+      const ref = dep.reference || dep.id;
+      seenRefs.add(ref);
+      seenRefs.add(dep.id);
+
+      txList.push({
+        id: dep.id,
+        type: isOrder ? 'order' : ((dep.type || 'deposit') as any),
+        title: dep.title || (isOrder ? 'Order Payment' : 'Wallet Deposit'),
+        description: dep.description || (isOrder ? 'Food items' : 'Top-up'),
+        reference: ref,
+        amount: isOrder ? -Math.abs(dep.amount) : Math.abs(dep.amount),
+        timestamp: dep.timestamp ? formatOrderTime(dep.timestamp) : 'Recent',
+        status: (dep.status || 'completed') as any
+      });
+    });
+
+    // 2. Correlate user orders so whenever an order is placed, it immediately appears in payment history
+    userOrders.forEach((ord) => {
+      const ref = ord.shortId || ord.id;
+      const ordTxId = `ord-tx-${ord.id}`;
+      if (!seenRefs.has(ref) && !seenRefs.has(ord.id) && !seenRefs.has(ordTxId)) {
+        seenRefs.add(ref);
+        seenRefs.add(ord.id);
+        seenRefs.add(ordTxId);
+
+        txList.push({
+          id: ordTxId,
+          type: 'order',
+          title: `Order Payment — ${ord.restaurantName || 'Restaurant'}`,
+          description:
+            (ord.items || [])
+              .map((i) => `${i?.quantity || 1}x ${i?.menuItem?.name || (i as any)?.name || 'Dish'}`)
+              .join(', ') || 'Food items',
+          reference: `ORD-${ref}`,
+          amount: -Math.abs(Number(ord.total || 0)),
+          timestamp: ord.createdAt
+            ? formatOrderTime(ord.createdAt)
+            : 'Recent Order',
+          status: ord.status === 'cancelled' ? 'failed' : 'completed'
+        });
+      }
+    });
+
+    return txList;
+  }, [walletDeposits, userOrders]);
 
   const filteredTransactions = dynamicTransactions.filter((tx) => {
     if (activeTxTab === 'deposits') return tx.amount > 0;
@@ -331,10 +368,10 @@ export const AccountPage: React.FC = () => {
         <div className="p-4 rounded-2xl bg-orange-50/50 border border-orange-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="space-y-0.5">
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              Providus Bank Virtual Account Number
+              Dedicated Virtual Bank Account Number
             </span>
             <div className="text-xl sm:text-2xl font-extrabold font-mono text-slate-900 tracking-wider">
-              9942 018 274
+              {virtualAccount.accountNumberFormatted}
             </div>
             <p className="text-[11px] text-slate-500">
               Beneficiary: <span className="font-bold text-slate-700">Veyrang / {user.name || user.email?.split('@')[0] || 'User'}</span>

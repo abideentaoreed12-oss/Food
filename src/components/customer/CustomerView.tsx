@@ -3,7 +3,7 @@ import { api } from '../../services/api';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 import { Restaurant, MenuItem } from '../../types';
-import { formatCurrency, DELIVERY_ZONES } from '../../utils/format';
+import { formatCurrency } from '../../utils/format';
 import { WalletCard } from './WalletCard';
 import {
   Star,
@@ -95,9 +95,18 @@ export const CustomerView: React.FC = () => {
   useEffect(() => {
     api.admin.getCategories?.().then((res: any) => {
       const list = Array.isArray(res) ? res : (res?.data || []);
+      const seen = new Set<string>();
+      const deduped: { id: string; label: string; icon: any }[] = [];
+      list.forEach((c: any) => {
+        const name = typeof c === 'string' ? c.trim() : (c?.name || '').trim();
+        if (name && !seen.has(name.toLowerCase())) {
+          seen.add(name.toLowerCase());
+          deduped.push({ id: name, label: name, icon: UtensilsCrossed });
+        }
+      });
       setCategories([
         { id: 'All', label: 'All', icon: LayoutGrid },
-        ...list.map((c: any) => ({ id: c.name, label: c.name, icon: UtensilsCrossed }))
+        ...deduped
       ]);
     }).catch(() => {});
   }, []);
@@ -241,14 +250,14 @@ export const CustomerView: React.FC = () => {
 
       {/* Category Pills (Exact layout from uploaded reference IMG_5185.jpeg) */}
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 px-0.5">
-        {categories.map((cat) => {
+        {categories.map((cat, idx) => {
           const Icon = cat.icon;
           const isSelected = selectedCategory === cat.id;
 
           if (cat.id === 'All') {
             return (
               <button
-                key={cat.id}
+                key={`cat-pill-${cat.id}-${idx}`}
                 onClick={() => setSelectedCategory('All')}
                 aria-label="All Categories"
                 className={`flex items-center justify-center w-12 h-11 rounded-2xl transition-all cursor-pointer shrink-0 ${
@@ -264,7 +273,7 @@ export const CustomerView: React.FC = () => {
 
           return (
             <button
-              key={cat.id}
+              key={`cat-pill-${cat.id}-${idx}`}
               onClick={() => setSelectedCategory(cat.id)}
               className={`flex items-center gap-2 px-4 h-11 rounded-2xl text-xs sm:text-sm font-semibold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                 isSelected
@@ -329,9 +338,9 @@ export const CustomerView: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {quickReorderItems.map(({ item, restaurantName, imageUrl }) => (
+            {quickReorderItems.map(({ item, restaurantName, imageUrl }, idx) => (
               <div
-                key={item.id}
+                key={`reorder-${item.id}-${restaurantName}-${idx}`}
                 className="bg-white rounded-2xl border border-slate-200/80 p-2.5 shadow-2xs hover:shadow-sm hover:border-orange-300 transition-all flex flex-col justify-between"
               >
                 <div>

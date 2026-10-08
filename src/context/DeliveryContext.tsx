@@ -15,7 +15,7 @@ import {
 } from '../types';
 import { api } from '../services/api';
 import { useAuth } from './AuthContext';
-import { DELIVERY_ZONES } from '../utils/format';
+import { formatOrderTime } from '../utils/format';
 
 interface DeliveryContextType {
   platformSettings: Record<string, string>;
@@ -112,13 +112,14 @@ interface DeliveryContextType {
 
 export interface WalletDepositRecord {
   id: string;
-  type: 'deposit';
+  type: 'deposit' | 'order' | 'refund' | 'bonus';
   title: string;
   description: string;
   reference: string;
   amount: number;
   timestamp: string;
-  status: 'completed';
+  status: 'completed' | 'pending' | 'failed';
+  paymentMethod?: string;
 }
 
 const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
@@ -178,7 +179,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     minimum_order_ngn: '2500',
     minimum_order_usd: '10.00'
   });
-  const [deliveryZones, setDeliveryZones] = useState<any[]>(DELIVERY_ZONES);
+  const [deliveryZones, setDeliveryZones] = useState<any[]>([]);
   const [adminActiveTab, setAdminActiveTab] = useState<string>('dashboard');
 
   // Dynamic Service Fee calculated from D1 live settings based on current currency
@@ -332,6 +333,24 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [cmsContent, setCmsContent] = useState<Record<string, string>>({});
 
+  // Auto-verify online payment when returning from payment gateway redirect
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('reference') || urlParams.get('trxref');
+    if (ref) {
+      api.payment.verify(ref).then(async (res: any) => {
+        if (res?.isPaid || res?.success) {
+          if (refreshUser) await refreshUser();
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+        }
+      }).catch((err) => {
+        console.warn('Payment verification callback warning:', err);
+      });
+    }
+  }, [refreshUser]);
+
   useEffect(() => {
     api.admin.getCMS?.().then((res: any) => {
       if (res) setCmsContent(res);
@@ -418,8 +437,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const liveZones = Array.isArray(zonesRes) ? zonesRes : (zonesRes?.data || []);
       if (liveZones && liveZones.length > 0) {
         setDeliveryZones(liveZones);
-      } else {
-        setDeliveryZones(DELIVERY_ZONES);
       }
 
       if (user) {
@@ -434,20 +451,25 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         } else {
           setOrders([]);
         }
-        if (txRes?.data && Array.isArray(txRes.data)) {
-          setWalletDeposits(txRes.data.map((tx: any) => ({
+        const rawTxs = Array.isArray(txRes) ? txRes : (txRes?.data && Array.isArray(txRes.data) ? txRes.data : []);
+        if (Array.isArray(rawTxs)) {
+          setWalletDeposits(rawTxs.map((tx: any) => ({
             id: tx.id,
-            type: 'deposit' as const,
-            title: tx.payment_method ? `Deposit (${tx.payment_method})` : 'Wallet Deposit',
-            description: `Ref: ${tx.reference || tx.id}`,
+            type: (tx.type || (Number(tx.amount || 0) < 0 ? 'order' : 'deposit')) as any,
+            title: tx.description || (Number(tx.amount || 0) < 0 ? 'Order Payment' : 'Wallet Deposit'),
+            description: tx.description || `Ref: ${tx.reference || tx.id}`,
             reference: tx.reference || tx.id,
             amount: Number(tx.amount || 0),
-            timestamp: tx.created_at ? new Date(tx.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
-            status: (tx.status || 'completed') as any
+            timestamp: tx.created_at
+              ? formatOrderTime(tx.created_at)
+              : 'Recent',
+            status: (tx.status || 'completed') as any,
+            paymentMethod: tx.payment_method
           })));
         }
-        if (addressesRes?.data && Array.isArray(addressesRes.data)) {
-          await syncUserAddresses(user, addressesRes.data);
+        const rawAddresses = Array.isArray(addressesRes) ? addressesRes : (addressesRes?.data && Array.isArray(addressesRes.data) ? addressesRes.data : null);
+        if (rawAddresses) {
+          await syncUserAddresses(user, rawAddresses);
         }
         const liveUser = (meRes as any)?.data?.user || (meRes as any)?.user;
         if (liveUser && liveUser.walletBalanceNGN !== undefined) {
@@ -707,15 +729,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       // Re-fetch transactions ledger from live Platform D1
       const txRes = await api.auth.getWalletTransactions().catch(() => null);
-      if (txRes?.data && Array.isArray(txRes.data)) {
-        setWalletDeposits(txRes.data.map((tx: any) => ({
+      const rawTxs = Array.isArray(txRes) ? txRes : (txRes?.data && Array.isArray(txRes.data) ? txRes.data : []);
+      if (Array.isArray(rawTxs)) {
+        setWalletDeposits(rawTxs.map((tx: any) => ({
           id: tx.id,
-          type: 'deposit' as const,
-          title: tx.payment_method ? `Deposit (${tx.payment_method})` : 'Wallet Deposit',
+          type: (tx.type || 'deposit') as any,
+          title: tx.payment_method ? `Deposit (${tx.payment_method})` : (tx.description || 'Wallet Deposit'),
           description: `Ref: ${tx.reference || tx.id}`,
           reference: tx.reference || tx.id,
           amount: Number(tx.amount || 0),
-          timestamp: tx.created_at ? new Date(tx.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+          timestamp: tx.created_at ? formatOrderTime(tx.created_at) : 'Just now',
           status: (tx.status || 'completed') as any
         })));
       }
@@ -830,10 +853,21 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     try {
       const serverOrder = await api.orders.create({
+        customerId: user?.id || undefined,
+        customerName: details.customerName,
+        customerPhone: details.customerPhone,
+        customerEmail: user?.email || undefined,
+        customerAddress: details.customerAddress,
+        customerApartment: details.customerApartment,
+        deliveryNotes: details.deliveryNotes,
         restaurantId: cartRestaurant.id,
+        restaurantName: cartRestaurant.name,
+        restaurantAddress: cartRestaurant.address,
         items: cart.map((item) => ({
           menuItemId: item.menuItem.id,
+          name: item.menuItem.name,
           quantity: item.quantity,
+          price: item.menuItem.price,
           selectedOptions: item.selectedOptions.map((opt) => ({
             groupId: opt.groupId,
             groupName: opt.groupName,
@@ -841,14 +875,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             optionName: opt.optionName,
             price: Number(opt.price)
           })),
-          specialInstructions: item.specialInstructions || ''
+          specialInstructions: item.specialInstructions || '',
+          itemTotal: item.itemTotal
         })),
-        customerName: details.customerName,
-        customerPhone: details.customerPhone,
-        customerAddress: details.customerAddress,
-        customerApartment: details.customerApartment,
-        deliveryNotes: details.deliveryNotes,
+        subtotal: itemsSubtotal,
+        deliveryFee,
+        serviceFee,
         tip: details.tip,
+        total: grossTotal,
         paymentMethod: details.paymentMethod,
         currency,
         fulfillmentType,
@@ -856,19 +890,61 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isContactless,
         promoCode: appliedPromo?.code,
         walletDeduction,
+        estimatedArrivalMinutes: computedETA,
+        routeProgress: 5,
         idempotencyKey: `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
       });
 
-      if (serverOrder && serverOrder.id) {
-        setOrders((prev) => [serverOrder, ...prev]);
-        setActiveTrackingOrderId(serverOrder.id);
-      } else {
-        setOrders((prev) => [newOrder, ...prev]);
-        setActiveTrackingOrderId(newOrder.id);
+      const finalOrder = (serverOrder && serverOrder.id) ? serverOrder : newOrder;
+      setOrders((prev) => [finalOrder, ...prev.filter((o) => o.id !== finalOrder.id)]);
+      setActiveTrackingOrderId(finalOrder.id);
+
+      // Immediately append payment to wallet transaction statement
+      const orderTx: WalletDepositRecord = {
+        id: `tx-ord-${finalOrder.id}`,
+        type: 'order',
+        title: `Order Payment — ${cartRestaurant.name}`,
+        description: cart.map((i) => `${i.quantity}x ${i.menuItem.name}`).join(', ') || 'Food items',
+        reference: finalOrder.shortId || finalOrder.id,
+        amount: -Math.abs(grossTotal),
+        timestamp: formatOrderTime(new Date()),
+        status: 'completed',
+        paymentMethod: details.paymentMethod
+      };
+      setWalletDeposits((prev) => [orderTx, ...prev.filter((p) => p.id !== orderTx.id && p.reference !== orderTx.reference)]);
+
+      refreshData().catch(() => {});
+
+      // If online card charge is remaining, initialize payment gateway session and redirect
+      if (finalPayable > 0 && (details.paymentMethod === 'Debit Card' || details.paymentMethod === 'Instant Bank Transfer' || details.paymentMethod === 'Online Payment')) {
+        const payRes: any = await api.payment.initialize({
+          email: user?.email || 'customer@veyrang.com',
+          amount: finalPayable,
+          callbackUrl: `${window.location.origin}/?order_id=${finalOrder.id}&reference=ref-${finalOrder.id}`,
+          metadata: { orderId: finalOrder.id, userId: user?.id || user?.email, type: 'order_payment' }
+        }).catch(() => null);
+
+        if (payRes?.data?.authorizationUrl) {
+          clearCart();
+          window.location.href = payRes.data.authorizationUrl;
+          return finalOrder;
+        }
       }
     } catch {
       setOrders((prev) => [newOrder, ...prev]);
       setActiveTrackingOrderId(newOrder.id);
+      const orderTx: WalletDepositRecord = {
+        id: `tx-ord-${newOrder.id}`,
+        type: 'order',
+        title: `Order Payment — ${cartRestaurant.name}`,
+        description: cart.map((i) => `${i.quantity}x ${i.menuItem.name}`).join(', ') || 'Food items',
+        reference: newOrder.shortId || newOrder.id,
+        amount: -Math.abs(grossTotal),
+        timestamp: formatOrderTime(new Date()),
+        status: 'completed',
+        paymentMethod: details.paymentMethod
+      };
+      setWalletDeposits((prev) => [orderTx, ...prev.filter((p) => p.id !== orderTx.id && p.reference !== orderTx.reference)]);
     }
 
     // Automatically ensure this address is saved in D1 for the authenticated user
@@ -895,10 +971,29 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const advanceOrderStatus = async (orderId: string, newStatus: OrderStatus, note?: string) => {
+    const progressMap: Record<OrderStatus, number> = {
+      placed: 5,
+      confirmed: 15,
+      preparing: 30,
+      ready_for_pickup: 55,
+      in_transit: 80,
+      delivered: 100,
+      cancelled: 0
+    };
+    const etaMap: Record<OrderStatus, number> = {
+      placed: 35,
+      confirmed: 30,
+      preparing: 22,
+      ready_for_pickup: 15,
+      in_transit: 8,
+      delivered: 0,
+      cancelled: 0
+    };
+
     setOrders((prev) =>
       prev.map((ord) => {
         if (ord.id === orderId) {
-          const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const nowStr = formatOrderTime(new Date());
           const descMap: Record<OrderStatus, string> = {
             placed: 'Order placed by customer',
             confirmed: 'Restaurant accepted ticket',
@@ -916,6 +1011,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return {
             ...ord,
             status: newStatus,
+            routeProgress: progressMap[newStatus] ?? ord.routeProgress,
+            estimatedArrivalMinutes: etaMap[newStatus] ?? ord.estimatedArrivalMinutes,
             statusHistory: nextHistory
           };
         }
@@ -923,7 +1020,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       })
     );
 
-    await api.orders.updateStatus(orderId, newStatus, note).catch(() => {});
+    await api.orders.updateStatus(orderId, newStatus, note, {
+      routeProgress: progressMap[newStatus],
+      estimatedArrivalMinutes: etaMap[newStatus]
+    } as any).catch(() => {});
     await refreshData().catch(() => {});
   };
 

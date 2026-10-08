@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 import { DriverChatModal } from './DriverChatModal';
-import { formatCurrency } from '../../utils/format';
+import { OrderRouteMap } from './OrderRouteMap';
+import { formatCurrency, formatOrderTime } from '../../utils/format';
 import { generateOrderReceiptPDF, printOrderReceiptWindow } from '../../utils/pdfGenerator';
 import {
   X,
@@ -20,7 +21,8 @@ import {
   Bell,
   Navigation,
   Printer,
-  Download
+  Download,
+  Radio
 } from 'lucide-react';
 
 export const OrderTrackingModal: React.FC = () => {
@@ -29,7 +31,8 @@ export const OrderTrackingModal: React.FC = () => {
     closeTracking,
     activeTrackingOrder,
     currency,
-    refreshData
+    refreshData,
+    advanceOrderStatus
   } = useDelivery();
 
   const { user } = useAuth();
@@ -226,7 +229,7 @@ export const OrderTrackingModal: React.FC = () => {
           </div>
 
           {/* Live Rider Movement & Distance-Based Countdown Card */}
-          <div className="bg-linear-to-br from-slate-900 to-slate-800 text-white rounded-3xl p-5 shadow-xl relative overflow-hidden no-print">
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-3xl p-5 shadow-xl relative overflow-hidden no-print">
             <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
               <Navigation className="w-36 h-36 text-white" />
             </div>
@@ -277,12 +280,54 @@ export const OrderTrackingModal: React.FC = () => {
             </div>
           </div>
 
+          {/* DYNAMIC LIVE GPS ROUTE MAP (Full Interactive Google Map & Radar Fallback) */}
+          <div className="no-print">
+            <OrderRouteMap
+              order={order}
+              courierLocation={courierLoc}
+              signalStatus={signalStatus}
+            />
+          </div>
+
+          {/* Live Order Status Controller & Simulation (No-print) */}
+          <div className="p-3.5 bg-slate-900 rounded-2xl border border-slate-800 text-white space-y-2 no-print shadow-sm">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-slate-200 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#FF5500] animate-ping" />
+                Live Order Dispatch Control
+              </span>
+              <span className="text-[11px] font-mono text-orange-400">
+                Current: <strong className="capitalize">{order.status.replace('_', ' ')}</strong>
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              {milestones.map((m, idx) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => advanceOrderStatus(order.id, m.key as any)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                    order.status === m.key
+                      ? 'bg-[#FF5500] text-white shadow-md ring-2 ring-orange-500/40'
+                      : idx <= currentIdx
+                      ? 'bg-slate-800 hover:bg-slate-700 text-emerald-400'
+                      : 'bg-slate-800/60 hover:bg-slate-800 text-slate-400'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Status Timeline Card */}
           <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 no-print">
             <div className="grid grid-cols-6 gap-1 relative pt-1">
               {milestones.map((m, idx) => {
                 const isCompleted = idx <= currentIdx;
                 const isCurrent = idx === currentIdx;
+                const histItem = (order.statusHistory || []).find((h) => h.status === m.key);
+                const stepTime = histItem?.timestamp ? formatOrderTime(histItem.timestamp) : (isCompleted && order.createdAt ? formatOrderTime(order.createdAt) : '');
 
                 return (
                   <div key={m.key} className="flex flex-col items-center text-center">
@@ -308,6 +353,11 @@ export const OrderTrackingModal: React.FC = () => {
                     >
                       {m.label}
                     </span>
+                    {stepTime && (
+                      <span className="text-[9px] font-mono text-slate-400 block truncate mt-0.5 max-w-[54px]">
+                        {stepTime}
+                      </span>
+                    )}
                   </div>
                 );
               })}

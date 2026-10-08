@@ -286,10 +286,10 @@ export const api = {
       return request(`/api/orders/${id}`);
     },
 
-    updateStatus: async (orderId: string, status: OrderStatus, note?: string) => {
+    updateStatus: async (orderId: string, status: OrderStatus, note?: string, extra?: Record<string, any>) => {
       return request(`/api/orders/${orderId}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status, note })
+        body: JSON.stringify({ status, note, ...(extra || {}) })
       });
     },
 
@@ -690,6 +690,8 @@ export const api = {
       orderId: string;
       restaurantId: string;
       courierId?: string;
+      customerId?: string;
+      customerName?: string;
       foodRating: number;
       deliveryRating?: number;
       comment?: string;
@@ -698,6 +700,21 @@ export const api = {
       return request('/api/reviews', {
         method: 'POST',
         body: JSON.stringify(data)
+      });
+    }
+  },
+
+  payment: {
+    initialize: async (payload: { email: string; amount: number; callbackUrl?: string; metadata?: any }) => {
+      return request('/api/payment/initialize', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    },
+    verify: async (reference: string) => {
+      return request('/api/payment/verify', {
+        method: 'POST',
+        body: JSON.stringify({ reference })
       });
     }
   }

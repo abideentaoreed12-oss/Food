@@ -189,9 +189,9 @@ export const RestaurantDetailModal: React.FC = () => {
             >
               All Items
             </button>
-            {restaurant.categories.map((cat) => (
+            {restaurant.categories.map((cat, idx) => (
               <button
-                key={cat.id}
+                key={cat.id || `cat-${cat.name}-${idx}`}
                 onClick={() => setActiveCategory(cat.name)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                   activeCategory === cat.name
@@ -212,9 +212,9 @@ export const RestaurantDetailModal: React.FC = () => {
               No menu items match your search.
             </div>
           ) : (
-            filteredItems.map((item) => (
+            filteredItems.map((item, idx) => (
               <div
-                key={item.id}
+                key={item.id || `item-${idx}`}
                 className={`p-3.5 rounded-2xl border transition-all flex items-start justify-between gap-3 ${
                   !item.isAvailable
                     ? 'bg-slate-50 border-slate-200 opacity-60'

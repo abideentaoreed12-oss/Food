@@ -425,7 +425,7 @@ export const LandingPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-            {(deliveryZones && deliveryZones.length > 0 ? deliveryZones : DELIVERY_ZONES).map((zone: any) => {
+            {(deliveryZones || []).map((zone: any) => {
               const zoneId = zone.id || zone.code;
               const fee = zone.base_delivery_fee ?? zone.deliveryFee ?? 500;
               return (

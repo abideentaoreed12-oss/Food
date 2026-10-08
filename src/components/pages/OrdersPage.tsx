@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, formatOrderTime, formatOrderDate } from '../../utils/format';
 import { generateOrderReceiptPDF, printOrderReceiptWindow } from '../../utils/pdfGenerator';
 import { Order, OrderStatus } from '../../types';
 import {
@@ -48,8 +48,12 @@ export const OrdersPage: React.FC = () => {
       if (!user) return true; // Show all session orders if guest
       return (
         o.customerId === user.id ||
+        o.customerId === 'guest' ||
+        !o.customerId ||
         o.customerPhone === user.phone ||
-        o.customerName === user.name
+        (o as any).customerEmail === user.email ||
+        (o.customerName && user.name && o.customerName.toLowerCase() === user.name.toLowerCase()) ||
+        user.role === 'customer'
       );
     });
   }, [orders, user]);
@@ -228,7 +232,7 @@ export const OrdersPage: React.FC = () => {
                     </span>
                     <p className="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center justify-end gap-1">
                       <Calendar className="w-3 h-3 text-slate-400" />
-                      <span>{order.createdAt}</span>
+                      <span>{formatOrderTime(order.createdAt)}</span>
                     </p>
                   </div>
                 </div>
@@ -428,7 +432,7 @@ export const OrdersPage: React.FC = () => {
                       <div className="flex items-center gap-3 text-xs text-slate-400">
                         <span className="flex items-center gap-1 font-mono">
                           <Calendar className="w-3 h-3 text-slate-400" />
-                          <span>{order.createdAt}</span>
+                          <span>{formatOrderDate(order.createdAt)}</span>
                         </span>
                         <span>·</span>
                         <span className="flex items-center gap-1">

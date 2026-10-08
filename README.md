@@ -5,7 +5,7 @@
 ## 🚀 Key Features
 
 - **Storefront & Discovery**: Real-time kitchen discovery across Lagos & Abuja delivery zones with category filters, ratings, and instant search.
-- **In-App Veyrang Wallet**: Integrated digital wallet with privacy balance toggle, instant top-up via Paystack debit cards, Providus Bank virtual account transfer, and USSD.
+- **In-App Veyrang Wallet**: Integrated digital wallet with privacy balance toggle, instant top-up via debit cards, virtual bank account transfer, and USSD.
 - **Order Tracking & Live Status**: Step-by-step dispatch workflow (Placed → Kitchen Prep → In Transit → Delivered) with ETA calculations.
 - **Multi-Role Portals**:
   - 👤 **Customer**: Discovery, custom item modifications, cart management, address book, wallet, and order tracking.

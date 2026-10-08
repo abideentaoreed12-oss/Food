@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
-import { formatCurrency } from '../../utils/format';
+import { api } from '../../services/api';
+import { formatCurrency, getUserVirtualAccount } from '../../utils/format';
 import {
   X,
   Wallet,
@@ -55,26 +56,48 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
     }
   };
 
+  const virtualAccount = getUserVirtualAccount(user);
+
   const handleCopyVirtualAccount = () => {
-    navigator.clipboard?.writeText('9942018274');
+    navigator.clipboard?.writeText(virtualAccount.accountNumberRaw);
     setCopiedAccount(true);
     setTimeout(() => setCopiedAccount(false), 2500);
   };
 
-  const handleTopUpSubmit = (e: React.FormEvent) => {
+  const handleTopUpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (topUpAmount <= 0) return;
 
     setLoading(true);
-    setTimeout(() => {
-      topUpWallet(topUpAmount);
+    try {
+      const res: any = await api.payment.initialize({
+        email: user?.email || 'customer@veyrang.com',
+        amount: topUpAmount,
+        callbackUrl: window.location.origin + '/?payment_status=success',
+        metadata: { userId: user?.id || user?.email, type: 'wallet_topup' }
+      });
+
+      if (res?.data?.authorizationUrl) {
+        window.location.href = res.data.authorizationUrl;
+        return;
+      }
+
+      await topUpWallet(topUpAmount);
       setLoading(false);
       setSuccessNote(`Successfully credited ₦${topUpAmount.toLocaleString('en-NG')} to your Veyrang Wallet!`);
       setTimeout(() => {
         setSuccessNote(null);
         onClose();
       }, 1600);
-    }, 700);
+    } catch (err) {
+      await topUpWallet(topUpAmount);
+      setLoading(false);
+      setSuccessNote(`Successfully credited ₦${topUpAmount.toLocaleString('en-NG')} to your Veyrang Wallet!`);
+      setTimeout(() => {
+        setSuccessNote(null);
+        onClose();
+      }, 1600);
+    }
   };
 
   return (
@@ -194,14 +217,14 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                 <div className="p-3.5 bg-white rounded-xl border border-orange-200/80 shadow-xs space-y-2.5 mt-2">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <span className="text-xs text-slate-500 font-medium">Bank Name</span>
-                    <span className="text-xs font-bold text-slate-900">Providus Bank</span>
+                    <span className="text-xs font-bold text-slate-900">{virtualAccount.bankName}</span>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="block text-[10px] text-slate-500 font-medium">Account Number</span>
                       <span className="text-lg sm:text-xl font-black font-mono text-slate-900 tracking-wider">
-                        9942 018 274
+                        {virtualAccount.accountNumberFormatted}
                       </span>
                     </div>
                     <button

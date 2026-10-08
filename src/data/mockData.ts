@@ -1,4 +1,4 @@
-import { Restaurant, Order } from '../types/index.ts';
+import type { Restaurant, Order } from '../types/index.ts';
 
 export const INITIAL_RESTAURANTS: Restaurant[] = [
   {
