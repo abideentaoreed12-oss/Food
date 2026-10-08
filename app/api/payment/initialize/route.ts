@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
     const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
     if (!appUrl) return NextResponse.json({ success: false, error: 'APP_URL is not configured for payment callbacks' }, { status: 503 });
-    const callbackUrl = `${appUrl.replace(/\\/+$/, '')}/payment/callback`;
+    const callbackUrl = `${appUrl.replace(/\/+$/, '')}/payment/callback`;
     const metadata =
       body.metadata && typeof body.metadata === 'object' ? body.metadata : {};
 
