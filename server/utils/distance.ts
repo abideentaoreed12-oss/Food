@@ -172,7 +172,7 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
  * 1. Google Maps Distance Matrix API (Primary)
  * 2. OSRM Road Routing API (Secondary Open Source)
  * 3. OpenRouteService / OSM Public Routing (Tertiary Open Source)
- * 4. Dynamic Road Factor Haversine (Guaranteed Base Safety Fallback)
+ * 4. Fail closed when no live road-routing provider can verify a route
  */
 export async function calculateDistanceAndDuration(
   origin: GeoLocation | string,
@@ -252,11 +252,11 @@ export async function calculateDistanceAndDuration(
       if (osrmData.code === 'Ok' && osrmData.routes && osrmData.routes.length > 0) {
         const route = osrmData.routes[0];
         const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
-        const durationMinutes = Math.max(6, Math.round((route.duration / 60) * 1.35));
+        const durationMinutes = Math.max(1, Math.round(route.duration / 60));
 
         return {
-          distanceKm: Math.max(0.4, distanceKm),
-          distanceText: `${Math.max(0.4, distanceKm)} km`,
+          distanceKm,
+          distanceText: `${distanceKm} km`,
           durationMinutes,
           durationText: `${durationMinutes}–${durationMinutes + 8} min`,
           isLive: true,
@@ -283,7 +283,7 @@ export async function calculateDistanceAndDuration(
       if (orsData.code === 'Ok' && orsData.routes && orsData.routes.length > 0) {
         const route = orsData.routes[0];
         const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
-        const durationMinutes = Math.max(6, Math.round((route.duration / 60) * 1.30));
+        const durationMinutes = Math.max(1, Math.round(route.duration / 60));
 
         return {
           distanceKm: Math.max(0.4, distanceKm),
@@ -301,27 +301,9 @@ export async function calculateDistanceAndDuration(
     console.log('OpenRouteService fallback note:', err?.message || String(err));
   }
 
-  // Tier 4: Dynamic calculated fallback based on real coordinates and urban road factor
-  const distanceKm = calculateHaversineDistanceKm(
-    originGeo.lat,
-    originGeo.lng,
-    destGeo.lat,
-    destGeo.lng
-  );
-
-  const drivingMinutes = Math.round((distanceKm / 24) * 60);
-  const durationMinutes = Math.max(12, drivingMinutes + 6);
-
-  return {
-    distanceKm: Math.max(0.5, distanceKm),
-    distanceText: `${Math.max(0.5, distanceKm)} km`,
-    durationMinutes,
-    durationText: `${durationMinutes}–${durationMinutes + 8} min`,
-    isLive: false,
-    routingEngine: 'Haversine',
-    originGeo,
-    destGeo
-  };
+  // Fail closed. Straight-line distance and guessed road multipliers must never be
+  // presented as a verified driving route or used to quote delivery pricing.
+  throw new Error('Live road routing is unavailable. No verified distance or delivery quote can be provided right now.');
 }
 
 /**
