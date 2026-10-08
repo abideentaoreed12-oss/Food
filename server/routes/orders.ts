@@ -209,7 +209,7 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
         'UPDATE promo_codes SET times_used = times_used + 1 WHERE UPPER(code) = ? AND is_active = 1 AND (usage_limit IS NULL OR times_used < usage_limit)',
         [codeUpper]
       );
-      if (usageUpdate.meta?.changes === 0) {
+      if (usageUpdate.meta?.rows_written === 0) {
         console.error('[Order pricing] Promo usage counter did not update after order creation', { orderId: newOrder.id, code: codeUpper });
       }
     }
@@ -219,7 +219,7 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
         'UPDATE users SET wallet_balance_ngn = MAX(0, COALESCE(wallet_balance_ngn, 0) - ?), updated_at = ? WHERE id = ?',
         [verifiedWalletDeduction, nowIso, req.user.id]
       );
-      if (walletUpdate.meta?.changes === 0) {
+      if (walletUpdate.meta?.rows_written === 0) {
         console.error('[Order payment] Wallet deduction was not recorded after order creation', { orderId: newOrder.id, userId: req.user.id });
         return res.status(503).json({ success: false, error: 'Wallet payment could not be confirmed. Contact support before retrying.', orderId: newOrder.id });
       }
