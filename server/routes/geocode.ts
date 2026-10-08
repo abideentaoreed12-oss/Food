@@ -160,7 +160,7 @@ router.get('/distance', async (req: Request, res: Response) => {
       ? { lat: destLat, lng: destLng }
       : (destAddr || 'Victoria Island, Lagos');
 
-    const { calculateDistanceAndDuration } = await import('../utils/distance.ts');
+    const { calculateDistanceAndDuration } = await import('../utils/distance');
     const result = await calculateDistanceAndDuration(origin, destination);
 
     return res.status(200).json({

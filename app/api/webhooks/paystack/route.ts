@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { db } from '../../../../server/db/index.ts';
-import { d1Client } from '../../../../server/db/d1Client.ts';
+import { db } from '../../../../server/db/index';
+import { d1Client } from '../../../../server/db/d1Client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

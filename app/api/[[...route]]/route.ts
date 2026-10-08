@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { d1 } from '../../../lib/d1.ts';
-import { r2 } from '../../../lib/r2.ts';
-import { routingManager } from '../../../lib/routingManager.ts';
-import { sendVerificationEmail } from '../../../lib/email.ts';
-import { paymentGateway } from '../../../lib/payment.ts';
-import { INITIAL_RESTAURANTS } from '../../../src/data/mockData.ts';
-import { DELIVERY_ZONES } from '../../../src/utils/format.ts';
+import { d1 } from '../../../lib/d1';
+import { r2 } from '../../../lib/r2';
+import { routingManager } from '../../../lib/routingManager';
+import { sendVerificationEmail } from '../../../lib/email';
+import { paymentGateway } from '../../../lib/payment';
+import { INITIAL_RESTAURANTS } from '../../../src/data/mockData';
+import { DELIVERY_ZONES } from '../../../src/utils/format';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

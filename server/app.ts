@@ -8,20 +8,20 @@ process.on('warning', (warning: any) => {
   console.warn(warning);
 });
 import cookieParser from 'cookie-parser';
-import { securityHeaders } from './middleware/security.ts';
-import { authenticateToken } from './middleware/auth.ts';
-import authRoutes from './routes/auth.ts';
-import restaurantRoutes from './routes/restaurants.ts';
-import orderRoutes from './routes/orders.ts';
-import paymentRoutes from './routes/payments.ts';
-import webhookRoutes from './routes/webhooks.ts';
-import adminRoutes from './routes/admin.ts';
-import healthRoutes from './routes/health.ts';
-import d1Routes from './routes/d1.ts';
-import settingsRoutes from './routes/settings.ts';
-import storageRoutes from './routes/storage.ts';
-import reviewsRoutes from './routes/reviews.ts';
-import geocodeRoutes from './routes/geocode.ts';
+import { securityHeaders } from './middleware/security';
+import { authenticateToken } from './middleware/auth';
+import authRoutes from './routes/auth';
+import restaurantRoutes from './routes/restaurants';
+import orderRoutes from './routes/orders';
+import paymentRoutes from './routes/payments';
+import webhookRoutes from './routes/webhooks';
+import adminRoutes from './routes/admin';
+import healthRoutes from './routes/health';
+import d1Routes from './routes/d1';
+import settingsRoutes from './routes/settings';
+import storageRoutes from './routes/storage';
+import reviewsRoutes from './routes/reviews';
+import geocodeRoutes from './routes/geocode';
 
 export function createServerApp(): Express {
   const app = express();

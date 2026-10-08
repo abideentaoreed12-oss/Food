@@ -1,9 +1,9 @@
 // Cloudflare D1 Live Database Integration Client
 // Direct HTTP REST API connector to Cloudflare D1 (SQLite at the edge)
 
-import { CONFIG } from '../config.ts';
+import { CONFIG } from '../config';
 import bcrypt from 'bcryptjs';
-import { INITIAL_RESTAURANTS } from '../../src/data/mockData.ts';
+import { INITIAL_RESTAURANTS } from '../../src/data/mockData';
 
 const CLOUDFLARE_ACCOUNT_ID = CONFIG.CLOUDFLARE_ACCOUNT_ID;
 const CLOUDFLARE_DATABASE_ID = CONFIG.CLOUDFLARE_DATABASE_ID;

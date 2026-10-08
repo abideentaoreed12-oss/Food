@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { CONFIG } from '../server/config.ts';
+import { CONFIG } from '../server/config';
 
 // Unified Cloudflare D1 & Persistent SQLite Client for Veyrang Food Delivery
 export interface D1QueryResult<T = any> {

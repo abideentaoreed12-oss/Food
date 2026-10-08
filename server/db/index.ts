@@ -2,10 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import bcrypt from 'bcryptjs';
-import { User, Restaurant, Order, Transaction, AuditLog, OrderStatus } from './schema.ts';
-import { INITIAL_RESTAURANTS } from '../../src/data/mockData.ts';
-import { d1Client } from './d1Client.ts';
-import { CONFIG } from '../config.ts';
+import { User, Restaurant, Order, Transaction, AuditLog, OrderStatus } from './schema';
+import { INITIAL_RESTAURANTS } from '../../src/data/mockData';
+import { d1Client } from './d1Client';
+import { CONFIG } from '../config';
 interface OtpEntry {
   code: string;
   purpose: 'register' | 'forgot';

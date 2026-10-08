@@ -1,4 +1,4 @@
-import { CONFIG } from '../server/config.ts';
+import { CONFIG } from '../server/config';
 
 // Unified Cloudflare R2 Bucket Client for Veyrang Food Delivery
 export interface R2UploadResult {
