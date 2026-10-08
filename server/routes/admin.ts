@@ -114,7 +114,8 @@ router.get('/users', async (req: AuthRequest, res: Response) => {
       const d1Res = await d1Client.query(
         'SELECT id, email, name, role, phone, address, restaurant_id, wallet_balance_usd, wallet_balance_ngn, saved_addresses, created_at, updated_at FROM users ORDER BY created_at DESC'
       );
-      if (d1Res && d1Res.results && d1Res.results.length > 0) {
+      if (!d1Res.success) return res.status(503).json({ success: false, error: 'User database is unavailable' });
+      if (d1Res && d1Res.results) {
         const parsedUsers = d1Res.results.map((u: any) => ({
           id: u.id,
           email: u.email,
@@ -132,11 +133,9 @@ router.get('/users', async (req: AuthRequest, res: Response) => {
         return res.json({ success: true, data: parsedUsers });
       }
     } catch (d1Err) {
-      console.warn('D1 direct users query fallback note:', d1Err);
+      console.error('D1 users query failed:', d1Err);
+      return res.status(503).json({ success: false, error: 'User database is unavailable' });
     }
-
-    const users = await db.getAllUsers();
-    return res.json({ success: true, data: users });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }
@@ -242,10 +241,9 @@ router.get('/orders', async (req: AuthRequest, res: Response) => {
       return res.json({ success: true, data: parsedOrders });
     }
   } catch (error: any) {
-    console.warn('D1 admin orders query fallback:', error.message);
+    console.error('D1 admin orders query failed:', error.message);
+    return res.status(503).json({ success: false, error: 'Order database is unavailable' });
   }
-  const fallbackOrders = await db.getOrders();
-  return res.json({ success: true, data: fallbackOrders });
 });
 
 router.patch('/orders/:id/status', async (req: AuthRequest, res: Response) => {
