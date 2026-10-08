@@ -20,36 +20,13 @@ function getAdmin(req: NextRequest) {
   }
 }
 
-async function ensurePromoTable() {
-  await d1
-    .query(
-      `CREATE TABLE IF NOT EXISTS promo_codes (
-        id TEXT PRIMARY KEY,
-        code TEXT UNIQUE NOT NULL,
-        discount_type TEXT NOT NULL,
-        value REAL NOT NULL,
-        min_order_amount REAL DEFAULT 0,
-        max_discount_cap REAL,
-        usage_limit INTEGER DEFAULT 1000,
-        times_used INTEGER DEFAULT 0,
-        is_active INTEGER DEFAULT 1,
-        expires_at TEXT,
-        description TEXT,
-        created_at TEXT NOT NULL
-      )`
-    )
-    .catch(() => {});
-}
-
 export async function GET(req: NextRequest) {
   const admin = getAdmin(req);
   if (!admin) {
     return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
   }
-  await ensurePromoTable();
-  const res = await d1
-    .query('SELECT * FROM promo_codes ORDER BY created_at DESC')
-    .catch(() => ({ results: [] as any[] }));
+  const res = await d1.query('SELECT * FROM promo_codes ORDER BY created_at DESC');
+  if (!res.success) return NextResponse.json({ success: false, error: 'Promo database query failed' }, { status: 503 });
   const rows = (res.results || []).map((p: any) => ({
     id: p.id,
     code: p.code,
@@ -76,25 +53,29 @@ export async function POST(req: NextRequest) {
   if (!admin) {
     return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
   }
-  await ensurePromoTable();
   const body = await req.json().catch(() => ({}));
   const code = String(body.code || '').trim().toUpperCase();
-  const discountType = String(body.discountType || body.discount_type || 'percentage');
+  const discountType = String(body.discountType || body.discount_type || '');
   const value = Number(body.value);
-  if (!code || !Number.isFinite(value)) {
+  if (!code || !Number.isFinite(value) || value <= 0 || !['percentage', 'fixed'].includes(discountType)) {
     return NextResponse.json(
-      { success: false, error: 'Code and value are required' },
+      { success: false, error: 'A code, positive discount value, and valid discount type (percentage or fixed) are required' },
       { status: 400 }
     );
   }
   const id = `promo-${Date.now()}`;
   const now = new Date().toISOString();
-  const minOrder = Number(body.minOrderAmount ?? body.min_order_amount ?? 0);
-  const maxCap = Number(body.maxDiscountCap ?? body.max_discount_cap ?? 2500);
+  const minOrder = Number(body.minOrderAmount ?? body.min_order_amount);
+  const capInput = body.maxDiscountCap ?? body.max_discount_cap;
+  const maxCap = capInput == null || capInput === '' ? null : Number(capInput);
+  const usageLimit = Number(body.usageLimit ?? body.usage_limit);
+  if (!Number.isFinite(minOrder) || minOrder < 0 || (maxCap !== null && (!Number.isFinite(maxCap) || maxCap < 0)) || !Number.isInteger(usageLimit) || usageLimit < 1) {
+    return NextResponse.json({ success: false, error: 'Minimum order, discount cap, and usage limit must be valid. Provide a usage limit of at least 1.' }, { status: 400 });
+  }
   const expiresAt = body.expiresAt || body.expires_at || null;
   const description = String(body.description || '');
 
-  await d1.query(
+  const inserted = await d1.query(
     `INSERT INTO promo_codes (
       id, code, discount_type, value, min_order_amount, max_discount_cap,
       usage_limit, times_used, is_active, expires_at, description, created_at
@@ -106,12 +87,14 @@ export async function POST(req: NextRequest) {
       value,
       minOrder,
       maxCap,
-      Number(body.usageLimit ?? body.usage_limit ?? 1000),
+      usageLimit,
       expiresAt,
       description,
       now
     ]
   );
+
+  if (!inserted.success) return NextResponse.json({ success: false, error: 'Promo could not be saved to the database' }, { status: 503 });
 
   return NextResponse.json({
     success: true,
