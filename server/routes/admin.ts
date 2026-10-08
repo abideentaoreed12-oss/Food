@@ -862,7 +862,7 @@ router.patch('/delivery-zones/:id/surge', async (req: AuthRequest, res: Response
     if (!currentZone.results?.length) return res.status(404).json({ success: false, error: 'Delivery zone not found' });
     const surge = Number(surgeMultiplier);
     const updated = await d1Client.query('UPDATE delivery_zones SET surge_multiplier = ? WHERE id = ?', [surge, id]);
-    if (updated.meta?.changes === 0) return res.status(503).json({ success: false, error: 'Surge multiplier was not updated' });
+    if (updated.meta?.rows_written === 0) return res.status(503).json({ success: false, error: 'Surge multiplier was not updated' });
 
     await db.logAudit({
       userId: req.user!.id,
@@ -1381,7 +1381,7 @@ router.patch('/promos/:id/toggle', async (req: AuthRequest, res: Response) => {
     if (!current.results?.length) return res.status(404).json({ success: false, error: 'Promo not found' });
     const nextActive = current.results[0].is_active === 1 ? 0 : 1;
     const updated = await d1Client.query('UPDATE promo_codes SET is_active = ? WHERE id = ? OR code = ?', [nextActive, id, id]);
-    if (updated.meta?.changes === 0) return res.status(503).json({ success: false, error: 'Promo status was not updated' });
+    if (updated.meta?.rows_written === 0) return res.status(503).json({ success: false, error: 'Promo status was not updated' });
     return res.json({ success: true, isActive: nextActive === 1 });
   } catch (error: any) {
     return res.status(503).json({ success: false, error: 'Promo status update failed' });
@@ -1392,7 +1392,7 @@ router.delete('/promos/:id', async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const deleted = await d1Client.query('DELETE FROM promo_codes WHERE id = ? OR UPPER(code) = UPPER(?)', [id, id]);
-    if (deleted.meta?.changes === 0) return res.status(404).json({ success: false, error: 'Promo not found' });
+    if (deleted.meta?.rows_written === 0) return res.status(404).json({ success: false, error: 'Promo not found' });
     return res.json({ success: true, message: 'Promo code deleted' });
   } catch (error: any) {
     return res.status(503).json({ success: false, error: 'Promo deletion failed' });
