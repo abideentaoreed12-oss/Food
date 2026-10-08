@@ -1,6 +1,5 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 
-// Filter legacy DEP0169 url.parse deprecation warnings in Node 22
 process.on('warning', (warning: any) => {
   if (warning.name === 'DeprecationWarning' && (warning.code === 'DEP0169' || warning.message?.includes('url.parse'))) {
     return;
@@ -27,15 +26,11 @@ export function createServerApp(): Express {
   const app = express();
   app.disable('x-powered-by');
 
-  // Basic middleware
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
   app.use(cookieParser());
-
-  // Security Headers
   app.use(securityHeaders);
 
-  // Enforce zero browser caching across all API endpoints (Direct live D1/R2 dependency)
   app.use('/api', (req: Request, res: Response, next: NextFunction) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
     res.setHeader('Pragma', 'no-cache');
@@ -44,16 +39,15 @@ export function createServerApp(): Express {
     next();
   });
 
-  // Authenticate user session from cookie/header on all requests
   app.use(authenticateToken);
 
-  // API Router definition
   const apiRouter = express.Router();
-  
+
   apiRouter.use('/auth', authRoutes);
   apiRouter.use('/restaurants', restaurantRoutes);
   apiRouter.use('/orders', orderRoutes);
   apiRouter.use('/payments', paymentRoutes);
+  apiRouter.use('/payment', paymentRoutes);
   apiRouter.use('/webhooks', webhookRoutes);
   apiRouter.use('/admin', adminRoutes);
   apiRouter.use('/health', healthRoutes);
@@ -63,18 +57,12 @@ export function createServerApp(): Express {
   apiRouter.use('/reviews', reviewsRoutes);
   apiRouter.use('/geocode', geocodeRoutes);
 
-  // Clean root API endpoint to prevent 500 / timeouts
   app.get(['/api', '/api/'], (req: Request, res: Response) => {
-    res.status(200).json({
-      success: true,
-      status: 'operational'
-    });
+    res.status(200).json({ success: true, status: 'operational' });
   });
 
-  // Mount API router strictly under /api to avoid hijacking SPA frontend navigation paths
   app.use('/api', apiRouter);
 
-  // Fallback 404 for any unmatched API requests to prevent hanging serverless functions (without intercepting frontend SPA paths)
   app.use(['/api', '/api/*'], (req: Request, res: Response, next: NextFunction) => {
     if (!res.headersSent) {
       res.status(404).json({
@@ -86,7 +74,6 @@ export function createServerApp(): Express {
     }
   });
 
-  // Global Centralized Error Handler
   app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     console.error('Unhandled server error:', err);
     if (!res.headersSent) {
