@@ -26,20 +26,18 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const codeUpper = String(body.code || '').trim().toUpperCase();
-  const cleanSubtotal = Number(body.subtotal) || 0;
+  const cleanSubtotal = Number(body.subtotal);
+  if (!Number.isFinite(cleanSubtotal) || cleanSubtotal < 0) {
+    return NextResponse.json({ success: false, valid: false, error: 'A valid order subtotal is required' }, { status: 400 });
+  }
   if (!codeUpper) {
     return NextResponse.json({ success: false, error: 'Promo code required' }, { status: 400 });
   }
 
-  const d1Res = await d1
-    .query(
-      `SELECT * FROM promo_codes
-       WHERE UPPER(code) = ? AND is_active = 1
-       LIMIT 1`,
-      [codeUpper]
-    )
-    .catch(() => ({ results: [] as any[] }));
-
+  const d1Res = await d1.query(`SELECT * FROM promo_codes WHERE UPPER(code) = ? AND is_active = 1 LIMIT 1`, [codeUpper]);
+  if (!d1Res.success) {
+    return NextResponse.json({ success: false, valid: false, error: 'Promo service is temporarily unavailable' }, { status: 503 });
+  }
   if (!d1Res.results?.length) {
     return NextResponse.json(
       { success: false, valid: false, error: 'Invalid or inactive promo code' },
@@ -75,11 +73,15 @@ export async function POST(req: NextRequest) {
   }
 
   const val = Number(p.value || 0);
-  const cap = Number(p.max_discount_cap || 2500);
-  const discountAmount =
-    p.discount_type === 'percentage'
-      ? Math.min(cap, Math.round(cleanSubtotal * (val / 100)))
-      : Math.min(cap, val);
+  if (!Number.isFinite(val) || val <= 0 || !['percentage', 'fixed'].includes(p.discount_type)) {
+    return NextResponse.json({ success: false, valid: false, error: 'Promo configuration is invalid' }, { status: 500 });
+  }
+  const cap = p.max_discount_cap == null || p.max_discount_cap === '' ? null : Number(p.max_discount_cap);
+  if (cap !== null && (!Number.isFinite(cap) || cap < 0)) {
+    return NextResponse.json({ success: false, valid: false, error: 'Promo discount cap is invalid' }, { status: 500 });
+  }
+  const rawDiscount = p.discount_type === 'percentage' ? Math.round(cleanSubtotal * (val / 100)) : val;
+  const discountAmount = cap === null ? rawDiscount : Math.min(cap, rawDiscount);
 
   return NextResponse.json({
     success: true,
