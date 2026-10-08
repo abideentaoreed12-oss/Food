@@ -180,7 +180,7 @@ const handleZoneUpdate = async (req: AuthRequest, res: Response) => {
        WHERE id = ?`,
       [base_delivery_fee ?? null, per_km_fee ?? null, surge_multiplier ?? null, is_active === undefined ? null : (is_active === true || is_active === 1 ? 1 : 0), id]
     );
-    if (zoneUpdate.meta?.changes === 0) return res.status(404).json({ success: false, error: 'Delivery zone not found or no values changed' });
+    if (zoneUpdate.meta?.rows_written === 0) return res.status(404).json({ success: false, error: 'Delivery zone not found or no values changed' });
 
     await db.logAudit({
       userId: req.user!.id,
