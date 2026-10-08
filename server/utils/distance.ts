@@ -299,6 +299,41 @@ export async function calculateDistanceAndDuration(
     }
   }
 
+  // Tier 3: OpenRouteService hosted routing (only when an operator API key is configured).
+  if (CONFIG.OPENROUTESERVICE_API_KEY) {
+    try {
+      const response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car', {
+        method: 'POST',
+        headers: {
+          'Authorization': CONFIG.OPENROUTESERVICE_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          coordinates: [
+            [originGeo.lng, originGeo.lat],
+            [destGeo.lng, destGeo.lat]
+          ]
+        }),
+        signal: AbortSignal.timeout(3500)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const summary = data.features?.[0]?.properties?.summary;
+        if (summary && Number.isFinite(summary.distance) && Number.isFinite(summary.duration)) {
+          const distanceKm = Math.round((summary.distance / 1000) * 10) / 10;
+          const durationMinutes = Math.max(1, Math.round(summary.duration / 60));
+          return {
+            distanceKm, distanceText: `${distanceKm} km`,
+            durationMinutes, durationText: `${durationMinutes} min`,
+            isLive: true, routingEngine: 'OpenRouteService', originGeo, destGeo
+          };
+        }
+      }
+    } catch (error: any) {
+      console.warn('[Routing] OpenRouteService provider failed; trying next provider:', error?.message || String(error));
+    }
+  }
+
   // Tier 3: Tertiary - OpenRouteService / OSM Public Routing Engine
   try {
     const orsUrl = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${originGeo.lng},${originGeo.lat};${destGeo.lng},${destGeo.lat}?overview=false`;
