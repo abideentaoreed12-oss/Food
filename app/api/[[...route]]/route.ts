@@ -931,8 +931,21 @@ export async function POST(req: NextRequest) {
       const now = new Date().toISOString();
       const meta = verifyRes.raw?.metadata || {};
       const userId = meta.userId || verifyRes.customerEmail;
+      const orderId = meta.orderId;
 
-      if (userId) {
+      if (orderId) {
+        await d1.query(
+          "UPDATE orders SET payment_status = 'paid', updated_at = ? WHERE id = ? OR short_id = ?",
+          [now, orderId, orderId]
+        ).catch(() => {});
+
+        await d1.query(
+          `INSERT INTO transactions (id, order_id, reference, amount, currency, status, payment_method, created_at, user_id)
+           VALUES (?, ?, ?, ?, 'NGN', 'completed', 'card', ?, ?)
+           ON CONFLICT(id) DO NOTHING`,
+          [`txn-ord-${ref}`, orderId, ref, verifyRes.amountNGN, now, userId || 'customer']
+        ).catch(() => {});
+      } else if (userId) {
         await d1.query(
           'UPDATE users SET wallet_balance_ngn = wallet_balance_ngn + ?, updated_at = ? WHERE id = ? OR LOWER(email) = LOWER(?)',
           [verifyRes.amountNGN, now, userId, userId]
@@ -1396,24 +1409,10 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString();
 
     await d1.query(
-      `INSERT INTO reviews (id, order_id, restaurant_id, courier_id, customer_id, customer_name, food_rating, delivery_rating, comment, photo_r2_url, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        revId,
-        orderId || 'order-direct',
-        restaurantId || 'rest-1',
-        courierId || null,
-        customerId || null,
-        customerName || 'Valued Customer',
-        Number(foodRating || 5),
-        Number(deliveryRating || 5),
-        comment || '',
-        photoR2Url || null,
-        now
-      ]
-    ).catch((err) => {
-      console.warn('[Review insert warning]:', err);
-    });
+      `INSERT INTO reviews (id, order_id, customer_id, restaurant_id, courier_id, food_rating, delivery_rating, comment, photo_r2_url, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [revId, orderId || 'order-direct', customerId || customerName || 'Valued Customer', restaurantId || 'rest-1', courierId || null, Number(foodRating || 5), Number(deliveryRating || 5), comment || '', photoR2Url || null, now]
+    ).catch(() => {});
 
     return NextResponse.json({ success: true, data: { id: revId, photoR2Url } });
   }

@@ -3,7 +3,6 @@ import { Star, X, CheckCircle2, Loader2, Sparkles, Utensils, Bike, MessageSquare
 import { Order } from '../../types';
 import { api } from '../../services/api';
 import { useDelivery } from '../../context/DeliveryContext';
-import { useAuth } from '../../context/AuthContext';
 
 interface OrderReviewModalProps {
   order: Order;
@@ -28,7 +27,6 @@ export const OrderReviewModal: React.FC<OrderReviewModalProps> = ({
   onReviewSubmitted
 }) => {
   const { refreshData } = useDelivery();
-  const { user } = useAuth();
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -170,8 +168,6 @@ export const OrderReviewModal: React.FC<OrderReviewModalProps> = ({
         orderId: order.id,
         restaurantId: order.restaurantId,
         courierId: order.courier?.id,
-        customerId: user?.id || order.customerId,
-        customerName: user?.name || order.customerName || 'Valued Customer',
         foodRating,
         deliveryRating,
         comment: combinedComment,

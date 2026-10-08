@@ -690,8 +690,6 @@ export const api = {
       orderId: string;
       restaurantId: string;
       courierId?: string;
-      customerId?: string;
-      customerName?: string;
       foodRating: number;
       deliveryRating?: number;
       comment?: string;

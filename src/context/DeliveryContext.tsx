@@ -927,7 +927,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (payRes?.data?.authorizationUrl) {
           clearCart();
           window.location.href = payRes.data.authorizationUrl;
-          return finalOrder;
+          return;
         }
       }
     } catch {
