@@ -33,18 +33,14 @@ export async function PATCH(
 
   // Toggle-only (legacy UI)
   if (body.toggle === true || Object.keys(body).length === 0) {
-    const current = await d1
-      .query('SELECT is_active FROM promo_codes WHERE id = ? OR code = ? LIMIT 1', [id, id])
-      .catch(() => ({ results: [] as any[] }));
+    const current = await d1.query('SELECT is_active FROM promo_codes WHERE id = ? OR code = ? LIMIT 1', [id, id]);
+    if (!current.success) return NextResponse.json({ success: false, error: 'Promo database query failed' }, { status: 503 });
     if (!current.results?.length) {
       return NextResponse.json({ success: false, error: 'Promo not found' }, { status: 404 });
     }
     const nextActive = current.results[0].is_active === 1 ? 0 : 1;
-    await d1.query('UPDATE promo_codes SET is_active = ? WHERE id = ? OR code = ?', [
-      nextActive,
-      id,
-      id
-    ]);
+    const updated = await d1.query('UPDATE promo_codes SET is_active = ? WHERE id = ? OR code = ?', [nextActive, id, id]);
+    if (!updated.success || updated.meta?.changes === 0) return NextResponse.json({ success: false, error: 'Promo status was not updated' }, { status: 503 });
     return NextResponse.json({ success: true, isActive: nextActive === 1 });
   }
 
@@ -87,10 +83,9 @@ export async function PATCH(
     return NextResponse.json({ success: false, error: 'No fields to update' }, { status: 400 });
   }
   vals.push(id, id);
-  await d1.query(
-    `UPDATE promo_codes SET ${fields.join(', ')} WHERE id = ? OR code = ?`,
-    vals
-  );
+  const updated = await d1.query(`UPDATE promo_codes SET ${fields.join(', ')} WHERE id = ? OR code = ?`, vals);
+  if (!updated.success) return NextResponse.json({ success: false, error: 'Promo update failed' }, { status: 503 });
+  if (updated.meta?.changes === 0) return NextResponse.json({ success: false, error: 'Promo not found' }, { status: 404 });
   return NextResponse.json({ success: true, message: 'Promo updated in D1' });
 }
 
@@ -103,6 +98,8 @@ export async function DELETE(
     return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
   }
   const { id } = await ctx.params;
-  await d1.query('DELETE FROM promo_codes WHERE id = ? OR UPPER(code) = UPPER(?)', [id, id]);
+  const deleted = await d1.query('DELETE FROM promo_codes WHERE id = ? OR UPPER(code) = UPPER(?)', [id, id]);
+  if (!deleted.success) return NextResponse.json({ success: false, error: 'Promo deletion failed' }, { status: 503 });
+  if (deleted.meta?.changes === 0) return NextResponse.json({ success: false, error: 'Promo not found' }, { status: 404 });
   return NextResponse.json({ success: true, message: 'Promo code deleted from D1' });
 }
