@@ -1,4 +1,4 @@
-import type { Currency, DeliveryZone } from '../types/index.ts';
+import type { Currency } from '../types/index.ts';
 
 export const USD_TO_NGN_RATE = 1500;
 
@@ -13,15 +13,11 @@ export function formatCurrency(amount: number | string | undefined | null, curre
 
 /** Only return a virtual account when real fields exist (from Paystack / D1). Never invent numbers. */
 export function getUserVirtualAccount(user: any) {
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   const rawNum = user.virtualAccountNumber || user.virtual_account_number;
   const bank = user.virtualBankName || user.virtual_bank_name;
-  if (!rawNum || !bank) {
-    return null;
-  }
+  if (!rawNum || !bank) return null;
 
   const raw = String(rawNum).replace(/[^0-9]/g, '');
   const formatted =
@@ -46,6 +42,14 @@ export interface ZoneConfig {
   deliveryFee: number;
   averageSpeedMin: number;
 }
+
+/** Deprecated local list — zones must come from D1 via deliveryService / admin API */
+export const DELIVERY_ZONES: ZoneConfig[] = [];
+
+export const VALID_PROMO_CODES: Record<
+  string,
+  { discountPercent?: number; flatDiscountNGN?: number; minOrderNGN: number; description: string }
+> = {};
 
 export function formatOrderTime(dateInput?: string | number | Date | null): string {
   if (!dateInput) return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
