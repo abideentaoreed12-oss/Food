@@ -4,15 +4,15 @@ import { d1Client } from '../db/d1Client.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { requireAuth, AuthRequest } from '../middleware/auth.ts';
 import { paymentGateway } from '../../lib/payment.ts';
-import { CONFIG } from '../config.ts';
 
 const router = Router();
 
 const InitializeSchema = z.object({
   email: z.string().email(),
   amount: z.number().positive(),
-  callbackUrl: z.string().url().optional(),
-  metadata: z.record(z.string(), z.any()).optional()
+  callbackUrl: z.string().optional(),
+  // Zod 4-safe: avoid z.record arity issues under Next typecheck
+  metadata: z.any().optional()
 });
 
 async function loadVirtualAccountFromD1(userId: string) {
@@ -34,46 +34,75 @@ async function loadVirtualAccountFromD1(userId: string) {
   };
 }
 
+function appUrl(): string {
+  return process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://veyrang.com';
+}
+
 /** Initialize official Paystack checkout */
-router.post('/initialize', requireAuth, validateBody(InitializeSchema), async (req: AuthRequest, res: Response) => {
-  try {
-    const { email, amount, callbackUrl, metadata } = req.body;
-    const userId = req.user!.id;
+router.post(
+  '/initialize',
+  requireAuth,
+  validateBody(InitializeSchema),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { email, amount, callbackUrl, metadata } = req.body as {
+        email: string;
+        amount: number;
+        callbackUrl?: string;
+        metadata?: Record<string, unknown>;
+      };
+      const userId = req.user!.id;
+      const meta =
+        metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+          ? { ...(metadata as Record<string, unknown>), userId }
+          : { userId };
 
-    const result = await paymentGateway.initializePayment({
-      email,
-      amountNGN: amount,
-      callbackUrl: callbackUrl || `${CONFIG.APP_URL}/payment/callback`,
-      metadata: { ...metadata, userId }
-    });
+      const result = await paymentGateway.initializePayment({
+        email,
+        amountNGN: amount,
+        callbackUrl: callbackUrl || `${appUrl()}/payment/callback`,
+        metadata: meta
+      });
 
-    if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error || 'Paystack initialize failed' });
-    }
-
-    const nowIso = new Date().toISOString();
-    await d1Client
-      .query(
-        `INSERT INTO transactions (id, order_id, reference, amount, currency, status, payment_method, created_at)
-         VALUES (?, ?, ?, ?, 'NGN', 'pending', 'Paystack', ?)`,
-        [`txn-init-${Date.now()}`, metadata?.orderId || null, result.reference, amount, nowIso]
-      )
-      .catch(() => {});
-
-    return res.json({
-      success: true,
-      data: {
-        authorizationUrl: result.authorizationUrl,
-        accessCode: result.accessCode,
-        reference: result.reference
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          error: result.error || 'Paystack initialize failed'
+        });
       }
-    });
-  } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message || 'Payment init error' });
-  }
-});
 
-/** GET — only from live D1 table user_virtual_accounts. No hardcoded fallback. */
+      const nowIso = new Date().toISOString();
+      const orderId =
+        meta && typeof meta === 'object' && 'orderId' in meta
+          ? (meta as any).orderId
+          : null;
+
+      await d1Client
+        .query(
+          `INSERT INTO transactions (id, order_id, reference, amount, currency, status, payment_method, created_at)
+           VALUES (?, ?, ?, ?, 'NGN', 'pending', 'Paystack', ?)`,
+          [`txn-init-${Date.now()}`, orderId, result.reference, amount, nowIso]
+        )
+        .catch(() => {});
+
+      return res.json({
+        success: true,
+        data: {
+          authorizationUrl: result.authorizationUrl,
+          accessCode: result.accessCode,
+          reference: result.reference
+        }
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        error: error?.message || 'Payment init error'
+      });
+    }
+  }
+);
+
+/** GET — live D1 only; never invent account numbers */
 router.get('/virtual-account', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const va = await loadVirtualAccountFromD1(req.user!.id);
@@ -86,17 +115,21 @@ router.get('/virtual-account', requireAuth, async (req: AuthRequest, res: Respon
     }
     return res.json({ success: true, data: va });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: error?.message });
   }
 });
 
-/** POST — create Paystack DVA once, store only in user_virtual_accounts */
+/** POST — create Paystack DVA and store in user_virtual_accounts */
 router.post('/virtual-account', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
-    const secret = process.env.PAYSTACK_SECRET_KEY || process.env.PAYMENT_SECRET_KEY || '';
+    const secret =
+      process.env.PAYSTACK_SECRET_KEY || process.env.PAYMENT_SECRET_KEY || '';
     if (!secret) {
-      return res.status(503).json({ success: false, error: 'Payment gateway not configured' });
+      return res.status(503).json({
+        success: false,
+        error: 'Payment gateway not configured'
+      });
     }
 
     const existing = await loadVirtualAccountFromD1(user.id);
@@ -118,11 +151,12 @@ router.post('/virtual-account', requireAuth, async (req: AuthRequest, res: Respo
       })
     });
     const customerJson: any = await customerRes.json().catch(() => ({}));
-    let customerCode = customerJson?.data?.customer_code;
+    let customerCode = customerJson?.data?.customer_code as string | undefined;
     if (!customerCode) {
-      const getCust = await fetch(`https://api.paystack.co/customer/${encodeURIComponent(user.email)}`, {
-        headers: { Authorization: `Bearer ${secret}` }
-      });
+      const getCust = await fetch(
+        `https://api.paystack.co/customer/${encodeURIComponent(user.email)}`,
+        { headers: { Authorization: `Bearer ${secret}` } }
+      );
       const getJson: any = await getCust.json().catch(() => ({}));
       customerCode = getJson?.data?.customer_code;
     }
@@ -157,8 +191,10 @@ router.post('/virtual-account', requireAuth, async (req: AuthRequest, res: Respo
 
     const accountNumber = String(dvaJson.data.account_number);
     const bankName = dvaJson.data.bank?.name || 'Wema Bank';
-    const accountName = dvaJson.data.account_name || `VeyraNG / ${user.name || 'Customer'}`;
-    const dedicatedId = dvaJson.data.id != null ? String(dvaJson.data.id) : null;
+    const accountName =
+      dvaJson.data.account_name || `VeyraNG / ${user.name || 'Customer'}`;
+    const dedicatedId =
+      dvaJson.data.id != null ? String(dvaJson.data.id) : null;
     const nowIso = new Date().toISOString();
     const rowId = `uva-${user.id}`;
 
@@ -175,7 +211,17 @@ router.post('/virtual-account', requireAuth, async (req: AuthRequest, res: Respo
          provider_dedicated_id = excluded.provider_dedicated_id,
          is_active = 1,
          updated_at = excluded.updated_at`,
-      [rowId, user.id, accountNumber, bankName, accountName, customerCode, dedicatedId, nowIso, nowIso]
+      [
+        rowId,
+        user.id,
+        accountNumber,
+        bankName,
+        accountName,
+        customerCode,
+        dedicatedId,
+        nowIso,
+        nowIso
+      ]
     );
 
     await d1Client
@@ -190,7 +236,10 @@ router.post('/virtual-account', requireAuth, async (req: AuthRequest, res: Respo
       data: { accountNumber, bankName, accountName }
     });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message || 'Virtual account error' });
+    return res.status(500).json({
+      success: false,
+      error: error?.message || 'Virtual account error'
+    });
   }
 });
 
