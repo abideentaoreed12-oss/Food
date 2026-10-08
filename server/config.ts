@@ -47,5 +47,15 @@ export const CONFIG = {
     process.env.GOOGLE_MAPS_API_KEY ||
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
     process.env.VITE_GOOGLE_MAPS_API_KEY ||
-    ''
+    '',
+  // Optional, operator-managed geocoding/routing endpoints and provider credentials.
+  NOMINATIM_BASE_URL: (process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org').replace(/\/$/, ''),
+  PHOTON_BASE_URL: (process.env.PHOTON_BASE_URL || 'https://photon.komoot.io').replace(/\/$/, ''),
+  PELIAS_BASE_URL: (process.env.PELIAS_BASE_URL || '').replace(/\/$/, ''),
+  PELIAS_API_KEY: process.env.PELIAS_API_KEY || '',
+  OSRM_BASE_URL: (process.env.OSRM_BASE_URL || 'https://router.project-osrm.org').replace(/\/$/, ''),
+  VALHALLA_BASE_URL: (process.env.VALHALLA_BASE_URL || '').replace(/\/$/, ''),
+  VALHALLA_API_KEY: process.env.VALHALLA_API_KEY || '',
+  GRAPHHOPPER_API_KEY: process.env.GRAPHHOPPER_API_KEY || '',
+  OPENROUTESERVICE_API_KEY: process.env.OPENROUTESERVICE_API_KEY || ''
 };
