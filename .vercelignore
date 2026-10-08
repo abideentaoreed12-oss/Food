@@ -1,8 +1,4 @@
 .aistudio/
 .gmp_cache/
-server/
-server.ts
-vite.config.ts
 bun.lock
-scripts/
 tests/

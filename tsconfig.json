@@ -45,7 +45,6 @@
   "exclude": [
     "node_modules",
     "scripts",
-    "server",
     "server.ts",
     "vite.config.ts",
     "tests",
