@@ -114,9 +114,10 @@ export async function GET(req: NextRequest) {
   if (pathname === '/settings' || pathname === '/admin/settings') {
     const user = await getUser(req);
     const isAdmin = user && (user.role === 'admin' || user.role === 'sub_admin');
-    const d1Res = await d1
-      .query('SELECT key, value FROM platform_settings')
-      .catch(() => ({ results: [] as any[] }));
+    const d1Res = await d1.query('SELECT key, value FROM platform_settings');
+    if (!d1Res.success) {
+      return NextResponse.json({ success: false, error: 'Platform settings are temporarily unavailable' }, { status: 503 });
+    }
     const settingsMap: Record<string, any> = {};
     const SAFE = new Set([
       'currency_ngn_usd_rate',
@@ -141,18 +142,20 @@ export async function GET(req: NextRequest) {
   }
 
   if (pathname === '/settings/zones' || pathname === '/admin/delivery-zones') {
-    const d1Res = await d1
-      .query(
-        'SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL ORDER BY created_at DESC'
-      )
-      .catch(() => ({ results: [] as any[] }));
+    const d1Res = await d1.query(
+      'SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL ORDER BY created_at DESC'
+    );
+    if (!d1Res.success) {
+      return NextResponse.json({ success: false, error: 'Delivery zones are temporarily unavailable' }, { status: 503 });
+    }
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
   if (pathname === '/restaurants' || pathname === '/admin/restaurants') {
-    const d1Res = await d1
-      .query('SELECT * FROM restaurants ORDER BY rating DESC')
-      .catch(() => ({ results: [] as any[] }));
+    const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC');
+    if (!d1Res.success) {
+      return NextResponse.json({ success: false, error: 'Restaurant data is temporarily unavailable' }, { status: 503 });
+    }
     const list = (d1Res.results || []).map((r: any) => {
       try {
         return r.raw_json ? { ...JSON.parse(r.raw_json), id: r.id } : r;
@@ -261,11 +264,12 @@ export async function GET(req: NextRequest) {
     if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
       return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     }
-    const d1Res = await d1
-      .query(
-        'SELECT id, email, name, role, phone, address, wallet_balance_ngn, wallet_balance_usd, created_at FROM users ORDER BY created_at DESC'
-      )
-      .catch(() => ({ results: [] as any[] }));
+    const d1Res = await d1.query(
+      'SELECT id, email, name, role, phone, address, wallet_balance_ngn, wallet_balance_usd, created_at FROM users ORDER BY created_at DESC'
+    );
+    if (!d1Res.success) {
+      return NextResponse.json({ success: false, error: 'User records are temporarily unavailable' }, { status: 503 });
+    }
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
@@ -274,12 +278,13 @@ export async function GET(req: NextRequest) {
     if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
       return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     }
-    const users = await d1
-      .query('SELECT count(*) as c FROM users')
-      .catch(() => ({ results: [{ c: 0 }] }));
-    const orders = await d1
-      .query('SELECT count(*) as c, sum(total) as gmv FROM orders')
-      .catch(() => ({ results: [{ c: 0, gmv: 0 }] }));
+    const [users, orders] = await Promise.all([
+      d1.query('SELECT count(*) as c FROM users'),
+      d1.query('SELECT count(*) as c, sum(total) as gmv FROM orders')
+    ]);
+    if (!users.success || !orders.success) {
+      return NextResponse.json({ success: false, error: 'Admin overview data is temporarily unavailable' }, { status: 503 });
+    }
     return NextResponse.json({
       success: true,
       data: {
