@@ -84,7 +84,7 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
     throw new Error('A customer or restaurant address is required for live distance calculation');
   }
 
-  // Open-source, no-key geocoding providers only.
+  // No-key open-source geocoders are tried first.
   // Tier 1: OpenStreetMap Nominatim Geocoder
   try {
     const nomUrl = `${CONFIG.NOMINATIM_BASE_URL}/search?format=json&q=${encodeURIComponent(
@@ -135,7 +135,24 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
     console.log('Photon geocode fallback note:', e?.message || String(e));
   }
 
-  throw new Error('Could not geocode the supplied address with open-source providers');
+  // Final fallback: Google Maps geocoding, after no-key open-source providers fail.
+  const googleApiKey = CONFIG.GOOGLE_MAPS_API_KEY;
+  if (googleApiKey && isGoogleMapsQuotaAvailable()) {
+    try {
+      const googleUrl = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + encodeURIComponent(cleanAddr) + '&key=' + googleApiKey;
+      const googleRes = await fetch(googleUrl, { signal: AbortSignal.timeout(3500) });
+      if (googleRes.ok) {
+        const googleData = await googleRes.json();
+        if (googleData.status === 'OK' && googleData.results && googleData.results.length) {
+          const result = googleData.results[0];
+          return { lat: result.geometry.location.lat, lng: result.geometry.location.lng, formattedAddress: result.formatted_address || cleanAddr, isLive: true, provider: 'Google Maps (last-resort fallback)' };
+        }
+        if (['OVER_QUERY_LIMIT', 'OVER_DAILY_LIMIT', 'RESOURCE_EXHAUSTED', 'REQUEST_DENIED'].includes(googleData.status)) markGoogleMapsQuotaExceeded(googleData.status);
+      }
+    } catch (error: any) { console.warn('[Geocoding] Google Maps last-resort fallback failed:', error?.message || String(error)); }
+  }
+
+  throw new Error('Could not geocode the supplied address with open-source providers or configured Google Maps fallback');
 
 }
 
@@ -144,7 +161,8 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
  * 1. OSRM public routing (open source)
  * 2. OpenStreetMap public routing endpoint (open source)
  * 3. Optional operator-managed Valhalla (open source, no API key required)
- * 4. Fail closed when no live road-routing provider can verify a route
+ * 4. Google Maps as the final fallback when configured
+ * 5. Fail closed when no live road-routing provider can verify a route
  */
 export async function calculateDistanceAndDuration(
   origin: GeoLocation | string,
@@ -269,6 +287,28 @@ export async function calculateDistanceAndDuration(
     } catch (error: any) {
       console.warn('[Routing] Valhalla provider failed; trying next provider:', error?.message || String(error));
     }
+  }
+
+  // Final fallback: Google Maps driving distance, after all open-source routers fail.
+  const googleApiKey = CONFIG.GOOGLE_MAPS_API_KEY;
+  if (googleApiKey && isGoogleMapsQuotaAvailable()) {
+    try {
+      const url = 'https://maps.googleapis.com/maps/api/distancematrix/json?origins=' + originGeo.lat + ',' + originGeo.lng + '&destinations=' + destGeo.lat + ',' + destGeo.lng + '&mode=driving&departure_time=now&key=' + googleApiKey;
+      const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
+      if (response.ok) {
+        const data = await response.json();
+        const element = data.rows && data.rows[0] && data.rows[0].elements && data.rows[0].elements[0];
+        if (data.status === 'OK' && element && element.status === 'OK') {
+          const distanceKm = Math.round((element.distance.value / 1000) * 10) / 10;
+          const seconds = element.duration_in_traffic ? element.duration_in_traffic.value : element.duration.value;
+          if (Number.isFinite(seconds)) {
+            const durationMinutes = Math.max(1, Math.round(seconds / 60));
+            return { distanceKm, distanceText: distanceKm + ' km', durationMinutes, durationText: durationMinutes + ' min', isLive: true, routingEngine: 'Google Maps', originGeo, destGeo };
+          }
+        }
+        if (['OVER_QUERY_LIMIT', 'OVER_DAILY_LIMIT', 'RESOURCE_EXHAUSTED', 'REQUEST_DENIED'].includes(data.status)) markGoogleMapsQuotaExceeded(data.status);
+      }
+    } catch (error: any) { console.warn('[Routing] Google Maps last-resort fallback failed:', error?.message || String(error)); }
   }
 
   // Fail closed. Straight-line distance and guessed road multipliers must never be
