@@ -1392,53 +1392,53 @@ router.get('/promos', async (req: AuthRequest, res: Response) => {
 
 router.post('/promos', async (req: AuthRequest, res: Response) => {
   try {
-    const { code, discountType, value, minOrderAmount, maxDiscountCap, expiresAt } = req.body;
-    if (!code || value === undefined) return res.status(400).json({ success: false, error: 'Code and value are required' });
-
-    const id = `promo-${Date.now()}`;
-    const cleanCode = code.toUpperCase().trim();
+    const { code, discountType, value, minOrderAmount, maxDiscountCap, usageLimit, expiresAt, description } = req.body;
+    const cleanCode = typeof code === 'string' ? code.trim().toUpperCase() : '';
+    const numericValue = Number(value);
+    const minOrder = Number(minOrderAmount);
+    const cap = maxDiscountCap === undefined || maxDiscountCap === null || maxDiscountCap === '' ? null : Number(maxDiscountCap);
+    if (!cleanCode || !Number.isFinite(numericValue) || numericValue <= 0 ||
+        !['percentage', 'fixed'].includes(discountType) ||
+        !Number.isFinite(minOrder) || minOrder < 0 ||
+        (cap !== null && (!Number.isFinite(cap) || cap < 0)) ||
+        !Number.isInteger(usageLimit) || usageLimit < 1) {
+      return res.status(400).json({ success: false, error: 'Provide a code, valid discount type and value, non-negative minimum and cap, and usage limit of at least 1' });
+    }
+    const id = `promo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const now = new Date().toISOString();
-
     await d1Client.query(
-      `INSERT INTO promo_codes (id, code, discount_type, value, min_order_amount, max_discount_cap, usage_limit, times_used, is_active, expires_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 1000, 0, 1, ?, ?)`,
-      [
-        id,
-        cleanCode,
-        discountType || 'percentage',
-        Number(value),
-        Number(minOrderAmount || 0),
-        Number(maxDiscountCap || 2500),
-        expiresAt || '2026-12-31',
-        now
-      ]
+      `INSERT INTO promo_codes (id, code, discount_type, value, min_order_amount, max_discount_cap, usage_limit, times_used, is_active, expires_at, description, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, ?, ?, ?)`,
+      [id, cleanCode, discountType, numericValue, minOrder, cap, usageLimit, expiresAt || null, typeof description === 'string' ? description : '', now]
     );
-
-    return res.json({ success: true, data: { id, code: cleanCode, discountType, value, minOrderAmount, expiresAt } });
+    return res.status(201).json({ success: true, data: { id, code: cleanCode, discountType, value: numericValue, minOrderAmount: minOrder, maxDiscountCap: cap, usageLimit, expiresAt: expiresAt || null, description: description || '', isActive: true } });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(503).json({ success: false, error: 'Promo could not be saved', detail: error.message });
   }
 });
 
 router.patch('/promos/:id/toggle', async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const current = await d1Client.query('SELECT is_active FROM promo_codes WHERE id = ? OR code = ?', [id, id]);
-    const nextActive = current.results?.[0]?.is_active === 1 ? 0 : 1;
-    await d1Client.query('UPDATE promo_codes SET is_active = ? WHERE id = ? OR code = ?', [nextActive, id, id]);
+    const current = await d1Client.query('SELECT is_active FROM promo_codes WHERE id = ? OR code = ? LIMIT 1', [id, id]);
+    if (!current.results?.length) return res.status(404).json({ success: false, error: 'Promo not found' });
+    const nextActive = current.results[0].is_active === 1 ? 0 : 1;
+    const updated = await d1Client.query('UPDATE promo_codes SET is_active = ? WHERE id = ? OR code = ?', [nextActive, id, id]);
+    if (updated.meta?.changes === 0) return res.status(503).json({ success: false, error: 'Promo status was not updated' });
     return res.json({ success: true, isActive: nextActive === 1 });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(503).json({ success: false, error: 'Promo status update failed' });
   }
 });
 
 router.delete('/promos/:id', async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    await d1Client.query('DELETE FROM promo_codes WHERE id = ? OR code = ?', [id, id]);
+    const deleted = await d1Client.query('DELETE FROM promo_codes WHERE id = ? OR UPPER(code) = UPPER(?)', [id, id]);
+    if (deleted.meta?.changes === 0) return res.status(404).json({ success: false, error: 'Promo not found' });
     return res.json({ success: true, message: 'Promo code deleted' });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(503).json({ success: false, error: 'Promo deletion failed' });
   }
 });
 
