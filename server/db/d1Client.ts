@@ -3,7 +3,6 @@
 
 import { CONFIG } from '../config';
 import bcrypt from 'bcryptjs';
-import { INITIAL_RESTAURANTS } from '../../src/data/mockData';
 
 const CLOUDFLARE_ACCOUNT_ID = CONFIG.CLOUDFLARE_ACCOUNT_ID;
 const CLOUDFLARE_DATABASE_ID = CONFIG.CLOUDFLARE_DATABASE_ID;
@@ -59,7 +58,7 @@ export class CloudflareD1Client {
 
     const data = (await response.json()) as D1ApiResponse<T>;
 
-    if (!data.success || !data.result || data.result.length === 0) {
+    if (!response.ok || !data.success || !data.result || data.result.length === 0) {
       const errMessage =
         data.errors && data.errors.length > 0
           ? data.errors.map((e) => `[Code ${e.code}] ${e.message}`).join(', ')
@@ -98,9 +97,9 @@ export class CloudflareD1Client {
   }
 
   public async initializeTables(): Promise<void> {
-    if (this.isSchemaInitialized || this.isInitializing) return;
+    if (this.isSchemaInitialized) return;
+    if (this.isInitializing) throw new Error('D1 schema initialization is already in progress');
     this.isInitializing = true;
-    this.isSchemaInitialized = true;
 
     const schemaStatements = [
       `CREATE TABLE IF NOT EXISTS users (
@@ -341,25 +340,14 @@ export class CloudflareD1Client {
         );
       }
 
-      // Demo restaurants only when explicitly enabled (never auto in production by default)
-      const seedDemo =
-        process.env.SEED_DEMO_RESTAURANTS === 'true' ||
-        process.env.SEED_DEMO_RESTAURANTS === '1';
-      if (seedDemo) {
-        for (const r of INITIAL_RESTAURANTS) {
-          await this.query(
-            `INSERT OR IGNORE INTO restaurants (id, name, cuisine, rating, raw_json, created_at)
-             VALUES (?, ?, ?, ?, ?, ?);`,
-            [r.id, r.name, r.cuisine, r.rating, JSON.stringify(r), now]
-          );
-        }
-      }
+      // Production schema initialization never imports mock restaurant records.
+      this.isSchemaInitialized = true;
     } catch (e) {
-      console.warn('D1 auto-seed note:', e);
+      this.isSchemaInitialized = false;
+      throw e;
+    } finally {
+      this.isInitializing = false;
     }
-
-    this.isSchemaInitialized = true;
-    this.isInitializing = false;
   }
 }
 
