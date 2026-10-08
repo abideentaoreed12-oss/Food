@@ -31,8 +31,7 @@ export const OrderTrackingModal: React.FC = () => {
     closeTracking,
     activeTrackingOrder,
     currency,
-    refreshData,
-    advanceOrderStatus
+    refreshData
   } = useDelivery();
 
   const { user } = useAuth();
@@ -289,33 +288,32 @@ export const OrderTrackingModal: React.FC = () => {
             />
           </div>
 
-          {/* Live Order Status Controller & Simulation (No-print) */}
+          {/* Read-only customer status display. Status changes are controlled by authorized restaurant, courier, and admin workflows. */}
           <div className="p-3.5 bg-slate-900 rounded-2xl border border-slate-800 text-white space-y-2 no-print shadow-sm">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-slate-200 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#FF5500] animate-ping" />
-                Live Order Dispatch Control
+                <span className="w-2 h-2 rounded-full bg-[#FF5500] animate-pulse" />
+                Live Order Status
               </span>
               <span className="text-[11px] font-mono text-orange-400">
                 Current: <strong className="capitalize">{order.status.replace('_', ' ')}</strong>
               </span>
             </div>
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar" aria-label="Order status history">
               {milestones.map((m, idx) => (
-                <button
+                <span
                   key={m.key}
-                  type="button"
-                  onClick={() => advanceOrderStatus(order.id, m.key as any)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  aria-current={order.status === m.key ? 'step' : undefined}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 ${
                     order.status === m.key
                       ? 'bg-[#FF5500] text-white shadow-md ring-2 ring-orange-500/40'
                       : idx <= currentIdx
-                      ? 'bg-slate-800 hover:bg-slate-700 text-emerald-400'
-                      : 'bg-slate-800/60 hover:bg-slate-800 text-slate-400'
+                      ? 'bg-slate-800 text-emerald-400'
+                      : 'bg-slate-800/60 text-slate-400'
                   }`}
                 >
                   {m.label}
-                </button>
+                </span>
               ))}
             </div>
           </div>
