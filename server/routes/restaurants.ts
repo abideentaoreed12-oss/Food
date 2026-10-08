@@ -23,33 +23,30 @@ router.get('/', async (req: Request, res: Response) => {
     const userLat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
     const userLng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
 
-    let list: any[] = [];
-    try {
-      const d1Res = await d1Client.query('SELECT * FROM restaurants ORDER BY rating DESC');
-      list = d1Res.results.map((r: any) => {
-        if (r.raw_json) {
-          try {
-            const parsed = JSON.parse(r.raw_json);
-            return {
-              ...parsed,
-              id: r.id,
-              name: r.name || parsed.name,
-              cuisine: r.cuisine || parsed.cuisine,
-              rating: r.rating ?? parsed.rating,
-              reviewCount: r.review_count ?? parsed.reviewCount,
-              deliveryTimeMin: r.delivery_time_min ?? parsed.deliveryTimeMin,
-              deliveryTimeMax: r.delivery_time_max ?? parsed.deliveryTimeMax,
-              deliveryFee: r.delivery_fee ?? parsed.deliveryFee,
-              isOpen: r.is_open === 1,
-              isBusyPaused: r.is_busy_paused === 1
-            };
-          } catch (e) {}
+    const d1Res = await d1Client.query('SELECT * FROM restaurants ORDER BY rating DESC');
+    let list: any[] = d1Res.results.map((r: any) => {
+      if (r.raw_json) {
+        try {
+          const parsed = JSON.parse(r.raw_json);
+          return {
+            ...parsed,
+            id: r.id,
+            name: r.name || parsed.name,
+            cuisine: r.cuisine || parsed.cuisine,
+            rating: r.rating ?? parsed.rating,
+            reviewCount: r.review_count ?? parsed.reviewCount,
+            deliveryTimeMin: r.delivery_time_min ?? parsed.deliveryTimeMin,
+            deliveryTimeMax: r.delivery_time_max ?? parsed.deliveryTimeMax,
+            deliveryFee: r.delivery_fee ?? parsed.deliveryFee,
+            isOpen: r.is_open === 1,
+            isBusyPaused: r.is_busy_paused === 1
+          };
+        } catch {
+          throw new Error('Restaurant record in D1 contains invalid raw_json');
         }
-        return r;
-      });
-    } catch (e) {
-      list = await db.getRestaurants();
-    }
+      }
+      return r;
+    });
 
     if (cuisine && cuisine !== 'All') {
       list = list.filter((r) => r.cuisine?.toLowerCase() === cuisine.toLowerCase());
