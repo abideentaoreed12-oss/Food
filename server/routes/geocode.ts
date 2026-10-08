@@ -138,4 +138,42 @@ router.get('/reverse', geocodeLimiter, async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * Live Distance & Duration Calculation Endpoint
+ * Calculates precise driving distance, traffic duration, and routing provider via Valhalla / OSRM / OpenRouteService / Google Maps.
+ */
+router.get('/distance', async (req: Request, res: Response) => {
+  try {
+    const originLat = req.query.originLat ? parseFloat(req.query.originLat as string) : null;
+    const originLng = req.query.originLng ? parseFloat(req.query.originLng as string) : null;
+    const originAddr = req.query.originAddress as string;
+
+    const destLat = req.query.destLat ? parseFloat(req.query.destLat as string) : null;
+    const destLng = req.query.destLng ? parseFloat(req.query.destLng as string) : null;
+    const destAddr = req.query.destAddress as string;
+
+    const origin = (originLat !== null && originLng !== null && !isNaN(originLat) && !isNaN(originLng))
+      ? { lat: originLat, lng: originLng }
+      : (originAddr || 'Lekki Phase 1, Lagos');
+
+    const destination = (destLat !== null && destLng !== null && !isNaN(destLat) && !isNaN(destLng))
+      ? { lat: destLat, lng: destLng }
+      : (destAddr || 'Victoria Island, Lagos');
+
+    const { calculateDistanceAndDuration } = await import('../utils/distance.ts');
+    const result = await calculateDistanceAndDuration(origin, destination);
+
+    return res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (err: any) {
+    console.error('Backend distance calculation error:', err);
+    return res.status(500).json({
+      success: false,
+      error: err?.message || 'Failed to calculate distance and duration.'
+    });
+  }
+});
+
 export default router;

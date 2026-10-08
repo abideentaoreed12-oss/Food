@@ -715,5 +715,29 @@ export const api = {
         body: JSON.stringify({ reference })
       });
     }
+  },
+
+  geocode: {
+    reverse: async (lat: number, lng: number) => {
+      return request(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
+    },
+    calculateDistance: async (params: {
+      originLat?: number;
+      originLng?: number;
+      originAddress?: string;
+      destLat?: number;
+      destLng?: number;
+      destAddress?: string;
+    }) => {
+      const query = new URLSearchParams();
+      if (params.originLat !== undefined) query.set('originLat', String(params.originLat));
+      if (params.originLng !== undefined) query.set('originLng', String(params.originLng));
+      if (params.originAddress) query.set('originAddress', params.originAddress);
+      if (params.destLat !== undefined) query.set('destLat', String(params.destLat));
+      if (params.destLng !== undefined) query.set('destLng', String(params.destLng));
+      if (params.destAddress) query.set('destAddress', params.destAddress);
+
+      return request(`/api/geocode/distance?${query.toString()}`);
+    }
   }
 };
