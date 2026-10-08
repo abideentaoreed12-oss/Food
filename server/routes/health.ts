@@ -35,25 +35,37 @@ router.get('/d1', requireAuth, requireRole(['admin', 'sub_admin']), async (req: 
       zonesCountRes,
       promosCountRes
     ] = await Promise.all([
-      d1Client.query('SELECT COUNT(*) as count FROM users;').catch(() => ({ results: [{ count: 0 }] })),
-      d1Client.query('SELECT COUNT(*) as count FROM orders;').catch(() => ({ results: [{ count: 0 }] })),
-      d1Client.query('SELECT COUNT(*) as count FROM restaurants;').catch(() => ({ results: [{ count: 0 }] })),
-      d1Client.query('SELECT COUNT(*) as count FROM menu_items;').catch(() => ({ results: [{ count: 0 }] })),
-      d1Client.query('SELECT COUNT(*) as count FROM transactions;').catch(() => ({ results: [{ count: 0 }] })),
-      d1Client.query('SELECT COUNT(*) as count FROM audit_logs;').catch(() => ({ results: [{ count: 0 }] })),
-      d1Client.query('SELECT COUNT(*) as count FROM delivery_zones;').catch(() => ({ results: [{ count: 0 }] })),
-      d1Client.query('SELECT COUNT(*) as count FROM promo_codes;').catch(() => ({ results: [{ count: 0 }] }))
+      d1Client.query('SELECT COUNT(*) as count FROM users;'),
+      d1Client.query('SELECT COUNT(*) as count FROM orders;'),
+      d1Client.query('SELECT COUNT(*) as count FROM restaurants;'),
+      d1Client.query('SELECT COUNT(*) as count FROM menu_items;'),
+      d1Client.query('SELECT COUNT(*) as count FROM transactions;'),
+      d1Client.query('SELECT COUNT(*) as count FROM audit_logs;'),
+      d1Client.query('SELECT COUNT(*) as count FROM delivery_zones;'),
+      d1Client.query('SELECT COUNT(*) as count FROM promo_codes;')
     ]);
 
+    const countResults = [usersCountRes, ordersCountRes, restaurantsCountRes, menuCountRes, transactionsCountRes, auditCountRes, zonesCountRes, promosCountRes];
+    if (countResults.some(result => !result.success || !result.results?.[0])) {
+      return res.status(503).json({
+        success: false,
+        status: 'degraded',
+        connected: false,
+        latencyMs: Date.now() - startTime,
+        error: 'One or more D1 health queries failed; table counts are unavailable',
+        checkedAt: new Date().toISOString()
+      });
+    }
+
     const tableCounts = {
-      users: Number(usersCountRes?.results?.[0]?.count ?? 0),
-      orders: Number(ordersCountRes?.results?.[0]?.count ?? 0),
-      restaurants: Number(restaurantsCountRes?.results?.[0]?.count ?? 0),
-      menuItems: Number(menuCountRes?.results?.[0]?.count ?? 0),
-      transactions: Number(transactionsCountRes?.results?.[0]?.count ?? 0),
-      auditLogs: Number(auditCountRes?.results?.[0]?.count ?? 0),
-      deliveryZones: Number(zonesCountRes?.results?.[0]?.count ?? 0),
-      promoCodes: Number(promosCountRes?.results?.[0]?.count ?? 0)
+      users: Number(usersCountRes.results[0].count),
+      orders: Number(ordersCountRes.results[0].count),
+      restaurants: Number(restaurantsCountRes.results[0].count),
+      menuItems: Number(menuCountRes.results[0].count),
+      transactions: Number(transactionsCountRes.results[0].count),
+      auditLogs: Number(auditCountRes.results[0].count),
+      deliveryZones: Number(zonesCountRes.results[0].count),
+      promoCodes: Number(promosCountRes.results[0].count)
     };
 
     return res.status(200).json({
