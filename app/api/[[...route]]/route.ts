@@ -407,7 +407,76 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  return POST(req);
+  await ensureSchema();
+  const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
+
+  if (pathname === '/admin/users/role') {
+    return NextResponse.json(
+      { success: false, error: 'A user ID is required in the route: /api/admin/users/:id/role' },
+      { status: 400 }
+    );
+  }
+
+  const roleMatch = pathname.match(/^\/admin\/users\/([^/]+)\/role$/);
+  if (roleMatch) {
+    const user = await getUser(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+    if (user.role !== 'admin') {
+      return NextResponse.json({ success: false, error: 'Only Super Admins can change user roles' }, { status: 403 });
+    }
+
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ success: false, error: 'A valid JSON request body is required' }, { status: 400 });
+    }
+
+    const role = body?.role;
+    if (!['customer', 'restaurant', 'courier', 'admin', 'sub_admin'].includes(role)) {
+      return NextResponse.json({ success: false, error: 'Invalid user role' }, { status: 400 });
+    }
+
+    let userId: string;
+    try {
+      userId = decodeURIComponent(roleMatch[1]).trim();
+    } catch {
+      return NextResponse.json({ success: false, error: 'Invalid user ID' }, { status: 400 });
+    }
+    if (!userId) return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 });
+    if (userId === user.id && role !== 'admin') {
+      return NextResponse.json({ success: false, error: 'You cannot remove your own Super Admin role' }, { status: 400 });
+    }
+
+    try {
+      const update = await d1.query('UPDATE users SET role = ?, updated_at = ? WHERE id = ?', [role, new Date().toISOString(), userId]);
+      if (!update.success) {
+        return NextResponse.json({ success: false, error: 'User role could not be updated in D1' }, { status: 503 });
+      }
+      if ((update.meta?.rows_written ?? 0) === 0) {
+        const existing = await d1.query('SELECT id, email, name, role FROM users WHERE id = ? LIMIT 1', [userId]);
+        if (!existing.success) return NextResponse.json({ success: false, error: 'Could not verify user after role update' }, { status: 503 });
+        if (!existing.results?.length) return NextResponse.json({ success: false, error: 'User not found in D1' }, { status: 404 });
+        if (existing.results[0].role !== role) return NextResponse.json({ success: false, error: 'User role was not updated' }, { status: 503 });
+      }
+
+      const result = await d1.query('SELECT id, email, name, role FROM users WHERE id = ? LIMIT 1', [userId]);
+      if (!result.success || !result.results?.[0]) {
+        return NextResponse.json({ success: false, error: 'Role was updated but the result could not be verified' }, { status: 503 });
+      }
+      return NextResponse.json({ success: true, data: result.results[0], message: 'User role updated in D1' });
+    } catch (error: any) {
+      console.error('[Admin role update] D1 operation failed:', error?.message || error);
+      return NextResponse.json({ success: false, error: 'User role update failed' }, { status: 503 });
+    }
+  }
+
+  return NextResponse.json(
+    { success: false, error: `API route PATCH /api${pathname} not found.` },
+    { status: 404 }
+  );
 }
 
 export async function DELETE(req: NextRequest) {
