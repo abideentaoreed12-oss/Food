@@ -8,6 +8,16 @@ import { validateBody } from '../middleware/validate.ts';
 import { UserRoleSchema } from '../db/schema.ts';
 import { CONFIG } from '../config.ts';
 
+const safeJsonParse = <T,>(value: unknown, fallback: T): T => {
+  if (value === null || value === undefined || value === '') return fallback;
+  if (typeof value !== 'string') return value as T;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+};
+
 const router = Router();
 
 // Protect all admin routes with authentication and role guard
