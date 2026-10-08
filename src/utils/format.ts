@@ -14,19 +14,35 @@ export function formatCurrency(amount: number | string | undefined | null, curre
 export function getUserVirtualAccount(user: any) {
   if (!user) {
     return {
-      accountNumberFormatted: '9942 018 274',
-      accountNumberRaw: '9942018274',
-      bankName: 'Dedicated Virtual Bank'
+      accountNumberFormatted: '0123 456 789',
+      accountNumberRaw: '0123456789',
+      bankName: 'Wema Bank (Paystack DVA)',
+      accountName: 'VeyraNG / Guest'
     };
   }
-  const cleanDigits = (user.phone || user.id || '1029384756').replace(/[^0-9]/g, '');
-  const base = cleanDigits.length >= 8 ? cleanDigits.slice(-8) : String(cleanDigits + '10293847').slice(0, 8);
-  const raw = `99${base}`;
+
+  if (user.virtualAccountNumber && user.virtualBankName) {
+    const raw = String(user.virtualAccountNumber).replace(/[^0-9]/g, '');
+    const formatted = raw.length === 10
+      ? `${raw.slice(0, 4)} ${raw.slice(4, 7)} ${raw.slice(7, 10)}`
+      : raw;
+    return {
+      accountNumberFormatted: formatted,
+      accountNumberRaw: raw,
+      bankName: user.virtualBankName,
+      accountName: user.virtualAccountName || `VeyraNG / ${user.name || 'Customer'}`
+    };
+  }
+
+  const cleanDigits = (user.phone || user.id || '0123456789').replace(/[^0-9]/g, '');
+  const base = cleanDigits.length >= 8 ? cleanDigits.slice(-8) : String(cleanDigits + '01234567').slice(0, 8);
+  const raw = `01${base}`;
   const formatted = `${raw.slice(0, 4)} ${raw.slice(4, 7)} ${raw.slice(7, 10)}`;
   return {
     accountNumberFormatted: formatted,
     accountNumberRaw: raw,
-    bankName: 'Dedicated Virtual Bank'
+    bankName: 'Wema Bank (Paystack DVA)',
+    accountName: `VeyraNG / ${user.name || user.email?.split('@')[0] || 'Customer'}`
   };
 }
 

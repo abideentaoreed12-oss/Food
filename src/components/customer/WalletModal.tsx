@@ -242,8 +242,8 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
 
                   <div className="flex items-center justify-between border-t border-slate-100 pt-2">
                     <span className="text-xs text-slate-500 font-medium">Account Name</span>
-                    <span className="text-xs font-bold text-slate-900 truncate max-w-[180px]">
-                      VeyraNG / {user.name || user.email?.split('@')[0] || 'Customer'}
+                    <span className="text-xs font-bold text-slate-900 truncate max-w-[200px]">
+                      {virtualAccount.accountName}
                     </span>
                   </div>
                 </div>

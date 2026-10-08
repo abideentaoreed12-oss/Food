@@ -12,7 +12,11 @@ export async function POST(req: NextRequest) {
     const signature = req.headers.get('x-paystack-signature');
     const webhookSecret = process.env.PAYSTACK_WEBHOOK_SECRET || process.env.PAYMENT_WEBHOOK_SECRET || '';
 
-    if (signature && webhookSecret) {
+    // Enforce HMAC-SHA512 Webhook Signature Verification
+    if (webhookSecret) {
+      if (!signature) {
+        return NextResponse.json({ success: false, error: 'Missing x-paystack-signature header' }, { status: 401 });
+      }
       const hash = crypto.createHmac('sha512', webhookSecret).update(rawBody).digest('hex');
       if (hash !== signature) {
         return NextResponse.json({ success: false, error: 'Invalid webhook signature' }, { status: 401 });
@@ -22,13 +26,29 @@ export async function POST(req: NextRequest) {
     const event = JSON.parse(rawBody);
 
     if (event.event === 'charge.success') {
-      const data = event.data;
+      const data = event.data || {};
       const reference = data.reference;
       const metadata = data.metadata || {};
       const orderId = metadata.orderId;
+      const userId = metadata.userId;
       const amountPaid = (data.amount || 0) / 100;
       const nowIso = new Date().toISOString();
 
+      if (!reference) {
+        return NextResponse.json({ success: false, error: 'Missing reference' }, { status: 400 });
+      }
+
+      // Idempotency Check in D1 Database
+      const existingTx = await d1Client.query(
+        'SELECT id FROM transactions WHERE reference = ? UNION SELECT id FROM wallet_transactions WHERE reference = ? LIMIT 1',
+        [reference, reference]
+      ).catch(() => ({ results: [] }));
+
+      if (existingTx.results && existingTx.results.length > 0) {
+        return NextResponse.json({ success: true, message: 'Webhook event already processed (idempotent)' });
+      }
+
+      // Handle Order Payment
       if (orderId) {
         const order = await db.getOrderById(orderId);
         if (order) {
@@ -61,6 +81,32 @@ export async function POST(req: NextRequest) {
             action: 'PAYSTACK_WEBHOOK_SUCCESS',
             resource: 'ORDER',
             resourceId: orderId,
+            details: { reference, amount: amountPaid }
+          });
+        }
+      }
+
+      // Handle Wallet Top-Up
+      if (metadata.type === 'wallet_topup' || (userId && !orderId)) {
+        const targetUserId = userId || (data.customer?.email ? (await d1Client.query('SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [data.customer.email])).results?.[0]?.id : null);
+        
+        if (targetUserId) {
+          const txId = `tx-dep-${Date.now()}`;
+          await d1Client.query(
+            'UPDATE users SET wallet_balance_ngn = wallet_balance_ngn + ?, updated_at = ? WHERE id = ?',
+            [amountPaid, nowIso, targetUserId]
+          ).catch(() => {});
+
+          await d1Client.query(
+            `INSERT INTO wallet_transactions (id, user_id, type, amount, currency, description, reference, payment_method, status, created_at)
+             VALUES (?, ?, 'deposit', ?, 'NGN', 'Wallet Deposit via Paystack', ?, 'Paystack', 'completed', ?)`,
+            [txId, targetUserId, amountPaid, reference, nowIso]
+          ).catch(() => {});
+
+          await db.logAudit({
+            action: 'PAYSTACK_WALLET_TOPUP_SUCCESS',
+            resource: 'USER_WALLET',
+            resourceId: targetUserId,
             details: { reference, amount: amountPaid }
           });
         }
