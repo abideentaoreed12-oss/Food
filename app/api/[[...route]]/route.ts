@@ -86,6 +86,60 @@ export async function GET(req: NextRequest) {
   await ensureSchema();
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
 
+  // Public payment callback verification: the opaque provider reference must already exist in D1.
+  // Never trust the browser's claim of success; verify with Paystack and reconcile against the recorded amount.
+  if (pathname === '/payments/verify' && req.nextUrl.searchParams.has('reference')) {
+    const reference = (req.nextUrl.searchParams.get('reference') || '').trim();
+    if (!reference || reference.length > 200) {
+      return NextResponse.json({ success: false, isPaid: false, error: 'Valid payment reference is required' }, { status: 400 });
+    }
+    try {
+      const stored = await d1.query(
+        'SELECT id, order_id, amount, currency, status FROM transactions WHERE reference = ? LIMIT 1',
+        [reference]
+      );
+      const transaction = stored.results?.[0];
+      if (!transaction) {
+        return NextResponse.json({ success: false, isPaid: false, error: 'Payment reference was not found' }, { status: 404 });
+      }
+      const verified = await paymentGateway.verifyPayment(reference);
+      if (!verified.success) {
+        return NextResponse.json({ success: false, isPaid: false, error: verified.error || 'Payment provider verification failed' }, { status: 502 });
+      }
+      if (!verified.isPaid) {
+        return NextResponse.json({ success: true, isPaid: false, status: verified.status, reference });
+      }
+      const expectedAmount = Number(transaction.amount);
+      if (!Number.isFinite(expectedAmount) || Math.round(expectedAmount * 100) !== Math.round(verified.amountNGN * 100)) {
+        return NextResponse.json({ success: false, isPaid: false, error: 'Verified payment amount does not match the recorded transaction' }, { status: 409 });
+      }
+      if (String(transaction.currency || 'NGN').toUpperCase() !== 'NGN') {
+        return NextResponse.json({ success: false, isPaid: false, error: 'Payment currency does not match the recorded transaction' }, { status: 409 });
+      }
+      const now = new Date().toISOString();
+      const updated = await d1.query(
+        "UPDATE transactions SET status = 'completed' WHERE reference = ? AND status = 'pending'",
+        [reference]
+      );
+      if (!updated.success) {
+        return NextResponse.json({ success: false, isPaid: false, error: 'Could not record verified payment status' }, { status: 503 });
+      }
+      if (transaction.order_id) {
+        const orderUpdate = await d1.query(
+          "UPDATE orders SET payment_status = 'paid', updated_at = ? WHERE id = ?",
+          [now, transaction.order_id]
+        );
+        if (!orderUpdate.success) {
+          return NextResponse.json({ success: false, isPaid: false, error: 'Payment verified but order status could not be updated' }, { status: 503 });
+        }
+      }
+      return NextResponse.json({ success: true, isPaid: true, status: verified.status, reference });
+    } catch (error) {
+      console.error('[Payment verification] Failed to reconcile reference', error);
+      return NextResponse.json({ success: false, isPaid: false, error: 'Payment verification is temporarily unavailable' }, { status: 503 });
+    }
+  }
+
   if (pathname === '/' || pathname === '/health') {
     const d1Status = await d1.ping();
     const r2Configured = r2.isConfigured();
