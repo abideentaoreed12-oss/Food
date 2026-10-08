@@ -40,7 +40,7 @@ export async function PATCH(
     }
     const nextActive = current.results[0].is_active === 1 ? 0 : 1;
     const updated = await d1.query('UPDATE promo_codes SET is_active = ? WHERE id = ? OR code = ?', [nextActive, id, id]);
-    if (!updated.success || updated.meta?.changes === 0) return NextResponse.json({ success: false, error: 'Promo status was not updated' }, { status: 503 });
+    if (!updated.success || updated.meta?.rows_written === 0) return NextResponse.json({ success: false, error: 'Promo status was not updated' }, { status: 503 });
     return NextResponse.json({ success: true, isActive: nextActive === 1 });
   }
 
@@ -85,7 +85,7 @@ export async function PATCH(
   vals.push(id, id);
   const updated = await d1.query(`UPDATE promo_codes SET ${fields.join(', ')} WHERE id = ? OR code = ?`, vals);
   if (!updated.success) return NextResponse.json({ success: false, error: 'Promo update failed' }, { status: 503 });
-  if (updated.meta?.changes === 0) return NextResponse.json({ success: false, error: 'Promo not found' }, { status: 404 });
+  if (updated.meta?.rows_written === 0) return NextResponse.json({ success: false, error: 'Promo not found' }, { status: 404 });
   return NextResponse.json({ success: true, message: 'Promo updated in D1' });
 }
 
@@ -100,6 +100,6 @@ export async function DELETE(
   const { id } = await ctx.params;
   const deleted = await d1.query('DELETE FROM promo_codes WHERE id = ? OR UPPER(code) = UPPER(?)', [id, id]);
   if (!deleted.success) return NextResponse.json({ success: false, error: 'Promo deletion failed' }, { status: 503 });
-  if (deleted.meta?.changes === 0) return NextResponse.json({ success: false, error: 'Promo not found' }, { status: 404 });
+  if (deleted.meta?.rows_written === 0) return NextResponse.json({ success: false, error: 'Promo not found' }, { status: 404 });
   return NextResponse.json({ success: true, message: 'Promo code deleted from D1' });
 }
