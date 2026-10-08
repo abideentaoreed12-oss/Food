@@ -85,9 +85,9 @@ export const CartDrawer: React.FC = () => {
   // Live real-time distance calculation when customer types/changes address
   const calculateDistanceNow = useCallback(
     async (addressStr: string, coords?: { lat: number; lng: number }) => {
-      if (!cartRestaurant || !addressStr.trim()) return;
+      if (!cartRestaurant || !addressStr.trim()) { setLiveDistanceResult(null); return; }
       try {
-        setLiveDistanceResult((prev) => (prev ? { ...prev, isCalculating: true } : { distanceKm: 0, distanceText: '', durationText: '', estimatedDeliveryFee: 500, isCalculating: true }));
+        setLiveDistanceResult((prev) => (prev ? { ...prev, isCalculating: true } : null));
         const res = await api.restaurants.calculateDistance({
           restaurantId: cartRestaurant.id,
           userAddress: addressStr.trim(),
@@ -112,7 +112,8 @@ export const CartDrawer: React.FC = () => {
 
   useEffect(() => {
     if (!cartRestaurant) return;
-    const targetAddr = customAddress.trim() || user?.address || selectedAddress?.address || 'Lekki Phase 1, Lagos';
+    const targetAddr = customAddress.trim() || selectedAddress?.address?.trim() || user?.address?.trim() || '';
+    if (!targetAddr) { setLiveDistanceResult(null); return; }
     const timer = setTimeout(() => {
       calculateDistanceNow(targetAddr);
     }, 300);
@@ -150,7 +151,7 @@ export const CartDrawer: React.FC = () => {
   const deliveryFee =
     fulfillmentType === 'pickup'
       ? 0
-      : liveDistanceResult?.estimatedDeliveryFee ?? cartRestaurant?.calculatedDeliveryFee ?? cartRestaurant?.deliveryFee ?? 500;
+      : liveDistanceResult?.estimatedDeliveryFee ?? cartRestaurant?.calculatedDeliveryFee ?? cartRestaurant?.deliveryFee ?? 0;
   // serviceFee resolved dynamically from Platform D1 settings
   const discount = appliedPromo ? appliedPromo.discountAmount : 0;
   const tip = fulfillmentType === 'pickup' ? 0 : selectedTipNGN;
