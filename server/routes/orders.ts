@@ -112,8 +112,9 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
         distanceMetrics = await calculateRestaurantDistanceMetrics(restaurant, customerAddress);
         deliveryFee = distanceMetrics.estimatedDeliveryFee;
         estimatedArrivalMinutes = Math.max(15, (restaurant.deliveryTimeMin || 20) + distanceMetrics.durationMinutes);
-      } catch {
-        deliveryFee = restaurant.deliveryFee || 500;
+      } catch (error) {
+        console.error('[Order pricing] Delivery fee calculation failed:', error);
+        return res.status(503).json({ success: false, error: 'Delivery pricing is temporarily unavailable. Please try again.' });
       }
     }
 
@@ -121,22 +122,35 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
     let discountAmount = 0;
     if (promoCode) {
       const codeUpper = String(promoCode).trim().toUpperCase();
+      let d1Promo;
       try {
-        const d1Promo = await d1Client.query('SELECT * FROM promo_codes WHERE UPPER(code) = ? AND is_active = 1 LIMIT 1', [codeUpper]);
-        if (d1Promo.results?.length) {
-          const promo = d1Promo.results[0];
-          if (verifiedSubtotal >= Number(promo.min_order_amount || 0)) {
-            const val = Number(promo.value || 0);
-            const cap = Number(promo.max_discount_cap || 2500);
-            discountAmount = promo.discount_type === 'percentage'
-              ? Math.min(cap, Math.round(verifiedSubtotal * (val / 100)))
-              : Math.min(cap, val);
-            await d1Client.query('UPDATE promo_codes SET times_used = times_used + 1 WHERE id = ?', [promo.id]).catch(() => {});
-          }
-        }
-      } catch {}
+        d1Promo = await d1Client.query('SELECT * FROM promo_codes WHERE UPPER(code) = ? AND is_active = 1 LIMIT 1', [codeUpper]);
+      } catch (error) {
+        console.error('[Order pricing] Promo lookup failed:', error);
+        return res.status(503).json({ success: false, error: 'Promo service is temporarily unavailable. Please try again.' });
+      }
+      if (!d1Promo.results?.length) return res.status(400).json({ success: false, error: 'Promo code is invalid or inactive' });
+      const promo = d1Promo.results[0];
+      if (promo.expires_at && !Number.isNaN(new Date(promo.expires_at).getTime()) && new Date(promo.expires_at).getTime() < Date.now()) {
+        return res.status(400).json({ success: false, error: 'Promo code has expired' });
+      }
+      if (promo.usage_limit != null && Number(promo.times_used || 0) >= Number(promo.usage_limit)) {
+        return res.status(400).json({ success: false, error: 'Promo code usage limit reached' });
+      }
+      if (verifiedSubtotal < Number(promo.min_order_amount || 0)) {
+        return res.status(400).json({ success: false, error: 'Order does not meet the promo minimum amount' });
+      }
+      const val = Number(promo.value);
+      if (!Number.isFinite(val) || val <= 0 || !['percentage', 'fixed'].includes(promo.discount_type)) {
+        return res.status(500).json({ success: false, error: 'Promo configuration is invalid' });
+      }
+      const cap = promo.max_discount_cap == null || promo.max_discount_cap === '' ? null : Number(promo.max_discount_cap);
+      if (cap !== null && (!Number.isFinite(cap) || cap < 0)) return res.status(500).json({ success: false, error: 'Promo discount cap is invalid' });
+      const rawDiscount = promo.discount_type === 'percentage' ? Math.round(verifiedSubtotal * (val / 100)) : val;
+      discountAmount = cap === null ? rawDiscount : Math.min(cap, rawDiscount);
+      const usageUpdate = await d1Client.query('UPDATE promo_codes SET times_used = times_used + 1 WHERE id = ? AND is_active = 1 AND (usage_limit IS NULL OR times_used < usage_limit)', [promo.id]);
+      if (usageUpdate.meta?.changes === 0) return res.status(409).json({ success: false, error: 'Promo usage limit reached; please try again' });
     }
-
     const preWalletTotal = Math.max(0, Math.round((verifiedSubtotal + deliveryFee + serviceFee + (tip || 0) - discountAmount) * 100) / 100);
     const verifiedWalletDeduction = Math.min(preWalletTotal, Math.max(0, walletDeduction || 0));
     const fullyWalletPaid = verifiedWalletDeduction >= preWalletTotal;
