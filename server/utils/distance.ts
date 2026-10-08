@@ -18,7 +18,7 @@ export interface DistanceCalculationResult {
   userLocation?: GeoLocation;
   restaurantLocation?: GeoLocation;
   isLiveGoogleMaps: boolean;
-  routingEngine?: 'Google Maps' | 'OSRM' | 'OpenRouteService' | 'Haversine';
+  routingEngine?: 'Google Maps' | 'OSRM' | 'OpenStreetMap Routing' | 'Valhalla' | 'GraphHopper' | 'OpenRouteService' | 'Haversine';
 }
 
 // Global Circuit Breaker State for Google Maps API Quota Management
@@ -115,7 +115,7 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
 
   // Tier 2: OpenStreetMap Nominatim Geocoder
   try {
-    const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+    const nomUrl = `${CONFIG.NOMINATIM_BASE_URL}/search?format=json&q=${encodeURIComponent(
       cleanAddr + ', Nigeria'
     )}&limit=1`;
     const nomRes = await fetch(nomUrl, {
@@ -140,7 +140,7 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
 
   // Tier 3: Photon Komoot Geocoder
   try {
-    const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(cleanAddr)}&limit=1`;
+    const photonUrl = `${CONFIG.PHOTON_BASE_URL}/api/?q=${encodeURIComponent(cleanAddr)}&limit=1`;
     const pRes = await fetch(photonUrl, {
       headers: { 'User-Agent': 'VeyraNG-FoodDelivery-RoadRouter/2.0' },
       signal: AbortSignal.timeout(2500)
@@ -163,8 +163,33 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
     console.log('Photon geocode fallback note:', e?.message || String(e));
   }
 
-  // Tier 4: Base fallback
-  throw new Error('Could not geocode the supplied address with available live providers');
+  // Tier 4: Optional Pelias geocoder, configured by the operator (may require an API key).
+  if (CONFIG.PELIAS_BASE_URL) {
+    try {
+      const params = new URLSearchParams({ text: cleanAddr, size: '1' });
+      if (CONFIG.PELIAS_API_KEY) params.set('api_key', CONFIG.PELIAS_API_KEY);
+      const response = await fetch(`${CONFIG.PELIAS_BASE_URL}/v1/search?${params}`, {
+        signal: AbortSignal.timeout(3500)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const feature = data.features?.[0];
+        const coords = feature?.geometry?.coordinates;
+        if (Array.isArray(coords) && Number.isFinite(coords[0]) && Number.isFinite(coords[1])) {
+          return {
+            lat: coords[1], lng: coords[0],
+            formattedAddress: feature.properties?.label || cleanAddr,
+            isLive: true, provider: 'Pelias'
+          };
+        }
+      }
+    } catch (error: any) {
+      console.warn('[Geocoding] Pelias provider failed:', error?.message || String(error));
+    }
+  }
+
+  throw new Error('Could not geocode the supplied address with configured live providers');
+
 }
 
 /**
@@ -183,7 +208,7 @@ export async function calculateDistanceAndDuration(
   durationMinutes: number;
   durationText: string;
   isLive: boolean;
-  routingEngine: 'Google Maps' | 'OSRM' | 'OpenRouteService' | 'Haversine';
+  routingEngine: 'Google Maps' | 'OSRM' | 'OpenStreetMap Routing' | 'Valhalla' | 'GraphHopper' | 'OpenRouteService' | 'Haversine';
   originGeo: GeoLocation;
   destGeo: GeoLocation;
 }> {
@@ -245,7 +270,7 @@ export async function calculateDistanceAndDuration(
 
   // Tier 2: Secondary - Live OSRM Road Routing API
   try {
-    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${originGeo.lng},${originGeo.lat};${destGeo.lng},${destGeo.lat}?overview=false`;
+    const osrmUrl = `${CONFIG.OSRM_BASE_URL}/route/v1/driving/${originGeo.lng},${originGeo.lat};${destGeo.lng},${destGeo.lat}?overview=false`;
     const osrmRes = await fetch(osrmUrl, { signal: AbortSignal.timeout(2500) });
     if (osrmRes.ok) {
       const osrmData = await osrmRes.json();
@@ -299,6 +324,72 @@ export async function calculateDistanceAndDuration(
     }
   } catch (err: any) {
     console.log('OpenRouteService fallback note:', err?.message || String(err));
+  }
+
+  // Tier 4: Optional operator-managed Valhalla routing endpoint (open source).
+  if (CONFIG.VALHALLA_BASE_URL) {
+    try {
+      const params = new URLSearchParams({
+        json: JSON.stringify({
+          locations: [
+            { lat: originGeo.lat, lon: originGeo.lng },
+            { lat: destGeo.lat, lon: destGeo.lng }
+          ],
+          costing: 'auto',
+          units: 'kilometers'
+        })
+      });
+      if (CONFIG.VALHALLA_API_KEY) params.set('api_key', CONFIG.VALHALLA_API_KEY);
+      const response = await fetch(`${CONFIG.VALHALLA_BASE_URL}/route?${params}`, {
+        headers: { 'X-Client-Id': 'veyrang-food-delivery' },
+        signal: AbortSignal.timeout(3500)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const summary = data.trip?.summary;
+        if (summary && Number.isFinite(summary.length) && Number.isFinite(summary.time)) {
+          const distanceKm = Math.round(summary.length * 10) / 10;
+          const durationMinutes = Math.max(1, Math.round(summary.time / 60));
+          return {
+            distanceKm, distanceText: `${distanceKm} km`,
+            durationMinutes, durationText: `${durationMinutes} min`,
+            isLive: true, routingEngine: 'Valhalla', originGeo, destGeo
+          };
+        }
+      }
+    } catch (error: any) {
+      console.warn('[Routing] Valhalla provider failed; trying next provider:', error?.message || String(error));
+    }
+  }
+
+  // Tier 5: Optional GraphHopper hosted routing API (requires operator API key).
+  if (CONFIG.GRAPHHOPPER_API_KEY) {
+    try {
+      const params = new URLSearchParams({
+        point: `${originGeo.lat},${originGeo.lng}`,
+        point2: `${destGeo.lat},${destGeo.lng}`,
+        profile: 'car',
+        key: CONFIG.GRAPHHOPPER_API_KEY
+      });
+      const response = await fetch(`https://graphhopper.com/api/1/route?${params}`, {
+        signal: AbortSignal.timeout(3500)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const path = data.paths?.[0];
+        if (path && Number.isFinite(path.distance) && Number.isFinite(path.time)) {
+          const distanceKm = Math.round((path.distance / 1000) * 10) / 10;
+          const durationMinutes = Math.max(1, Math.round(path.time / 60000));
+          return {
+            distanceKm, distanceText: `${distanceKm} km`,
+            durationMinutes, durationText: `${durationMinutes} min`,
+            isLive: true, routingEngine: 'GraphHopper', originGeo, destGeo
+          };
+        }
+      }
+    } catch (error: any) {
+      console.warn('[Routing] GraphHopper provider failed; trying next provider:', error?.message || String(error));
+    }
   }
 
   // Fail closed. Straight-line distance and guessed road multipliers must never be
