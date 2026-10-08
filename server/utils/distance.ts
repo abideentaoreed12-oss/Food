@@ -81,7 +81,7 @@ export function calculateHaversineDistanceKm(
 export async function geocodeAddress(addressStr: string): Promise<GeoLocation & { isLive: boolean; provider?: string }> {
   const cleanAddr = (addressStr || '').trim();
   if (!cleanAddr) {
-    return { lat: 6.4474, lng: 3.4735, formattedAddress: 'Lekki Phase 1, Lagos', isLive: false, provider: 'Default' };
+    throw new Error('A customer or restaurant address is required for live distance calculation');
   }
 
   const apiKey = CONFIG.GOOGLE_MAPS_API_KEY;
@@ -164,7 +164,7 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
   }
 
   // Tier 4: Base fallback
-  return { lat: 6.4474, lng: 3.4735, formattedAddress: cleanAddr, isLive: false, provider: 'Local Fallback' };
+  throw new Error('Could not geocode the supplied address with available live providers');
 }
 
 /**
@@ -331,8 +331,11 @@ export async function calculateRestaurantDistanceMetrics(
   restaurant: any,
   userAddressOrCoords: string | { lat: number; lng: number }
 ): Promise<DistanceCalculationResult> {
-  const restaurantLat = Number(restaurant.lat) || 6.4474;
-  const restaurantLng = Number(restaurant.lng) || 3.4735;
+  const restaurantLat = Number(restaurant.lat);
+  const restaurantLng = Number(restaurant.lng);
+  if (!Number.isFinite(restaurantLat) || !Number.isFinite(restaurantLng) || restaurantLat < -90 || restaurantLat > 90 || restaurantLng < -180 || restaurantLng > 180) {
+    throw new Error('Restaurant location coordinates are missing or invalid in D1');
+  }
   const restaurantLocation: GeoLocation = {
     lat: restaurantLat,
     lng: restaurantLng,
@@ -354,7 +357,10 @@ export async function calculateRestaurantDistanceMetrics(
     await calculateDistanceAndDuration(userLocation, restaurantLocation);
 
   // Live dynamic delivery fee calculation: Base fee + ₦150 per km beyond 2 km
-  const baseDeliveryFee = Number(restaurant.deliveryFee) || 500;
+  const baseDeliveryFee = Number(restaurant.deliveryFee);
+  if (!Number.isFinite(baseDeliveryFee) || baseDeliveryFee < 0) {
+    throw new Error('Restaurant delivery fee is missing or invalid in D1');
+  }
   let estimatedDeliveryFee = baseDeliveryFee;
 
   if (distanceKm > 2.0) {
