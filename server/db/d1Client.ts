@@ -7,7 +7,6 @@ import { INITIAL_RESTAURANTS } from '../../src/data/mockData';
 
 const CLOUDFLARE_ACCOUNT_ID = CONFIG.CLOUDFLARE_ACCOUNT_ID;
 const CLOUDFLARE_DATABASE_ID = CONFIG.CLOUDFLARE_DATABASE_ID;
-const CLOUDFLARE_DATABASE_NAME = CONFIG.CLOUDFLARE_DATABASE_NAME;
 const CLOUDFLARE_API_TOKEN = CONFIG.CLOUDFLARE_API_TOKEN;
 
 export interface D1QueryResult<T = any> {
@@ -48,25 +47,23 @@ export class CloudflareD1Client {
 
   public async queryDirect<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
     const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/d1/database/${this.databaseId}/query`;
-    
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.apiToken}`,
+        Authorization: `Bearer ${this.apiToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        sql,
-        params
-      })
+      body: JSON.stringify({ sql, params })
     });
 
     const data = (await response.json()) as D1ApiResponse<T>;
 
     if (!data.success || !data.result || data.result.length === 0) {
-      const errMessage = (data.errors && data.errors.length > 0)
-        ? data.errors.map((e) => `[Code ${e.code}] ${e.message}`).join(', ')
-        : `D1 Query Failed with status ${response.status}`;
+      const errMessage =
+        data.errors && data.errors.length > 0
+          ? data.errors.map((e) => `[Code ${e.code}] ${e.message}`).join(', ')
+          : `D1 Query Failed with status ${response.status}`;
       throw new Error(`Cloudflare D1 Error: ${errMessage}`);
     }
 
@@ -89,22 +86,14 @@ export class CloudflareD1Client {
     }
   }
 
-  public async testConnection(): Promise<{
-    connected: boolean;
-    error?: string;
-    details?: any;
-  }> {
+  public async testConnection(): Promise<{ connected: boolean; error?: string; details?: any }> {
     try {
-      const res = await this.queryDirect('SELECT 1 as live_status, CURRENT_TIMESTAMP as cf_timestamp;');
-      return {
-        connected: true,
-        details: res.results[0]
-      };
+      const res = await this.queryDirect(
+        'SELECT 1 as live_status, CURRENT_TIMESTAMP as cf_timestamp;'
+      );
+      return { connected: true, details: res.results[0] };
     } catch (err: any) {
-      return {
-        connected: false,
-        error: err.message || 'Unknown connection error'
-      };
+      return { connected: false, error: err.message || 'Unknown connection error' };
     }
   }
 
@@ -125,7 +114,23 @@ export class CloudflareD1Client {
         restaurant_id TEXT,
         wallet_balance_usd REAL DEFAULT 0,
         wallet_balance_ngn REAL DEFAULT 0,
+        virtual_account_number TEXT,
+        virtual_bank_name TEXT,
+        virtual_account_name TEXT,
         saved_addresses TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );`,
+      `CREATE TABLE IF NOT EXISTS user_virtual_accounts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL UNIQUE,
+        account_number TEXT NOT NULL,
+        bank_name TEXT NOT NULL,
+        account_name TEXT,
+        provider TEXT DEFAULT 'paystack',
+        provider_customer_code TEXT,
+        provider_dedicated_id TEXT,
+        is_active INTEGER DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );`,
@@ -291,13 +296,21 @@ export class CloudflareD1Client {
       });
     }
 
-    // Dynamic database self-healing & migrations to align columns
-    await this.query('ALTER TABLE promo_codes ADD COLUMN usage_limit INTEGER DEFAULT 1000;').catch(() => {});
-    await this.query('ALTER TABLE promo_codes ADD COLUMN times_used INTEGER DEFAULT 0;').catch(() => {});
-    await this.query('ALTER TABLE delivery_zones ADD COLUMN radius_km REAL DEFAULT 15;').catch(() => {});
+    await this.query('ALTER TABLE promo_codes ADD COLUMN usage_limit INTEGER DEFAULT 1000;').catch(
+      () => {}
+    );
+    await this.query('ALTER TABLE promo_codes ADD COLUMN times_used INTEGER DEFAULT 0;').catch(
+      () => {}
+    );
+    await this.query('ALTER TABLE delivery_zones ADD COLUMN radius_km REAL DEFAULT 15;').catch(
+      () => {}
+    );
     await this.query('ALTER TABLE delivery_zones ADD COLUMN map_image_r2_url TEXT;').catch(() => {});
+    await this.query('ALTER TABLE users ADD COLUMN virtual_account_number TEXT;').catch(() => {});
+    await this.query('ALTER TABLE users ADD COLUMN virtual_bank_name TEXT;').catch(() => {});
+    await this.query('ALTER TABLE users ADD COLUMN virtual_account_name TEXT;').catch(() => {});
 
-    // Ensure default admin user and initial restaurants exist in D1
+    // Admin seed: credentials from env only — zero balances, no fake phone/money
     try {
       const now = new Date().toISOString();
       if (CONFIG.ADMIN_EMAIL && CONFIG.ADMIN_PASSWORD) {
@@ -318,9 +331,9 @@ export class CloudflareD1Client {
             adminPasswordHash,
             'System Administrator',
             'admin',
-            '+1 (555) 900-0001',
-            250.0,
-            350000,
+            null,
+            0,
+            0,
             '[]',
             now,
             now
@@ -328,12 +341,18 @@ export class CloudflareD1Client {
         );
       }
 
-      for (const r of INITIAL_RESTAURANTS) {
-        await this.query(
-          `INSERT OR IGNORE INTO restaurants (id, name, cuisine, rating, raw_json, created_at)
-           VALUES (?, ?, ?, ?, ?, ?);`,
-          [r.id, r.name, r.cuisine, r.rating, JSON.stringify(r), now]
-        );
+      // Demo restaurants only when explicitly enabled (never auto in production by default)
+      const seedDemo =
+        process.env.SEED_DEMO_RESTAURANTS === 'true' ||
+        process.env.SEED_DEMO_RESTAURANTS === '1';
+      if (seedDemo) {
+        for (const r of INITIAL_RESTAURANTS) {
+          await this.query(
+            `INSERT OR IGNORE INTO restaurants (id, name, cuisine, rating, raw_json, created_at)
+             VALUES (?, ?, ?, ?, ?, ?);`,
+            [r.id, r.name, r.cuisine, r.rating, JSON.stringify(r), now]
+          );
+        }
       }
     } catch (e) {
       console.warn('D1 auto-seed note:', e);
