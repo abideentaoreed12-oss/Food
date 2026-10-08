@@ -266,6 +266,37 @@ export async function POST(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
   const body = await req.json().catch(() => ({}));
 
+  // Accept POST as well as PATCH for clients that still use the legacy method.
+  const postRoleMatch = pathname.match(/^\/admin\/users\/([^/]+)\/role$/);
+  if (postRoleMatch) {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'admin') return NextResponse.json({ success: false, error: 'Only Super Admins can change user roles' }, { status: 403 });
+    const role = body?.role;
+    if (!['customer', 'restaurant', 'courier', 'admin', 'sub_admin'].includes(role)) {
+      return NextResponse.json({ success: false, error: 'Invalid user role' }, { status: 400 });
+    }
+    let userId: string;
+    try { userId = decodeURIComponent(postRoleMatch[1]).trim(); }
+    catch { return NextResponse.json({ success: false, error: 'Invalid user ID' }, { status: 400 }); }
+    if (!userId) return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 });
+    if (userId === user.id && role !== 'admin') {
+      return NextResponse.json({ success: false, error: 'You cannot remove your own Super Admin role' }, { status: 400 });
+    }
+    try {
+      const update = await d1.query('UPDATE users SET role = ?, updated_at = ? WHERE id = ?', [role, new Date().toISOString(), userId]);
+      if (!update.success) return NextResponse.json({ success: false, error: 'User role could not be updated in D1' }, { status: 503 });
+      const result = await d1.query('SELECT id, email, name, role FROM users WHERE id = ? LIMIT 1', [userId]);
+      if (!result.success) return NextResponse.json({ success: false, error: 'Could not verify user role in D1' }, { status: 503 });
+      if (!result.results?.[0]) return NextResponse.json({ success: false, error: 'User not found in D1' }, { status: 404 });
+      if (result.results[0].role !== role) return NextResponse.json({ success: false, error: 'User role was not updated' }, { status: 503 });
+      return NextResponse.json({ success: true, data: result.results[0], message: 'User role updated in D1' });
+    } catch (error: any) {
+      console.error('[Admin role update] D1 operation failed:', error?.message || error);
+      return NextResponse.json({ success: false, error: 'User role update failed' }, { status: 503 });
+    }
+  }
+
   if (pathname === '/auth/login') {
     const email = String(body.email || '').toLowerCase().trim();
     const password = String(body.password || '');
