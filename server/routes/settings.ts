@@ -79,7 +79,7 @@ router.get('/promos', requireAuth, async (_req: AuthRequest, res: Response) => {
 const handleSettingUpdate = async (req: AuthRequest, res: Response) => {
   try {
     const { key, value } = req.body;
-    if (!key || value === undefined) {
+    if (typeof key !== 'string' || !key.trim() || value === undefined || value === null) {
       return res.status(400).json({ success: false, error: 'Key and value are required' });
     }
 
@@ -114,20 +114,19 @@ const handleSettingUpdate = async (req: AuthRequest, res: Response) => {
 const handleBulkSettingsUpdate = async (req: AuthRequest, res: Response) => {
   try {
     const { settings } = req.body;
-    if (!settings || typeof settings !== 'object') {
+    if (!settings || typeof settings !== 'object' || Array.isArray(settings) || Object.keys(settings).length === 0) {
       return res.status(400).json({ success: false, error: 'Settings object is required' });
     }
 
     const now = new Date().toISOString();
     for (const [key, val] of Object.entries(settings)) {
-      if (val !== undefined && val !== null) {
-        await d1Client.query(
+      if (typeof key !== 'string' || !key.trim() || val === undefined || val === null) continue;
+      await d1Client.query(
           `INSERT INTO platform_settings (key, value, description, category, updated_at)
            VALUES (?, ?, ?, 'general', ?)
            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;`,
           [key, String(val), key, now]
         );
-      }
     }
 
     await db.logAudit({
@@ -160,16 +159,28 @@ const handleZoneUpdate = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { base_delivery_fee, per_km_fee, surge_multiplier, is_active } = req.body;
+    if (!id || (base_delivery_fee === undefined && per_km_fee === undefined && surge_multiplier === undefined && is_active === undefined)) {
+      return res.status(400).json({ success: false, error: 'Zone ID and at least one field to update are required' });
+    }
+    for (const [name, value] of Object.entries({ base_delivery_fee, per_km_fee, surge_multiplier })) {
+      if (value !== undefined && (!Number.isFinite(Number(value)) || Number(value) < 0)) {
+        return res.status(400).json({ success: false, error: name + ' must be a non-negative number' });
+      }
+    }
+    if (is_active !== undefined && ![true, false, 0, 1].includes(is_active)) {
+      return res.status(400).json({ success: false, error: 'is_active must be a boolean or 0/1' });
+    }
 
-    await d1Client.query(
+    const zoneUpdate = await d1Client.query(
       `UPDATE delivery_zones SET
         base_delivery_fee = COALESCE(?, base_delivery_fee),
         per_km_fee = COALESCE(?, per_km_fee),
         surge_multiplier = COALESCE(?, surge_multiplier),
         is_active = COALESCE(?, is_active)
        WHERE id = ?`,
-      [base_delivery_fee ?? null, per_km_fee ?? null, surge_multiplier ?? null, is_active ?? null, id]
+      [base_delivery_fee ?? null, per_km_fee ?? null, surge_multiplier ?? null, is_active === undefined ? null : (is_active === true || is_active === 1 ? 1 : 0), id]
     );
+    if (zoneUpdate.meta?.changes === 0) return res.status(404).json({ success: false, error: 'Delivery zone not found or no values changed' });
 
     await db.logAudit({
       userId: req.user!.id,
