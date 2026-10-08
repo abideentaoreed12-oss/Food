@@ -13,6 +13,34 @@ interface WalletModalProps {
   onClose: () => void;
 }
 
+function authHeaders(): HeadersInit {
+  const token =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('veyrang_jwt_token') || ''
+      : '';
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+}
+
+function formatVa(data: {
+  accountNumber: string;
+  bankName: string;
+  accountName: string;
+}) {
+  const raw = String(data.accountNumber).replace(/[^0-9]/g, '');
+  return {
+    accountNumberRaw: raw,
+    accountNumberFormatted:
+      raw.length === 10
+        ? `${raw.slice(0, 4)} ${raw.slice(4, 7)} ${raw.slice(7, 10)}`
+        : raw,
+    bankName: data.bankName,
+    accountName: data.accountName
+  };
+}
+
 export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   const { walletBalanceNGN } = useDelivery();
   const { user, setIsAuthModalOpen } = useAuth();
@@ -41,22 +69,20 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
       setLiveVa(fromUser);
       return;
     }
-    // Try fetch existing from API
     (async () => {
       try {
-        const data: any = await api.payment.getVirtualAccount?.();
-        if (data?.accountNumber) {
-          const raw = String(data.accountNumber).replace(/[^0-9]/g, '');
-          setLiveVa({
-            accountNumberRaw: raw,
-            accountNumberFormatted:
-              raw.length === 10 ? `${raw.slice(0, 4)} ${raw.slice(4, 7)} ${raw.slice(7, 10)}` : raw,
-            bankName: data.bankName,
-            accountName: data.accountName
-          });
+        const res = await fetch('/api/payment/virtual-account', {
+          method: 'GET',
+          headers: authHeaders(),
+          credentials: 'include'
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (json?.success && json?.data?.accountNumber) {
+          setLiveVa(formatVa(json.data));
         }
       } catch {
-        /* none yet */
+        /* no VA yet */
       }
     })();
   }, [isOpen, user]);
@@ -87,28 +113,21 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
     setVaLoading(true);
     setErrorNote(null);
     try {
-      const res: any = await fetch('/api/payment/virtual-account', {
+      const res = await fetch('/api/payment/virtual-account', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('veyrang_jwt_token') || ''}`
-        },
-        credentials: 'include'
+        headers: authHeaders(),
+        credentials: 'include',
+        body: '{}'
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
         throw new Error(json.error || 'Could not create virtual account');
       }
-      const raw = String(json.data.accountNumber).replace(/[^0-9]/g, '');
-      setLiveVa({
-        accountNumberRaw: raw,
-        accountNumberFormatted:
-          raw.length === 10 ? `${raw.slice(0, 4)} ${raw.slice(4, 7)} ${raw.slice(7, 10)}` : raw,
-        bankName: json.data.bankName,
-        accountName: json.data.accountName
-      });
+      setLiveVa(formatVa(json.data));
     } catch (err: any) {
-      setErrorNote(err.message || 'Virtual account unavailable. Use Online Payment instead.');
+      setErrorNote(
+        err.message || 'Virtual account unavailable. Use Online Payment instead.'
+      );
     } finally {
       setVaLoading(false);
     }
@@ -135,7 +154,6 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
       }
       throw new Error('Paystack did not return a checkout URL');
     } catch (err: any) {
-      // Never credit wallet locally on failure
       setErrorNote(err.message || 'Payment could not start. Try again.');
       setLoading(false);
     }
@@ -167,7 +185,10 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
             <Lock className="w-6 h-6 mx-auto text-[#FF5500]" />
             <p className="text-xs text-slate-600">Sign in to fund your wallet.</p>
             <button
-              onClick={() => { onClose(); setIsAuthModalOpen(true); }}
+              onClick={() => {
+                onClose();
+                setIsAuthModalOpen(true);
+              }}
               className="w-full py-3.5 bg-[#FF5500] text-white rounded-2xl text-xs font-bold"
             >
               Sign In
@@ -198,11 +219,12 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
               </div>
             )}
 
-            {/* Bank transfer — live VA only */}
             <div
               onClick={() => setPaymentMethod('transfer')}
               className={`p-4 rounded-2xl border-2 cursor-pointer ${
-                paymentMethod === 'transfer' ? 'border-[#FF5500] bg-orange-50/40' : 'border-slate-200'
+                paymentMethod === 'transfer'
+                  ? 'border-[#FF5500] bg-orange-50/40'
+                  : 'border-slate-200'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -224,11 +246,16 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="block text-[10px] text-slate-500">Account Number</span>
-                      <span className="text-lg font-black font-mono tracking-wider">{liveVa.accountNumberFormatted}</span>
+                      <span className="text-lg font-black font-mono tracking-wider">
+                        {liveVa.accountNumberFormatted}
+                      </span>
                     </div>
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); handleCopyVirtualAccount(); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopyVirtualAccount();
+                      }}
                       className="px-3 py-1.5 bg-[#FF5500] text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
                     >
                       {copiedAccount ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -246,7 +273,10 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                   <button
                     type="button"
                     disabled={vaLoading}
-                    onClick={(e) => { e.stopPropagation(); handleGenerateVa(); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGenerateVa();
+                    }}
                     className="w-full py-2.5 bg-[#FF5500] text-white rounded-xl text-xs font-bold disabled:opacity-50"
                   >
                     {vaLoading ? 'Creating with Paystack…' : 'Generate Paystack Virtual Account'}
@@ -255,11 +285,12 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
               )}
             </div>
 
-            {/* Online gateway */}
             <div
               onClick={() => setPaymentMethod('card')}
               className={`p-4 rounded-2xl border-2 cursor-pointer ${
-                paymentMethod === 'card' ? 'border-[#FF5500] bg-orange-50/40' : 'border-slate-200'
+                paymentMethod === 'card'
+                  ? 'border-[#FF5500] bg-orange-50/40'
+                  : 'border-slate-200'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -272,11 +303,17 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                     <p className="text-xs text-slate-600">Official Paystack checkout</p>
                   </div>
                 </div>
-                <ChevronRight className={`w-5 h-5 text-[#FF5500] ${paymentMethod === 'card' ? 'rotate-90' : ''}`} />
+                <ChevronRight
+                  className={`w-5 h-5 text-[#FF5500] ${paymentMethod === 'card' ? 'rotate-90' : ''}`}
+                />
               </div>
 
               {paymentMethod === 'card' && (
-                <form onSubmit={handleTopUpSubmit} onClick={(e) => e.stopPropagation()} className="mt-4 pt-4 border-t border-orange-200 space-y-3">
+                <form
+                  onSubmit={handleTopUpSubmit}
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-4 pt-4 border-t border-orange-200 space-y-3"
+                >
                   <div className="grid grid-cols-3 gap-1.5">
                     {presetAmounts.map((amt) => (
                       <button
@@ -306,7 +343,9 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                     className="w-full py-3.5 bg-[#FF5500] text-white rounded-2xl text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     <CreditCard className="w-4 h-4" />
-                    {loading ? 'Opening Paystack…' : `Pay ₦${topUpAmount.toLocaleString('en-NG')} via Paystack`}
+                    {loading
+                      ? 'Opening Paystack…'
+                      : `Pay ₦${topUpAmount.toLocaleString('en-NG')} via Paystack`}
                   </button>
                 </form>
               )}
