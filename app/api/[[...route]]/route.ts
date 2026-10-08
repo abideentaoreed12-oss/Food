@@ -12,9 +12,9 @@ import { DELIVERY_ZONES } from '../../../src/utils/format.ts';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'veyrang-jwt-production-secret-key-2026';
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'abideentaoreed12@gmail.com').toLowerCase().trim();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Teeplus1029';
+const JWT_SECRET = process.env.JWT_SECRET || 'veyrang-runtime-secret-key-2026';
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@veyrang.com').toLowerCase().trim();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'VeyrangSecure2026!';
 
 // Auto-ensure D1 database tables and initial catalog are bootstrapped
 let isD1Initialized = false;
@@ -1140,8 +1140,7 @@ export async function POST(req: NextRequest) {
       message: emailRes.success
         ? `A 6-digit verification code has been sent to ${cleanEmail}`
         : `A 6-digit verification code was generated for ${cleanEmail}`,
-      emailSent: emailRes.success,
-      devCode: code
+      emailSent: emailRes.success
     });
   }
 
@@ -1243,8 +1242,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: `Recovery code dispatched to ${cleanEmail}`,
-      emailSent: emailRes.success,
-      devCode: code
+      emailSent: emailRes.success
     });
   }
 

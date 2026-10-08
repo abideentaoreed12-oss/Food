@@ -47,10 +47,10 @@ export class D1Client {
   private workerUrl: string;
 
   constructor() {
-    this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '661a09bca00f369ea7301c3b6c9e6b6b';
-    this.databaseId = process.env.CLOUDFLARE_DATABASE_ID || 'bfaade8e-23b9-4678-a8b3-c4bd87d510ea';
-    this.apiToken = process.env.CLOUDFLARE_API_TOKEN || 'cfut_vOu5Jq16qNQHqDQEWkP3zue6RafeGzQeMhNdd94M6b9c61f3';
-    this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || 'https://veyrang-api.abideentaoreed12.workers.dev').replace(/\/$/, '');
+    this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '';
+    this.databaseId = process.env.CLOUDFLARE_DATABASE_ID || '';
+    this.apiToken = process.env.CLOUDFLARE_API_TOKEN || '';
+    this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, '');
   }
 
   public isConfigured(): boolean {
@@ -84,7 +84,7 @@ export class D1Client {
   public async query<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
     const start = Date.now();
 
-    // Live Cloudflare D1 HTTP API (Primary Authoritative Live Database)
+    // Strategy 1: Live Cloudflare D1 Query if Configured
     if (this.isConfigured()) {
       const directUrl = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/d1/database/${this.databaseId}/query`;
       try {
@@ -118,7 +118,7 @@ export class D1Client {
       }
     }
 
-    // Strategy 3: Local High-Performance Persistent SQLite Engine
+    // Strategy 2: Local Persistent SQLite Fallback (Zero hardcoded secrets, perfect for dev/preview)
     const localDb = getLocalSQLite();
     if (localDb) {
       try {

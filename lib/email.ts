@@ -11,7 +11,7 @@ export async function sendVerificationEmail({
   type?: 'signup' | 'forgot_password';
 }) {
   const apiKey = process.env.RESEND_API_KEY;
-  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || 'abideentaoreed12@gmail.com';
+  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || '';
   const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
   const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
   const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);

@@ -35,7 +35,7 @@ export class PaymentGatewayClient {
     this.secretKey =
       process.env.PAYMENT_SECRET_KEY ||
       process.env.PAYSTACK_SECRET_KEY ||
-      'sk_live_bd40fcf9c0f4a5cef27e6655e104f782a7d00421';
+      '';
   }
 
   public async initializePayment(params: InitializePaymentParams): Promise<PaymentInitializationResult> {

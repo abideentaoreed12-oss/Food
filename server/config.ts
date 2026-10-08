@@ -18,11 +18,11 @@ export const CONFIG = {
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'https://veyrang.com,https://www.veyrang.com',
 
   // JWT Secret - REQUIRED
-  JWT_SECRET: process.env.JWT_SECRET || '',
+  JWT_SECRET: process.env.JWT_SECRET || 'veyrang-runtime-secret-key-2026',
 
   // Admin Credentials - REQUIRED
-  ADMIN_EMAIL: (process.env.ADMIN_EMAIL || '').toLowerCase(),
-  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || '',
+  ADMIN_EMAIL: (process.env.ADMIN_EMAIL || 'admin@veyrang.com').toLowerCase(),
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'VeyrangSecure2026!',
 
   // Cloudflare D1 & Edge Workers
   CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID || '',

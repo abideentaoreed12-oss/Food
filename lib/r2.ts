@@ -14,11 +14,11 @@ export class R2Client {
   private workerUrl: string;
 
   constructor() {
-    this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '661a09bca00f369ea7301c3b6c9e6b6b';
-    this.apiToken = process.env.CLOUDFLARE_API_TOKEN || 'cfut_vOu5Jq16qNQHqDQEWkP3zue6RafeGzQeMhNdd94M6b9c61f3';
-    this.bucketName = process.env.CLOUDFLARE_R2_BUCKET || 'veyrang-production-storage';
-    this.publicCdnUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || 'https://cdn.veyrang.com').replace(/\/$/, '');
-    this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || 'https://veyrang-api.abideentaoreed12.workers.dev').replace(/\/$/, '');
+    this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || '';
+    this.apiToken = process.env.CLOUDFLARE_API_TOKEN || '';
+    this.bucketName = process.env.CLOUDFLARE_R2_BUCKET || '';
+    this.publicCdnUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || '').replace(/\/$/, '');
+    this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, '');
   }
 
   public isConfigured(): boolean {
@@ -102,11 +102,12 @@ export class R2Client {
       }
     }
 
-    // Fallback: Guarantee deterministic R2 CDN URL format for client
+    // Return failure when R2 is not configured or direct upload fails
     return {
-      success: true,
+      success: false,
       key: cleanKey,
-      cdnUrl
+      cdnUrl,
+      error: 'R2 storage is not configured or upload failed.'
     };
   }
 
