@@ -397,7 +397,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Reference required' }, { status: 400 });
     }
     const result = await paymentGateway.verifyPayment(reference);
-    return NextResponse.json({ success: result.success, data: result, ...result });
+    return NextResponse.json({ ...result, data: result });
   }
 
   return NextResponse.json(
