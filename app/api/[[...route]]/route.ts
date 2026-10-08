@@ -107,7 +107,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ success: false, isPaid: false, error: verified.error || 'Payment provider verification failed' }, { status: 502 });
       }
       if (!verified.isPaid) {
-        return NextResponse.json({ success: true, isPaid: false, status: verified.status, reference });
+        return NextResponse.json({ success: false, isPaid: false, status: verified.status, error: 'Payment has not completed successfully', reference });
       }
       const expectedAmount = Number(transaction.amount);
       if (!Number.isFinite(expectedAmount) || Math.round(expectedAmount * 100) !== Math.round(verified.amountNGN * 100)) {
