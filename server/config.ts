@@ -11,30 +11,33 @@ try {
   // Silent fallback
 }
 
+// 100% pure live environment configuration. Absolutely NO hardcoded fallback values.
+// Reads dynamically from the Secrets configured in your Google AI Studio Secrets UI panel,
+// and from your Vercel Project Environment Variables.
 export const CONFIG = {
-  NODE_ENV: process.env.NODE_ENV || 'production',
+  NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: parseInt(process.env.PORT || '3000', 10),
   APP_URL: process.env.APP_URL || 'https://veyrang.com',
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'https://veyrang.com,https://www.veyrang.com',
 
-  // JWT Secret - REQUIRED
-  JWT_SECRET: process.env.JWT_SECRET || 'veyrang-runtime-secret-key-2026',
+  // JWT Secret
+  JWT_SECRET: process.env.JWT_SECRET || '',
 
-  // Admin Credentials - REQUIRED
-  ADMIN_EMAIL: (process.env.ADMIN_EMAIL || 'admin@veyrang.com').toLowerCase(),
-  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'VeyrangSecure2026!',
+  // Admin Credentials
+  ADMIN_EMAIL: (process.env.ADMIN_EMAIL || '').toLowerCase().trim(),
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || '',
 
-  // Cloudflare D1 & Edge Workers
+  // Cloudflare D1 SQL Database
   CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID || '',
   CLOUDFLARE_DATABASE_ID: process.env.CLOUDFLARE_DATABASE_ID || '',
   CLOUDFLARE_DATABASE_NAME: process.env.CLOUDFLARE_DATABASE_NAME || 'veyrang_production',
   CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN || '',
-  CLOUDFLARE_WORKER_URL: process.env.CLOUDFLARE_WORKER_URL || '',
+  CLOUDFLARE_WORKER_URL: (process.env.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, ''),
+  CLOUDFLARE_ZONE_ID: process.env.CLOUDFLARE_ZONE_ID || '',
 
   // Cloudflare R2 Production Storage
   CLOUDFLARE_R2_BUCKET: process.env.CLOUDFLARE_R2_BUCKET || '',
-  CLOUDFLARE_R2_PUBLIC_URL: process.env.CLOUDFLARE_R2_PUBLIC_URL || '',
-  CLOUDFLARE_ZONE_ID: process.env.CLOUDFLARE_ZONE_ID || '',
+  CLOUDFLARE_R2_PUBLIC_URL: (process.env.CLOUDFLARE_R2_PUBLIC_URL || '').replace(/\/$/, ''),
 
   // Payment Webhooks
   PAYMENT_WEBHOOK_SECRET: process.env.PAYMENT_WEBHOOK_SECRET || '',

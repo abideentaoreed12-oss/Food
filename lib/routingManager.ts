@@ -176,7 +176,8 @@ class RoutingManager {
    */
   private async tryValhalla(origin: RouteCoordinates, destination: RouteCoordinates): Promise<RouteResult | null> {
     const startTime = Date.now();
-    const valhallaUrl = process.env.VALHALLA_URL || 'https://valhalla1.openstreetmap.de/route';
+    // Using a more stable public Valhalla endpoint
+    const valhallaUrl = process.env.VALHALLA_URL || 'https://valhalla.openstreetmap.de/route';
     try {
       const payload = {
         locations: [

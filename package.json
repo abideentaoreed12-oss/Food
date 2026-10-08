@@ -8,7 +8,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next build && next start -p 3000",
     "dev:local": "tsx server.ts",
     "build": "next build",
     "start": "next start -p 3000",
