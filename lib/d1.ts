@@ -1,7 +1,4 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
-// Unified Cloudflare D1 & Persistent SQLite Client for Veyrang Food Delivery
+// Pure Cloudflare D1 HTTP client (Live-Only) - Zero hardcoded fallbacks
 export interface D1QueryResult<T = any> {
   results: T[];
   success: boolean;
@@ -19,25 +16,6 @@ export interface D1ApiResponse<T = any> {
   success: boolean;
   errors: Array<{ code: number; message: string }>;
   messages: Array<{ code?: number; message?: string }>;
-}
-
-let localDbInstance: any = null;
-
-function getLocalSQLite() {
-  if (localDbInstance) return localDbInstance;
-  try {
-    const { DatabaseSync } = require('node:sqlite');
-    const dataDir = path.resolve(process.cwd(), '.data');
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-    const dbPath = path.join(dataDir, 'veyrang.sqlite');
-    localDbInstance = new DatabaseSync(dbPath);
-    return localDbInstance;
-  } catch (err) {
-    console.warn('[Local SQLite Init Warning]:', err);
-    return null;
-  }
 }
 
 export class D1Client {
@@ -82,78 +60,40 @@ export class D1Client {
   }
 
   public async query<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
-    const start = Date.now();
-
-    // Strategy 1: Live Cloudflare D1 Query if Configured
-    if (this.isConfigured()) {
-      const directUrl = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/d1/database/${this.databaseId}/query`;
-      try {
-        const response = await fetch(directUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${this.apiToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ sql, params }),
-          cache: 'no-store'
-        });
-
-        if (response.ok) {
-          const json: D1ApiResponse<T> = await response.json();
-          if (json.success && json.result && json.result.length > 0) {
-            return json.result[0];
-          }
-          if (json.errors && json.errors.length > 0) {
-            console.error('[Cloudflare D1 Query Error]:', json.errors);
-            return { results: [], success: false };
-          }
-        } else {
-          const errBody = await response.text().catch(() => '');
-          console.error('[Cloudflare D1 HTTP Error]:', response.status, errBody);
-          return { results: [], success: false };
-        }
-      } catch (err: any) {
-        console.error('[Cloudflare D1 Direct API Exception]:', err?.message || err);
-        return { results: [], success: false };
-      }
+    if (!this.isConfigured()) {
+      console.error('[Cloudflare D1 Config Error]: Missing environment credentials.');
+      return { results: [], success: false };
     }
 
-    // Strategy 2: Local Persistent SQLite Fallback (Zero hardcoded secrets, perfect for dev/preview)
-    const localDb = getLocalSQLite();
-    if (localDb) {
-      try {
-        const trimmed = sql.trim();
-        const upper = trimmed.toUpperCase();
+    const directUrl = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/d1/database/${this.databaseId}/query`;
+    try {
+      const response = await fetch(directUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sql, params }),
+        cache: 'no-store'
+      });
 
-        // Multiple DDL statements or statements without parameters
-        if (params.length === 0 && (upper.startsWith('CREATE') || upper.startsWith('DROP') || upper.startsWith('ALTER') || trimmed.includes(';'))) {
-          localDb.exec(trimmed);
-          return { results: [], success: true, meta: { duration: Date.now() - start } };
+      if (response.ok) {
+        const json: D1ApiResponse<T> = await response.json();
+        if (json.success && json.result && json.result.length > 0) {
+          return json.result[0];
         }
-
-        const stmt = localDb.prepare(trimmed);
-
-        if (upper.startsWith('SELECT') || upper.startsWith('PRAGMA') || upper.startsWith('EXPLAIN')) {
-          const rows = stmt.all(...params);
-          // Convert row null-prototypes to clean JSON objects
-          const cleanRows = (rows || []).map((r: any) => ({ ...r }));
-          return { results: cleanRows, success: true, meta: { duration: Date.now() - start, rows_read: cleanRows.length } };
-        } else {
-          const info = stmt.run(...params);
-          return {
-            results: [],
-            success: true,
-            meta: {
-              duration: Date.now() - start,
-              changes: info.changes,
-              last_row_id: Number(info.lastInsertRowid || 0)
-            }
-          };
+        if (json.errors && json.errors.length > 0) {
+          console.error('[Cloudflare D1 Query Error]:', json.errors);
+          return { results: [], success: false };
         }
-      } catch (err: any) {
-        console.warn('[Local SQLite Query Warning]:', err?.message || err, 'SQL:', sql);
+      } else {
+        const errBody = await response.text().catch(() => '');
+        console.error('[Cloudflare D1 HTTP Error]:', response.status, errBody);
         return { results: [], success: false };
       }
+    } catch (err: any) {
+      console.error('[Cloudflare D1 Direct API Exception]:', err?.message || err);
+      return { results: [], success: false };
     }
 
     return { results: [], success: false };
