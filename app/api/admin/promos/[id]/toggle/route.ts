@@ -36,6 +36,6 @@ export async function PATCH(
   }
   const nextActive = current.results[0].is_active === 1 ? 0 : 1;
   const updated = await d1.query('UPDATE promo_codes SET is_active = ? WHERE id = ? OR code = ?', [nextActive, id, id]);
-  if (!updated.success || updated.meta?.changes === 0) return NextResponse.json({ success: false, error: 'Promo status was not updated' }, { status: 503 });
+  if (!updated.success || updated.meta?.rows_written === 0) return NextResponse.json({ success: false, error: 'Promo status was not updated' }, { status: 503 });
   return NextResponse.json({ success: true, isActive: nextActive === 1, data: { isActive: nextActive === 1 } });
 }
