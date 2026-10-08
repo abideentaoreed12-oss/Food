@@ -13,7 +13,7 @@ describe('Production Database & Security Ledger', () => {
         id: 'ord-test-01',
         shortId: 'VR-1001',
         customerId: 'usr-cust-1',
-        customerName: 'Amina you',
+        customerName: 'Amina Bello',
         customerPhone: '+234 801 234 5678',
         customerAddress: '15 Admiralty Way, Lekki Phase 1, Lagos',
         restaurantId: 'rest-1',

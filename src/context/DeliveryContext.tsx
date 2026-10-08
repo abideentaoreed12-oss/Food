@@ -851,6 +851,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       messages: []
     };
 
+    let finalOrder: Order = newOrder;
+
     try {
       const serverOrder = await api.orders.create({
         customerId: user?.id || undefined,
@@ -895,7 +897,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         idempotencyKey: `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
       });
 
-      const finalOrder = (serverOrder && serverOrder.id) ? serverOrder : newOrder;
+      finalOrder = (serverOrder && serverOrder.id) ? serverOrder : newOrder;
       setOrders((prev) => [finalOrder, ...prev.filter((o) => o.id !== finalOrder.id)]);
       setActiveTrackingOrderId(finalOrder.id);
 
@@ -927,7 +929,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (payRes?.data?.authorizationUrl) {
           clearCart();
           window.location.href = payRes.data.authorizationUrl;
-          return;
+          return finalOrder;
         }
       }
     } catch {
@@ -945,6 +947,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         paymentMethod: details.paymentMethod
       };
       setWalletDeposits((prev) => [orderTx, ...prev.filter((p) => p.id !== orderTx.id && p.reference !== orderTx.reference)]);
+      return newOrder;
     }
 
     // Automatically ensure this address is saved in D1 for the authenticated user
@@ -967,7 +970,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setIsCartOpenState(false);
     setIsTrackingModalOpen(true);
 
-    return newOrder;
+    return finalOrder;
   };
 
   const advanceOrderStatus = async (orderId: string, newStatus: OrderStatus, note?: string) => {
