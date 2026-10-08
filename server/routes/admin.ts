@@ -902,8 +902,14 @@ router.patch('/delivery-zones/:id/surge', async (req: AuthRequest, res: Response
   try {
     const { id } = req.params;
     const { surgeMultiplier } = req.body;
-    const surge = Number(surgeMultiplier || 1.0);
-    await d1Client.query('UPDATE delivery_zones SET surge_multiplier = ? WHERE id = ?', [surge, id]);
+    if (surgeMultiplier === undefined || surgeMultiplier === null || surgeMultiplier === '' || !Number.isFinite(Number(surgeMultiplier)) || Number(surgeMultiplier) < 0) {
+      return res.status(400).json({ success: false, error: 'A valid non-negative surge multiplier is required' });
+    }
+    const currentZone = await d1Client.query('SELECT id FROM delivery_zones WHERE id = ? LIMIT 1', [id]);
+    if (!currentZone.results?.length) return res.status(404).json({ success: false, error: 'Delivery zone not found' });
+    const surge = Number(surgeMultiplier);
+    const updated = await d1Client.query('UPDATE delivery_zones SET surge_multiplier = ? WHERE id = ?', [surge, id]);
+    if (updated.meta?.changes === 0) return res.status(503).json({ success: false, error: 'Surge multiplier was not updated' });
 
     await db.logAudit({
       userId: req.user!.id,
