@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { z } from 'zod';
 import { db } from '../db/index.ts';
 import { d1Client } from '../db/d1Client.ts';
-import { AuthRequest, generateToken, requireAuth } from '../middleware/auth.ts';
+import { AuthRequest, generateToken, requireAuth, requireRole } from '../middleware/auth.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { createRateLimiter } from '../middleware/security.ts';
 import { sendEmail } from '../utils/email.ts';
@@ -12,28 +12,23 @@ import { CONFIG } from '../config.ts';
 
 const router = Router();
 
-// Secure Admin Diagnostic Route
-router.get('/debug-admin', async (req, res) => {
+// Restricted diagnostic endpoint. Never expose configured credentials or raw user data.
+router.get('/debug-admin', requireAuth, requireRole(['admin']), async (_req, res) => {
   try {
-    // Read raw database directly to bypass email matching fallback
-    const users = await db.getAllUsers();
-    const adminByRole = users.find((u) => u.role === 'admin');
-
+    const result = await d1Client.query("SELECT COUNT(*) AS total_users, SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) AS admin_count FROM users");
+    if (!result.success || !result.results?.[0]) {
+      return res.status(503).json({ success: false, error: 'Admin diagnostics are temporarily unavailable' });
+    }
     return res.json({
       success: true,
-      env: {
-        ADMIN_EMAIL_SET: Boolean(CONFIG.ADMIN_EMAIL),
-        ADMIN_EMAIL_VALUE: CONFIG.ADMIN_EMAIL,
-        ADMIN_PASSWORD_SET: Boolean(CONFIG.ADMIN_PASSWORD),
-      },
       database: {
-        adminByRoleFound: Boolean(adminByRole),
-        adminByRoleEmail: adminByRole?.email || 'NONE',
-        totalUsersCount: users.length,
+        totalUsersCount: Number(result.results[0].total_users),
+        adminCount: Number(result.results[0].admin_count)
       }
     });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    console.error('[Admin diagnostics] Query failed:', error?.message || error);
+    return res.status(503).json({ success: false, error: 'Admin diagnostics are temporarily unavailable' });
   }
 });
 
