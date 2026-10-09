@@ -131,7 +131,7 @@ router.get('/file/:key(*)', async (req: Request, res: Response) => {
 });
 
 // 3. Delete Asset directly from Cloudflare R2 Bucket
-router.delete('/file/:key(*)', requireAuth, async (req: AuthRequest, res: Response) => {
+router.delete('/file/:key(*)', requireAuth, requireRole(['admin', 'sub_admin']), async (req: AuthRequest, res: Response) => {
   try {
     const key = req.params.key;
     if (!key) {
@@ -139,7 +139,10 @@ router.delete('/file/:key(*)', requireAuth, async (req: AuthRequest, res: Respon
     }
 
     const sanitizedKey = key.replace(/[^a-zA-Z0-9_\-\.\/]/g, '').replace(/^\/+/, '');
-    const r2Url = `https://api.cloudflare.com/client/v4/accounts/${CONFIG.CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${CONFIG.CLOUDFLARE_R2_BUCKET}/objects/${sanitizedKey}`;
+    if (!sanitizedKey || sanitizedKey.split('/').some((part: string) => !part || part === '.' || part === '..')) {
+      return res.status(400).json({ success: false, error: 'A valid storage key is required' });
+    }
+    const r2Url = `https://api.cloudflare.com/client/v4/accounts/${CONFIG.CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${CONFIG.CLOUDFLARE_R2_BUCKET}/objects/${sanitizedKey.split('/').map(encodeURIComponent).join('/')}`;
 
     const delRes = await fetch(r2Url, {
       method: 'DELETE',
