@@ -67,7 +67,7 @@ export const SearchPage: React.FC = () => {
     searchableRestaurants.forEach((restaurant: any) => {
       (restaurant.categories || []).forEach((category: any) => {
         (category.items || []).forEach((item: any) => {
-          if (item?.isAvailable && item.name?.trim()) {
+          if (item?.isAvailable !== false && item.name?.trim()) {
             const name = item.name.trim();
             counts.set(name, (counts.get(name) || 0) + 1);
           }
@@ -84,8 +84,8 @@ export const SearchPage: React.FC = () => {
     (r.categories || []).forEach((cat) => {
       if (!cat) return;
       (cat.items || []).forEach((item) => {
-        if (!item) return;
-        allDishes.push({ dish: item, restaurantName: r.name || 'Kitchen' });
+        if (!item || item.isAvailable === false) return;
+        allDishes.push({ dish: { ...item, restaurantId: item.restaurantId || r.id, category: item.category || cat.name || '' }, restaurantName: r.name || 'Kitchen' });
       });
     });
   });
@@ -106,6 +106,7 @@ export const SearchPage: React.FC = () => {
           r &&
           ((r.name || '').toLowerCase().includes(q) ||
             (r.cuisine || '').toLowerCase().includes(q) ||
+            (r.tagline || '').toLowerCase().includes(q) ||
             (r.tags || []).some((t) => (t || '').toLowerCase().includes(q)))
       )
     : [];
