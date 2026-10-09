@@ -21,7 +21,7 @@ router.get('/d1', requireAuth, requireRole(['admin', 'sub_admin']), async (req: 
     const pingResult = await d1Client.query('SELECT 1 as live_status, CURRENT_TIMESTAMP as cf_timestamp;');
     const latencyMs = Date.now() - pingStart;
 
-    if (!pingResult || !pingResult.results || pingResult.results.length === 0) {
+    if (!pingResult?.success || !pingResult.results || pingResult.results.length === 0) {
       throw new Error('No response returned from database query endpoint.');
     }
 
@@ -86,7 +86,7 @@ router.get('/d1', requireAuth, requireRole(['admin', 'sub_admin']), async (req: 
       status: 'degraded',
       connected: false,
       latencyMs: Date.now() - startTime,
-      error: error?.message || 'Failed to establish connection to database',
+      error: 'Failed to establish connection to database',
       checkedAt: new Date().toISOString()
     });
   }
