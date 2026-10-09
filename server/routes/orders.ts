@@ -215,13 +215,30 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
     }
 
     if (verifiedWalletDeduction > 0 && req.user?.id) {
+      const walletColumn = currency === 'USD' ? 'wallet_balance_usd' : 'wallet_balance_ngn';
       const walletUpdate = await d1Client.query(
-        'UPDATE users SET wallet_balance_ngn = MAX(0, COALESCE(wallet_balance_ngn, 0) - ?), updated_at = ? WHERE id = ?',
-        [verifiedWalletDeduction, nowIso, req.user.id]
+        `UPDATE users SET ${walletColumn} = ${walletColumn} - ?, updated_at = ?
+         WHERE id = ? AND COALESCE(${walletColumn}, 0) >= ?`,
+        [verifiedWalletDeduction, nowIso, req.user.id, verifiedWalletDeduction]
       );
-      if (walletUpdate.meta?.rows_written === 0) {
-        console.error('[Order payment] Wallet deduction was not recorded after order creation', { orderId: newOrder.id, userId: req.user.id });
-        return res.status(503).json({ success: false, error: 'Wallet payment could not be confirmed. Contact support before retrying.', orderId: newOrder.id });
+      if (!walletUpdate.success || walletUpdate.meta?.rows_written !== 1) {
+        console.error('[Order payment] Conditional wallet deduction failed', { orderId: newOrder.id, userId: req.user.id });
+        await d1Client.query('UPDATE orders SET payment_status = ?, status = ?, updated_at = ? WHERE id = ?', ['failed', 'cancelled', nowIso, newOrder.id]);
+        return res.status(409).json({ success: false, error: 'Insufficient wallet balance or wallet payment could not be confirmed. The order was cancelled.' });
+      }
+      const ledger = await d1Client.query(
+        `INSERT INTO wallet_transactions (id, user_id, type, amount, currency, description, reference, payment_method, status, created_at)
+         VALUES (?, ?, 'withdrawal', ?, ?, 'Order wallet payment', ?, 'Wallet', 'completed', ?)`,
+        [`wtx-${transactionRef}`, req.user.id, verifiedWalletDeduction, currency, transactionRef, nowIso]
+      );
+      if (!ledger.success) {
+        // Compensate if the ledger write failed so an untracked debit is not retained.
+        await d1Client.query(
+          `UPDATE users SET ${walletColumn} = ${walletColumn} + ?, updated_at = ? WHERE id = ?`,
+          [verifiedWalletDeduction, nowIso, req.user.id]
+        );
+        await d1Client.query('UPDATE orders SET payment_status = ?, status = ?, updated_at = ? WHERE id = ?', ['failed', 'cancelled', nowIso, newOrder.id]);
+        return res.status(503).json({ success: false, error: 'Wallet ledger could not be recorded; the order was cancelled and the wallet debit was reversed.' });
       }
     }
 
