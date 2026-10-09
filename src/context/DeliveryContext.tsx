@@ -961,8 +961,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         throw new Error(initializationMessage);
       }
     } catch (error) {
+      // Never swallow order-creation or payment errors for online card checkout.
+      // Returning newOrder here makes CartDrawer think checkout succeeded and reset to cart.
       if (paystackInitializationError) {
         throw new Error(paystackInitializationError);
+      }
+      if (details.paymentMethod === 'Debit Card' && finalPayable > 0) {
+        throw error instanceof Error ? error : new Error('Could not complete Paystack checkout. Please try again.');
       }
       setOrders((prev) => [newOrder, ...prev]);
       setActiveTrackingOrderId(newOrder.id);
