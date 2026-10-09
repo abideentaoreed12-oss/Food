@@ -6,7 +6,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function getAdmin(req: NextRequest) {
-  const secret = process.env.JWT_SECRET || 'veyrang-jwt-production-auth-secure-key-2026';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) return null;
   const auth = req.headers.get('authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
@@ -64,12 +65,12 @@ export async function POST(req: NextRequest) {
   }
   const id = `promo-${Date.now()}`;
   const now = new Date().toISOString();
-  const minOrder = Number(body.minOrderAmount ?? body.min_order_amount);
+  const minOrder = Number(body.minOrderAmount ?? body.min_order_amount ?? 0);
   const capInput = body.maxDiscountCap ?? body.max_discount_cap;
   const maxCap = capInput == null || capInput === '' ? null : Number(capInput);
-  const usageLimit = Number(body.usageLimit ?? body.usage_limit);
+  const usageLimit = Number(body.usageLimit ?? body.usage_limit ?? 1000);
   if (!Number.isFinite(minOrder) || minOrder < 0 || (maxCap !== null && (!Number.isFinite(maxCap) || maxCap < 0)) || !Number.isInteger(usageLimit) || usageLimit < 1) {
-    return NextResponse.json({ success: false, error: 'Minimum order, discount cap, and usage limit must be valid. Provide a usage limit of at least 1.' }, { status: 400 });
+    return NextResponse.json({ success: false, error: 'Minimum order, discount cap, and usage limit must be valid.' }, { status: 400 });
   }
   const expiresAt = body.expiresAt || body.expires_at || null;
   const description = String(body.description || '');
@@ -79,18 +80,7 @@ export async function POST(req: NextRequest) {
       id, code, discount_type, value, min_order_amount, max_discount_cap,
       usage_limit, times_used, is_active, expires_at, description, created_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, ?, ?, ?)`,
-    [
-      id,
-      code,
-      discountType,
-      value,
-      minOrder,
-      maxCap,
-      usageLimit,
-      expiresAt,
-      description,
-      now
-    ]
+    [id, code, discountType, value, minOrder, maxCap, usageLimit, expiresAt, description, now]
   );
 
   if (!inserted.success) return NextResponse.json({ success: false, error: 'Promo could not be saved to the database' }, { status: 503 });
