@@ -79,13 +79,29 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
       if (matchedItem.isAvailable === false) return res.status(400).json({ success: false, error: `Item unavailable` });
 
       let verifiedOptionsTotal = 0;
+      const groups = matchedItem.customizations || matchedItem.optionGroups || [];
+      const selectedByGroup = new Map<string, Set<string>>();
       for (const opt of rawItem.selectedOptions || []) {
-        let trusted = Number(opt.price) || 0;
-        for (const g of matchedItem.customizations || matchedItem.optionGroups || []) {
-          const found = (g.options || []).find((o: any) => o.id === opt.optionId || o.name === opt.optionName);
-          if (found && found.price != null) { trusted = Number(found.price) || 0; break; }
-        }
+        const group = groups.find((g: any) => String(g.id ?? g.name) === String(opt.groupId ?? opt.groupName));
+        if (!group) return res.status(400).json({ success: false, error: 'A selected customization group is invalid' });
+        const found = (group.options || []).find((o: any) => String(o.id) === String(opt.optionId));
+        if (!found) return res.status(400).json({ success: false, error: 'A selected customization option is invalid' });
+        const groupKey = String(group.id ?? group.name);
+        const selected = selectedByGroup.get(groupKey) || new Set<string>();
+        if (selected.has(String(found.id))) return res.status(400).json({ success: false, error: 'Duplicate customization options are not allowed' });
+        selected.add(String(found.id));
+        selectedByGroup.set(groupKey, selected);
+        const trusted = Number(found.price ?? 0);
+        if (!Number.isFinite(trusted) || trusted < 0) return res.status(400).json({ success: false, error: 'Menu customization pricing is invalid' });
         verifiedOptionsTotal += trusted;
+      }
+      for (const group of groups) {
+        const selectedCount = selectedByGroup.get(String(group.id ?? group.name))?.size || 0;
+        const minimum = Number(group.minSelect ?? (group.required ? 1 : 0));
+        const maximum = group.maxSelect == null ? Number.POSITIVE_INFINITY : Number(group.maxSelect);
+        if (selectedCount < minimum || selectedCount > maximum) {
+          return res.status(400).json({ success: false, error: 'Please select valid options for each customization group' });
+        }
       }
       const itemTotal = (Number(matchedItem.price) + verifiedOptionsTotal) * rawItem.quantity;
       verifiedSubtotal += itemTotal;
@@ -150,7 +166,10 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
       discountAmount = cap === null ? rawDiscount : Math.min(cap, rawDiscount);
     }
     const preWalletTotal = Math.max(0, Math.round((verifiedSubtotal + deliveryFee + serviceFee + (tip || 0) - discountAmount) * 100) / 100);
-    const verifiedWalletDeduction = Math.min(preWalletTotal, Math.max(0, walletDeduction || 0));
+    if (!Number.isFinite(Number(walletDeduction)) || Number(walletDeduction) < 0 || Number(walletDeduction) > preWalletTotal) {
+      return res.status(400).json({ success: false, error: 'Wallet deduction must be between zero and the order total' });
+    }
+    const verifiedWalletDeduction = Math.round(Number(walletDeduction || 0) * 100) / 100;
     const fullyWalletPaid = verifiedWalletDeduction >= preWalletTotal;
 
     const shortNum = Math.floor(1000 + Math.random() * 9000);
