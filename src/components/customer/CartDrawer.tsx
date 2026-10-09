@@ -70,6 +70,12 @@ export const CartDrawer: React.FC = () => {
   const [distanceError, setDistanceError] = useState<string | null>(null);
   const distanceRequestId = useRef(0);
 
+  // Wallet is the primary payment source whenever a balance is available.
+  // The card is used only for any amount the wallet cannot cover.
+  useEffect(() => {
+    setUseWalletCredit(Number(walletBalanceNGN) > 0);
+  }, [walletBalanceNGN, setUseWalletCredit]);
+
   useEffect(() => {
     if (selectedAddress?.address && selectedAddress.address.trim()) {
       setCustomAddress(selectedAddress.address.trim());
@@ -149,7 +155,7 @@ export const CartDrawer: React.FC = () => {
   }, [restaurantId, customAddress, user?.address, selectedAddress?.address, calculateDistanceNow]);
 
   const [selectedTipNGN, setSelectedTipNGN] = useState<number>(0);
-  const [paymentMethod, setPaymentMethod] = useState<string>('Debit Card');
+  const [paymentMethod] = useState<string>('Debit Card');
   const [promoInput, setPromoInput] = useState<string>('');
   const [promoMessage, setPromoMessage] = useState<{ text: string; isError: boolean } | null>(null);
   const [promoPlaceholder, setPromoPlaceholder] = useState<string>('Try WELCOME500 or LEKKI20');
@@ -569,74 +575,47 @@ export const CartDrawer: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Payment Method Selection */}
+                {/* Wallet-first payment: debit card is the only fallback method. */}
                 <div className="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-2.5">
                   <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                     <CreditCard className="w-4 h-4 text-orange-600" />
-                    <span>Select Payment Method</span>
+                    <span>Payment Method</span>
                   </span>
-
-                  <div className="space-y-1.5">
-                    {[
-                      { id: 'Debit Card', label: 'Debit Card', badge: 'Instant' },
-                      { id: 'Instant Bank Transfer', label: 'Bank Transfer / Virtual Account', badge: 'Popular' },
-                      { id: 'Pay on Delivery (Cash / POS)', label: 'Pay on Delivery (Cash or POS at doorstep)', badge: 'Verified' }
-                    ].map((pm) => (
-                      <label
-                        key={pm.id}
-                        className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer text-xs transition-all ${
-                          paymentMethod === pm.id
-                            ? 'border-orange-500 bg-orange-50/50 font-bold text-slate-900'
-                            : 'border-slate-200 hover:border-slate-300 text-slate-700'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            checked={paymentMethod === pm.id}
-                            onChange={() => setPaymentMethod(pm.id)}
-                            className="text-orange-600 focus:ring-0 cursor-pointer"
-                          />
-                          <span>{pm.label}</span>
-                        </div>
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                          {pm.badge}
-                        </span>
-                      </label>
-                    ))}
+                  <div className="flex items-center justify-between p-2.5 rounded-xl border border-orange-500 bg-orange-50/50 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4 rounded-full border-[5px] border-blue-500 bg-white shrink-0" />
+                      <span className="font-bold text-slate-900">Debit Card</span>
+                    </div>
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">Fallback</span>
                   </div>
+                  <p className="text-[11px] text-slate-500">Your Veyrang Wallet is charged first. Debit Card is used only for any remaining amount.</p>
                 </div>
 
-                {/* Veyrang Wallet Balance Redemption */}
+                {/* Wallet is automatically applied whenever there is a positive balance. */}
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <Wallet className="w-4 h-4 text-emerald-600" />
                       <div>
-                        <div className="text-xs font-bold text-slate-900">Veyrang Wallet</div>
+                        <div className="text-xs font-bold text-slate-900">Veyrang Wallet · Primary</div>
                         <div className="text-[11px] text-slate-500 font-mono">
                           Balance: {formatCurrency(walletBalanceNGN, currency)}
                         </div>
                       </div>
                     </div>
-
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={useWalletCredit}
-                        onChange={(e) => setUseWalletCredit(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-600"></div>
-                    </label>
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">
+                      {walletBalanceNGN > 0 ? 'Auto-applied' : 'Empty'}
+                    </span>
                   </div>
-
-                  {useWalletCredit && (
+                  {walletBalanceNGN > 0 ? (
                     <div className="text-[11px] text-emerald-800 bg-emerald-50 p-2 rounded-xl border border-emerald-200 font-medium">
                       {walletDeduction >= preWalletTotal
-                        ? '100% of order covered by your wallet balance! Zero card charge.'
-                        : `Deducting ${formatCurrency(walletDeduction, currency)} from your wallet balance.`}
+                        ? 'Your wallet covers the full order. No card payment is needed.'
+                        : `Wallet pays ${formatCurrency(walletDeduction, currency)} first; the remaining ${formatCurrency(finalCardCharge, currency)} is charged to your debit card.`}
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-slate-600 bg-white p-2 rounded-xl border border-slate-200">
+                      Your wallet has no available balance. Debit Card will be used for the order.
                     </div>
                   )}
                 </div>
