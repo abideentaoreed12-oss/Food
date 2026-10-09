@@ -521,5 +521,23 @@ export const api = {
   pingDatabase: async () => {
     return request('/api/health/d1/ping', { method: 'POST' });
   }
-}
+},
+  storage: {
+    upload: async (key: string, dataBase64: string, contentType?: string) =>
+      request('/api/storage/upload', { method: 'POST', body: JSON.stringify({ key, dataBase64, contentType }) })
+  },
+  reviews: {
+    getByRestaurant: async (restaurantId: string) =>
+      request(`/api/reviews/restaurant/${restaurantId}`),
+    submit: async (data: {
+      orderId: string;
+      restaurantId: string;
+      courierId?: string;
+      foodRating: number;
+      deliveryRating?: number;
+      comment?: string;
+      photoR2Url?: string;
+    }) =>
+      request('/api/reviews', { method: 'POST', body: JSON.stringify(data) })
+  }
 };
