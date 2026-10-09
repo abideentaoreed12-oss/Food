@@ -1,0 +1,102 @@
+name: fix-api-admin-methods
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject missing admin API methods
+        run: |
+          set -euo pipefail
+          python3 << 'PY'
+          from pathlib import Path
+          p = Path('src/services/api.ts')
+          text = p.read_text()
+
+          missing = {
+            'createStaff': """    createStaff: async (data: any) =>
+      request('/api/admin/staff', { method: 'POST', body: JSON.stringify(data) }),""",
+            'deleteUser': """    deleteUser: async (id: string) =>
+      request(`/api/admin/users/${id}`, { method: 'DELETE' }),""",
+            'adjustUserWallet': """    adjustUserWallet: async (userId: string, amount: number, reason?: string) =>
+      request(`/api/admin/users/${userId}/wallet`, { method: 'POST', body: JSON.stringify({ amount, reason }) }),""",
+            'deleteDriver': """    deleteDriver: async (userId: string) =>
+      request(`/api/admin/drivers/${userId}`, { method: 'DELETE' }),""",
+            'uploadAsset': """    uploadAsset: async (key: string, dataBase64: string, contentType?: string) =>
+      request('/api/storage/upload', { method: 'POST', body: JSON.stringify({ key, dataBase64, contentType }) }),""",
+            'deleteAsset': """    deleteAsset: async (key: string) =>
+      request(`/api/storage/file/${encodeURIComponent(key)}`, { method: 'DELETE' }),""",
+            'bulkUpdateCMS': """    bulkUpdateCMS: async (settings: Record<string, string>) =>
+      request('/api/settings/bulk', { method: 'POST', body: JSON.stringify({ settings }) }),""",
+            'saveSeoTags': """    saveSeoTags: async (data: { title: string; description: string; keywords: string }) =>
+      request('/api/admin/seo', { method: 'POST', body: JSON.stringify(data) }),""",
+            'runDeveloperQuery': """    runDeveloperQuery: async (sql: string) =>
+      request('/api/admin/developer/query', { method: 'POST', body: JSON.stringify({ sql }) }),""",
+            'purgeEdgeCache': """    purgeEdgeCache: async () =>
+      request('/api/admin/cache/purge', { method: 'POST' }),""",
+          }
+
+          to_add = []
+          for name, body in missing.items():
+            if name not in text:
+              to_add.append(body)
+              print(f'will add {name}')
+            else:
+              print(f'skip {name} (already present)')
+
+          if not to_add:
+            print('Nothing to add')
+          else:
+            # Insert before the closing of admin block: find purgeCache or last admin method
+            # Prefer inserting right before the closing `  },` of admin
+            # Look for purgeCache line and insert after it
+            marker = "purgeCache: async () =>\n      request('/api/admin/cache/purge', { method: 'POST' })"
+            if marker in text:
+              insert = marker + '\n    },\n' + ',\n'.join(to_add) if False else None
+              # simpler: after purgeCache closing
+              old = "    purgeCache: async () =>\n      request('/api/admin/cache/purge', { method: 'POST' })\n  },"
+              # current format may be single-line
+              import re
+              m = re.search(r"(\s+purgeCache:\s*async\s*\(\)\s*=>\s*\n?\s*request\('/api/admin/cache/purge',\s*\{\s*method:\s*'POST'\s*\})\s*)\n(\s*\},)", text)
+              if m:
+                injection = m.group(1) + ',\n' + ',\n'.join(to_add) + '\n' + m.group(2)
+                text = text[:m.start()] + injection + text[m.end():]
+                print('Injected after purgeCache via regex')
+              else:
+                # fallback: before health or before final admin close
+                # Find "  },\n\n  settings:" or "  },\n\n  health:" or geocode pattern
+                # Insert before admin's closing brace - search for approveUser area end
+                # Find the last method in admin that we know exists
+                for needle in ["purgeCache: async () =>\n      request('/api/admin/cache/purge', { method: 'POST' })", "purgeCache: async () => request('/api/admin/cache/purge', { method: 'POST' })"]:
+                    if needle in text:
+                        text = text.replace(needle, needle + ',\n' + ',\n'.join(to_add), 1)
+                        print('Injected after purgeCache via replace')
+                        break
+                else:
+                    raise SystemExit('Could not find injection point for admin methods')
+
+            p.write_text(text)
+            print('Wrote', len(text), 'bytes')
+
+          # Verify
+          text2 = p.read_text()
+          for name in ['createStaff', 'health', 'safeGet']:
+            assert name in text2, f'missing {name}'
+          print('OK verified')
+          PY
+
+          git config user.name "veyrang-bot"
+          git config user.email "bot@veyrang.com"
+          git add src/services/api.ts
+          if git diff --staged --quiet; then
+            echo 'No changes'
+            exit 0
+          fi
+          git commit -m "fix(api): add missing admin methods (createStaff, deleteUser, adjustUserWallet, ...)"
+          git push
