@@ -405,7 +405,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json(
-    { success: false, error: `API route GET /api${pathname} not found.` },
+    { success: false, error: 'Not found' },
     { status: 404 }
   );
 }
@@ -944,7 +944,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json(
-    { success: false, error: `API route POST /api${pathname} not found.` },
+    { success: false, error: 'Not found' },
     { status: 404 }
   );
 }
@@ -1058,7 +1058,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   return NextResponse.json(
-    { success: false, error: `API route PATCH /api${pathname} not found.` },
+    { success: false, error: 'Not found' },
     { status: 404 }
   );
 }
@@ -1066,20 +1066,28 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
   return NextResponse.json(
-    { success: false, error: `API route DELETE /api${pathname} not found.` },
+    { success: false, error: 'Not found' },
     { status: 404 }
   );
 }
 
 export async function OPTIONS(req: NextRequest) {
-  const origin = req.headers.get('origin') || '*';
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Allow-Credentials': 'true'
-    }
+  const origin = req.headers.get('origin');
+  const requestOrigin = new URL(req.url).origin;
+  const allowedOrigins = new Set([
+    requestOrigin,
+    'https://veyrang.com',
+    'https://www.veyrang.com'
+  ]);
+  const headers = new Headers({
+    'Vary': 'Origin',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '600'
   });
+  if (origin && allowedOrigins.has(origin)) {
+    headers.set('Access-Control-Allow-Origin', origin);
+    headers.set('Access-Control-Allow-Credentials', 'true');
+  }
+  return new Response(null, { status: 204, headers });
 }
