@@ -108,6 +108,48 @@ export async function GET(req: NextRequest) {
   await ensureSchema();
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
 
+  if (pathname.startsWith('/orders/') && pathname.endsWith('/tracking')) {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    const match = pathname.match(/^\/orders\/([^/]+)\/tracking$/);
+    if (!match) return NextResponse.json({ success: false, error: 'Invalid order route' }, { status: 400 });
+    const orderId = decodeURIComponent(match[1]);
+    const orderResult = await d1.query('SELECT id, user_id, status, raw_json FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
+    if (!orderResult.success) return NextResponse.json({ success: false, error: 'Order storage is temporarily unavailable' }, { status: 503 });
+    const row = orderResult.results?.[0];
+    if (!row) return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    let order: any = {};
+    try { order = row.raw_json ? JSON.parse(row.raw_json) : {}; } catch {
+      return NextResponse.json({ success: false, error: 'Stored order data is invalid' }, { status: 500 });
+    }
+    const assignedCourierId = order.courierId || order.driverId || order.courier?.id || order.driver?.id;
+    const ownerId = order.userId || order.customerId || row.user_id;
+    const canView = user.role === 'admin' || user.role === 'sub_admin' || user.id === ownerId || (user.role === 'courier' && user.id === assignedCourierId);
+    if (!canView) return NextResponse.json({ success: false, error: 'You are not allowed to view this order tracking' }, { status: 403 });
+    await d1.query(`CREATE TABLE IF NOT EXISTS courier_locations (
+      order_id TEXT PRIMARY KEY,
+      courier_id TEXT NOT NULL,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      heading REAL,
+      speed REAL,
+      accuracy REAL,
+      recorded_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`);
+    const locationResult = await d1.query('SELECT courier_id, lat, lng, heading, speed, accuracy, recorded_at, updated_at FROM courier_locations WHERE order_id = ? LIMIT 1', [row.id]);
+    if (!locationResult.success) return NextResponse.json({ success: false, error: 'Driver location storage is temporarily unavailable' }, { status: 503 });
+    const loc = locationResult.results?.[0];
+    const location = loc ? {
+      lat: Number(loc.lat), lng: Number(loc.lng), heading: Number(loc.heading || 0),
+      speed: Number(loc.speed || 0), accuracy: Number(loc.accuracy || 0),
+      updatedAt: loc.updated_at || loc.recorded_at
+    } : null;
+    const ageMs = location?.updatedAt ? Date.now() - new Date(location.updatedAt).getTime() : Infinity;
+    const signalStatus = location && Number.isFinite(ageMs) && ageMs >= 0 && ageMs <= 30000 ? 'live' : location ? 'paused' : 'searching';
+    return NextResponse.json({ success: true, order: { id: row.id, status: row.status || order.status }, tracking: { location, signalStatus } }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
+  }
+
   // Public payment callback verification: the opaque provider reference must already exist in D1.
   // Never trust the browser's claim of success; verify with Paystack and reconcile against the recorded amount.
   if (pathname === '/payments/verify' && req.nextUrl.searchParams.has('reference')) {
@@ -468,6 +510,53 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   await ensureSchema();
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
+  if (pathname === '/couriers/location') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'courier') return NextResponse.json({ success: false, error: 'Courier access required' }, { status: 403 });
+    const lat = Number(body?.lat);
+    const lng = Number(body?.lng);
+    const accuracy = Number(body?.accuracy);
+    const heading = Number(body?.heading || 0);
+    const speed = Number(body?.speed || 0);
+    const orderId = typeof body?.orderId === 'string' ? body.orderId.trim() : '';
+    const timestamp = typeof body?.timestamp === 'string' ? new Date(body.timestamp) : new Date();
+    if (!orderId || !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180 || !Number.isFinite(accuracy) || accuracy < 0 || accuracy > 1000 || !Number.isFinite(timestamp.getTime()) || Math.abs(Date.now() - timestamp.getTime()) > 120000) {
+      return NextResponse.json({ success: false, error: 'Valid order ID and recent GPS coordinates with accuracy are required' }, { status: 400 });
+    }
+    const orderResult = await d1.query('SELECT id, status, raw_json FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
+    if (!orderResult.success) return NextResponse.json({ success: false, error: 'Order storage is temporarily unavailable' }, { status: 503 });
+    const row = orderResult.results?.[0];
+    if (!row) return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    let order: any = {};
+    try { order = row.raw_json ? JSON.parse(row.raw_json) : {}; } catch {
+      return NextResponse.json({ success: false, error: 'Stored order data is invalid' }, { status: 500 });
+    }
+    const assignedCourierId = order.courierId || order.driverId || order.courier?.id || order.driver?.id;
+    const activeStatuses = new Set(['ready_for_pickup', 'in_transit', 'out_for_delivery', 'picked_up']);
+    if (assignedCourierId !== user.id || !activeStatuses.has(String(row.status || order.status || ''))) {
+      return NextResponse.json({ success: false, error: 'This order is not assigned to you or is not active' }, { status: 403 });
+    }
+    await d1.query(`CREATE TABLE IF NOT EXISTS courier_locations (
+      order_id TEXT PRIMARY KEY,
+      courier_id TEXT NOT NULL,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      heading REAL,
+      speed REAL,
+      accuracy REAL,
+      recorded_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`);
+    const now = new Date().toISOString();
+    const saved = await d1.query(
+      'INSERT INTO courier_locations (order_id, courier_id, lat, lng, heading, speed, accuracy, recorded_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(order_id) DO UPDATE SET courier_id = excluded.courier_id, lat = excluded.lat, lng = excluded.lng, heading = excluded.heading, speed = excluded.speed, accuracy = excluded.accuracy, recorded_at = excluded.recorded_at, updated_at = excluded.updated_at',
+      [row.id, user.id, lat, lng, Number.isFinite(heading) ? heading : 0, Number.isFinite(speed) ? speed : 0, accuracy, timestamp.toISOString(), now]
+    );
+    if (!saved.success) return NextResponse.json({ success: false, error: 'Could not save driver GPS position' }, { status: 503 });
+    return NextResponse.json({ success: true, data: { orderId: row.id, lat, lng, accuracy, updatedAt: now } }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
+  }
+
   const rawBody = await req.text();
   let body: any = {};
   try { body = rawBody ? JSON.parse(rawBody) : {}; } catch { body = {}; }
