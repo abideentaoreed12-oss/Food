@@ -203,13 +203,22 @@ router.get('/distance', async (req: Request, res: Response) => {
     const destLng = req.query.destLng ? parseFloat(req.query.destLng as string) : null;
     const destAddr = req.query.destAddress as string;
 
-    const origin = (originLat !== null && originLng !== null && !isNaN(originLat) && !isNaN(originLng))
-      ? { lat: originLat, lng: originLng }
-      : (originAddr || 'Lekki Phase 1, Lagos');
+    const hasOriginCoords = originLat !== null && originLng !== null &&
+      Number.isFinite(originLat) && Number.isFinite(originLng) &&
+      originLat >= -90 && originLat <= 90 && originLng >= -180 && originLng <= 180;
+    const hasDestinationCoords = destLat !== null && destLng !== null &&
+      Number.isFinite(destLat) && Number.isFinite(destLng) &&
+      destLat >= -90 && destLat <= 90 && destLng >= -180 && destLng <= 180;
 
-    const destination = (destLat !== null && destLng !== null && !isNaN(destLat) && !isNaN(destLng))
-      ? { lat: destLat, lng: destLng }
-      : (destAddr || 'Victoria Island, Lagos');
+    // Never silently substitute Lekki/Victoria Island or any other sample coordinates.
+    const origin = hasOriginCoords ? { lat: originLat!, lng: originLng! } : originAddr?.trim();
+    const destination = hasDestinationCoords ? { lat: destLat!, lng: destLng! } : destAddr?.trim();
+    if (!origin || !destination) {
+      return res.status(400).json({
+        success: false,
+        error: 'Provide the real origin and destination coordinates or their full addresses. No default locations are used.'
+      });
+    }
 
     const { calculateDistanceAndDuration } = await import('../utils/distance');
     const result = await calculateDistanceAndDuration(origin, destination);
