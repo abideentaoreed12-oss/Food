@@ -1460,9 +1460,27 @@ router.get('/support', async (req: AuthRequest, res: Response) => {
 
 router.patch('/support/:id/status', async (req: AuthRequest, res: Response) => {
   try {
-    const { status } = req.body;
-    await d1Client.query('UPDATE support_tickets SET status = ? WHERE id = ?', [status || 'resolved', req.params.id]);
-    return res.json({ success: true, message: 'Ticket status updated' });
+    const status = String(req.body?.status || '').trim();
+    const allowed = ['open', 'in_progress', 'waiting_on_customer', 'resolved', 'closed'];
+    if (!allowed.includes(status)) return res.status(400).json({ success: false, error: 'Choose a valid ticket status.' });
+    const updated = await d1Client.query('UPDATE support_tickets SET status = ?, updated_at = ? WHERE id = ?', [status, new Date().toISOString(), req.params.id]);
+    if (updated.meta?.rows_written === 0) return res.status(404).json({ success: false, error: 'Ticket not found.' });
+    await db.logAudit({ userId: req.user!.id, userEmail: req.user!.email, userRole: req.user!.role, action: 'ADMIN_SUPPORT_STATUS_UPDATED', resource: 'SUPPORT_TICKET', resourceId: req.params.id, details: { status }, ip: req.ip });
+    return res.json({ success: true, message: 'Ticket status updated', status });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/support/:id/reply', async (req: AuthRequest, res: Response) => {
+  try {
+    const reply = typeof req.body?.reply === 'string' ? req.body.reply.trim().slice(0, 4000) : '';
+    if (reply.length < 2) return res.status(400).json({ success: false, error: 'Enter a reply of at least 2 characters.' });
+    const existing = await d1Client.query('SELECT id FROM support_tickets WHERE id = ? LIMIT 1', [req.params.id]);
+    if (!existing.results?.length) return res.status(404).json({ success: false, error: 'Ticket not found.' });
+    await d1Client.query("UPDATE support_tickets SET admin_reply = ?, status = 'waiting_on_customer', updated_at = ? WHERE id = ?", [reply, new Date().toISOString(), req.params.id]);
+    await db.logAudit({ userId: req.user!.id, userEmail: req.user!.email, userRole: req.user!.role, action: 'ADMIN_SUPPORT_REPLY_SENT', resource: 'SUPPORT_TICKET', resourceId: req.params.id, details: { replyLength: reply.length }, ip: req.ip });
+    return res.json({ success: true, message: 'Reply saved to the ticket and is visible to the customer.', status: 'waiting_on_customer' });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }
