@@ -130,21 +130,42 @@ router.post('/calculate-distance', validateBody(CalculateDistanceSchema), async 
       }
     }
 
-    const restLat = restaurantLat ?? targetRestaurant?.lat ?? 6.4474;
-    const restLng = restaurantLng ?? targetRestaurant?.lng ?? 3.4735;
-    const restAddr = restaurantAddress ?? targetRestaurant?.address ?? 'Restaurant Location';
+    if (!userAddress?.trim() && !(Number.isFinite(userLat) && Number.isFinite(userLng))) {
+      return res.status(400).json({ success: false, error: 'Select a delivery address before calculating distance.' });
+    }
+
+    const restLatValue = restaurantLat ?? targetRestaurant?.lat ?? targetRestaurant?.latitude;
+    const restLngValue = restaurantLng ?? targetRestaurant?.lng ?? targetRestaurant?.longitude;
+    const restAddr = restaurantAddress ?? targetRestaurant?.address;
+
+    if (restLatValue === undefined || restLngValue === undefined ||
+        !Number.isFinite(Number(restLatValue)) || !Number.isFinite(Number(restLngValue)) ||
+        Number(restLatValue) < -90 || Number(restLatValue) > 90 ||
+        Number(restLngValue) < -180 || Number(restLngValue) > 180) {
+      return res.status(422).json({ success: false, error: 'This restaurant has no valid coordinates configured. Please contact support.' });
+    }
+    if (!restAddr?.trim()) {
+      return res.status(422).json({ success: false, error: 'This restaurant has no verified address configured.' });
+    }
+
+    const deliveryFeeValue = targetRestaurant?.deliveryFee ?? targetRestaurant?.delivery_fee;
+    if (deliveryFeeValue === undefined || deliveryFeeValue === null ||
+        !Number.isFinite(Number(deliveryFeeValue)) || Number(deliveryFeeValue) < 0) {
+      return res.status(422).json({ success: false, error: 'This restaurant has no valid delivery fee configured.' });
+    }
 
     const userLoc =
-      userLat !== undefined && userLng !== undefined
-        ? { lat: userLat, lng: userLng }
-        : userAddress || 'Lekki Phase 1, Lagos';
+      Number.isFinite(userLat) && Number.isFinite(userLng) &&
+      userLat! >= -90 && userLat! <= 90 && userLng! >= -180 && userLng! <= 180
+        ? { lat: userLat!, lng: userLng! }
+        : userAddress!.trim();
 
     const metrics = await calculateRestaurantDistanceMetrics(
       {
-        lat: restLat,
-        lng: restLng,
+        lat: Number(restLatValue),
+        lng: Number(restLngValue),
         address: restAddr,
-        deliveryFee: targetRestaurant?.deliveryFee ?? 500
+        deliveryFee: Number(deliveryFeeValue)
       },
       userLoc
     );
@@ -155,7 +176,7 @@ router.post('/calculate-distance', validateBody(CalculateDistanceSchema), async 
     });
   } catch (error) {
     console.error('Calculate distance error:', error);
-    return res.status(500).json({ success: false, error: 'Failed to calculate distance' });
+    return res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed to calculate live distance. Please try again.' });
   }
 });
 
