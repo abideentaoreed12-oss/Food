@@ -42,7 +42,7 @@ export const OrderTrackingModal: React.FC = () => {
   const [secondsLeft, setSecondsLeft] = useState<number>(0);
 
   // Live Courier GPS Location & Connection Health Polling
-  const [courierLoc, setCourierLoc] = useState<{ lat: number; lng: number; updatedAt?: string; accuracy?: number; heading?: number; speed?: number } | null>(null);
+  const [courierLoc, setCourierLoc] = useState<{ lat: number; lng: number; updatedAt?: string } | null>(null);
   const [signalStatus, setSignalStatus] = useState<'live' | 'paused' | 'searching'>('searching');
 
   const order = activeTrackingOrder;
@@ -61,14 +61,11 @@ export const OrderTrackingModal: React.FC = () => {
         const res = await fetch(`/api/orders/${orderId}/tracking`);
         const json = await res.json();
         if (json.success) {
-          if (json.tracking?.location && typeof json.tracking.location.lat === 'number' && typeof json.tracking.location.lng === 'number') {
-            const location = json.tracking.location;
-            setCourierLoc(location);
-            const updatedAt = location.updatedAt ? new Date(location.updatedAt).getTime() : 0;
-            const isFresh = updatedAt > 0 && Date.now() - updatedAt <= 30000;
-            setSignalStatus(isFresh ? 'live' : 'paused');
-          } else {
-            setSignalStatus('searching');
+          if (json.tracking?.location) {
+            setCourierLoc(json.tracking.location);
+          }
+          if (json.tracking?.signalStatus) {
+            setSignalStatus(json.tracking.signalStatus || 'searching');
           }
           if (json.order?.status && json.order.status !== orderStatus) {
             refreshData();
