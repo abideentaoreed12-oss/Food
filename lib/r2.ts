@@ -38,8 +38,9 @@ export class R2Client {
 
   public getCdnUrl(key: string): string {
     const cleanKey = key.replace(/^\//, '');
-    if (!this.publicCdnUrl) return '';
-    return `${this.publicCdnUrl}/${cleanKey.split('/').map(encodeURIComponent).join('/')}`;
+    const baseUrl = this.publicCdnUrl || (this.workerUrl ? `${this.workerUrl}/cdn` : '');
+    if (!baseUrl) return '';
+    return `${baseUrl}/${cleanKey.split('/').map(encodeURIComponent).join('/')}`;
   }
 
   public async upload(key: string, dataBase64: string, contentType: string = 'image/jpeg'): Promise<R2UploadResult> {
@@ -82,7 +83,8 @@ export class R2Client {
     // Strategy 2: Direct Cloudflare API R2 storage REST PUT request
     if (this.accountId && this.apiToken && this.bucketName) {
       try {
-        const directR2Url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${cleanKey}`;
+        const encodedKey = cleanKey.split('/').map(encodeURIComponent).join('/');
+        const directR2Url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${encodedKey}`;
         const binaryData = Buffer.from(dataBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
 
         const res = await fetch(directR2Url, {
