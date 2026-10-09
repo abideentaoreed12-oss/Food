@@ -947,12 +947,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return null;
         });
 
-        if (payRes?.data?.authorizationUrl) {
+        // api.payment.initialize uses the shared request helper, which unwraps json.data.
+        // Accept the unwrapped payload as well as a wrapped response for compatibility.
+        const authorizationUrl = payRes?.authorizationUrl || payRes?.data?.authorizationUrl;
+        if (authorizationUrl && /^https:\/\/checkout\.paystack\.com\//i.test(authorizationUrl)) {
           clearCart();
-          window.location.href = payRes.data.authorizationUrl;
+          window.location.assign(authorizationUrl);
           return finalOrder;
         }
-        paystackInitializationError = payRes?.error || payRes?.message || 'Paystack could not start the card payment. Please try again.';
+        paystackInitializationError = payRes?.error || payRes?.message || payRes?.data?.error || 'Paystack could not start the card payment. Please try again.';
         throw new Error(paystackInitializationError);
       }
     } catch (error) {
