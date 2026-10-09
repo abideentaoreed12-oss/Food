@@ -281,13 +281,26 @@ export class CloudflareD1Client {
         id TEXT PRIMARY KEY,
         user_id TEXT,
         user_email TEXT,
+        customer_name TEXT,
         subject TEXT,
         message TEXT,
         status TEXT DEFAULT 'open',
         priority TEXT DEFAULT 'normal',
-        created_at TEXT NOT NULL
+        admin_reply TEXT DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT
       );`
     ];
+
+    // Backward-compatible support ticket migrations for existing D1 databases.
+    const supportMigrations = [
+      'ALTER TABLE support_tickets ADD COLUMN customer_name TEXT',
+      "ALTER TABLE support_tickets ADD COLUMN admin_reply TEXT DEFAULT ''",
+      'ALTER TABLE support_tickets ADD COLUMN updated_at TEXT'
+    ];
+    for (const sql of supportMigrations) {
+      await this.query(sql).catch(() => {});
+    }
 
     for (const sql of schemaStatements) {
       await this.query(sql).catch((err) => {
