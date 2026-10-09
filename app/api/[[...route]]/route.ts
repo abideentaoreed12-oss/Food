@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
       }
       if (transaction.order_id) {
         const orderUpdate = await d1.query(
-          "UPDATE orders SET payment_status = 'paid', updated_at = ? WHERE id = ?",
+          "UPDATE orders SET payment_status = 'paid', status = 'placed', updated_at = ? WHERE id = ?",
           [now, transaction.order_id]
         );
         if (!orderUpdate.success) {
@@ -822,7 +822,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, isPaid: false, error: 'Payment succeeded but its transaction record could not be updated' }, { status: 503 });
       }
       const orderUpdate = await d1.query(
-        "UPDATE orders SET payment_status = 'paid', updated_at = ? WHERE id = ?",
+        "UPDATE orders SET payment_status = 'paid', status = 'placed', updated_at = ? WHERE id = ?",
         [now, order.id]
       );
       if (!orderUpdate.success) {
