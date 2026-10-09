@@ -13,6 +13,8 @@
  * - Suspicious distance/duration validation
  */
 
+import { CONFIG } from '../server/config';
+
 export interface RouteCoordinates {
   lat: number;
   lng: number;
@@ -21,7 +23,7 @@ export interface RouteCoordinates {
 export interface RouteResult {
   distanceMeters: number;
   durationSeconds: number;
-  provider: 'valhalla' | 'osrm' | 'google' | 'haversine';
+  provider: 'valhalla' | 'osrm' | 'openrouteservice' | 'graphhopper' | 'google' | 'haversine';
   status: 'success' | 'fallback';
   latencyMs: number;
   polyline?: string;
@@ -29,7 +31,7 @@ export interface RouteResult {
 }
 
 export interface ProviderHealth {
-  name: 'valhalla' | 'osrm' | 'google' | 'haversine';
+  name: 'valhalla' | 'osrm' | 'openrouteservice' | 'graphhopper' | 'google' | 'haversine';
   status: 'healthy' | 'cooldown' | 'disabled';
   consecutiveFailures: number;
   lastFailureTime?: number;
@@ -42,6 +44,8 @@ class RoutingManager {
   private healthState: Record<string, ProviderHealth> = {
     valhalla: { name: 'valhalla', status: 'healthy', consecutiveFailures: 0, totalRequests: 0, totalSuccesses: 0 },
     osrm: { name: 'osrm', status: 'healthy', consecutiveFailures: 0, totalRequests: 0, totalSuccesses: 0 },
+    openrouteservice: { name: 'openrouteservice', status: 'healthy', consecutiveFailures: 0, totalRequests: 0, totalSuccesses: 0 },
+    graphhopper: { name: 'graphhopper', status: 'healthy', consecutiveFailures: 0, totalRequests: 0, totalSuccesses: 0 },
     google: { name: 'google', status: 'healthy', consecutiveFailures: 0, totalRequests: 0, totalSuccesses: 0 },
     haversine: { name: 'haversine', status: 'healthy', consecutiveFailures: 0, totalRequests: 0, totalSuccesses: 0 }
   };
@@ -124,13 +128,26 @@ class RoutingManager {
       if (osrmRes) return osrmRes;
     }
 
-    // Tier 3: Google Maps API
-    if (this.isProviderAvailable('google') && process.env.GOOGLE_MAPS_API_KEY) {
+    // Tier 3: OpenRouteService
+    if (this.isProviderAvailable('openrouteservice')) {
+      const orsRes = await this.tryOpenRouteService(origin, destination);
+      if (orsRes) return orsRes;
+    }
+
+    // Tier 4: GraphHopper Engine (Keyless self-hosted or hosted with key)
+    if (this.isProviderAvailable('graphhopper')) {
+      const ghRes = await this.tryGraphHopper(origin, destination);
+      if (ghRes) return ghRes;
+    }
+
+    // Tier 5: Google Maps API
+    const googleKey = (CONFIG.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '').trim();
+    if (this.isProviderAvailable('google') && googleKey) {
       const googleRes = await this.tryGoogle(origin, destination);
       if (googleRes) return googleRes;
     }
 
-    // Tier 4: Safety Fallback (Haversine Formula)
+    // Tier 6: Safety Fallback (Haversine Formula)
     return this.calculateHaversine(origin, destination);
   }
 
@@ -176,25 +193,33 @@ class RoutingManager {
    */
   private async tryValhalla(origin: RouteCoordinates, destination: RouteCoordinates): Promise<RouteResult | null> {
     const startTime = Date.now();
-    // Using a more stable public Valhalla endpoint
-    const valhallaUrl = process.env.VALHALLA_URL || 'https://valhalla.openstreetmap.de/route';
+    const rawValhalla = CONFIG.VALHALLA_BASE_URL || process.env.VALHALLA_BASE_URL || process.env.VALHALLA_URL || 'https://valhalla.openstreetmap.de';
+    const cleanValhalla = rawValhalla.replace(/\/+$/, '').replace(/\/route$/, '');
+    const apiKey = (CONFIG.VALHALLA_API_KEY || process.env.VALHALLA_API_KEY || '').trim();
+    const valhallaUrl = `${cleanValhalla}/route${apiKey ? `?api_key=${encodeURIComponent(apiKey)}` : ''}`;
+
     try {
       const payload = {
         locations: [
           { lat: origin.lat, lon: origin.lng },
           { lat: destination.lat, lon: destination.lng }
         ],
-        costing: 'auto'
+        costing: 'auto',
+        units: 'kilometers',
+        directions_options: { units: 'kilometers' }
       };
 
       const response = await this.fetchWithTimeout(
         valhallaUrl,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'VeyraNG-FoodDelivery/2.1'
+          },
           body: JSON.stringify(payload)
         },
-        3000
+        3500
       );
 
       if (!response.ok) {
@@ -231,11 +256,18 @@ class RoutingManager {
    */
   private async tryOSRM(origin: RouteCoordinates, destination: RouteCoordinates): Promise<RouteResult | null> {
     const startTime = Date.now();
-    const osrmBase = process.env.OSRM_URL || 'https://router.project-osrm.org';
+    const osrmBase = (CONFIG.OSRM_BASE_URL || process.env.OSRM_BASE_URL || process.env.OSRM_URL || 'https://router.project-osrm.org').replace(/\/+$/, '');
     const url = `${osrmBase}/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=false`;
 
     try {
-      const response = await this.fetchWithTimeout(url, { method: 'GET' }, 3000);
+      const response = await this.fetchWithTimeout(
+        url,
+        {
+          method: 'GET',
+          headers: { 'User-Agent': 'VeyraNG-FoodDelivery/2.1' }
+        },
+        3000
+      );
       if (!response.ok) {
         this.recordFailure('osrm');
         return null;
@@ -266,11 +298,137 @@ class RoutingManager {
   }
 
   /**
-   * Tier 3: Google Maps Distance Matrix / Directions API
+   * Tier 3: OpenRouteService Engine
+   */
+  private async tryOpenRouteService(origin: RouteCoordinates, destination: RouteCoordinates): Promise<RouteResult | null> {
+    const startTime = Date.now();
+    const rawOrsBase = (CONFIG.OPENROUTESERVICE_BASE_URL || process.env.OPENROUTESERVICE_BASE_URL || process.env.ORS_BASE_URL || 'https://api.openrouteservice.org').replace(/\/+$/, '');
+    const orsApiKey = (CONFIG.OPENROUTESERVICE_API_KEY || process.env.OPENROUTESERVICE_API_KEY || process.env.ORS_API_KEY || '').trim();
+
+    // Hosted openrouteservice.org requires an API key. Self-hosted instances may be keyless.
+    if (rawOrsBase.includes('openrouteservice.org') && !orsApiKey) {
+      return null; // Skip gracefully if key is not configured for hosted ORS
+    }
+
+    const url = `${rawOrsBase}/v2/directions/driving-car`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'VeyraNG-FoodDelivery/2.1'
+    };
+    if (orsApiKey) {
+      headers['Authorization'] = orsApiKey;
+    }
+
+    try {
+      const response = await this.fetchWithTimeout(
+        url,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            coordinates: [
+              [origin.lng, origin.lat],
+              [destination.lng, destination.lat]
+            ]
+          })
+        },
+        3500
+      );
+
+      if (!response.ok) {
+        this.recordFailure('openrouteservice');
+        return null;
+      }
+
+      const data = await response.json();
+      const summary = data?.routes?.[0]?.summary;
+      if (summary && typeof summary.distance === 'number' && typeof summary.duration === 'number') {
+        const distMeters = Math.round(summary.distance);
+        const durSeconds = Math.round(summary.duration);
+        if (this.validateResult(distMeters, durSeconds)) {
+          this.recordSuccess('openrouteservice');
+          return {
+            distanceMeters: distMeters,
+            durationSeconds: durSeconds,
+            provider: 'openrouteservice',
+            status: 'success',
+            latencyMs: Date.now() - startTime
+          };
+        }
+      }
+      this.recordFailure('openrouteservice');
+      return null;
+    } catch {
+      this.recordFailure('openrouteservice');
+      return null;
+    }
+  }
+
+  /**
+   * Tier 4: GraphHopper Routing Engine (Keyless self-hosted or hosted with API key)
+   */
+  private async tryGraphHopper(origin: RouteCoordinates, destination: RouteCoordinates): Promise<RouteResult | null> {
+    const startTime = Date.now();
+    const rawGhBase = (CONFIG.GRAPHHOPPER_BASE_URL || process.env.GRAPHHOPPER_BASE_URL || process.env.GRAPHHOPPER_URL || 'https://graphhopper.com/api/1').replace(/\/+$/, '').replace(/\/route$/, '');
+    const ghApiKey = (CONFIG.GRAPHHOPPER_API_KEY || process.env.GRAPHHOPPER_API_KEY || '').trim();
+    const isHostedGh = rawGhBase.includes('graphhopper.com');
+
+    // Hosted GraphHopper requires key; self-hosted instances run keyless
+    if (isHostedGh && !ghApiKey) {
+      return null;
+    }
+
+    const url = `${rawGhBase}/route?point=${origin.lat},${origin.lng}&point=${destination.lat},${destination.lng}&vehicle=car&locale=en&calc_points=true${ghApiKey ? `&key=${encodeURIComponent(ghApiKey)}` : ''}`;
+
+    try {
+      const response = await this.fetchWithTimeout(
+        url,
+        {
+          method: 'GET',
+          headers: { 'User-Agent': 'VeyraNG-FoodDelivery/2.1' }
+        },
+        3500
+      );
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          console.warn('[GraphHopper Router] Rate limit hit (429)');
+        }
+        this.recordFailure('graphhopper');
+        return null;
+      }
+
+      const data = await response.json();
+      const path = data?.paths?.[0];
+      if (path && typeof path.distance === 'number' && typeof path.time === 'number') {
+        const distMeters = Math.round(path.distance);
+        const durSeconds = Math.round(path.time / 1000); // GraphHopper returns time in milliseconds
+        if (this.validateResult(distMeters, durSeconds)) {
+          this.recordSuccess('graphhopper');
+          return {
+            distanceMeters: distMeters,
+            durationSeconds: durSeconds,
+            provider: 'graphhopper',
+            status: 'success',
+            latencyMs: Date.now() - startTime,
+            polyline: path.points || undefined
+          };
+        }
+      }
+      this.recordFailure('graphhopper');
+      return null;
+    } catch {
+      this.recordFailure('graphhopper');
+      return null;
+    }
+  }
+
+  /**
+   * Tier 5: Google Maps Distance Matrix / Directions API
    */
   private async tryGoogle(origin: RouteCoordinates, destination: RouteCoordinates): Promise<RouteResult | null> {
     const startTime = Date.now();
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const apiKey = (CONFIG.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '').trim();
     if (!apiKey) return null;
 
     const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin.lat},${origin.lng}&destinations=${destination.lat},${destination.lng}&key=${apiKey}`;

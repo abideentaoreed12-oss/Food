@@ -732,6 +732,12 @@ export const api = {
     reverse: async (lat: number, lng: number) => {
       return request(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
     },
+    search: async (address: string) => {
+      return request(`/api/geocode?address=${encodeURIComponent(address)}`);
+    },
+    autocomplete: async (query: string) => {
+      return request(`/api/geocode/autocomplete?q=${encodeURIComponent(query)}`);
+    },
     calculateDistance: async (params: {
       originLat?: number;
       originLng?: number;

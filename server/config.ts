@@ -16,6 +16,21 @@ const jwtSecret = process.env.JWT_SECRET || '';
 const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
 const adminPassword = (process.env.ADMIN_PASSWORD || '').trim();
 
+function sanitizeBaseUrl(url: string | undefined, defaultUrl: string): string {
+  if (!url || typeof url !== 'string') return defaultUrl;
+  const trimmed = url.trim().replace(/\/+$/, '');
+  if (!trimmed) return defaultUrl;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return trimmed;
+    }
+    return defaultUrl;
+  } catch {
+    return defaultUrl;
+  }
+}
+
 export const CONFIG = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: parseInt(process.env.PORT || '3000', 10),
@@ -43,17 +58,19 @@ export const CONFIG = {
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
 
   GOOGLE_MAPS_API_KEY:
-    process.env.GOOGLE_MAPS_API_KEY ||
+    (process.env.GOOGLE_MAPS_API_KEY ||
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
     process.env.VITE_GOOGLE_MAPS_API_KEY ||
-    '',
-  NOMINATIM_BASE_URL: (process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org').replace(/\/$/, ''),
-  PHOTON_BASE_URL: (process.env.PHOTON_BASE_URL || 'https://photon.komoot.io').replace(/\/$/, ''),
-  PELIAS_BASE_URL: (process.env.PELIAS_BASE_URL || '').replace(/\/$/, ''),
-  PELIAS_API_KEY: process.env.PELIAS_API_KEY || '',
-  OSRM_BASE_URL: (process.env.OSRM_BASE_URL || 'https://router.project-osrm.org').replace(/\/$/, ''),
-  VALHALLA_BASE_URL: (process.env.VALHALLA_BASE_URL || '').replace(/\/$/, ''),
-  VALHALLA_API_KEY: process.env.VALHALLA_API_KEY || '',
-  GRAPHHOPPER_API_KEY: process.env.GRAPHHOPPER_API_KEY || '',
-  OPENROUTESERVICE_API_KEY: process.env.OPENROUTESERVICE_API_KEY || ''
+    '').trim(),
+  NOMINATIM_BASE_URL: sanitizeBaseUrl(process.env.NOMINATIM_BASE_URL || process.env.NOMINATIM_URL, 'https://nominatim.openstreetmap.org'),
+  PHOTON_BASE_URL: sanitizeBaseUrl(process.env.PHOTON_BASE_URL || process.env.PHOTON_URL, 'https://photon.komoot.io'),
+  PELIAS_BASE_URL: sanitizeBaseUrl(process.env.PELIAS_BASE_URL || process.env.PELIAS_URL, ''),
+  PELIAS_API_KEY: (process.env.PELIAS_API_KEY || '').trim(),
+  OSRM_BASE_URL: sanitizeBaseUrl(process.env.OSRM_BASE_URL || process.env.OSRM_URL, 'https://router.project-osrm.org'),
+  VALHALLA_BASE_URL: sanitizeBaseUrl(process.env.VALHALLA_BASE_URL || process.env.VALHALLA_URL, 'https://valhalla.openstreetmap.de'),
+  VALHALLA_API_KEY: (process.env.VALHALLA_API_KEY || '').trim(),
+  GRAPHHOPPER_BASE_URL: sanitizeBaseUrl(process.env.GRAPHHOPPER_BASE_URL || process.env.GRAPHHOPPER_URL, 'https://graphhopper.com/api/1'),
+  GRAPHHOPPER_API_KEY: (process.env.GRAPHHOPPER_API_KEY || '').trim(),
+  OPENROUTESERVICE_BASE_URL: sanitizeBaseUrl(process.env.OPENROUTESERVICE_BASE_URL || process.env.ORS_BASE_URL || process.env.ORS_URL, 'https://api.openrouteservice.org'),
+  OPENROUTESERVICE_API_KEY: (process.env.OPENROUTESERVICE_API_KEY || process.env.ORS_API_KEY || '').trim()
 };

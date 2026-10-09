@@ -5,7 +5,13 @@ import { randomUUID } from 'crypto';
 import { d1 } from '../../../lib/d1';
 import { r2 } from '../../../lib/r2';
 import { paymentGateway } from '../../../lib/payment';
-import { calculateRestaurantDistanceMetrics } from '../../../server/utils/distance';
+import {
+  calculateRestaurantDistanceMetrics,
+  calculateDistanceAndDuration,
+  calculateBatchRestaurantDistanceMetrics,
+  geocodeAddress
+} from '../../../server/utils/distance';
+import { reverseGeocodeCoordinates } from '../../../server/routes/geocode';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -208,9 +214,25 @@ export async function GET(req: NextRequest) {
       }
     }
     const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC LIMIT 200');
-    const list = (d1Res.results || []).map((r: any) => {
+    let list = (d1Res.results || []).map((r: any) => {
       try { return r.raw_json ? { ...JSON.parse(r.raw_json), id: r.id, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 } : r; } catch { return r; }
     });
+
+    const userAddr = req.nextUrl.searchParams.get('address');
+    const userLatStr = req.nextUrl.searchParams.get('lat');
+    const userLngStr = req.nextUrl.searchParams.get('lng');
+    const uLat = userLatStr ? parseFloat(userLatStr) : NaN;
+    const uLng = userLngStr ? parseFloat(userLngStr) : NaN;
+    const userLoc = (!isNaN(uLat) && !isNaN(uLng)) ? { lat: uLat, lng: uLng } : (userAddr?.trim() || null);
+
+    if (userLoc && list.length > 0) {
+      try {
+        list = await calculateBatchRestaurantDistanceMetrics(list, userLoc);
+      } catch (err) {
+        console.warn('Batch distance calculation notice:', err);
+      }
+    }
+
     return NextResponse.json({ success: true, data: list });
   }
 
@@ -507,29 +529,128 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 32. Geocode Reverse
-  if (pathname === '/geocode/reverse') {
-    const lat = req.nextUrl.searchParams.get('lat');
-    const lng = req.nextUrl.searchParams.get('lng');
-    if (!lat || !lng) return NextResponse.json({ success: false, error: 'lat and lng required' }, { status: 400 });
-    return NextResponse.json({
-      success: true,
-      data: {
-        latitude: Number(lat),
-        longitude: Number(lng),
-        address: `Lagos Location (${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)})`,
-        city: 'Lagos',
-        country: 'Nigeria'
+  // 31. Geocode Forward Address Lookup
+  if (pathname === '/geocode' || pathname === '/geocode/search') {
+    const address = req.nextUrl.searchParams.get('address') || req.nextUrl.searchParams.get('q');
+    if (!address?.trim()) {
+      return NextResponse.json({ success: false, error: 'address or q parameter is required' }, { status: 400 });
+    }
+    try {
+      const data = await geocodeAddress(address);
+      return NextResponse.json({ success: true, data });
+    } catch (err: any) {
+      console.warn('[API /geocode] Error:', err?.message || String(err));
+      const status = /could not locate|enter a delivery address/i.test(err?.message || '') ? 404 : 500;
+      return NextResponse.json({ success: false, error: err?.message || 'Failed to geocode address' }, { status });
+    }
+  }
+
+  // 32. Geocode Autocomplete Suggestions
+  if (pathname === '/geocode/autocomplete') {
+    const query = req.nextUrl.searchParams.get('q') || req.nextUrl.searchParams.get('query') || req.nextUrl.searchParams.get('input');
+    if (!query?.trim()) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+    try {
+      const rawBase = process.env.PHOTON_BASE_URL || process.env.PHOTON_URL || 'https://photon.komoot.io';
+      const photonBase = rawBase.replace(/\/+$/, '').replace(/\/api$/, '');
+      const trimmed = query.trim();
+      const searchParams = new URLSearchParams({
+        q: /\b(nigeria|lagos|ibadan|abuja|oyo|ogun|rivers|enugu|kano)\b/i.test(trimmed) ? trimmed : `${trimmed}, Nigeria`,
+        limit: '5',
+        lang: 'en',
+        countrycode: 'ng'
+      });
+      const resp = await fetch(`${photonBase}/api/?${searchParams.toString()}`, {
+        headers: { 'User-Agent': 'VeyraNG-FoodDelivery-Server/1.0 (address autocomplete)' },
+        signal: AbortSignal.timeout(3500)
+      });
+      if (resp.ok) {
+        const pData = await resp.json();
+        const features = Array.isArray(pData?.features) ? pData.features : [];
+        const suggestions = features
+          .filter((f: any) => {
+            const coords = f?.geometry?.coordinates || [];
+            return (
+              Number.isFinite(coords[0]) &&
+              Number.isFinite(coords[1]) &&
+              coords[1] >= 4 &&
+              coords[1] <= 14 &&
+              coords[0] >= 2 &&
+              coords[0] <= 15
+            );
+          })
+          .map((f: any, idx: number) => {
+            const props = f.properties || {};
+            const main = [props.housenumber, props.street || props.name].filter(Boolean).join(' ') || props.name || trimmed;
+            const sec = [props.district, props.city, props.state, props.country || 'Nigeria'].filter(Boolean).join(', ');
+            return {
+              id: `photon-${idx}-${props.osm_id || Math.random()}`,
+              mainText: main,
+              secondaryText: sec,
+              fullText: [main, sec].filter(Boolean).join(', '),
+              lat: f.geometry?.coordinates?.[1],
+              lng: f.geometry?.coordinates?.[0],
+              source: 'photon'
+            };
+          });
+        return NextResponse.json({ success: true, data: suggestions });
       }
-    });
+      return NextResponse.json({ success: true, data: [] });
+    } catch {
+      return NextResponse.json({ success: true, data: [] });
+    }
+  }
+
+  // 33. Geocode Reverse
+  if (pathname === '/geocode/reverse') {
+    const latStr = req.nextUrl.searchParams.get('lat');
+    const lngStr = req.nextUrl.searchParams.get('lng');
+    if (!latStr || !lngStr) return NextResponse.json({ success: false, error: 'lat and lng required' }, { status: 400 });
+    const lat = parseFloat(latStr);
+    const lng = parseFloat(lngStr);
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return NextResponse.json({ success: false, error: 'Invalid latitude or longitude coordinates' }, { status: 400 });
+    }
+    try {
+      const data = await reverseGeocodeCoordinates(lat, lng);
+      return NextResponse.json({ success: true, data });
+    } catch (err: any) {
+      console.warn('[API /geocode/reverse] Error:', err?.message || String(err));
+      return NextResponse.json({ success: false, error: err?.message || 'Failed to reverse geocode coordinates' }, { status: 500 });
+    }
   }
 
   // 33. Geocode Distance
   if (pathname === '/geocode/distance') {
-    return NextResponse.json({
-      success: true,
-      data: { distanceKm: 4.5, durationMinutes: 18, deliveryFee: 1200 }
-    });
+    const originLatStr = req.nextUrl.searchParams.get('originLat');
+    const originLngStr = req.nextUrl.searchParams.get('originLng');
+    const originAddr = req.nextUrl.searchParams.get('originAddress');
+
+    const destLatStr = req.nextUrl.searchParams.get('destLat');
+    const destLngStr = req.nextUrl.searchParams.get('destLng');
+    const destAddr = req.nextUrl.searchParams.get('destAddress');
+
+    const originLat = originLatStr ? parseFloat(originLatStr) : NaN;
+    const originLng = originLngStr ? parseFloat(originLngStr) : NaN;
+    const destLat = destLatStr ? parseFloat(destLatStr) : NaN;
+    const destLng = destLngStr ? parseFloat(destLngStr) : NaN;
+
+    const origin = (!isNaN(originLat) && !isNaN(originLng))
+      ? { lat: originLat, lng: originLng }
+      : (originAddr || 'Lekki Phase 1, Lagos');
+
+    const destination = (!isNaN(destLat) && !isNaN(destLng))
+      ? { lat: destLat, lng: destLng }
+      : (destAddr || 'Victoria Island, Lagos');
+
+    try {
+      const data = await calculateDistanceAndDuration(origin, destination);
+      return NextResponse.json({ success: true, data });
+    } catch (err: any) {
+      console.warn('[API /geocode/distance] Error:', err?.message || String(err));
+      return NextResponse.json({ success: false, error: err?.message || 'Failed to calculate distance' }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ success: false, error: `API route GET /api${pathname} not found.` }, { status: 404 });
@@ -1239,10 +1360,65 @@ export async function POST(req: NextRequest) {
 
   // 29. Restaurant Distance Calculator
   if (pathname === '/restaurants/calculate-distance') {
-    return NextResponse.json({
-      success: true,
-      data: { distanceKm: 3.8, estimatedDeliveryFee: 1200, estimatedDurationMin: 22 }
-    });
+    const {
+      restaurantId,
+      restaurantAddress,
+      restaurantLat,
+      restaurantLng,
+      userAddress,
+      userLat,
+      userLng
+    } = body;
+
+    let targetRestaurant: any = null;
+    if (restaurantId) {
+      try {
+        const d1Res = await d1.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+        if (d1Res.results && d1Res.results.length > 0) {
+          const r: any = d1Res.results[0];
+          targetRestaurant = r.raw_json ? JSON.parse(r.raw_json) : r;
+        }
+      } catch (e) {}
+    }
+
+    if (!userAddress?.trim() && !(Number.isFinite(userLat) && Number.isFinite(userLng))) {
+      return NextResponse.json({ success: false, error: 'Select a delivery address before calculating distance.' }, { status: 400 });
+    }
+
+    const restLatValue = restaurantLat ?? targetRestaurant?.lat ?? targetRestaurant?.latitude;
+    const restLngValue = restaurantLng ?? targetRestaurant?.lng ?? targetRestaurant?.longitude;
+    const restAddr = restaurantAddress ?? targetRestaurant?.address;
+
+    if (restLatValue === undefined || restLngValue === undefined ||
+        !Number.isFinite(Number(restLatValue)) || !Number.isFinite(Number(restLngValue)) ||
+        Number(restLatValue) < -90 || Number(restLatValue) > 90 ||
+        Number(restLngValue) < -180 || Number(restLngValue) > 180) {
+      return NextResponse.json({ success: false, error: 'This restaurant has no valid coordinates configured.' }, { status: 422 });
+    }
+
+    const deliveryFeeValue = targetRestaurant?.deliveryFee ?? targetRestaurant?.delivery_fee ?? 500;
+
+    const userLoc =
+      Number.isFinite(userLat) && Number.isFinite(userLng) &&
+      userLat >= -90 && userLat <= 90 && userLng >= -180 && userLng <= 180
+        ? { lat: Number(userLat), lng: Number(userLng) }
+        : String(userAddress).trim();
+
+    try {
+      const metrics = await calculateRestaurantDistanceMetrics(
+        {
+          lat: Number(restLatValue),
+          lng: Number(restLngValue),
+          address: restAddr || 'Restaurant Kitchen',
+          deliveryFee: Number(deliveryFeeValue)
+        },
+        userLoc
+      );
+      return NextResponse.json({ success: true, data: metrics });
+    } catch (err: any) {
+      console.warn('[Distance Metric] Calculation note:', err?.message || String(err));
+      return NextResponse.json({ success: false, error: err?.message || 'Failed to calculate live distance' }, { status: 500 });
+    }
   }
 
   // 30. Auth Password Recovery & Verification

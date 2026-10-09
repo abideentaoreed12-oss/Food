@@ -194,15 +194,19 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
   }
 
   // Tier 2: Photon (OpenStreetMap). Search-as-you-type friendly and supports country filter.
+  const photonBase = (CONFIG.PHOTON_BASE_URL || 'https://photon.komoot.io').replace(/\/+$/, '').replace(/\/api$/, '');
   for (const query of queries) {
     try {
       const params = new URLSearchParams({ q: query, limit: '5', lang: 'en', countrycode: 'ng' });
-      const photonUrl = `${CONFIG.PHOTON_BASE_URL}/api/?${params.toString()}`;
+      const photonUrl = `${photonBase}/api/?${params.toString()}`;
       const response = await fetch(photonUrl, {
         headers: { 'User-Agent': 'VeyraNG-FoodDelivery/2.1 (delivery address geocoding)' },
         signal: AbortSignal.timeout(5000)
       });
-      if (!response.ok) continue;
+      if (!response.ok) {
+        if (response.status === 429) console.warn('[Geocoding] Photon rate limit encountered (429)');
+        continue;
+      }
       const data = await response.json();
       const features = Array.isArray(data?.features) ? data.features : [];
       for (const feature of features) {
@@ -226,11 +230,12 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
         };
       }
     } catch (error: any) {
-      console.warn('[Geocoding] Photon attempt failed:', error?.message || String(error));
+      console.warn('[Geocoding] Photon attempt note:', error?.message || String(error));
     }
   }
 
   // Tier 3: Nominatim (OpenStreetMap). One-off server-side lookup.
+  const nominatimBase = (CONFIG.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org').replace(/\/+$/, '');
   for (const query of queries) {
     try {
       const params = new URLSearchParams({
@@ -240,11 +245,14 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
         addressdetails: '1',
         limit: '5'
       });
-      const response = await fetch(`${CONFIG.NOMINATIM_BASE_URL}/search?${params.toString()}`, {
+      const response = await fetch(`${nominatimBase}/search?${params.toString()}`, {
         headers: { 'User-Agent': 'VeyraNG-FoodDelivery/2.1 (delivery address geocoding)' },
         signal: AbortSignal.timeout(5000)
       });
-      if (!response.ok) continue;
+      if (!response.ok) {
+        if (response.status === 429) console.warn('[Geocoding] Nominatim rate limit encountered (429)');
+        continue;
+      }
       const results = await response.json();
       if (!Array.isArray(results)) continue;
       const match = results.find((item: any) =>
@@ -260,7 +268,62 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
         provider: 'OpenStreetMap Nominatim'
       };
     } catch (error: any) {
-      console.warn('[Geocoding] Nominatim attempt failed:', error?.message || String(error));
+      console.warn('[Geocoding] Nominatim attempt note:', error?.message || String(error));
+    }
+  }
+
+  // Tier 4: Pelias (if configured)
+  if (CONFIG.PELIAS_BASE_URL) {
+    const peliasBase = CONFIG.PELIAS_BASE_URL.replace(/\/+$/, '');
+    for (const query of queries) {
+      try {
+        const peliasParams = new URLSearchParams({ text: query, size: '5', 'boundary.country': 'NGA' });
+        if (CONFIG.PELIAS_API_KEY) peliasParams.set('api_key', CONFIG.PELIAS_API_KEY);
+        const peliasUrl = `${peliasBase}/v1/search?${peliasParams.toString()}`;
+        const resp = await fetch(peliasUrl, { signal: AbortSignal.timeout(4000) });
+        if (!resp.ok) continue;
+        const data = await resp.json();
+        const features = Array.isArray(data?.features) ? data.features : [];
+        if (features.length > 0) {
+          const [lng, lat] = features[0].geometry?.coordinates || [];
+          if (isValidPoint(lat, lng)) {
+            return {
+              lat: Number(lat),
+              lng: Number(lng),
+              formattedAddress: features[0].properties?.label || cleanAddr,
+              isLive: true,
+              provider: 'Pelias'
+            };
+          }
+        }
+      } catch (err: any) {
+        console.warn('[Geocoding] Pelias attempt note:', err?.message || String(err));
+      }
+    }
+  }
+
+  // Tier 5: Resilient Nigerian metropolitan zone fallback for network outages
+  const KNOWN_NIGERIAN_AREAS: { pattern: RegExp; lat: number; lng: number; label: string }[] = [
+    { pattern: /admiralty|lekki\s*(phase\s*1)?/i, lat: 6.4474, lng: 3.4723, label: 'Lekki Phase 1, Lagos' },
+    { pattern: /victoria\s*island|ahmadu\s*bello/i, lat: 6.4281, lng: 3.4219, label: 'Victoria Island, Lagos' },
+    { pattern: /ikoyi|bourdillon/i, lat: 6.4549, lng: 3.4357, label: 'Ikoyi, Lagos' },
+    { pattern: /ikeja|allen|isaac\s*john/i, lat: 6.5866, lng: 3.3578, label: 'Ikeja, Lagos' },
+    { pattern: /yaba|herbert\s*macaulay/i, lat: 6.5059, lng: 3.3781, label: 'Yaba, Lagos' },
+    { pattern: /surulere|ojuelegba/i, lat: 6.5000, lng: 3.3500, label: 'Surulere, Lagos' },
+    { pattern: /wuse|maitama|garki|abuja|fct/i, lat: 9.0765, lng: 7.4721, label: 'Abuja, FCT' },
+    { pattern: /ibadan|bodija|dugbe/i, lat: 7.3775, lng: 3.9470, label: 'Ibadan, Oyo' },
+    { pattern: /port\s*harcourt|trans\s*amadi/i, lat: 4.8156, lng: 7.0498, label: 'Port Harcourt, Rivers' },
+    { pattern: /lagos/i, lat: 6.5244, lng: 3.3792, label: 'Lagos, Nigeria' }
+  ];
+  for (const area of KNOWN_NIGERIAN_AREAS) {
+    if (area.pattern.test(cleanAddr)) {
+      return {
+        lat: area.lat,
+        lng: area.lng,
+        formattedAddress: `${cleanAddr}, ${area.label}`,
+        isLive: false,
+        provider: 'Geographic Zone Fallback'
+      };
     }
   }
 
@@ -344,7 +407,8 @@ export async function calculateDistanceAndDuration(
 
   // Tier 2: OSRM Road Routing API (Open Source, full road geometry)
   try {
-    const osrmUrl = `${CONFIG.OSRM_BASE_URL}/route/v1/driving/${originGeo.lng},${originGeo.lat};${destGeo.lng},${destGeo.lat}?overview=full&geometries=geojson`;
+    const osrmBase = (CONFIG.OSRM_BASE_URL || 'https://router.project-osrm.org').replace(/\/+$/, '');
+    const osrmUrl = `${osrmBase}/route/v1/driving/${originGeo.lng},${originGeo.lat};${destGeo.lng},${destGeo.lat}?overview=full&geometries=geojson`;
     const osrmRes = await fetch(osrmUrl, { signal: AbortSignal.timeout(3000) });
     if (osrmRes.ok) {
       const osrmData = await osrmRes.json();
@@ -370,19 +434,168 @@ export async function calculateDistanceAndDuration(
           destGeo
         };
       }
+    } else if (osrmRes.status === 429) {
+      console.warn('[Routing] OSRM rate limit encountered (429) - falling back to next provider');
     }
   } catch (err: any) {
     console.log('OSRM live routing fallback note:', err?.message || String(err));
   }
 
-  // Tier 2: Public OpenStreetMap Routing Engine
+  // Tier 3: Valhalla Routing Engine (Open Source, Hosted or Self-Hosted)
+  const valhallaBase = (CONFIG.VALHALLA_BASE_URL || 'https://valhalla.openstreetmap.de').replace(/\/+$/, '').replace(/\/route$/, '');
+  const valhallaApiKey = (CONFIG.VALHALLA_API_KEY || '').trim();
   try {
-    const orsUrl = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${originGeo.lng},${originGeo.lat};${destGeo.lng},${destGeo.lat}?overview=false`;
-    const orsRes = await fetch(orsUrl, { signal: AbortSignal.timeout(2500) });
-    if (orsRes.ok) {
-      const orsData = await orsRes.json();
-      if (orsData.code === 'Ok' && orsData.routes && orsData.routes.length > 0) {
-        const route = orsData.routes[0];
+    const valhallaUrl = `${valhallaBase}/route${valhallaApiKey ? `?api_key=${encodeURIComponent(valhallaApiKey)}` : ''}`;
+    const vPayload = {
+      locations: [
+        { lat: originGeo.lat, lon: originGeo.lng },
+        { lat: destGeo.lat, lon: destGeo.lng }
+      ],
+      costing: 'auto',
+      units: 'kilometers',
+      directions_options: { units: 'kilometers' }
+    };
+    const vResp = await fetch(valhallaUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'VeyraNG-FoodDelivery/2.1'
+      },
+      body: JSON.stringify(vPayload),
+      signal: AbortSignal.timeout(3500)
+    });
+    if (vResp.ok) {
+      const vData = await vResp.json();
+      const summary = vData.trip?.summary;
+      if (summary && Number.isFinite(summary.length) && Number.isFinite(summary.time)) {
+        const distanceKm = Math.round(summary.length * 10) / 10;
+        const durationMinutes = Math.max(1, Math.round(summary.time / 60));
+        let points = [originGeo, destGeo];
+        const legs = vData.trip?.legs;
+        if (Array.isArray(legs) && legs[0]?.shape) {
+          try {
+            points = decodePolyline(legs[0].shape);
+          } catch {}
+        }
+        return {
+          distanceKm,
+          distanceText: `${distanceKm} km`,
+          durationMinutes,
+          durationText: `${durationMinutes}–${durationMinutes + 6} min`,
+          isLive: true,
+          routingEngine: 'Valhalla',
+          points,
+          originGeo,
+          destGeo
+        };
+      }
+    } else if (vResp.status === 429) {
+      console.warn('[Routing] Valhalla rate limit encountered (429) - falling back to next provider');
+    }
+  } catch (error: any) {
+    console.warn('[Routing] Valhalla router note:', error?.message || String(error));
+  }
+
+  // Tier 4: OpenRouteService (Optional Hosted or Self-Hosted)
+  const orsBase = (CONFIG.OPENROUTESERVICE_BASE_URL || 'https://api.openrouteservice.org').replace(/\/+$/, '').replace(/\/v2\/directions\/driving-car$/, '');
+  const orsApiKey = (CONFIG.OPENROUTESERVICE_API_KEY || '').trim();
+  const isHostedOrs = orsBase.includes('openrouteservice.org');
+
+  // Only attempt ORS if self-hosted or if hosted with an API key
+  if (!isHostedOrs || orsApiKey) {
+    try {
+      const orsHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'VeyraNG-FoodDelivery/2.1'
+      };
+      if (orsApiKey) orsHeaders['Authorization'] = orsApiKey;
+
+      const orsResp = await fetch(`${orsBase}/v2/directions/driving-car`, {
+        method: 'POST',
+        headers: orsHeaders,
+        body: JSON.stringify({
+          coordinates: [
+            [originGeo.lng, originGeo.lat],
+            [destGeo.lng, destGeo.lat]
+          ]
+        }),
+        signal: AbortSignal.timeout(3500)
+      });
+      if (orsResp.ok) {
+        const orsData = await orsResp.json();
+        const summary = orsData.routes?.[0]?.summary;
+        if (summary && Number.isFinite(summary.distance) && Number.isFinite(summary.duration)) {
+          const distanceKm = Math.round((summary.distance / 1000) * 10) / 10;
+          const durationMinutes = Math.max(1, Math.round(summary.duration / 60));
+          return {
+            distanceKm,
+            distanceText: `${distanceKm} km`,
+            durationMinutes,
+            durationText: `${durationMinutes}–${durationMinutes + 7} min`,
+            isLive: true,
+            routingEngine: 'OpenRouteService',
+            points: [originGeo, destGeo],
+            originGeo,
+            destGeo
+          };
+        }
+      } else if (orsResp.status === 429) {
+        console.warn('[Routing] OpenRouteService rate limit encountered (429) - falling back');
+      }
+    } catch (err: any) {
+      console.warn('[Routing] OpenRouteService note:', err?.message || String(err));
+    }
+  }
+
+  // Tier 5: GraphHopper Routing Engine (Optional Hosted or Keyless Self-Hosted)
+  const ghBase = (CONFIG.GRAPHHOPPER_BASE_URL || 'https://graphhopper.com/api/1').replace(/\/+$/, '').replace(/\/route$/, '');
+  const ghApiKey = (CONFIG.GRAPHHOPPER_API_KEY || '').trim();
+  const isHostedGh = ghBase.includes('graphhopper.com');
+
+  if (!isHostedGh || ghApiKey) {
+    try {
+      const ghUrl = `${ghBase}/route?point=${originGeo.lat},${originGeo.lng}&point=${destGeo.lat},${destGeo.lng}&vehicle=car&locale=en&calc_points=true${ghApiKey ? `&key=${encodeURIComponent(ghApiKey)}` : ''}`;
+      const ghResp = await fetch(ghUrl, {
+        headers: { 'User-Agent': 'VeyraNG-FoodDelivery/2.1' },
+        signal: AbortSignal.timeout(3500)
+      });
+      if (ghResp.ok) {
+        const ghData = await ghResp.json();
+        const path = ghData.paths?.[0];
+        if (path && Number.isFinite(path.distance) && Number.isFinite(path.time)) {
+          const distanceKm = Math.round((path.distance / 1000) * 10) / 10;
+          const durationMinutes = Math.max(1, Math.round(path.time / 60000));
+          return {
+            distanceKm,
+            distanceText: `${distanceKm} km`,
+            durationMinutes,
+            durationText: `${durationMinutes}–${durationMinutes + 6} min`,
+            isLive: true,
+            routingEngine: 'GraphHopper',
+            points: [originGeo, destGeo],
+            originGeo,
+            destGeo
+          };
+        }
+      } else if (ghResp.status === 429) {
+        console.warn('[Routing] GraphHopper rate limit encountered (429) - falling back');
+      }
+    } catch (ghErr: any) {
+      console.warn('[Routing] GraphHopper note:', ghErr?.message || String(ghErr));
+    }
+  }
+
+  // Tier 5: Public OpenStreetMap Routing Fallback
+  try {
+    const osmRouteUrl = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${originGeo.lng},${originGeo.lat};${destGeo.lng},${destGeo.lat}?overview=false`;
+    const osmRes = await fetch(osmRouteUrl, {
+      headers: { 'User-Agent': 'VeyraNG-FoodDelivery/2.1' },
+      signal: AbortSignal.timeout(2500)
+    });
+    if (osmRes.ok) {
+      const osmData = await osmRes.json();
+      if (osmData.code === 'Ok' && osmData.routes && osmData.routes.length > 0) {
+        const route = osmData.routes[0];
         const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
         const durationMinutes = Math.max(1, Math.round(route.duration / 60));
 
@@ -400,44 +613,7 @@ export async function calculateDistanceAndDuration(
       }
     }
   } catch (err: any) {
-    console.log('OpenRouteService fallback note:', err?.message || String(err));
-  }
-
-  // Tier 4: Optional operator-managed Valhalla routing endpoint (open source).
-  if (CONFIG.VALHALLA_BASE_URL) {
-    try {
-      const params = new URLSearchParams({
-        json: JSON.stringify({
-          locations: [
-            { lat: originGeo.lat, lon: originGeo.lng },
-            { lat: destGeo.lat, lon: destGeo.lng }
-          ],
-          costing: 'auto',
-          units: 'kilometers'
-        })
-      });
-      if (CONFIG.VALHALLA_API_KEY) params.set('api_key', CONFIG.VALHALLA_API_KEY);
-      const response = await fetch(`${CONFIG.VALHALLA_BASE_URL}/route?${params}`, {
-        headers: { 'X-Client-Id': 'veyrang-food-delivery' },
-        signal: AbortSignal.timeout(3500)
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const summary = data.trip?.summary;
-        if (summary && Number.isFinite(summary.length) && Number.isFinite(summary.time)) {
-          const distanceKm = Math.round(summary.length * 10) / 10;
-          const durationMinutes = Math.max(1, Math.round(summary.time / 60));
-          return {
-            distanceKm, distanceText: `${distanceKm} km`,
-            durationMinutes, durationText: `${durationMinutes} min`,
-            isLive: true, routingEngine: 'Valhalla', originGeo, destGeo,
-            points: [originGeo, destGeo]
-          };
-        }
-      }
-    } catch (error: any) {
-      console.warn('[Routing] Valhalla provider failed; trying next provider:', error?.message || String(error));
-    }
+    console.warn('[Routing] OSM Routing fallback note:', err?.message || String(err));
   }
 
   // Final fallback: Google Maps driving distance, after all open-source routers fail.

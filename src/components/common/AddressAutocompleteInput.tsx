@@ -235,7 +235,30 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
           }
         }
 
-        // 2. High-speed open geocoding fallback if Google returned 0 or wasn't loaded
+        // 2. High-speed open geocoding via backend autocomplete proxy (uses CONFIG.PHOTON_BASE_URL)
+        if (items.length === 0) {
+          try {
+            const resp = await fetch(`/api/geocode/autocomplete?q=${encodeURIComponent(trimmed)}`);
+            if (resp.ok) {
+              const resData = await resp.json();
+              if (Array.isArray(resData?.data) && resData.data.length > 0) {
+                items = resData.data.map((item: any) => ({
+                  id: item.id || `geo-${Math.random()}`,
+                  mainText: item.mainText || trimmed,
+                  secondaryText: item.secondaryText || 'Nigeria',
+                  fullText: item.fullText || [item.mainText, item.secondaryText].filter(Boolean).join(', '),
+                  source: 'fallback' as const,
+                  lat: item.lat,
+                  lng: item.lng
+                }));
+              }
+            }
+          } catch (backendGeoErr) {
+            console.warn('Backend autocomplete notice:', backendGeoErr);
+          }
+        }
+
+        // 2b. Direct client-side photon fallback if backend unavailable
         if (items.length === 0) {
           try {
             const params = new URLSearchParams({
@@ -269,7 +292,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
                     mainText: main,
                     secondaryText: sec,
                     fullText: [main, sec].filter(Boolean).join(', '),
-                    source: 'fallback',
+                    source: 'fallback' as const,
                     lat: f.geometry?.coordinates?.[1],
                     lng: f.geometry?.coordinates?.[0]
                   };
@@ -277,7 +300,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
               }
             }
           } catch (fallErr) {
-            console.warn('Fallback geocoding notice:', fallErr);
+            console.warn('Direct fallback geocoding notice:', fallErr);
           }
         }
 

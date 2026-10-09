@@ -47,6 +47,42 @@ async function testRouteHandlers() {
     throw new Error('Settings fetch failed');
   }
 
+  console.log('\n--- Testing Next.js Route Handler (/api/geocode) ---');
+  const req6 = new NextRequest('http://localhost:3000/api/geocode?address=Lekki+Phase+1');
+  const res6 = await GET(req6);
+  const json6 = await res6.json();
+  console.log('/api/geocode status:', res6.status, 'data:', json6.data?.formattedAddress || json6.data);
+  if (res6.status !== 200 || !json6.success || !json6.data?.lat) {
+    throw new Error('Geocode forward lookup failed');
+  }
+
+  console.log('\n--- Testing Next.js Route Handler (/api/geocode/reverse) ---');
+  const req7 = new NextRequest('http://localhost:3000/api/geocode/reverse?lat=6.4474&lng=3.4723');
+  const res7 = await GET(req7);
+  const json7 = await res7.json();
+  console.log('/api/geocode/reverse status:', res7.status, 'address:', json7.data?.address);
+  if (res7.status !== 200 || !json7.success || !json7.data?.address) {
+    throw new Error('Geocode reverse lookup failed');
+  }
+
+  console.log('\n--- Testing Next.js Route Handler (/api/geocode/autocomplete) ---');
+  const req8 = new NextRequest('http://localhost:3000/api/geocode/autocomplete?q=Lekki');
+  const res8 = await GET(req8);
+  const json8 = await res8.json();
+  console.log('/api/geocode/autocomplete status:', res8.status, 'count:', json8.data?.length);
+  if (res8.status !== 200 || !json8.success) {
+    throw new Error('Geocode autocomplete failed');
+  }
+
+  console.log('\n--- Testing Next.js Route Handler (/api/geocode/distance) ---');
+  const req9 = new NextRequest('http://localhost:3000/api/geocode/distance?originLat=6.4474&originLng=3.4723&destLat=6.4281&destLng=3.4219');
+  const res9 = await GET(req9);
+  const json9 = await res9.json();
+  console.log('/api/geocode/distance status:', res9.status, 'engine:', json9.data?.routingEngine, 'distance:', json9.data?.distanceText);
+  if (res9.status !== 200 || !json9.success || !json9.data?.distanceKm) {
+    throw new Error('Geocode distance calculation failed');
+  }
+
   console.log('\n✅ ALL API ROUTE TESTS PASSED SUCCESSFULLY!');
 }
 

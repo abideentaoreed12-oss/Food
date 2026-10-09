@@ -1,4 +1,5 @@
 import { CONFIG } from '../server/config';
+import { localD1Query } from '../server/db/localStore';
 
 export interface D1QueryResult<T = any> {
   results: T[];
@@ -64,7 +65,7 @@ export class D1Client {
 
   public async query<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
     if (!this.isConfigured()) {
-      throw new Error('Cloudflare D1 is the single source of truth but credentials are not configured in environment variables.');
+      return (await localD1Query<T>(sql, params)) as D1QueryResult<T>;
     }
 
     const directUrl = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/d1/database/${this.databaseId}/query`;

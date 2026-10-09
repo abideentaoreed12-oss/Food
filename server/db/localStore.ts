@@ -4,6 +4,7 @@ import os from 'os';
 import bcrypt from 'bcryptjs';
 import { User, Restaurant, Order, Transaction, AuditLog } from './schema';
 import { CONFIG } from '../config';
+import { INITIAL_RESTAURANTS } from '../../src/data/mockData';
 
 export interface PromoCodeRecord {
   id: string;
@@ -113,8 +114,8 @@ export function seedInitialData(): DatabaseSchema {
     });
   }
 
-  // Single source of truth is Cloudflare D1
-  const restaurants: Restaurant[] = [];
+  // Seed restaurants from catalog data
+  const restaurants: Restaurant[] = [...(INITIAL_RESTAURANTS as any[])];
 
   const promoCodes: PromoCodeRecord[] = [
     {
@@ -252,6 +253,9 @@ export function loadDatabase(): DatabaseSchema {
           }
         }
         // Ensure sub-arrays exist
+        if (!Array.isArray(dbCache!.restaurants) || dbCache!.restaurants.length === 0) {
+          dbCache!.restaurants = seedInitialData().restaurants;
+        }
         if (!Array.isArray(dbCache!.promoCodes) || dbCache!.promoCodes.length === 0) {
           dbCache!.promoCodes = seedInitialData().promoCodes;
         }
