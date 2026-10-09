@@ -117,7 +117,7 @@ export class R2Client {
   }
 
   public async delete(key: string): Promise<{ success: boolean; error?: string }> {
-    const cleanKey = key.replace(/^\\/+/, '');
+    const cleanKey = key.replace(/^\/+/, '');
     if (!cleanKey || cleanKey.split('/').some(part => !part || part === '.' || part === '..')) {
       return { success: false, error: 'Invalid R2 object key.' };
     }
