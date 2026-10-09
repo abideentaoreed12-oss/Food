@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHmac, timingSafeEqual } from 'crypto';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { d1 } from '../../../lib/d1';
@@ -373,7 +374,63 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   await ensureSchema();
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
-  const body = await req.json().catch(() => ({}));
+  const rawBody = await req.text();
+  let body: any = {};
+  try { body = rawBody ? JSON.parse(rawBody) : {}; } catch { body = {}; }
+
+  // Paystack server-to-server webhook. Only a valid signature and a successful,
+  // amount-matched charge.success event can mark an order paid.
+  if (pathname === '/payments/webhook') {
+    const secret = process.env.PAYSTACK_SECRET_KEY || process.env.PAYMENT_SECRET_KEY || '';
+    const signature = req.headers.get('x-paystack-signature') || '';
+    if (!secret || !signature || !rawBody) {
+      return NextResponse.json({ success: false, error: 'Webhook signature is missing or not configured' }, { status: 401 });
+    }
+    const expected = createHmac('sha512', secret).update(rawBody).digest('hex');
+    const suppliedBuffer = Buffer.from(signature, 'utf8');
+    const expectedBuffer = Buffer.from(expected, 'utf8');
+    if (suppliedBuffer.length !== expectedBuffer.length || !timingSafeEqual(suppliedBuffer, expectedBuffer)) {
+      return NextResponse.json({ success: false, error: 'Invalid webhook signature' }, { status: 401 });
+    }
+
+    if (body?.event !== 'charge.success' || !body?.data?.reference) {
+      return NextResponse.json({ received: true, ignored: true });
+    }
+    const reference = String(body.data.reference);
+    const stored = await d1.query(
+      'SELECT id, order_id, amount, currency, status FROM transactions WHERE reference = ? LIMIT 1',
+      [reference]
+    );
+    if (!stored.success) {
+      return NextResponse.json({ success: false, error: 'Could not read transaction record' }, { status: 503 });
+    }
+    const transaction: any = stored.results?.[0];
+    if (!transaction) {
+      // Do not acknowledge unknown references as successfully processed.
+      return NextResponse.json({ success: false, error: 'Unknown transaction reference' }, { status: 404 });
+    }
+    const expectedKobo = Math.round(Number(transaction.amount) * 100);
+    const paidKobo = Number(body.data.amount);
+    if (!Number.isFinite(expectedKobo) || !Number.isFinite(paidKobo) || expectedKobo !== paidKobo ||
+        String(body.data.currency || '').toUpperCase() !== String(transaction.currency || 'NGN').toUpperCase() ||
+        String(body.data.status || '').toLowerCase() !== 'success') {
+      return NextResponse.json({ success: false, error: 'Webhook payment amount, currency, or status did not match' }, { status: 409 });
+    }
+    const now = new Date().toISOString();
+    const txUpdate = await d1.query(
+      "UPDATE transactions SET status = 'completed' WHERE reference = ?",
+      [reference]
+    );
+    if (!txUpdate.success) return NextResponse.json({ success: false, error: 'Could not update transaction status' }, { status: 503 });
+    if (transaction.order_id) {
+      const orderUpdate = await d1.query(
+        "UPDATE orders SET payment_status = 'paid', status = 'placed', updated_at = ? WHERE id = ?",
+        [now, transaction.order_id]
+      );
+      if (!orderUpdate.success) return NextResponse.json({ success: false, error: 'Could not activate paid order' }, { status: 503 });
+    }
+    return NextResponse.json({ received: true, success: true });
+  }
 
   // Live restaurant road-distance calculation. This catch-all Next.js route is the
   // production API entry point, so the Express-only route is not sufficient on Vercel.
