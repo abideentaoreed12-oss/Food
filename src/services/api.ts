@@ -143,7 +143,12 @@ export const api = {
         }
         return { user: null };
       } catch (err) {
-        return { user: null };
+        const message = err instanceof Error ? err.message : String(err || '');
+        if (/\\b(401|403)\\b/.test(message)) {
+          return { user: null, invalidSession: true };
+        }
+        // A network/server error is not proof that the saved session is invalid.
+        return { user: null, transientError: true };
       }
     },
 
