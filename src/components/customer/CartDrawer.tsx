@@ -221,6 +221,7 @@ export const CartDrawer: React.FC = () => {
         customerApartment,
         deliveryNotes,
         tip,
+        deliveryFee: fulfillmentType === 'pickup' ? 0 : liveDistanceResult?.estimatedDeliveryFee,
         paymentMethod: walletDeduction >= preWalletTotal ? 'Veyrang Wallet' : paymentMethod
       });
       setCheckoutStep('cart');
