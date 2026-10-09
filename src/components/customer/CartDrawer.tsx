@@ -84,12 +84,15 @@ export const CartDrawer: React.FC = () => {
     if (user?.phone) setCustomerPhone(user.phone);
   }, [user, selectedAddress]);
 
-  // Recalculate for each selected address. Never retain or display a previous quote after a failure.
+  // Depend on the stable restaurant ID, not the context's restaurant object identity.
+  // Some context providers recreate that object during renders; depending on the object
+  // can retrigger this callback/effect and leave the UI repeatedly showing "Calculating".
+  const restaurantId = cartRestaurant?.id;
   const calculateDistanceNow = useCallback(
     async (addressStr: string, coords?: { lat: number; lng: number }) => {
       const requestId = ++distanceRequestId.current;
       const address = addressStr.trim();
-      if (!cartRestaurant || !address) {
+      if (!restaurantId || !address) {
         setLiveDistanceResult(null);
         setDistanceError(null);
         return;
@@ -108,7 +111,7 @@ export const CartDrawer: React.FC = () => {
         const hasCoords = coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng) &&
           coords.lat >= -90 && coords.lat <= 90 && coords.lng >= -180 && coords.lng <= 180;
         const res = await api.restaurants.calculateDistance({
-          restaurantId: cartRestaurant.id,
+          restaurantId,
           userAddress: address,
           ...(hasCoords ? { userLat: coords!.lat, userLng: coords!.lng } : {})
         });
@@ -131,7 +134,7 @@ export const CartDrawer: React.FC = () => {
         setDistanceError(err instanceof Error ? err.message : 'Live distance could not be calculated. Please retry.');
       }
     },
-    [cartRestaurant]
+    [restaurantId]
   );
 
   useEffect(() => {
@@ -143,7 +146,7 @@ export const CartDrawer: React.FC = () => {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [cartRestaurant?.id, customAddress, user?.address, selectedAddress?.address, calculateDistanceNow]);
+  }, [restaurantId, customAddress, user?.address, selectedAddress?.address, calculateDistanceNow]);
 
   const [selectedTipNGN, setSelectedTipNGN] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<string>('Debit Card');
