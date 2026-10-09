@@ -11,7 +11,7 @@ router.get('/status', requireAuth, requireRole(['admin', 'sub_admin']), async (_
     const checkRes = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${CONFIG.CLOUDFLARE_API_TOKEN}`
+        'Authorization': `Bearer ${CONFIG.CLOUDFLARE_R2_API_TOKEN}`
       }
     });
     const data = (await checkRes.json().catch(() => null)) as any;
@@ -71,7 +71,7 @@ router.post('/upload', requireAuth, async (req: AuthRequest, res: Response) => {
     const uploadRes = await fetch(r2Url, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${CONFIG.CLOUDFLARE_API_TOKEN}`,
+        'Authorization': `Bearer ${CONFIG.CLOUDFLARE_R2_API_TOKEN}`,
         'Content-Type': mime
       },
       body: buffer
@@ -144,7 +144,7 @@ router.delete('/file/:key(*)', requireAuth, async (req: AuthRequest, res: Respon
     const delRes = await fetch(r2Url, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${CONFIG.CLOUDFLARE_API_TOKEN}`
+        'Authorization': `Bearer ${CONFIG.CLOUDFLARE_R2_API_TOKEN}`
       }
     });
 
