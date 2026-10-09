@@ -206,14 +206,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setUser(null);
       setIntendedPortal(null);
-      try { localStorage.removeItem('veyrang_user_cache'); } catch {}
+      try {
+        localStorage.removeItem('veyrang_jwt_token');
+        localStorage.removeItem('veyrang_user_cache');
+      } catch {}
       if (typeof window !== 'undefined') {
-        try {
-          window.localStorage.clear();
-          window.sessionStorage.clear();
-        } catch (e) {}
         window.dispatchEvent(new CustomEvent('veyrang-user-logout'));
-        window.location.href = '/';
+        if (window.location.pathname.startsWith('/admin')) {
+          window.location.replace('/');
+        }
       }
     }
   };

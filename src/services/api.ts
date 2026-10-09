@@ -23,7 +23,10 @@ async function request(url: string, options: RequestInit = {}) {
   const response = await fetch(`${BASE_URL}${url}`, { ...options, headers, credentials: 'include', cache: 'no-store' });
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Server Request Failed (${response.status})`);
+    const err: any = new Error(errorData.error || `Server Request Failed (${response.status})`);
+    err.status = response.status;
+    err.data = errorData;
+    throw err;
   }
 
   const json = await response.json();
@@ -142,9 +145,14 @@ export const api = {
           return { user: res };
         }
         return { user: null };
-      } catch (err) {
+      } catch (err: any) {
+        const status = err?.status;
         const message = err instanceof Error ? err.message : String(err || '');
-        if (/\\b(401|403)\\b/.test(message)) {
+        if (
+          status === 401 ||
+          status === 403 ||
+          /(\b|\\b)(401|403|unauthorized|authentication required|invalid token|jwt expired)(\b|\\b)/i.test(message)
+        ) {
           return { user: null, invalidSession: true };
         }
         // A network/server error is not proof that the saved session is invalid.
@@ -155,14 +163,26 @@ export const api = {
     logout: async () => {
       try {
         await request('/api/auth/logout', { method: 'POST' });
-      } catch (e) {}
+      } catch (e) {
+        try {
+          await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+        } catch {}
+      }
 
-      try {
-        if (typeof window !== 'undefined') {
-          window.localStorage.clear();
-          window.sessionStorage.clear();
-        }
-      } catch (e) {}
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('veyrang_jwt_token');
+          localStorage.removeItem('veyrang_user_cache');
+          sessionStorage.clear();
+        } catch (e) {}
+
+        try {
+          const cookieNames = ['veyrang_jwt_token', 'veyrang_token', 'veyrang_auth_token', 'token', 'auth_token'];
+          cookieNames.forEach((name) => {
+            document.cookie = `${name}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+          });
+        } catch (e) {}
+      }
 
       return { message: 'Logged out successfully' };
     },

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   UserRole,
   ActivePage,
@@ -162,11 +162,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         setActiveRoleState('customer');
       }
     } else {
-      if (!initialRole || initialRole === 'customer') {
-        setActiveRoleState('customer');
-      }
+      setActiveRoleState('customer');
     }
-  }, [user, initialRole]);
+  }, [user]);
 
   const setActiveRole = useCallback((role: UserRole) => {
     if (user) {
@@ -606,7 +604,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
       setActivePage('landing');
       if (typeof window !== 'undefined') {
         try {
-          localStorage.clear();
+          localStorage.removeItem('veyrang_jwt_token');
+          localStorage.removeItem('veyrang_user_cache');
           sessionStorage.clear();
         } catch {}
       }
@@ -618,14 +617,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     };
   }, []);
 
+  const refreshDataRef = useRef(refreshData);
   useEffect(() => {
-    refreshData();
-    if (!user) return;
+    refreshDataRef.current = refreshData;
+  }, [refreshData]);
+
+  useEffect(() => {
+    refreshDataRef.current();
     const interval = setInterval(() => {
-      refreshData();
-    }, 5000);
+      refreshDataRef.current();
+    }, 15000);
     return () => clearInterval(interval);
-  }, [refreshData, user]);
+  }, []);
+
+  useEffect(() => {
+    refreshDataRef.current();
+  }, [user?.id, selectedAddress?.address]);
 
   // Cart Opening
   const setIsCartOpen = (open: boolean) => {

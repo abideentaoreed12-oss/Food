@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { z } from 'zod';
@@ -365,6 +365,21 @@ router.post('/reset-password', forgotLimiter, async (req, res) => {
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Failed to reset password.' });
   }
+});
+
+router.post('/logout', (req: Request, res: Response) => {
+  const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    path: '/'
+  };
+  res.clearCookie('veyrang_token', cookieOptions);
+  res.clearCookie('veyrang_auth_token', cookieOptions);
+  res.clearCookie('veyrang_jwt_token', cookieOptions);
+  res.clearCookie('token', cookieOptions);
+  res.clearCookie('auth_token', cookieOptions);
+  return res.json({ success: true, message: 'Logged out successfully' });
 });
 
 export default router;

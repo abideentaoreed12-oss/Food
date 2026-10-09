@@ -72,7 +72,9 @@ export const AdminPortal: React.FC = () => {
     setAdminActiveTab: setActiveTab,
     setIsRightDrawerOpen,
     refreshData,
-    advanceOrderStatus
+    advanceOrderStatus,
+    setActiveRole,
+    setActivePage
   } = useDelivery();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState<boolean>(false);
@@ -1198,7 +1200,17 @@ export const AdminPortal: React.FC = () => {
                 <button onClick={() => { setActiveTab('staff'); setIsProfileDropdownOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-orange-50 hover:text-[#FF5500] transition-colors cursor-pointer font-medium">Staff & RBAC</button>
                 <button onClick={() => { setActiveTab('audit'); setIsProfileDropdownOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-orange-50 hover:text-[#FF5500] transition-colors cursor-pointer font-medium">System Audit Logs</button>
                 <div className="border-t border-slate-100 my-1" />
-                <button onClick={() => logout()} className="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 transition-colors font-bold cursor-pointer">Sign Out</button>
+                <button
+                  onClick={async () => {
+                    setIsProfileDropdownOpen(false);
+                    await logout();
+                    setActiveRole('customer');
+                    setActivePage('home');
+                  }}
+                  className="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 transition-colors font-bold cursor-pointer"
+                >
+                  Sign Out
+                </button>
               </div>
             )}
           </div>

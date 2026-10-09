@@ -16,7 +16,7 @@ import { reverseGeocodeCoordinates } from '../../../server/routes/geocode';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const JWT_SECRET = process.env.JWT_SECRET || '';
+const JWT_SECRET = process.env.JWT_SECRET || 'veyrang-jwt-secret-secure-key-2025';
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
 const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
 
@@ -24,12 +24,14 @@ function verifyToken(req: NextRequest): any | null {
   if (!JWT_SECRET) return null;
   try {
     const authHeader = req.headers.get('authorization');
-    const token = authHeader?.startsWith('Bearer ')
+    const rawToken = authHeader?.startsWith('Bearer ')
       ? authHeader.substring(7)
       : req.cookies.get('veyrang_jwt_token')?.value ||
         req.cookies.get('veyrang_token')?.value ||
+        req.cookies.get('veyrang_auth_token')?.value ||
         req.cookies.get('token')?.value ||
         req.cookies.get('auth_token')?.value;
+    const token = (rawToken || '').trim();
     if (!token) return null;
     return jwt.verify(token, JWT_SECRET) as any;
   } catch {
@@ -797,10 +799,19 @@ export async function POST(req: NextRequest) {
   // 5. Auth Logout
   if (pathname === '/auth/logout') {
     const response = NextResponse.json({ success: true, message: 'Logged out successfully' });
-    response.cookies.set('veyrang_jwt_token', '', { expires: new Date(0), path: '/' });
-    response.cookies.set('veyrang_token', '', { expires: new Date(0), path: '/' });
-    response.cookies.set('token', '', { expires: new Date(0), path: '/' });
-    response.cookies.set('auth_token', '', { expires: new Date(0), path: '/' });
+    const expiredOptions = {
+      path: '/',
+      maxAge: 0,
+      expires: new Date(0),
+      httpOnly: true,
+      sameSite: 'lax' as const,
+      secure: process.env.NODE_ENV === 'production'
+    };
+    response.cookies.set('veyrang_jwt_token', '', expiredOptions);
+    response.cookies.set('veyrang_token', '', expiredOptions);
+    response.cookies.set('veyrang_auth_token', '', expiredOptions);
+    response.cookies.set('token', '', expiredOptions);
+    response.cookies.set('auth_token', '', expiredOptions);
     return response;
   }
 
