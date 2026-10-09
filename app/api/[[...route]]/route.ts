@@ -382,7 +382,7 @@ export async function POST(req: NextRequest) {
     const reference = String(body.reference || '');
     if (!reference) return NextResponse.json({ success: false, error: 'Reference required' }, { status: 400 });
     const result = await paymentGateway.verifyPayment(reference);
-    return NextResponse.json({ success: result.success, data: result, ...result });
+    return NextResponse.json({ success: result.success, data: result });
   }
 
   return NextResponse.json({ success: false, error: `API route POST /api${pathname} not found.` }, { status: 404 });
