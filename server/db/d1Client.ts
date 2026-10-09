@@ -49,7 +49,8 @@ export class CloudflareD1Client {
 
   public async queryDirect<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
     if (!this.accountId || !this.databaseId || !this.apiToken) {
-      return localD1Query<T>(sql, params);
+      if (process.env.NODE_ENV !== 'production') return localD1Query<T>(sql, params);
+      return { results: [], success: false };
     }
 
     const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/d1/database/${this.databaseId}/query`;
@@ -97,12 +98,14 @@ export class CloudflareD1Client {
       const data = (await response.json()) as D1ApiResponse<T>;
 
       if (!response.ok || !data.success || !data.result || data.result.length === 0) {
-        return localD1Query<T>(sql, params);
+        if (process.env.NODE_ENV !== 'production') return localD1Query<T>(sql, params);
+        return { results: [], success: false };
       }
 
       return data.result[0];
     } catch {
-      return localD1Query<T>(sql, params);
+      if (process.env.NODE_ENV !== 'production') return localD1Query<T>(sql, params);
+      return { results: [], success: false };
     }
   }
 
@@ -110,7 +113,8 @@ export class CloudflareD1Client {
     try {
       return await this.queryDirect<T>(sql, params);
     } catch {
-      return localD1Query<T>(sql, params);
+      if (process.env.NODE_ENV !== 'production') return localD1Query<T>(sql, params);
+      return { results: [], success: false };
     }
   }
 
