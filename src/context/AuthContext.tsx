@@ -86,16 +86,9 @@ function sanitizeUser(rawUser: any): AuthUser | null {
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    try {
-      const token = localStorage.getItem('veyrang_jwt_token');
-      const cached = localStorage.getItem('veyrang_user_cache');
-      if (!token || !cached) return null;
-      return sanitizeUser(JSON.parse(cached));
-    } catch {
-      return null;
-    }
-  });
+  // Cached profile data is not proof of authentication. Wait for /me to
+  // validate the server session before exposing any staff-only UI.
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [intendedPortal, setIntendedPortal] = useState<UserRole | null>(null);
