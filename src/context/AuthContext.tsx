@@ -86,7 +86,16 @@ function sanitizeUser(rawUser: any): AuthUser | null {
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    try {
+      const token = localStorage.getItem('veyrang_jwt_token');
+      const cached = localStorage.getItem('veyrang_user_cache');
+      if (!token || !cached) return null;
+      return sanitizeUser(JSON.parse(cached));
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState<boolean>(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [intendedPortal, setIntendedPortal] = useState<UserRole | null>(null);
@@ -97,13 +106,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .getMe()
       .then((res) => {
         if (res.user) {
-          setUser(sanitizeUser(res.user));
-        } else {
+          const sanitized = sanitizeUser(res.user);
+          setUser(sanitized);
+          if (sanitized) localStorage.setItem('veyrang_user_cache', JSON.stringify(sanitized));
+        } else if (res.invalidSession) {
+          setUser(null);
+          localStorage.removeItem('veyrang_jwt_token');
+          localStorage.removeItem('veyrang_user_cache');
+        } else if (!res.transientError && !localStorage.getItem('veyrang_jwt_token')) {
           setUser(null);
         }
+        // Keep the cached identity for a temporary network/server failure; API calls
+        // remain server-authorized and the session will be revalidated on next refresh.
       })
       .catch(() => {
-        setUser(null);
+        // Do not log the user out just because session verification had a transient failure.
       })
       .finally(() => {
         setLoading(false);
@@ -117,6 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const sanitized = sanitizeUser(res.user);
         if (sanitized) {
           setUser(sanitized);
+          try { localStorage.setItem('veyrang_user_cache', JSON.stringify(sanitized)); } catch {}
           setIsAuthModalOpen(false);
           return { success: true, user: sanitized };
         }
@@ -187,6 +205,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setUser(null);
       setIntendedPortal(null);
+      try { localStorage.removeItem('veyrang_user_cache'); } catch {}
       if (typeof window !== 'undefined') {
         try {
           window.localStorage.clear();
@@ -222,9 +241,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await api.auth.getMe();
       if (res && res.user) {
-        setUser(sanitizeUser(res.user));
-      } else {
+        const sanitized = sanitizeUser(res.user);
+        setUser(sanitized);
+        if (sanitized) localStorage.setItem('veyrang_user_cache', JSON.stringify(sanitized));
+      } else if (res.invalidSession) {
         setUser(null);
+        localStorage.removeItem('veyrang_jwt_token');
+        localStorage.removeItem('veyrang_user_cache');
       }
     } catch (e) {
       console.warn('refreshUser failed:', e);
