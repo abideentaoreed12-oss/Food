@@ -798,10 +798,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const discount = appliedPromo?.discountAmount || 0;
     const grossTotal = itemsSubtotal + deliveryFee + serviceFee + packagingFee + details.tip - discount;
 
-    let walletDeduction = 0;
-    if (useWalletCredit && walletBalanceNGN > 0) {
-      walletDeduction = Math.min(walletBalanceNGN, grossTotal);
-    }
+    // Always spend available wallet credit first; debit card covers only the remainder.
+    const walletDeduction = Math.min(Math.max(0, Number(walletBalanceNGN) || 0), Math.max(0, grossTotal));
     const finalPayable = Math.max(0, grossTotal - walletDeduction);
 
     const roadDistanceMins = cartRestaurant.distanceKm ? Math.round(cartRestaurant.distanceKm * 3.5) : 12;
