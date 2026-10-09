@@ -143,20 +143,18 @@ export async function GET(req: NextRequest) {
   }
 
   if (pathname === '/' || pathname === '/health') {
-    const d1Status = await d1.ping();
-    const r2Configured = r2.isConfigured();
-    const healthy = d1Status.connected && r2Configured;
-    return NextResponse.json({
-      status: healthy ? 'ok' : 'degraded',
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString(),
-      services: {
-        d1: { connected: d1Status.connected, latencyMs: d1Status.latencyMs },
-        r2: { configured: r2Configured },
-        routing: true
-      },
-      version: '2.6.0'
-    }, { status: healthy ? 200 : 503 });
+    // Public health checks expose only a generic liveness result. Infrastructure
+    // details, timings, uptime, and release versions remain private.
+    return NextResponse.json(
+      { status: 'ok' },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+          'X-Content-Type-Options': 'nosniff'
+        }
+      }
+    );
   }
 
   if (pathname === '/auth/me') {
