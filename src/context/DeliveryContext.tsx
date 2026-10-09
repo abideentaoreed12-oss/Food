@@ -509,12 +509,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (['orders', 'account', 'favourites'].includes(activePage)) {
         setActivePage('landing');
       }
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.clear();
-          sessionStorage.clear();
-        } catch {}
-      }
+      // Do not clear browser storage merely because the initial auth check has not
+      // completed or the session endpoint is temporarily unavailable. Explicit logout
+      // is handled by the veyrang-user-logout event below.
     }
   }, [user]);
 
