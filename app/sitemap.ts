@@ -4,7 +4,8 @@ import { d1 } from '../lib/d1';
 const SITE = 'https://www.veyrang.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticPaths = ['/', '/about', '/privacy', '/terms'];
+  // Only include actual server-rendered routes in the sitemap.
+  const staticPaths = ['/'];
   const entries: MetadataRoute.Sitemap = staticPaths.map((path) => ({
     url: `${SITE}${path}`,
     changeFrequency: path === '/' ? 'daily' : 'yearly',
