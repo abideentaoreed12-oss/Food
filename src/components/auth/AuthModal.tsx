@@ -174,14 +174,14 @@ export const AuthModal: React.FC = () => {
         const res = await login(email, password);
         if (res.success) {
           const loggedInUserRole = res.user?.role;
-          if (loggedInUserRole && ['admin', 'sub_admin'].includes(loggedInUserRole)) {
+          if (intendedPortal) {
+            setActiveRole(intendedPortal === 'sub_admin' ? 'admin' : intendedPortal);
+            setActivePage('home');
+          } else if (loggedInUserRole && ['admin', 'sub_admin'].includes(loggedInUserRole)) {
             setActiveRole('admin');
             setActivePage('home');
-          } else if (loggedInUserRole === 'restaurant') {
-            setActiveRole('restaurant');
-            setActivePage('home');
-          } else if (loggedInUserRole === 'courier') {
-            setActiveRole('courier');
+          } else if (loggedInUserRole && ['restaurant', 'courier'].includes(loggedInUserRole)) {
+            setActiveRole(loggedInUserRole as any);
             setActivePage('home');
           } else {
             setActiveRole('customer');

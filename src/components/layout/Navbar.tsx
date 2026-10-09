@@ -24,7 +24,7 @@ import {
   Navigation,
   Trash2
 } from 'lucide-react';
-import { VeyrangLogo } from '../common/VeyrangLogo';
+import { VeyrangLogo } from '../common/VeyrangLogo.tsx';
 import { AddressAutocompleteInput } from '../common/AddressAutocompleteInput';
 import { ProAddressForm } from '../common/ProAddressForm';
 
@@ -275,25 +275,25 @@ export const Navbar: React.FC = () => {
                     </button>
 
                     {['admin', 'sub_admin', 'restaurant', 'courier'].includes(user.role) && (() => {
-                      let label = 'Admin Operations Console';
-                      let badge = 'Admin Staff';
+                      let label = 'Admin Console';
+                      let badge = 'A-Z Master';
                       let targetRole: 'admin' | 'restaurant' | 'courier' = 'admin';
                       let IconComponent = ShieldAlert;
                       let textClass = 'text-amber-600 hover:text-amber-700';
 
                       if (user.role === 'sub_admin') {
-                        label = 'Admin Operations Console';
+                        label = 'Admin Console';
                         badge = 'Sub Admin';
                         targetRole = 'admin';
                         textClass = 'text-indigo-600 hover:text-indigo-700';
                       } else if (user.role === 'restaurant') {
-                        label = 'Merchant Kitchen (KDS)';
+                        label = 'Kitchen Portal';
                         badge = 'Merchant';
                         targetRole = 'restaurant';
                         IconComponent = ChefHat;
                         textClass = 'text-emerald-600 hover:text-emerald-700';
                       } else if (user.role === 'courier') {
-                        label = 'Courier Rider Portal';
+                        label = 'Rider Portal';
                         badge = 'Courier';
                         targetRole = 'courier';
                         textClass = 'text-sky-600 hover:text-sky-700';

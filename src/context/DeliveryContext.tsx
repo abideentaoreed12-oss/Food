@@ -152,10 +152,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         if (window.location.pathname.startsWith('/admin')) {
           return 'admin';
         }
-        const saved = localStorage.getItem('veyrang_active_role');
-        return (saved as UserRole) || 'customer';
       }
-      return 'customer';
+      const saved = localStorage.getItem('veyrang_active_role');
+      return (saved as UserRole) || 'customer';
     } catch {
       return 'customer';
     }
@@ -164,19 +163,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const setActiveRole = useCallback((role: UserRole) => {
     setActiveRoleState(role);
     try {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('veyrang_active_role', role);
-      }
+      localStorage.setItem('veyrang_active_role', role);
     } catch {}
   }, []);
 
   const [activePage, setActivePageState] = useState<ActivePage>(() => {
     try {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('veyrang_active_page');
-        return (saved as ActivePage) || 'landing';
-      }
-      return 'landing';
+      const saved = localStorage.getItem('veyrang_active_page');
+      return (saved as ActivePage) || 'landing';
     } catch {
       return 'landing';
     }
@@ -185,9 +179,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const setActivePage = useCallback((page: ActivePage) => {
     setActivePageState(page);
     try {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('veyrang_active_page', page);
-      }
+      localStorage.setItem('veyrang_active_page', page);
     } catch {}
   }, []);
   const [isRightDrawerOpen, setIsRightDrawerOpen] = useState<boolean>(false);
@@ -373,11 +365,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   // Cart persistence (loads from localStorage so guests & users never lose items)
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('veyrang_cart_v1');
-        return saved ? JSON.parse(saved) : [];
-      }
-      return [];
+      const saved = localStorage.getItem('veyrang_cart_v1');
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
@@ -393,9 +382,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
 
   useEffect(() => {
     try {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('veyrang_cart_v1', JSON.stringify(cart));
-      }
+      localStorage.setItem('veyrang_cart_v1', JSON.stringify(cart));
     } catch {
       // Ignore quota errors
     }
