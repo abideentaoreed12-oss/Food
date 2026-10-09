@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL UNIQUE COLLATE NOCASE,
   password_hash TEXT NOT NULL,
   name TEXT NOT NULL,
-  role TEXT NOT NULL CHECK(role IN ('customer', 'restaurant', 'courier', 'admin')),
+  role TEXT NOT NULL CHECK(role IN ('customer', 'restaurant', 'courier', 'admin', 'sub_admin')),
   phone TEXT,
   address TEXT,
   restaurant_id TEXT,
