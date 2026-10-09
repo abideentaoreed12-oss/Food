@@ -699,15 +699,35 @@ export const CartDrawer: React.FC = () => {
                 </button>
               </>
             ) : (
+              <>
+              {fulfillmentType !== 'pickup' && distanceError && (
+                <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                  {distanceError}
+                  <button
+                    type="button"
+                    onClick={() => calculateDistanceNow(customAddress || selectedAddress?.address || user?.address || '')}
+                    className="ml-2 font-bold underline"
+                  >
+                    Retry distance
+                  </button>
+                </div>
+              )}
+              {fulfillmentType !== 'pickup' && liveDistanceResult?.isCalculating && (
+                <p role="status" className="text-xs text-slate-500">Calculating delivery distance… Place Order will validate the quote before submitting.</p>
+              )}
+              {promoMessage?.isError && checkoutStep === 'checkout' && (
+                <p role="alert" className="text-xs text-red-600">{promoMessage.text}</p>
+              )}
               <button
                 onClick={() => {
                   if (!user) {
                     setIsAuthModalOpen(true);
                     return;
                   }
-                  handleCheckout();
+                  void handleCheckout();
                 }}
-                disabled={isSubmitting || (fulfillmentType !== 'pickup' && (!liveDistanceResult || liveDistanceResult.isCalculating || Boolean(distanceError)))}
+                disabled={isSubmitting}
+                aria-busy={isSubmitting}
                 className="w-full py-3.5 px-4 rounded-2xl bg-orange-600 text-white font-bold text-sm hover:bg-orange-700 transition-colors shadow-md shadow-orange-600/20 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
@@ -719,6 +739,7 @@ export const CartDrawer: React.FC = () => {
                   </>
                 )}
               </button>
+              </>
             )}
           </div>
         )}
