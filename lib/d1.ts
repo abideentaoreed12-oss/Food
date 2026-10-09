@@ -29,7 +29,7 @@ export class D1Client {
   constructor() {
     this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || CONFIG.CLOUDFLARE_ACCOUNT_ID;
     this.databaseId = process.env.CLOUDFLARE_DATABASE_ID || CONFIG.CLOUDFLARE_DATABASE_ID;
-    this.apiToken = process.env.CLOUDFLARE_API_TOKEN || CONFIG.CLOUDFLARE_API_TOKEN;
+    this.apiToken = process.env.CLOUDFLARE_D1_API_TOKEN || CONFIG.CLOUDFLARE_D1_API_TOKEN;
     this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || CONFIG.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, '');
   }
 
