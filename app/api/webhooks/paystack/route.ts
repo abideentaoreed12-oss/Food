@@ -36,20 +36,32 @@ export async function POST(req: NextRequest) {
       const metadata = data.metadata || {};
       const orderId = metadata.orderId;
       const userId = metadata.userId;
-      const amountPaid = (data.amount || 0) / 100;
+      const amountMinor = Number(data.amount);
+      const amountPaid = amountMinor / 100;
       const nowIso = new Date().toISOString();
+
+      if (data.status !== 'success' || !Number.isSafeInteger(amountMinor) || amountMinor <= 0) {
+        return NextResponse.json({ success: false, error: 'Invalid or unsuccessful payment event' }, { status: 400 });
+      }
 
       if (!reference) {
         return NextResponse.json({ success: false, error: 'Missing reference' }, { status: 400 });
       }
 
-      const existingTx = await d1Client.query(
-        'SELECT id FROM transactions WHERE reference = ? UNION SELECT id FROM wallet_transactions WHERE reference = ? LIMIT 1',
-        [reference, reference]
-      ).catch(() => ({ results: [] }));
-
-      if (existingTx.results && existingTx.results.length > 0) {
+      const [existingTx, existingWalletTx] = await Promise.all([
+        d1Client.query('SELECT id, status, amount FROM transactions WHERE reference = ? LIMIT 1', [reference]),
+        d1Client.query('SELECT id, status FROM wallet_transactions WHERE reference = ? LIMIT 1', [reference])
+      ]);
+      if (!existingTx.success || !existingWalletTx.success) {
+        return NextResponse.json({ success: false, error: 'Payment records could not be verified' }, { status: 503 });
+      }
+      if (existingWalletTx.results?.some((row: any) => row.status === 'completed') ||
+          existingTx.results?.some((row: any) => row.status === 'completed')) {
         return NextResponse.json({ success: true, message: 'Webhook event already processed (idempotent)' });
+      }
+      const pendingTx = existingTx.results?.[0];
+      if (pendingTx && Number(pendingTx.amount) > 0 && Math.round(Number(pendingTx.amount) * 100) !== amountMinor) {
+        return NextResponse.json({ success: false, error: 'Payment amount mismatch' }, { status: 400 });
       }
 
       if (orderId) {
