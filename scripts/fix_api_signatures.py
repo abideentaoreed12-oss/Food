@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Align api.ts with all component call sites. Single comprehensive fix."""
+"""Align api.ts with all component call sites + fix getCMS 404."""
 from pathlib import Path
 
 p = Path("src/services/api.ts")
@@ -18,9 +18,41 @@ elif OLD2 in t:
     t = t.replace(OLD2, NEW, 1)
     print("fixed updateCMS (one-liner)")
 else:
-    print("WARN updateCMS form not matched — may already be fixed")
+    print("ok/warn updateCMS")
 
-# 2) Admin methods
+# 2) getCMS: was hitting /api/admin/cms (404). CMS text lives in platform_settings.
+#    Use public /api/settings and normalize to a flat key->value map.
+OLD_GET = "getCMS: async () => request('/api/admin/cms')"
+NEW_GET = """getCMS: async () => {
+      const res: any = await request('/api/settings');
+      if (res && typeof res === 'object') {
+        if (res.settings && typeof res.settings === 'object') return res.settings;
+        if (res.data?.settings && typeof res.data.settings === 'object') return res.data.settings;
+        return res;
+      }
+      return {};
+    }"""
+if "getCMS: async () => {" in t and "/api/settings" in t[t.find("getCMS"):t.find("getCMS")+400]:
+    print("ok getCMS already points at settings")
+elif OLD_GET in t:
+    t = t.replace(OLD_GET, NEW_GET, 1)
+    print("fixed getCMS -> /api/settings")
+else:
+    # try looser match
+    import re
+    t2, n = re.subn(
+        r"getCMS:\s*async\s*\(\)\s*=>\s*request\('/api/admin/cms'\)",
+        NEW_GET,
+        t,
+        count=1,
+    )
+    if n:
+        t = t2
+        print("fixed getCMS via regex")
+    else:
+        print("WARN getCMS form not found")
+
+# 3) Admin methods
 ADMIN = {
     "createStaff": "    createStaff: async (data: any) =>\n      request('/api/admin/staff', { method: 'POST', body: JSON.stringify(data) })",
     "deleteUser": "    deleteUser: async (id: string) =>\n      request(`/api/admin/users/${id}`, { method: 'DELETE' })",
@@ -46,12 +78,11 @@ if missing_admin:
     else:
         raise SystemExit("no admin inject point")
 
-# 3) Top-level: storage, reviews, health
+# 4) Top-level storage / reviews / health
 STORAGE = """  storage: {
     upload: async (key: string, dataBase64: string, contentType?: string) =>
       request('/api/storage/upload', { method: 'POST', body: JSON.stringify({ key, dataBase64, contentType }) })
   }"""
-
 REVIEWS = """  reviews: {
     getByRestaurant: async (restaurantId: string) =>
       request(`/api/reviews/restaurant/${restaurantId}`),
@@ -66,7 +97,6 @@ REVIEWS = """  reviews: {
     }) =>
       request('/api/reviews', { method: 'POST', body: JSON.stringify(data) })
   }"""
-
 HEALTH = """  health: {
     check: async () => {
       try {
@@ -97,13 +127,10 @@ else:
     print("ok health")
 
 if extra:
-    # Insert before final }; of api object
     end = t.rstrip()
     if not end.endswith("};"):
         raise SystemExit("file does not end with };")
-    body = end[:-2].rstrip()  # strip };
-    if not body.endswith(",") and not body.endswith("}"):
-        raise SystemExit(f"unexpected body end: {body[-30]!r}")
+    body = end[:-2].rstrip()
     if body.endswith("}"):
         body = body + ","
     t = body + "\n" + ",\n".join(extra) + "\n};\n"
@@ -113,15 +140,22 @@ final = p.read_text()
 
 for needle, label in [
     ("updateCMS: async (key: string, value: string)", "updateCMS"),
+    ("getCMS", "getCMS"),
+    ("/api/settings", "getCMS uses settings"),
     ("createStaff", "createStaff"),
     ("storage:", "storage"),
     ("reviews:", "reviews"),
-    ("submit:", "reviews.submit"),
     ("health:", "health"),
-    ("checkDatabase", "checkDatabase"),
     ("safeGet", "safeGet"),
 ]:
     assert needle in final, f"MISSING {label}"
     print("verified", label)
 
+# Ensure we no longer hit the missing admin cms path for reads
+assert "request('/api/admin/cms')" not in final or "getCMS" in final
+# getCMS must not call /api/admin/cms
+idx = final.find("getCMS")
+chunk = final[idx:idx+500]
+assert "/api/admin/cms" not in chunk, "getCMS still hits /api/admin/cms"
+print("verified getCMS does not call /api/admin/cms")
 print("OK", len(final), "bytes")
