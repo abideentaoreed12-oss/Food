@@ -441,7 +441,15 @@ export const api = {
       request(`/api/admin/drivers/${userId}`, { method: 'PATCH', body: JSON.stringify(data) }),
     verifyDriverKYC: async (userId: string, status: string) =>
       request(`/api/admin/drivers/${userId}/verify`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-    getCMS: async () => request('/api/admin/cms'),
+    getCMS: async () => {
+      const res: any = await request('/api/settings');
+      if (res && typeof res === 'object') {
+        if (res.settings && typeof res.settings === 'object') return res.settings;
+        if (res.data?.settings && typeof res.data.settings === 'object') return res.data.settings;
+        return res;
+      }
+      return {};
+    },
     updateCMS: async (key: string, value: string) =>
       request('/api/settings/update', { method: 'PUT', body: JSON.stringify({ key, value }) }),
     getSettings: async () => request('/api/admin/settings'),
