@@ -802,6 +802,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     deliveryNotes?: string;
     tip: number;
     paymentMethod: string;
+    deliveryFee?: number;
   }): Promise<Order> => {
     if (!user) {
       setIsAuthModalOpen(true);
@@ -813,7 +814,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     const itemsSubtotal = cart.reduce((sum, item) => sum + item.itemTotal, 0);
-    const deliveryFee = cartRestaurant.deliveryFee;
+    const deliveryFee = fulfillmentType === 'pickup'
+      ? 0
+      : (Number.isFinite(Number(details.deliveryFee)) && details.deliveryFee !== undefined
+          ? Math.max(0, Number(details.deliveryFee))
+          : Math.max(0, Number(cartRestaurant.deliveryFee) || 0));
     // serviceFee dynamically resolved from D1 settings
     const packagingFee = 250;
     const discount = appliedPromo?.discountAmount || 0;
@@ -896,7 +901,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         })),
         subtotal: itemsSubtotal,
         deliveryFee,
-        serviceFee,
+        serviceFee: serviceFee + packagingFee,
         tip: details.tip,
         total: grossTotal,
         paymentMethod: details.paymentMethod,
