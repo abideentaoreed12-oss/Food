@@ -37,7 +37,7 @@ export const CourierView: React.FC = () => {
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
 
   // Live GPS Transmitter States
-  const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number; heading?: number; speed?: number } | null>({ lat: 6.5244, lng: 3.3792 });
+  const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number; heading?: number; speed?: number } | null>(null);
   const [gpsStatus, setGpsStatus] = useState<'transmitting' | 'acquiring' | 'error'>('acquiring');
   const [pingCount, setPingCount] = useState<number>(0);
   const [gpsErrorMsg, setGpsErrorMsg] = useState<string | null>(null);
@@ -63,23 +63,36 @@ export const CourierView: React.FC = () => {
     }
 
     const sendLocationUpdate = async (lat: number, lng: number, heading = 0, speed = 0) => {
+      if (!user?.id || !activeDelivery?.id) {
+        setGpsStatus('error');
+        setGpsErrorMsg('Sign in as an assigned courier and open an active delivery before sharing location.');
+        return;
+      }
       try {
-        await fetch('/api/couriers/location', {
+        const response = await fetch('/api/couriers/location', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            courierId: user?.id || 'RIDER-842',
-            orderId: activeDelivery?.id || 'active',
+            courierId: user.id,
+            orderId: activeDelivery.id,
             lat,
             lng,
             heading,
             speed
           })
         });
+        if (!response.ok) {
+          setGpsStatus('error');
+          setGpsErrorMsg('The server rejected the location update. Please retry.');
+          return;
+        }
         setPingCount((prev) => prev + 1);
         setGpsStatus('transmitting');
+        setGpsErrorMsg(null);
       } catch (err) {
-        console.warn('Courier location broadcast error:', err);
+        setGpsStatus('error');
+        setGpsErrorMsg('Could not send your location. Check your connection.');
+        console.warn('Courier location broadcast error');
       }
     };
 
@@ -93,8 +106,7 @@ export const CourierView: React.FC = () => {
         console.warn('GPS position error:', error.message);
         setGpsStatus('error');
         setGpsErrorMsg(error.message || 'GPS permission denied or unavailable');
-        // Fallback simulation ping with Lagos default center if permissions denied
-        sendLocationUpdate(6.5244, 3.3792);
+        // Never publish simulated coordinates as live courier telemetry.
       },
       {
         enableHighAccuracy: true,
