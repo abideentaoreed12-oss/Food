@@ -682,13 +682,18 @@ export async function POST(req: NextRequest) {
     const shortId = `QB-${Math.floor(1000 + Math.random() * 9000)}`;
     const now = new Date().toISOString();
     const paymentStatus = chargeAmount <= 0 ? 'paid' : 'pending';
+    // An unpaid card order is not a successful/placed order yet.
+    // Keep it explicitly awaiting payment until Paystack confirms the transaction.
+    const orderStatus = chargeAmount > 0 && paymentMethod.toLowerCase().includes('debit')
+      ? 'awaiting_payment'
+      : 'placed';
     const order: any = {
       id: orderId, shortId, customerId: user.id, customerName, customerPhone, customerEmail: user.email,
       customerAddress, customerApartment: String(body.customerApartment || ''), deliveryNotes: String(body.deliveryNotes || ''),
       restaurantId, restaurantName: restaurant.name || restaurantRow.name, restaurantAddress: restaurant.address || '',
       items: verifiedItems, subtotal, deliveryFee, serviceFee, tip, discountAmount,
       walletDeduction: Math.min(walletDeduction, total), total, chargeAmount, currency, paymentMethod,
-      paymentStatus, transactionRef: null, status: 'placed', fulfillmentType,
+      paymentStatus, transactionRef: null, status: orderStatus, fulfillmentType,
       scheduledSlot: body.scheduledSlot || null, isContactless: Boolean(body.isContactless),
       createdAt: now, updatedAt: now
     };
@@ -698,7 +703,7 @@ export async function POST(req: NextRequest) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [orderId, shortId, user.id, customerName, customerPhone, customerAddress, restaurantId,
        order.restaurantName, JSON.stringify(verifiedItems), total, currency, paymentMethod,
-       paymentStatus, 'placed', JSON.stringify(order), now, now]
+       paymentStatus, orderStatus, JSON.stringify(order), now, now]
     );
     if (!inserted.success) {
       console.error('[Orders API] Failed to persist order to D1');
