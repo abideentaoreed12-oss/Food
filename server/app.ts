@@ -81,7 +81,7 @@ export function createServerApp(): Express {
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
-        error: err?.message || 'An internal server error occurred.'
+        error: 'An internal server error occurred.'
       });
     }
   });
