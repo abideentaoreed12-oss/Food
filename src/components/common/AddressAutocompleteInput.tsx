@@ -125,6 +125,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
   const [isLoading, setIsLoading] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+  const [locationError, setLocationError] = useState('');
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -419,11 +420,16 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
   // Live Current Location Detection via acquireLiveLocation Engine
   const handleDetectCurrentLocation = useCallback(async () => {
     setIsLocating(true);
+    setLocationError('');
+    setIsVerified(false);
     setIsOpen(false);
 
     try {
       const loc = await acquireLiveLocation(10000);
-      const addr = loc.address || loc.formattedAddress || `Live Location (${loc.latitude.toFixed(5)}, ${loc.longitude.toFixed(5)})`;
+      const addr = loc.address || loc.formattedAddress || '';
+      if (!addr.trim() || /^(current location|device gps location|live location)(\\b|\\s*\\()/i.test(addr.trim()) || /^-?\\d+(?:\\.\\d+)?\\s*,\\s*-?\\d+(?:\\.\\d+)?$/.test(addr.trim())) {
+        throw new Error('We found your GPS position but could not verify a readable address. Please enter your Nigerian street, area, city and state.');
+      }
       setIsVerified(true);
       onChange(addr);
 
@@ -439,6 +445,8 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
         });
       }
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not verify your live address. Please enter it manually.';
+      setLocationError(message);
       console.warn('Live location error:', err);
     } finally {
       setIsLocating(false);
@@ -559,8 +567,11 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
       {isVerified && value && (
         <div className="flex items-center gap-1.5 mt-1 text-[11px] font-semibold text-emerald-600">
           <Check className="w-3 h-3 stroke-[3]" />
-          <span>Live Verified Address & Coordinates</span>
+          <span>Live address verified</span>
         </div>
+      )}
+      {locationError && (
+        <p role="alert" className="mt-2 text-xs font-medium text-rose-600">{locationError}</p>
       )}
 
       {/* Autocomplete Dropdown Popover */}
