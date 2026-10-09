@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { UserRole } from './types';
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from './context/AuthContext';
 import { DeliveryProvider, useDelivery } from './context/DeliveryContext';
@@ -146,12 +147,12 @@ const AppContent: React.FC = () => {
   );
 };
 
-export default function App() {
+export default function App({ initialRole }: { initialRole?: UserRole } = {}) {
   if (!GOOGLE_MAPS_API_KEY) {
     console.warn('Google Maps API key is missing. Loading app without Maps API provider.');
     return (
       <AuthProvider>
-        <DeliveryProvider>
+        <DeliveryProvider initialRole={initialRole}>
           <AppContent />
           <Analytics />
         </DeliveryProvider>
@@ -168,7 +169,7 @@ export default function App() {
       }}
     >
       <AuthProvider>
-        <DeliveryProvider>
+        <DeliveryProvider initialRole={initialRole}>
           <AppContent />
           <Analytics />
         </DeliveryProvider>

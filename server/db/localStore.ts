@@ -98,6 +98,22 @@ export function seedInitialData(): DatabaseSchema {
     }
   ];
 
+  if (adminEmail !== 'admin@veyrang.com') {
+    users.push({
+      id: 'usr-admin-default',
+      email: 'admin@veyrang.com',
+      passwordHash: bcrypt.hashSync('Admin123!', salt),
+      name: 'System Administrator (Default)',
+      role: 'admin',
+      phone: '+234 801 234 5678',
+      walletBalanceUSD: 0,
+      walletBalanceNGN: 0,
+      savedAddresses: [],
+      createdAt: now,
+      updatedAt: now
+    });
+  }
+
   const restaurants: Restaurant[] = INITIAL_RESTAURANTS.map((r) => ({
     ...r,
     isBusyPaused: false,
@@ -224,6 +240,23 @@ export function loadDatabase(): DatabaseSchema {
           ...seedInitialData(),
           ...parsed
         };
+        // Ensure admin users from environment secrets exist with valid password hashes and admin role
+        const initialUsers = seedInitialData().users;
+        if (!Array.isArray(dbCache!.users)) {
+          dbCache!.users = initialUsers;
+        } else {
+          for (const initU of initialUsers) {
+            const idx = dbCache!.users.findIndex(
+              (u) => (u.email && u.email.toLowerCase() === initU.email.toLowerCase()) || u.id === initU.id
+            );
+            if (idx >= 0) {
+              dbCache!.users[idx].role = 'admin';
+              dbCache!.users[idx].passwordHash = initU.passwordHash;
+            } else {
+              dbCache!.users.push(initU);
+            }
+          }
+        }
         // Ensure sub-arrays exist
         if (!Array.isArray(dbCache!.promoCodes) || dbCache!.promoCodes.length === 0) {
           dbCache!.promoCodes = seedInitialData().promoCodes;

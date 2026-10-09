@@ -67,7 +67,7 @@ export const RightDrawer: React.FC = () => {
     deliveryZones
   } = useDelivery();
 
-  const { user, logout, setIsAuthModalOpen } = useAuth();
+  const { user, logout, setIsAuthModalOpen, openAuthModalForPortal } = useAuth();
   const [isZoneDropdownOpen, setIsZoneDropdownOpen] = useState(false);
 
   // Build the menu from persisted saved addresses, while also including the active
@@ -535,6 +535,63 @@ export const RightDrawer: React.FC = () => {
                       </button>
                     );
                   })()}
+
+                  {(!user || user.role === 'customer') && (
+                    <div className="pt-2.5 mt-2.5 border-t border-slate-100 space-y-1">
+                      <div className="px-3 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                        Staff & Portals
+                      </div>
+                      <button
+                        onClick={() => {
+                          setIsRightDrawerOpen(false);
+                          if (user && (user.role === 'admin' || user.role === 'sub_admin')) {
+                            setActiveRole('admin');
+                            setAdminActiveTab('dashboard');
+                          } else {
+                            openAuthModalForPortal('admin');
+                          }
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-amber-900 bg-amber-500/10 hover:bg-amber-500/20 transition-all cursor-pointer"
+                      >
+                        <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span className="flex-1 text-left">Admin Operations Console</span>
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">
+                          Staff
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsRightDrawerOpen(false);
+                          if (user && user.role === 'restaurant') {
+                            setActiveRole('restaurant');
+                          } else {
+                            openAuthModalForPortal('restaurant');
+                          }
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-emerald-900 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all cursor-pointer"
+                      >
+                        <ChefHat className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="flex-1 text-left">Merchant Kitchen (KDS)</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsRightDrawerOpen(false);
+                          if (user && user.role === 'courier') {
+                            setActiveRole('courier');
+                          } else {
+                            openAuthModalForPortal('courier');
+                          }
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-sky-900 bg-sky-500/10 hover:bg-sky-500/20 transition-all cursor-pointer"
+                      >
+                        <Bike className="w-4 h-4 text-sky-600 shrink-0" />
+                        <span className="flex-1 text-left">Courier Rider Portal</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 

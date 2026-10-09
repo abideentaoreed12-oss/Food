@@ -137,11 +137,22 @@ const EMPTY_ADDRESS: SavedAddress = {
   isDefault: false
 };
 
-export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole?: UserRole }> = ({ children, initialRole }) => {
   const { user, setIsAuthModalOpen, refreshUser } = useAuth();
 
   const [activeRole, setActiveRoleState] = useState<UserRole>(() => {
+    if (initialRole) return initialRole;
     try {
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryRole = urlParams.get('role') || urlParams.get('portal');
+        if (queryRole === 'admin' || queryRole === 'restaurant' || queryRole === 'courier' || queryRole === 'customer') {
+          return queryRole as UserRole;
+        }
+        if (window.location.pathname.startsWith('/admin')) {
+          return 'admin';
+        }
+      }
       const saved = localStorage.getItem('veyrang_active_role');
       return (saved as UserRole) || 'customer';
     } catch {

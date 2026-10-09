@@ -175,10 +175,13 @@ export const AuthModal: React.FC = () => {
         if (res.success) {
           const loggedInUserRole = res.user?.role;
           if (intendedPortal) {
-            setActiveRole(intendedPortal);
+            setActiveRole(intendedPortal === 'sub_admin' ? 'admin' : intendedPortal);
             setActivePage('home');
-          } else if (loggedInUserRole && ['admin', 'sub_admin', 'restaurant', 'courier'].includes(loggedInUserRole)) {
-            setActiveRole(loggedInUserRole === 'sub_admin' ? 'admin' : (loggedInUserRole as any));
+          } else if (loggedInUserRole && ['admin', 'sub_admin'].includes(loggedInUserRole)) {
+            setActiveRole('admin');
+            setActivePage('home');
+          } else if (loggedInUserRole && ['restaurant', 'courier'].includes(loggedInUserRole)) {
+            setActiveRole(loggedInUserRole as any);
             setActivePage('home');
           } else {
             setActiveRole('customer');
@@ -274,7 +277,17 @@ export const AuthModal: React.FC = () => {
         {/* Modal Header */}
         <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between bg-white">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-[#FFF1E8] border border-orange-200 text-[#FF5500] flex items-center justify-center shrink-0 shadow-2xs">
+            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs border ${
+              intendedPortal === 'admin'
+                ? 'bg-rose-50 border-rose-200 text-rose-600'
+                : intendedPortal === 'restaurant'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                : intendedPortal === 'courier'
+                ? 'bg-sky-50 border-sky-200 text-sky-600'
+                : tab === 'forgot'
+                ? 'bg-amber-50 border-amber-200 text-amber-600'
+                : 'bg-[#FFF1E8] border-orange-200 text-[#FF5500]'
+            }`}>
               {tab === 'forgot' ? (
                 <KeyRound className="w-6 h-6 stroke-[2]" />
               ) : intendedPortal === 'restaurant' ? (
@@ -292,14 +305,20 @@ export const AuthModal: React.FC = () => {
                 <h3 className="text-lg font-extrabold text-slate-900 font-display">
                   {tab === 'forgot'
                     ? 'Reset Your Password'
-                    : intendedPortal
-                    ? 'Portal Authentication'
+                    : intendedPortal === 'admin'
+                    ? 'Admin Operations Portal'
+                    : intendedPortal === 'restaurant'
+                    ? 'Kitchen Merchant Portal'
+                    : intendedPortal === 'courier'
+                    ? 'Courier Rider Portal'
                     : 'Welcome to Veyrang'}
                 </h3>
               </div>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
                 {tab === 'forgot'
                   ? 'Enter your email to receive a password reset link'
+                  : intendedPortal === 'admin'
+                  ? 'Sign in with your configured administrator credentials'
                   : intendedPortal
                   ? `Sign in with your ${intendedPortal} credentials`
                   : 'Sign in to place orders, track dispatches & access your wallet'}
@@ -316,8 +335,28 @@ export const AuthModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Tab Toggle (Sign In vs Create Account) - Hide when in Forgotten Password mode */}
-        {tab !== 'forgot' && (
+        {/* Admin Mode Notice / Portal Switcher */}
+        {intendedPortal === 'admin' && (
+          <div className="mx-6 mt-4 p-3 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-bold text-slate-200">System Admin Authentication</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIntendedPortal(null);
+                setTab('login');
+              }}
+              className="text-[11px] text-orange-400 hover:text-orange-300 font-bold underline cursor-pointer"
+            >
+              Customer Mode
+            </button>
+          </div>
+        )}
+
+        {/* Tab Toggle (Sign In vs Create Account) - Hide when in Forgotten Password or Admin mode */}
+        {tab !== 'forgot' && intendedPortal !== 'admin' && (
           <div className="p-1.5 mx-6 mt-5 bg-slate-100 rounded-2xl flex items-center border border-slate-200/80">
             <button
               type="button"
@@ -738,6 +777,23 @@ export const AuthModal: React.FC = () => {
                 </>
               )}
             </button>
+
+            {/* Quick Staff / Admin Switcher */}
+            {tab === 'login' && intendedPortal !== 'admin' && (
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIntendedPortal('admin');
+                    setError(null);
+                  }}
+                  className="text-xs text-slate-500 hover:text-slate-900 font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Authorized Staff or Admin? Access Operations Console →</span>
+                </button>
+              </div>
+            )}
           </form>
         )}
 

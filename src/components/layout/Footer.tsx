@@ -13,6 +13,7 @@ import {
   CreditCard,
   Building2,
   Bike,
+  ShieldAlert,
   HelpCircle,
   FileText,
   Shield,
@@ -197,6 +198,12 @@ export const Footer: React.FC = () => {
               <li>
                 <button onClick={() => handleNavClick('home', 'courier')} className="hover:text-orange-400 transition-colors cursor-pointer text-[#FF5500] font-semibold">
                   Rider Dispatch Portal
+                </button>
+              </li>
+              <li>
+                <button onClick={() => handleNavClick('home', 'admin')} className="hover:text-amber-300 transition-colors cursor-pointer text-amber-500 font-bold flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>Admin Operations Console</span>
                 </button>
               </li>
             </ul>
