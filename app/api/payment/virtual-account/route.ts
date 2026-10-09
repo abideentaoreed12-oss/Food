@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
 import { d1Client } from '../../../../server/db/d1Client';
 
 export const runtime = 'nodejs';
@@ -7,12 +8,11 @@ export const dynamic = 'force-dynamic';
 function getBearerUserId(req: NextRequest): string | null {
   const auth = req.headers.get('authorization') || '';
   if (!auth.startsWith('Bearer ')) return null;
+  const secret = process.env.JWT_SECRET;
+  if (!secret) return null;
   try {
-    const token = auth.slice(7);
-    const payload = JSON.parse(
-      Buffer.from(token.split('.')[1] || '', 'base64url').toString('utf8')
-    );
-    return payload?.id || null;
+    const payload = jwt.verify(auth.slice(7), secret) as { id?: string };
+    return typeof payload?.id === 'string' && payload.id ? payload.id : null;
   } catch {
     return null;
   }
