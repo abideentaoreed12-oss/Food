@@ -1,7 +1,6 @@
 import { CONFIG } from '../server/config';
 import { localD1Query } from '../server/db/localStore';
 
-// Unified Cloudflare D1 & Persistent SQLite Client for Veyrang Food Delivery
 export interface D1QueryResult<T = any> {
   results: T[];
   success: boolean;
@@ -32,7 +31,7 @@ export class D1Client {
     this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || CONFIG.CLOUDFLARE_ACCOUNT_ID;
     this.databaseId = process.env.CLOUDFLARE_DATABASE_ID || CONFIG.CLOUDFLARE_DATABASE_ID;
     this.apiToken = process.env.CLOUDFLARE_API_TOKEN || CONFIG.CLOUDFLARE_API_TOKEN;
-    this.authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || 'abideentaoreed12@gmail.com';
+    this.authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || '';
     this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || CONFIG.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, '');
   }
 
@@ -65,14 +64,12 @@ export class D1Client {
   }
 
   public async query<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
-    // When Cloudflare credentials are not provided (e.g. dev/container/standalone), use persistent local store
     if (!this.isConfigured()) {
       return localD1Query<T>(sql, params);
     }
 
     const directUrl = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/d1/database/${this.databaseId}/query`;
     try {
-      // Determine if key is a Cloudflare Global/User API Key (starts with cfk_ or standard length)
       const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
       const headers: Record<string, string> = isKey
         ? {
@@ -92,7 +89,6 @@ export class D1Client {
         cache: 'no-store'
       });
 
-      // Auto-fallback if Cloudflare rejects header format
       if (response.status === 401 && isKey) {
         response = await fetch(directUrl, {
           method: 'POST',

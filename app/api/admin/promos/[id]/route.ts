@@ -6,7 +6,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function getAdmin(req: NextRequest) {
-  const secret = process.env.JWT_SECRET || 'veyrang-jwt-production-auth-secure-key-2026';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) return null;
   const auth = req.headers.get('authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
@@ -30,7 +31,6 @@ export async function PATCH(
   const { id } = await ctx.params;
   const body = await req.json().catch(() => ({}));
 
-  // Toggle-only (legacy UI)
   if (body.toggle === true || Object.keys(body).length === 0) {
     const current = await d1.query('SELECT is_active FROM promo_codes WHERE id = ? OR code = ? LIMIT 1', [id, id]);
     if (!current.success) return NextResponse.json({ success: false, error: 'Promo database query failed' }, { status: 503 });
@@ -43,7 +43,6 @@ export async function PATCH(
     return NextResponse.json({ success: true, isActive: nextActive === 1 });
   }
 
-  // Full update from admin form
   const fields: string[] = [];
   const vals: any[] = [];
   if (body.code != null) {
