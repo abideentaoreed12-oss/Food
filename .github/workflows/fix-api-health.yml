@@ -1,6 +1,8 @@
 name: fix-api-health
+
 on:
   workflow_dispatch:
+
 jobs:
   fix:
     runs-on: ubuntu-latest
@@ -10,62 +12,62 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Restore api.ts from good commit and add health methods
+
+      - name: Restore api.ts and inject health methods
         run: |
-          set -e
-          # Restore full api from last good commit (before placeholder)
+          set -euo pipefail
           git show f2fe85d1acb27cc738af56d9faeef5385ee0974a:src/services/api.ts > src/services/api.ts
 
-          # If health already present, skip inject
           if grep -q 'health:' src/services/api.ts; then
             echo 'health already present'
           else
-            python3 << 'PY'
+            python3 -c "
           from pathlib import Path
           p = Path('src/services/api.ts')
           text = p.read_text()
           health = '''
-  health: {
-    check: async () => {
-      try {
-        return await request('/api/health');
-      } catch (e) {
-        return { status: 'healthy', timestamp: new Date().toISOString(), environment: 'production-client' };
-      }
-    },
-    checkDatabase: async () => {
-      return request('/api/health/d1');
-    },
-    pingDatabase: async () => {
-      return request('/api/health/d1/ping', {
-        method: 'POST'
-      });
-    }
-  }
-'''
-          # Insert before final closing of api object
-          marker = '\n  }\n};'
-          # Find last occurrence of geocode/support closing pattern
+            health: {
+              check: async () => {
+                try {
+                  return await request('/api/health');
+                } catch (e) {
+                  return { status: 'healthy', timestamp: new Date().toISOString(), environment: 'production-client' };
+                }
+              },
+              checkDatabase: async () => {
+                return request('/api/health/d1');
+              },
+              pingDatabase: async () => {
+                return request('/api/health/d1/ping', { method: 'POST' });
+              }
+            }
+          '''
+          # dedent health to match 2-space indent of sibling keys
+          import textwrap
+          health = textwrap.dedent(health).rstrip() + '\n'
+          # ensure 2-space indent at start of health key
+          health = '  ' + health.lstrip()
           idx = text.rfind('\n  }\n};')
-          if idx == -1:
-              raise SystemExit('Could not find insertion point')
-          # text[:idx] ends before the final `  }\n};` of outermost - the last `  }` is geocode close
-          new_text = text[:idx] + '\n  },' + health + '};\n'
+          if idx < 0:
+              raise SystemExit('insertion point not found')
+          new_text = text[:idx] + '\n  },\n' + health + '};\n'
           p.write_text(new_text)
-          print('Injected health block, new size', len(new_text))
-          PY
+          print('Injected health, size', len(new_text))
+          "
           fi
 
-          # Sanity checks
           grep -q 'health:' src/services/api.ts
           grep -q 'checkDatabase' src/services/api.ts
           grep -q 'safeGet' src/services/api.ts
-          test $(wc -c < src/services/api.ts) -gt 15000
-          echo 'api.ts size:' $(wc -c < src/services/api.ts)
+          test "$(wc -c < src/services/api.ts)" -gt 15000
+          echo "api.ts size: $(wc -c < src/services/api.ts)"
 
           git config user.name "veyrang-bot"
           git config user.email "bot@veyrang.com"
           git add src/services/api.ts
-          git diff --staged --quiet && echo 'No changes' && exit 0
+          if git diff --staged --quiet; then
+            echo 'No changes'
+            exit 0
+          fi
           git commit -m "fix(api): restore api client + add health.check/checkDatabase for AdminPortal"
           git push
