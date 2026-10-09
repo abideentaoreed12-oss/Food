@@ -116,9 +116,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
     return { lat: resolved.lat, lng: resolved.lng, address: order.customerAddress || resolved.hub };
   }, [order.customerAddress, kitchenCoord]);
 
-  // 3. Compute Live Courier Position
-  // If active telemetry is coming from /api/orders/:id/tracking, use it.
-  // Otherwise, interpolate smoothly based on order.routeProgress along the vector.
+  // The courier marker is rendered only when a real GPS fix is available.
   const progressRatio = useMemo(() => {
     if (order.status === 'delivered') return 1;
     if (order.status === 'placed') return 0.05;
@@ -132,18 +130,12 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
     return 0;
   }, [order.status, order.routeProgress]);
 
-  const courierCoord = useMemo(() => {
-    if (courierLocation && typeof courierLocation.lat === 'number' && typeof courierLocation.lng === 'number') {
-      return courierLocation;
-    }
-    // Interpolated waypoint
-    return {
-      lat: kitchenCoord.lat + (customerCoord.lat - kitchenCoord.lat) * progressRatio,
-      lng: kitchenCoord.lng + (customerCoord.lng - kitchenCoord.lng) * progressRatio,
-      speed: order.status === 'in_transit' ? 28 : 0,
-      heading: 45
-    };
-  }, [courierLocation, kitchenCoord, customerCoord, progressRatio, order.status]);
+  const hasLiveCourierLocation = Boolean(
+    courierLocation &&
+    Number.isFinite(courierLocation.lat) &&
+    Number.isFinite(courierLocation.lng)
+  );
+  const courierCoord = hasLiveCourierLocation ? courierLocation! : kitchenCoord;
 
   // Total trip distance and remaining distance
   const totalTripKm = useMemo(() => {
@@ -152,13 +144,14 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
 
   const remainingDistanceKm = useMemo(() => {
     if (order.status === 'delivered') return 0;
-    const dist = calculateDistanceKm(courierCoord.lat, courierCoord.lng, customerCoord.lat, customerCoord.lng);
-    return Math.max(0.2, dist);
-  }, [courierCoord, customerCoord, order.status]);
+    if (!hasLiveCourierLocation) return null;
+    return calculateDistanceKm(courierCoord.lat, courierCoord.lng, customerCoord.lat, customerCoord.lng);
+  }, [courierCoord, customerCoord, order.status, hasLiveCourierLocation]);
 
   // Route path waypoints for polyline
   const routeWaypoints = useMemo(() => {
-    // Generate curved/intermediate road points between kitchen, courier, and destination
+    if (!hasLiveCourierLocation) return [];
+    // Connect actual GPS to the destination; this is a straight segment, not turn-by-turn road routing.
     const midLat1 = kitchenCoord.lat + (courierCoord.lat - kitchenCoord.lat) * 0.5 + 0.002;
     const midLng1 = kitchenCoord.lng + (courierCoord.lng - kitchenCoord.lng) * 0.5 - 0.001;
 
@@ -172,7 +165,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
       { lat: midLat2, lng: midLng2 },
       { lat: customerCoord.lat, lng: customerCoord.lng }
     ];
-  }, [kitchenCoord, courierCoord, customerCoord]);
+  }, [kitchenCoord, courierCoord, customerCoord, hasLiveCourierLocation]);
 
   const centerCoord = useMemo(() => {
     return {
@@ -215,7 +208,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
           </span>
           <span className="text-slate-500">·</span>
           <span className="text-orange-400 font-mono font-semibold">
-            {order.status === 'delivered' ? 'Destination Reached' : `${remainingDistanceKm} km away`}
+            {order.status === 'delivered' ? 'Destination Reached' : hasLiveCourierLocation ? `${remainingDistanceKm} km away` : 'Waiting for driver GPS'}
           </span>
         </div>
 
@@ -225,7 +218,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
           </span>
           <span className="text-slate-600">|</span>
           <span className="flex items-center gap-1">
-            <span className="text-slate-400">Progress:</span> {Math.round(progressRatio * 100)}%
+            <span className="text-slate-400">Progress:</span> {hasLiveCourierLocation ? 'GPS confirmed' : 'Awaiting GPS'}
           </span>
         </div>
       </div>
@@ -265,7 +258,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
             </AdvancedMarker>
 
             {/* 3. Live Courier Moving Marker */}
-            <AdvancedMarker position={{ lat: courierCoord.lat, lng: courierCoord.lng }} title="Rider in Transit">
+            {hasLiveCourierLocation && <AdvancedMarker position={{ lat: courierCoord.lat, lng: courierCoord.lng }} title="Rider live GPS position">
               <div className="relative">
                 <div className="w-9 h-9 rounded-full bg-emerald-500 border-2 border-white shadow-xl flex items-center justify-center text-white ring-4 ring-emerald-400/30 animate-pulse">
                   <Bike className="w-5 h-5 stroke-[2.5]" />
@@ -274,10 +267,9 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
                   <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
                 </div>
               </div>
-            </AdvancedMarker>
+            </AdvancedMarker>}
 
-            {/* 4. Real Route Polyline */}
-            <GoogleMapsPolylineRoute path={routeWaypoints} color="#FF5500" />
+            {hasLiveCourierLocation && <GoogleMapsPolylineRoute path={routeWaypoints} color="#FF5500" />}
           </Map>
         ) : (
           /* SVG Dynamic Vector Route Telemetry Map (Fallback & Live Vector) */
@@ -326,8 +318,8 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
               />
             </svg>
 
-            {/* Dynamic Moving Courier Rider on the Vector Road */}
-            <div
+            {/* Driver position is never simulated when GPS is missing. */}
+            {hasLiveCourierLocation && <div
               className="absolute z-20 -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-700 ease-out"
               style={{
                 left: `${(svgMapPoints.riderX / 600) * 100}%`,
@@ -347,7 +339,9 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
                   <span>{order.courier?.name || 'Rider'} · {Math.round(progressRatio * 100)}%</span>
                 </div>
               </div>
-            </div>
+            </div>}
+
+            {!hasLiveCourierLocation && <div className="relative z-10 mx-auto mt-12 max-w-sm rounded-xl border border-amber-500/30 bg-slate-900/95 p-4 text-center text-sm text-amber-200">Waiting for the driver's first verified GPS update. The map will show the driver when a real position arrives.</div>}
 
             {/* Interactive Visual Waypoint Cards on Vector Map */}
             <div className="relative z-10 flex items-start justify-between">
@@ -368,10 +362,10 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
                   <span>Live Dispatch Vector</span>
                 </div>
                 <div className="text-base font-extrabold font-mono text-white mt-0.5">
-                  {order.status === 'delivered' ? 'Destination Reached' : `${remainingDistanceKm} km remaining`}
+                  {order.status === 'delivered' ? 'Destination Reached' : hasLiveCourierLocation ? `${remainingDistanceKm} km remaining` : 'GPS location unavailable'}
                 </div>
                 <div className="text-[10px] text-slate-400 font-mono">
-                  Speed: {order.status === 'in_transit' ? '28 km/h' : '0 km/h'} · Active GPS
+                  Speed: {hasLiveCourierLocation && courierLocation?.speed != null ? `${Math.round(courierLocation.speed * 3.6)} km/h` : 'Unavailable'} · {hasLiveCourierLocation ? 'GPS received' : 'Waiting for GPS'}
                 </div>
               </div>
 
