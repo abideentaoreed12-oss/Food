@@ -768,14 +768,67 @@ export async function POST(req: NextRequest) {
   if (pathname === '/payment/verify') {
     const user = await getUser(req);
     if (!user) {
-      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+      return NextResponse.json({ success: false, isPaid: false, error: 'Authentication required' }, { status: 401 });
     }
-    const reference = String(body.reference || '');
-    if (!reference) {
-      return NextResponse.json({ success: false, error: 'Reference required' }, { status: 400 });
+    const reference = String(body.reference || '').trim();
+    if (!reference || reference.length > 200) {
+      return NextResponse.json({ success: false, isPaid: false, error: 'A valid payment reference is required' }, { status: 400 });
     }
-    const result = await paymentGateway.verifyPayment(reference);
-    return NextResponse.json({ ...result, data: result });
+
+    try {
+      const stored = await d1.query(
+        'SELECT id, order_id, amount, currency, status FROM transactions WHERE reference = ? LIMIT 1',
+        [reference]
+      );
+      if (!stored.success) {
+        return NextResponse.json({ success: false, isPaid: false, error: 'Payment records are temporarily unavailable' }, { status: 503 });
+      }
+      const transaction: any = stored.results?.[0];
+      if (!transaction) {
+        return NextResponse.json({ success: false, isPaid: false, error: 'Payment reference was not found' }, { status: 404 });
+      }
+      const orderResult = await d1.query(
+        'SELECT id, customer_id, total, currency, payment_status FROM orders WHERE id = ? LIMIT 1',
+        [transaction.order_id]
+      );
+      const order: any = orderResult.results?.[0];
+      if (!order || String(order.customer_id) !== String(user.id)) {
+        return NextResponse.json({ success: false, isPaid: false, error: 'Order not found for this customer' }, { status: 404 });
+      }
+
+      const verified = await paymentGateway.verifyPayment(reference);
+      if (!verified.success) {
+        return NextResponse.json({ success: false, isPaid: false, error: verified.error || 'Paystack verification failed' }, { status: 502 });
+      }
+      if (!verified.isPaid) {
+        return NextResponse.json({ success: false, isPaid: false, status: verified.status, error: 'Paystack has not confirmed this payment as successful' });
+      }
+      if (String(transaction.currency || 'NGN').toUpperCase() !== 'NGN' ||
+          Math.round(Number(transaction.amount) * 100) !== Math.round(verified.amountNGN * 100)) {
+        return NextResponse.json({ success: false, isPaid: false, error: 'Verified payment amount or currency does not match the saved transaction' }, { status: 409 });
+      }
+
+      const now = new Date().toISOString();
+      const txUpdate = await d1.query(
+        "UPDATE transactions SET status = 'completed' WHERE reference = ?",
+        [reference]
+      );
+      if (!txUpdate.success) {
+        return NextResponse.json({ success: false, isPaid: false, error: 'Payment succeeded but its transaction record could not be updated' }, { status: 503 });
+      }
+      const orderUpdate = await d1.query(
+        "UPDATE orders SET payment_status = 'paid', updated_at = ? WHERE id = ?",
+        [now, order.id]
+      );
+      if (!orderUpdate.success) {
+        return NextResponse.json({ success: false, isPaid: false, error: 'Payment succeeded but the order status could not be updated' }, { status: 503 });
+      }
+
+      return NextResponse.json({ success: true, isPaid: true, status: verified.status, reference, orderId: order.id, data: { isPaid: true, status: verified.status, reference, orderId: order.id } });
+    } catch (error: any) {
+      console.error('[Payment verification] Reconciliation failed:', error?.message || error);
+      return NextResponse.json({ success: false, isPaid: false, error: 'Could not reconcile this payment. Please try again.' }, { status: 503 });
+    }
   }
 
   return NextResponse.json(
