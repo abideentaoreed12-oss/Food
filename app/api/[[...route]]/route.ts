@@ -738,6 +738,12 @@ export async function POST(req: NextRequest) {
     const orderId = `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const shortId = `QB-${Math.floor(1000 + Math.random() * 9000)}`;
     const now = new Date().toISOString();
+    const drivingMinutes = Number(body.drivingMinutes);
+    const isPickup = fulfillmentType === 'pickup';
+    if (!isPickup && (!Number.isFinite(drivingMinutes) || drivingMinutes <= 0 || drivingMinutes > 600)) {
+      return NextResponse.json({ success: false, error: 'A valid live road-routing duration is required before creating a delivery order.' }, { status: 400 });
+    }
+    const estimatedArrivalMinutes = isPickup ? 0 : Math.ceil(drivingMinutes) + 15;
     const paymentStatus = chargeAmount <= 0 ? 'paid' : 'pending';
     // An unpaid card order is not a successful/placed order yet.
     // Keep it explicitly awaiting payment until Paystack confirms the transaction.
@@ -751,6 +757,7 @@ export async function POST(req: NextRequest) {
       items: verifiedItems, subtotal, deliveryFee, serviceFee, tip, discountAmount,
       walletDeduction: Math.min(walletDeduction, total), total, chargeAmount, currency, paymentMethod,
       paymentStatus, transactionRef: null, status: orderStatus, fulfillmentType,
+      estimatedArrivalMinutes, routeProgress: 5, statusHistory: [],
       scheduledSlot: body.scheduledSlot || null, isContactless: Boolean(body.isContactless),
       createdAt: now, updatedAt: now
     };
