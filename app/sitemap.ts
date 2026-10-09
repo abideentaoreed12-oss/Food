@@ -16,20 +16,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: path === '/' ? 1 : 0.4
   }));
 
-  // Include only restaurant pages that the application actually supports.
-  // The UI is currently a client-side SPA, so do not invent /restaurants/{id}
-  // SEO pages until dedicated server-rendered pages exist.
+  // Only emit detail URLs for restaurant records that exist in D1.
   try {
-    const result = await d1.query('SELECT id, raw_json FROM restaurants ORDER BY rating DESC LIMIT 500');
+    const result = await d1.query('SELECT id, updated_at FROM restaurants ORDER BY rating DESC LIMIT 500');
     if (result.success) {
       for (const row of result.results || []) {
         const id = String(row.id || '');
-        if (!id) continue;
-        // Keep only existing app routes; API IDs are not assumed to be page URLs.
+        if (!id || /[/?#]/.test(id)) continue;
+        entries.push({
+          url: `${SITE}/restaurants/${encodeURIComponent(id)}`,
+          lastModified: row.updated_at ? new Date(String(row.updated_at)) : undefined,
+          changeFrequency: 'weekly',
+          priority: 0.7
+        });
       }
     }
   } catch {
-    // Sitemap remains available with static routes when the database is unavailable.
+    // Keep static sitemap routes available when D1 is temporarily unavailable.
   }
 
   return entries;
