@@ -62,6 +62,8 @@ export const RightDrawer: React.FC = () => {
     adminActiveTab,
     setAdminActiveTab,
     selectedAddress,
+    setSelectedAddress,
+    savedAddresses,
     deliveryZones
   } = useDelivery();
 
@@ -336,37 +338,38 @@ export const RightDrawer: React.FC = () => {
 
                   {isZoneDropdownOpen && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-30 py-1.5 text-xs">
-                      <div className="px-3.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Select Delivery Zone
+                      <div className="px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Your Saved Addresses
                       </div>
-                      {(deliveryZones && deliveryZones.length > 0 ? deliveryZones : []).map((zone: any) => {
-                        const zoneId = zone.id || zone.code;
-                        const zoneName = zone.name;
-                        const city = zone.city || 'Lagos';
-                        const fee = zone.base_delivery_fee ?? zone.baseFee ?? zone.deliveryFee ?? 500;
+                      {savedAddresses.filter((addr) => Boolean(addr.address && addr.address.trim())).map((addr) => {
+                        const isSelected = selectedAddress?.id === addr.id || selectedAddress?.address?.trim().toLowerCase() === addr.address.trim().toLowerCase();
                         return (
                           <button
-                            key={zoneId}
+                            key={addr.id}
                             onClick={() => {
-                              setSelectedZone(zoneId);
+                              void setSelectedAddress(addr);
                               setIsZoneDropdownOpen(false);
                             }}
-                            className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between hover:bg-[#FFF1E8]/50 transition-colors cursor-pointer ${
-                              selectedZone === zoneId || selectedZone === zone.code
-                                ? 'font-bold text-[#FF5500] bg-[#FFF1E8]'
-                                : 'text-slate-700'
+                            className={`w-full text-left px-3.5 py-3 flex items-start justify-between gap-3 hover:bg-[#FFF1E8]/50 transition-colors cursor-pointer ${
+                              isSelected ? 'font-bold text-[#FF5500] bg-[#FFF1E8]' : 'text-slate-700'
                             }`}
                           >
-                            <div>
-                              <div className="font-semibold">{zoneName}</div>
-                              <div className="text-[11px] text-slate-400 font-normal">{city}</div>
+                            <div className="min-w-0">
+                              <div className="font-semibold">{addr.label || 'Saved address'}</div>
+                              <div className="text-[11px] text-slate-500 font-normal whitespace-normal break-words">{addr.address}</div>
+                              {(addr.apartment || addr.city) && (
+                                <div className="text-[11px] text-slate-400 font-normal">{[addr.apartment, addr.city].filter(Boolean).join(', ')}</div>
+                              )}
                             </div>
-                            <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                              ₦{Number(fee).toLocaleString()} fee
-                            </span>
+                            {isSelected && <span className="text-[10px] font-bold text-[#FF5500]">Selected</span>}
                           </button>
                         );
                       })}
+                      {savedAddresses.filter((addr) => Boolean(addr.address && addr.address.trim())).length === 0 && (
+                        <div className="px-3.5 py-3 text-slate-500">
+                          No saved addresses yet. Add one in your account before choosing a delivery address.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
