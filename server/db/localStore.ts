@@ -3,7 +3,6 @@ import path from 'path';
 import os from 'os';
 import bcrypt from 'bcryptjs';
 import { User, Restaurant, Order, Transaction, AuditLog } from './schema';
-import { INITIAL_RESTAURANTS } from '../../src/data/mockData';
 import { CONFIG } from '../config';
 
 export interface PromoCodeRecord {
@@ -114,13 +113,8 @@ export function seedInitialData(): DatabaseSchema {
     });
   }
 
-  const restaurants: Restaurant[] = INITIAL_RESTAURANTS.map((r) => ({
-    ...r,
-    isBusyPaused: false,
-    commissionPercent: 15,
-    zone: (r.zone === 'ABUJA' || r.zone === 'NYC' ? r.zone : 'LAGOS') as 'NYC' | 'LAGOS' | 'ABUJA',
-    createdAt: now
-  }));
+  // Single source of truth is Cloudflare D1
+  const restaurants: Restaurant[] = [];
 
   const promoCodes: PromoCodeRecord[] = [
     {

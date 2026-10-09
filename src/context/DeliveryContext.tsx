@@ -140,19 +140,14 @@ const EMPTY_ADDRESS: SavedAddress = {
 export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole?: UserRole }> = ({ children, initialRole }) => {
   const { user, setIsAuthModalOpen, refreshUser, openAuthModalForPortal } = useAuth();
 
-  const [activeRole, setActiveRoleState] = useState<UserRole>(() => {
-    if (initialRole) return initialRole;
-    try {
-      if (typeof window !== 'undefined') {
-        if (window.location.pathname.startsWith('/admin')) {
-          return 'admin';
-        }
-      }
-      return 'customer';
-    } catch {
-      return 'customer';
+  const [activeRole, setActiveRoleState] = useState<UserRole>(initialRole || 'customer');
+
+  // Check URL pathname for /admin on client mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+      setActiveRoleState('admin');
     }
-  });
+  }, []);
 
   // Automatically lock and synchronize activeRole to user's authenticated role
   useEffect(() => {
@@ -200,14 +195,17 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     setActiveRoleState('customer');
   }, [user, openAuthModalForPortal]);
 
-  const [activePage, setActivePageState] = useState<ActivePage>(() => {
+  const [activePage, setActivePageState] = useState<ActivePage>('landing');
+
+  // Restore saved active page on client mount after hydration
+  useEffect(() => {
     try {
       const saved = localStorage.getItem('veyrang_active_page');
-      return (saved as ActivePage) || 'landing';
-    } catch {
-      return 'landing';
-    }
-  });
+      if (saved) {
+        setActivePageState(saved as ActivePage);
+      }
+    } catch {}
+  }, []);
 
   const setActivePage = useCallback((page: ActivePage) => {
     setActivePageState(page);
@@ -396,14 +394,19 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const [orders, setOrders] = useState<Order[]>([]);
 
   // Cart persistence (loads from localStorage so guests & users never lose items)
-  const [cart, setCart] = useState<CartItem[]>(() => {
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartLoaded, setIsCartLoaded] = useState<boolean>(false);
+
+  // Restore cart on client mount after hydration
+  useEffect(() => {
     try {
       const saved = localStorage.getItem('veyrang_cart_v1');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+      if (saved) {
+        setCart(JSON.parse(saved));
+      }
+    } catch {}
+    setIsCartLoaded(true);
+  }, []);
 
   const [cartConflict, setCartConflict] = useState<{
     newItem: MenuItem;
@@ -414,12 +417,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   } | null>(null);
 
   useEffect(() => {
+    if (!isCartLoaded) return;
     try {
       localStorage.setItem('veyrang_cart_v1', JSON.stringify(cart));
     } catch {
       // Ignore quota errors
     }
-  }, [cart]);
+  }, [cart, isCartLoaded]);
 
   const [favourites, setFavourites] = useState<string[]>([]);
 
@@ -1167,7 +1171,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
       const target = orders.find((o) => o.id === orderId);
       if (!target) return false;
 
-      const isMatch = target.handoverPin ? target.handoverPin === enteredPin.trim() : enteredPin.trim() === '3819';
+      const isMatch = Boolean(target.handoverPin && target.handoverPin.trim() === enteredPin.trim());
       if (isMatch) {
         await advanceOrderStatus(orderId, 'delivered');
         return true;

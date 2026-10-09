@@ -3,7 +3,6 @@
 
 import { CONFIG } from '../config';
 import bcrypt from 'bcryptjs';
-import { localD1Query } from './localStore';
 
 const CLOUDFLARE_ACCOUNT_ID = CONFIG.CLOUDFLARE_ACCOUNT_ID;
 const CLOUDFLARE_DATABASE_ID = CONFIG.CLOUDFLARE_DATABASE_ID;
@@ -49,69 +48,62 @@ export class CloudflareD1Client {
 
   public async queryDirect<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
     if (!this.accountId || !this.databaseId || !this.apiToken) {
-      return localD1Query<T>(sql, params);
+      throw new Error('Cloudflare D1 is the single source of truth but credentials are not configured in environment variables.');
     }
 
     const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/d1/database/${this.databaseId}/query`;
 
-    try {
-      const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
-      const headers: Record<string, string> = isKey
-        ? {
-            'X-Auth-Email': this.authEmail,
-            'X-Auth-Key': this.apiToken,
-            'Content-Type': 'application/json'
-          }
-        : {
-            Authorization: `Bearer ${this.apiToken}`,
-            'Content-Type': 'application/json'
-          };
+    const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
+    const headers: Record<string, string> = isKey
+      ? {
+          'X-Auth-Email': this.authEmail,
+          'X-Auth-Key': this.apiToken,
+          'Content-Type': 'application/json'
+        }
+      : {
+          Authorization: `Bearer ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        };
 
-      let response = await fetch(url, {
+    let response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ sql, params })
+    });
+
+    if (response.status === 401 && isKey) {
+      response = await fetch(url, {
         method: 'POST',
-        headers,
+        headers: {
+          Authorization: `Bearer ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ sql, params })
       });
-
-      if (response.status === 401 && isKey) {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.apiToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ sql, params })
-        });
-      } else if (response.status === 401 && !isKey) {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'X-Auth-Email': this.authEmail,
-            'X-Auth-Key': this.apiToken,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ sql, params })
-        });
-      }
-
-      const data = (await response.json()) as D1ApiResponse<T>;
-
-      if (!response.ok || !data.success || !data.result || data.result.length === 0) {
-        return localD1Query<T>(sql, params);
-      }
-
-      return data.result[0];
-    } catch {
-      return localD1Query<T>(sql, params);
+    } else if (response.status === 401 && !isKey) {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-Auth-Email': this.authEmail,
+          'X-Auth-Key': this.apiToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sql, params })
+      });
     }
+
+    const data = (await response.json()) as D1ApiResponse<T>;
+
+    if (!response.ok || !data.success || !data.result || data.result.length === 0) {
+      const errDetails = data.errors?.map((e) => e.message).join(', ') || `HTTP ${response.status}`;
+      throw new Error(`Cloudflare D1 query failed: ${errDetails}`);
+    }
+
+    return data.result[0];
   }
 
   public async query<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
-    try {
-      return await this.queryDirect<T>(sql, params);
-    } catch {
-      return localD1Query<T>(sql, params);
-    }
+    return await this.queryDirect<T>(sql, params);
   }
 
   public async testConnection(): Promise<{ connected: boolean; error?: string; details?: any }> {
@@ -252,6 +244,8 @@ export class CloudflareD1Client {
         verification_status TEXT DEFAULT 'verified',
         kyc_doc_r2_url TEXT,
         photo_r2_url TEXT,
+        total_deliveries INTEGER DEFAULT 0,
+        trips_completed INTEGER DEFAULT 0,
         is_online INTEGER DEFAULT 1,
         updated_at TEXT NOT NULL
       );`,
@@ -350,6 +344,8 @@ export class CloudflareD1Client {
     await this.query('ALTER TABLE users ADD COLUMN virtual_account_number TEXT;').catch(() => {});
     await this.query('ALTER TABLE users ADD COLUMN virtual_bank_name TEXT;').catch(() => {});
     await this.query('ALTER TABLE users ADD COLUMN virtual_account_name TEXT;').catch(() => {});
+    await this.query('ALTER TABLE courier_profiles ADD COLUMN total_deliveries INTEGER DEFAULT 0;').catch(() => {});
+    await this.query('ALTER TABLE courier_profiles ADD COLUMN trips_completed INTEGER DEFAULT 0;').catch(() => {});
 
     // Admin seed: credentials from env only — zero balances, no fake phone/money
     try {

@@ -40,11 +40,12 @@ export const OrdersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'delivered' | 'cancelled'>('all');
   const [selectedReviewOrder, setSelectedReviewOrder] = useState<Order | null>(null);
-  const [clockNow, setClockNow] = useState<number>(() => Date.now());
+  const [clockNow, setClockNow] = useState<number>(0);
 
   // Receipt/order ETA is a countdown from the server-created order timestamp,
   // not a static hardcoded display value.
   useEffect(() => {
+    setClockNow(Date.now());
     const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
@@ -52,6 +53,7 @@ export const OrdersPage: React.FC = () => {
   const getRemainingEtaMinutes = (order: Order): number => {
     if (order.status === 'awaiting_payment' || order.paymentStatus === 'pending') return -1;
     if (order.status === 'delivered' || order.status === 'cancelled') return 0;
+    if (clockNow === 0) return Number(order.estimatedArrivalMinutes) || 25;
     const created = new Date(order.createdAt).getTime();
     const eta = Number(order.estimatedArrivalMinutes);
     if (!Number.isFinite(created) || !Number.isFinite(eta) || eta < 0) return -1;
@@ -294,7 +296,7 @@ export const OrdersPage: React.FC = () => {
                     <div>
                       <span className="text-slate-500">Security PIN: </span>
                       <span className="font-mono font-extrabold text-slate-900 tracking-wider">
-                        {order.handoverPin || '3819'}
+                        {order.handoverPin || '—'}
                       </span>
                     </div>
                   </div>
@@ -544,8 +546,8 @@ export const OrdersPage: React.FC = () => {
                           <p className="font-semibold text-slate-900">
                             {order.restaurantName || 'Veyrang Partner Kitchen'}
                           </p>
-                          <p className="text-[11px] text-slate-500">
-                            {order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString()}
+                          <p className="text-[11px] text-slate-500" suppressHydrationWarning>
+                            {order.createdAt ? new Date(order.createdAt).toLocaleString('en-NG') : 'Recent'}
                           </p>
                         </div>
 

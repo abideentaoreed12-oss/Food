@@ -3,7 +3,6 @@ import path from 'path';
 import os from 'os';
 import bcrypt from 'bcryptjs';
 import { User, Restaurant, Order, Transaction, AuditLog, OrderStatus } from './schema';
-import { INITIAL_RESTAURANTS } from '../../src/data/mockData';
 import { d1Client } from './d1Client';
 import { CONFIG } from '../config';
 interface OtpEntry {
@@ -64,22 +63,16 @@ function seedInitialData(): DatabaseSchema {
       name: 'System Administrator',
       role: 'admin',
       phone: '+1 (555) 900-0001',
-      walletBalanceUSD: 250.0,
-      walletBalanceNGN: 350000,
+      walletBalanceUSD: 0,
+      walletBalanceNGN: 0,
       savedAddresses: [],
       createdAt: now,
       updatedAt: now
     }
   ];
 
-  // Convert initial mock restaurants into real DB records
-  const restaurants: Restaurant[] = INITIAL_RESTAURANTS.map((r) => ({
-    ...r,
-    isBusyPaused: false,
-    commissionPercent: 15,
-    zone: 'NYC',
-    createdAt: now
-  }));
+  // No mock restaurants: Cloudflare D1 is the single source of truth
+  const restaurants: Restaurant[] = [];
 
   const initialOrders: Order[] = [];
   const transactions: Transaction[] = [];
@@ -239,13 +232,9 @@ function safeJsonParse<T>(val: any, fallback: T): T {
 
 // Data Access API
 export const db = {
-  // Users
+  // Users (Cloudflare D1 Single Source of Truth)
   findUserByEmail: async (email: string): Promise<User | undefined> => {
-    const data = loadDatabase();
     const normEmail = (email || '').toLowerCase().trim();
-    const localUser = data.users.find((u) => (u.email || '').toLowerCase().trim() === normEmail);
-    if (localUser) return localUser;
-
     try {
       const d1Res = await d1Client.query('SELECT * FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [normEmail]);
       if (d1Res && d1Res.results && d1Res.results.length > 0) {
@@ -265,22 +254,17 @@ export const db = {
           createdAt: u.created_at || new Date().toISOString(),
           updatedAt: u.updated_at || new Date().toISOString()
         };
-        data.users.push(userObj);
-        await saveDatabase(data);
         return userObj;
       }
-    } catch (e) {
-      // D1 lookup fallback
+    } catch (e: any) {
+      console.warn('D1 findUserByEmail error:', e?.message || e);
     }
 
-    return undefined;
+    const data = loadDatabase();
+    return data.users.find((u) => (u.email || '').toLowerCase().trim() === normEmail);
   },
 
   findUserById: async (id: string): Promise<User | undefined> => {
-    const data = loadDatabase();
-    const localUser = data.users.find((u) => u.id === id);
-    if (localUser) return localUser;
-
     try {
       const d1Res = await d1Client.query('SELECT * FROM users WHERE id = ? LIMIT 1', [id]);
       if (d1Res && d1Res.results && d1Res.results.length > 0) {
@@ -300,15 +284,14 @@ export const db = {
           createdAt: u.created_at || new Date().toISOString(),
           updatedAt: u.updated_at || new Date().toISOString()
         };
-        data.users.push(userObj);
-        await saveDatabase(data);
         return userObj;
       }
-    } catch (e) {
-      // D1 lookup fallback
+    } catch (e: any) {
+      console.warn('D1 findUserById error:', e?.message || e);
     }
 
-    return undefined;
+    const data = loadDatabase();
+    return data.users.find((u) => u.id === id);
   },
 
   createUser: async (user: User): Promise<User> => {
@@ -513,11 +496,11 @@ export const db = {
           return r;
         });
       }
+      return [];
     } catch (e) {
       console.warn('D1 getRestaurants note:', e);
+      return [];
     }
-    const data = loadDatabase();
-    return data.restaurants;
   },
 
   getRestaurantById: async (id: string): Promise<Restaurant | undefined> => {
@@ -541,11 +524,11 @@ export const db = {
         }
         return r;
       }
+      return undefined;
     } catch (e) {
       console.warn('D1 getRestaurantById note:', e);
+      return undefined;
     }
-    const data = loadDatabase();
-    return data.restaurants.find((r) => r.id === id);
   },
 
   updateMenuItemAvailability: async (restaurantId: string, itemId: string, isAvailable: boolean): Promise<boolean> => {
@@ -640,11 +623,11 @@ export const db = {
 
         return d1Orders;
       }
+      return [];
     } catch (e) {
       console.warn('D1 getOrders query note:', e);
+      return [];
     }
-    const data = loadDatabase();
-    return data.orders;
   },
 
   getOrderById: async (id: string): Promise<Order | undefined> => {
@@ -676,7 +659,7 @@ export const db = {
           paymentMethod: o.payment_method || parsed?.paymentMethod,
           paymentStatus: o.payment_status || parsed?.paymentStatus,
           status: o.status || parsed?.status,
-          handoverPin: parsed?.handoverPin || o.handover_pin || '4821',
+          handoverPin: parsed?.handoverPin || o.handover_pin || undefined,
           prepTimeAdjustmentMin: parsed?.prepTimeAdjustmentMin ?? 0,
           isContactless: parsed?.isContactless ?? false,
           fulfillmentType: parsed?.fulfillmentType || 'delivery',
@@ -694,11 +677,11 @@ export const db = {
           updatedAt: o.updated_at || parsed?.updatedAt
         };
       }
+      return undefined;
     } catch (e) {
       console.warn('D1 getOrderById note:', e);
+      return undefined;
     }
-    const data = loadDatabase();
-    return data.orders.find((o) => o.id === id || o.shortId === id);
   },
 
   createOrder: async (order: Order): Promise<Order> => {
@@ -946,6 +929,24 @@ export const db = {
   },
 
   getAuditLogs: async (): Promise<AuditLog[]> => {
+    try {
+      const d1Res = await d1Client.query('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100');
+      if (d1Res?.results?.length) {
+        return d1Res.results.map((r: any) => ({
+          id: r.id,
+          userId: r.user_id,
+          userEmail: r.user_email,
+          userRole: r.user_role,
+          action: r.action,
+          resource: r.resource,
+          resourceId: r.resource_id,
+          details: r.details_json ? safeJsonParse(r.details_json, {}) : undefined,
+          timestamp: r.created_at
+        }));
+      }
+    } catch (e: any) {
+      console.warn('D1 direct audit_logs query note:', e?.message || e);
+    }
     const data = loadDatabase();
     return data.auditLogs;
   },

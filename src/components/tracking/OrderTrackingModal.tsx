@@ -396,7 +396,7 @@ export const OrderTrackingModal: React.FC = () => {
             </div>
 
             <span className="text-lg font-mono font-extrabold text-slate-900 tracking-wider bg-white px-3 py-1 rounded-xl border border-orange-200">
-              {order.handoverPin || '3819'}
+              {order.handoverPin || '—'}
             </span>
           </div>
 
@@ -481,8 +481,8 @@ export const OrderTrackingModal: React.FC = () => {
                     Merchant & Date
                   </span>
                   <p className="font-bold text-slate-900">{order.restaurantName || 'Veyrang Partner Kitchen'}</p>
-                  <p className="text-slate-500 text-[11px] mt-0.5">
-                    {order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString()}
+                  <p className="text-slate-500 text-[11px] mt-0.5" suppressHydrationWarning>
+                    {order.createdAt ? new Date(order.createdAt).toLocaleString('en-NG') : 'Recent'}
                   </p>
                 </div>
                 <div>

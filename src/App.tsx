@@ -127,16 +127,24 @@ const AppContent: React.FC = () => {
 };
 
 export default function App({ initialRole }: { initialRole?: UserRole } = {}) {
-  if (!GOOGLE_MAPS_API_KEY) {
-    console.warn('Google Maps API key is missing. Loading app without Maps API provider.');
-    return (
-      <AuthProvider>
-        <DeliveryProvider initialRole={initialRole}>
-          <AppContent />
-          <Analytics />
-        </DeliveryProvider>
-      </AuthProvider>
-    );
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const content = (
+    <AuthProvider>
+      <DeliveryProvider initialRole={initialRole}>
+        <AppContent />
+        <Analytics />
+      </DeliveryProvider>
+    </AuthProvider>
+  );
+
+  // During SSR and initial client hydration render content directly so server and client match 100%
+  if (!mounted || !GOOGLE_MAPS_API_KEY) {
+    return content;
   }
 
   return (
@@ -147,12 +155,7 @@ export default function App({ initialRole }: { initialRole?: UserRole } = {}) {
         console.warn('Google Maps APIProvider error:', error);
       }}
     >
-      <AuthProvider>
-        <DeliveryProvider initialRole={initialRole}>
-          <AppContent />
-          <Analytics />
-        </DeliveryProvider>
-      </AuthProvider>
+      {content}
     </APIProvider>
   );
 }

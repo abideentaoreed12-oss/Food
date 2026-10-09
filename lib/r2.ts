@@ -80,24 +80,37 @@ export class R2Client {
     if (this.accountId && this.apiToken && this.bucketName) {
       try {
         const directR2Url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${cleanKey}`;
-        const binaryData = Buffer.from(dataBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+        const binaryData = Buffer.from(dataBase64.replace(/^data:[^;]+;base64,/, ''), 'base64');
+        const authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || 'abideentaoreed12@gmail.com';
+        const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
+
+        const headers: Record<string, string> = isKey
+          ? {
+              'X-Auth-Email': authEmail,
+              'X-Auth-Key': this.apiToken,
+              'Content-Type': contentType
+            }
+          : {
+              'Authorization': `Bearer ${this.apiToken}`,
+              'Content-Type': contentType
+            };
 
         const res = await fetch(directR2Url, {
           method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${this.apiToken}`,
-            'Content-Type': contentType
-          },
+          headers,
           body: binaryData,
           cache: 'no-store'
         });
 
         if (res.ok) {
-          return {
-            success: true,
-            key: cleanKey,
-            cdnUrl
-          };
+          const resJson = await res.json().catch(() => ({}));
+          if (resJson.success !== false) {
+            return {
+              success: true,
+              key: cleanKey,
+              cdnUrl: `/api/storage/file/${cleanKey}`
+            };
+          }
         }
       } catch (err: any) {
         console.warn('[R2 Direct Upload Exception]', err?.message || err);
@@ -113,13 +126,39 @@ export class R2Client {
     };
   }
 
+  public async getObject(key: string): Promise<{ data: Buffer; contentType: string } | null> {
+    const cleanKey = key.replace(/^\//, '');
+    if (!this.accountId || !this.apiToken || !this.bucketName) return null;
+    try {
+      const directR2Url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${cleanKey}`;
+      const authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || 'abideentaoreed12@gmail.com';
+      const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
+      const headers: Record<string, string> = isKey
+        ? { 'X-Auth-Email': authEmail, 'X-Auth-Key': this.apiToken }
+        : { 'Authorization': `Bearer ${this.apiToken}` };
+
+      const res = await fetch(directR2Url, { method: 'GET', headers, cache: 'no-store' });
+      if (!res.ok) return null;
+      const arrayBuf = await res.arrayBuffer();
+      const contentType = res.headers.get('content-type') || 'application/octet-stream';
+      return { data: Buffer.from(arrayBuf), contentType };
+    } catch {
+      return null;
+    }
+  }
+
   public async delete(key: string): Promise<{ success: boolean }> {
     const cleanKey = key.replace(/^\//, '');
-    if (this.workerUrl) {
+    if (this.accountId && this.apiToken && this.bucketName) {
       try {
-        await fetch(`${this.workerUrl}/storage/file/${encodeURIComponent(cleanKey)}`, {
-          method: 'DELETE'
-        });
+        const directR2Url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${cleanKey}`;
+        const authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || 'abideentaoreed12@gmail.com';
+        const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
+        const headers: Record<string, string> = isKey
+          ? { 'X-Auth-Email': authEmail, 'X-Auth-Key': this.apiToken }
+          : { 'Authorization': `Bearer ${this.apiToken}` };
+
+        await fetch(directR2Url, { method: 'DELETE', headers, cache: 'no-store' });
       } catch {}
     }
     return { success: true };

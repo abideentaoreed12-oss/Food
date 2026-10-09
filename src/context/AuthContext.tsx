@@ -86,21 +86,22 @@ function sanitizeUser(rawUser: any): AuthUser | null {
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    try {
-      const token = localStorage.getItem('veyrang_jwt_token');
-      const cached = localStorage.getItem('veyrang_user_cache');
-      if (!token || !cached) return null;
-      return sanitizeUser(JSON.parse(cached));
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [intendedPortal, setIntendedPortal] = useState<UserRole | null>(null);
 
   useEffect(() => {
+    // Restore cached user on client mount after hydration
+    try {
+      const token = localStorage.getItem('veyrang_jwt_token');
+      const cached = localStorage.getItem('veyrang_user_cache');
+      if (token && cached) {
+        const sanitized = sanitizeUser(JSON.parse(cached));
+        if (sanitized) setUser(sanitized);
+      }
+    } catch {}
+
     // Check existing authenticated session
     api.auth
       .getMe()

@@ -64,22 +64,33 @@ export const CourierView: React.FC = () => {
 
     const sendLocationUpdate = async (lat: number, lng: number, heading = 0, speed = 0) => {
       try {
-        await fetch('/api/couriers/location', {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('veyrang_jwt_token') : null;
+        const res = await fetch('/api/couriers/location', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
           body: JSON.stringify({
             courierId: user?.id || 'RIDER-842',
-            orderId: activeDelivery?.id || 'active',
+            orderId: activeDelivery?.id || null,
             lat,
             lng,
             heading,
             speed
           })
         });
-        setPingCount((prev) => prev + 1);
-        setGpsStatus('transmitting');
-      } catch (err) {
-        console.warn('Courier location broadcast error:', err);
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.success) {
+          setPingCount((prev) => prev + 1);
+          setGpsStatus('transmitting');
+        } else {
+          setGpsStatus('error');
+          setGpsErrorMsg(data?.error || `Server error (${res.status}) updating location`);
+        }
+      } catch (err: any) {
+        setGpsStatus('error');
+        setGpsErrorMsg(err?.message || 'Network error updating location');
       }
     };
 

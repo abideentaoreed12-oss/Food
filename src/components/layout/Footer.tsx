@@ -315,7 +315,7 @@ export const Footer: React.FC = () => {
           </div>
 
           <div className="text-center md:text-right">
-            <div>
+            <div suppressHydrationWarning>
               © {new Date().getFullYear()} <span className="text-white font-bold">{platformSettings['cms_copyright_text'] || 'Veyrang Technologies Limited'}</span>. All rights reserved.
             </div>
             <div className="text-[11px] text-slate-400 mt-0.5">

@@ -4,15 +4,29 @@ import { requireAuth, requireRole, AuthRequest } from '../middleware/auth.ts';
 
 const router = Router();
 
+function getCloudflareHeaders(contentType?: string): Record<string, string> {
+  const token = CONFIG.CLOUDFLARE_API_TOKEN;
+  const email = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || 'abideentaoreed12@gmail.com';
+  const isKey = token.startsWith('cfk_') || token.length < 55;
+  const headers: Record<string, string> = isKey
+    ? {
+        'X-Auth-Email': email,
+        'X-Auth-Key': token
+      }
+    : {
+        'Authorization': `Bearer ${token}`
+      };
+  if (contentType) headers['Content-Type'] = contentType;
+  return headers;
+}
+
 // 0. Test R2 Bucket Connection & Permissions (Admin only)
 router.get('/status', requireAuth, requireRole(['admin', 'sub_admin']), async (_req: AuthRequest, res: Response) => {
   try {
     const url = `https://api.cloudflare.com/client/v4/accounts/${CONFIG.CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${CONFIG.CLOUDFLARE_R2_BUCKET}`;
     const checkRes = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${CONFIG.CLOUDFLARE_API_TOKEN}`
-      }
+      headers: getCloudflareHeaders()
     });
     const data = (await checkRes.json().catch(() => null)) as any;
     const isOk = checkRes.ok && data?.success;
@@ -70,10 +84,7 @@ router.post('/upload', requireAuth, async (req: AuthRequest, res: Response) => {
     const r2Url = `https://api.cloudflare.com/client/v4/accounts/${CONFIG.CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${CONFIG.CLOUDFLARE_R2_BUCKET}/objects/${sanitizedKey}`;
     const uploadRes = await fetch(r2Url, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${CONFIG.CLOUDFLARE_API_TOKEN}`,
-        'Content-Type': mime
-      },
+      headers: getCloudflareHeaders(mime),
       body: buffer
     });
 
@@ -85,14 +96,7 @@ router.post('/upload', requireAuth, async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Form direct Edge CDN or Custom Domain URL
-    const publicBase = CONFIG.CLOUDFLARE_R2_PUBLIC_URL || CONFIG.CLOUDFLARE_WORKER_URL;
-    if (!publicBase) {
-      return res.status(503).json({ success: false, error: 'Public image delivery is not configured' });
-    }
-    const cdnUrl = CONFIG.CLOUDFLARE_R2_PUBLIC_URL
-      ? `${CONFIG.CLOUDFLARE_R2_PUBLIC_URL.replace(/\/+$/, '')}/${sanitizedKey.split('/').map(encodeURIComponent).join('/')}`
-      : `${CONFIG.CLOUDFLARE_WORKER_URL.replace(/\/+$/, '')}/cdn/${sanitizedKey.split('/').map(encodeURIComponent).join('/')}`;
+    const cdnUrl = `/api/storage/file/${sanitizedKey}`;
 
     return res.json({
       success: true,
@@ -110,7 +114,7 @@ router.post('/upload', requireAuth, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// 2. Stream or Redirect to Edge CDN
+// 2. Stream directly from Cloudflare R2 Bucket
 router.get('/file/:key(*)', async (req: Request, res: Response) => {
   try {
     const key = req.params.key;
@@ -122,9 +126,25 @@ router.get('/file/:key(*)', async (req: Request, res: Response) => {
     if (!sanitizedKey || sanitizedKey.split('/').some((part: string) => !part || part === '.' || part === '..')) {
       return res.status(400).json({ success: false, error: 'A valid storage key is required' });
     }
-    if (!CONFIG.CLOUDFLARE_WORKER_URL) return res.status(503).json({ success: false, error: 'Image delivery is not configured' });
-    const cdnUrl = `${CONFIG.CLOUDFLARE_WORKER_URL.replace(/\/+$/, '')}/cdn/${sanitizedKey.split('/').map(encodeURIComponent).join('/')}`;
-    return res.redirect(cdnUrl);
+
+    const r2Url = `https://api.cloudflare.com/client/v4/accounts/${CONFIG.CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${CONFIG.CLOUDFLARE_R2_BUCKET}/objects/${sanitizedKey}`;
+    const r2Res = await fetch(r2Url, {
+      method: 'GET',
+      headers: getCloudflareHeaders()
+    });
+
+    if (!r2Res.ok) {
+      return res.status(r2Res.status === 404 ? 404 : 502).json({
+        success: false,
+        error: `File ${sanitizedKey} not found in Cloudflare R2 bucket`
+      });
+    }
+
+    const contentType = r2Res.headers.get('content-type') || 'application/octet-stream';
+    const arrayBuf = await r2Res.arrayBuffer();
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return res.send(Buffer.from(arrayBuf));
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }
@@ -143,9 +163,7 @@ router.delete('/file/:key(*)', requireAuth, async (req: AuthRequest, res: Respon
 
     const delRes = await fetch(r2Url, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${CONFIG.CLOUDFLARE_API_TOKEN}`
-      }
+      headers: getCloudflareHeaders()
     });
 
     const result = await delRes.json().catch(() => null) as any;

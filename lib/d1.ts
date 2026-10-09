@@ -1,5 +1,4 @@
 import { CONFIG } from '../server/config';
-import { localD1Query } from '../server/db/localStore';
 
 export interface D1QueryResult<T = any> {
   results: T[];
@@ -31,7 +30,7 @@ export class D1Client {
     this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || CONFIG.CLOUDFLARE_ACCOUNT_ID;
     this.databaseId = process.env.CLOUDFLARE_DATABASE_ID || CONFIG.CLOUDFLARE_DATABASE_ID;
     this.apiToken = process.env.CLOUDFLARE_API_TOKEN || CONFIG.CLOUDFLARE_API_TOKEN;
-    this.authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || '';
+    this.authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || 'abideentaoreed12@gmail.com';
     this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || CONFIG.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, '');
   }
 
@@ -65,63 +64,58 @@ export class D1Client {
 
   public async query<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
     if (!this.isConfigured()) {
-      return localD1Query<T>(sql, params);
+      throw new Error('Cloudflare D1 is the single source of truth but credentials are not configured in environment variables.');
     }
 
     const directUrl = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/d1/database/${this.databaseId}/query`;
-    try {
-      const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
-      const headers: Record<string, string> = isKey
-        ? {
-            'X-Auth-Email': this.authEmail,
-            'X-Auth-Key': this.apiToken,
-            'Content-Type': 'application/json'
-          }
-        : {
-            Authorization: `Bearer ${this.apiToken}`,
-            'Content-Type': 'application/json'
-          };
+    const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
+    const headers: Record<string, string> = isKey
+      ? {
+          'X-Auth-Email': this.authEmail,
+          'X-Auth-Key': this.apiToken,
+          'Content-Type': 'application/json'
+        }
+      : {
+          Authorization: `Bearer ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        };
 
-      let response = await fetch(directUrl, {
+    let response = await fetch(directUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ sql, params }),
+      cache: 'no-store'
+    });
+
+    if (response.status === 401 && isKey) {
+      response = await fetch(directUrl, {
         method: 'POST',
-        headers,
+        headers: {
+          Authorization: `Bearer ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({ sql, params }),
         cache: 'no-store'
       });
-
-      if (response.status === 401 && isKey) {
-        response = await fetch(directUrl, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.apiToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ sql, params }),
-          cache: 'no-store'
-        });
-      } else if (response.status === 401 && !isKey) {
-        response = await fetch(directUrl, {
-          method: 'POST',
-          headers: {
-            'X-Auth-Email': this.authEmail,
-            'X-Auth-Key': this.apiToken,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ sql, params }),
-          cache: 'no-store'
-        });
-      }
-
-      const json: D1ApiResponse<T> = await response.json().catch(() => null as any);
-      if (!response.ok || !json?.success || !json.result || json.result.length === 0) {
-        console.warn('[Cloudflare D1 Query Note]: Remote query returned non-success, routing to local database store.', json?.errors);
-        return localD1Query<T>(sql, params);
-      }
-      return json.result[0];
-    } catch (err: any) {
-      console.warn('[Cloudflare D1 Exception Note]: Remote API unavailable, routing to local database store:', err?.message || err);
-      return localD1Query<T>(sql, params);
+    } else if (response.status === 401 && !isKey) {
+      response = await fetch(directUrl, {
+        method: 'POST',
+        headers: {
+          'X-Auth-Email': this.authEmail,
+          'X-Auth-Key': this.apiToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ sql, params }),
+        cache: 'no-store'
+      });
     }
+
+    const json: D1ApiResponse<T> = await response.json().catch(() => null as any);
+    if (!response.ok || !json?.success || !json.result || json.result.length === 0) {
+      const errDetails = json?.errors?.map((e) => e.message).join(', ') || `HTTP ${response.status}`;
+      throw new Error(`Cloudflare D1 query failed: ${errDetails}`);
+    }
+    return json.result[0];
   }
 }
 

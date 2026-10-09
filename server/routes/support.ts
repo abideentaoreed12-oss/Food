@@ -24,33 +24,32 @@ router.post('/tickets', async (req: AuthRequest, res: Response) => {
     }
 
     const id = `VYR-${randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase()}`;
-    const accessToken = randomUUID();
     const now = new Date().toISOString();
+    const issueText = `${subject}: ${message}`.slice(0, 2000);
     const result = await d1Client.query(
-      'INSERT INTO support_tickets (id, user_id, user_email, customer_name, customer_phone, subject, message, category, status, priority, access_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, req.user?.id || null, email, name, phone || null, subject, message, category, 'open', 'normal', accessToken, now, now]
+      'INSERT INTO support_tickets (id, customer_id, customer_name, customer_email, order_id, issue, priority, status, assigned_to, created_at, user_id, user_email, subject, message, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, req.user?.id || null, name, email, null, issueText, 'medium', 'open', null, now, req.user?.id || null, email, subject, message, now]
     );
-    if (result.meta?.rows_written === 0) {
+    if (!result.success) {
       return res.status(503).json({ success: false, error: 'Your ticket could not be saved. Please try again.' });
     }
-    return res.status(201).json({ success: true, data: { id, accessToken, status: 'open', createdAt: now }, message: 'Your support ticket has been received.' });
+    return res.status(201).json({ success: true, data: { id, status: 'open', createdAt: now }, message: 'Your support ticket has been received.' });
   } catch (error: any) {
     console.error('Support ticket submission failed:', error?.message || error);
     return res.status(500).json({ success: false, error: 'Support is temporarily unavailable. Please try again shortly.' });
   }
 });
 
-// A ticket can only be viewed using its unique reference and private access token.
+// A ticket can be viewed using its unique reference.
 router.get('/tickets/:id', async (req: AuthRequest, res: Response) => {
   try {
     const id = clean(req.params.id, 40);
-    const accessToken = clean(req.query.token, 80);
-    if (!id || !accessToken) return res.status(400).json({ success: false, error: 'Ticket reference and access token are required.' });
+    if (!id) return res.status(400).json({ success: false, error: 'Ticket reference is required.' });
     const result = await d1Client.query(
-      'SELECT id, subject, message, category, status, priority, admin_reply, created_at, updated_at FROM support_tickets WHERE id = ? AND access_token = ? LIMIT 1',
-      [id, accessToken]
+      'SELECT id, customer_name, customer_email, issue, priority, status, assigned_to, user_id, user_email, subject, message, created_at, updated_at FROM support_tickets WHERE id = ? LIMIT 1',
+      [id]
     );
-    if (!result.results?.length) return res.status(404).json({ success: false, error: 'Ticket not found. Check your reference and access token.' });
+    if (!result.results?.length) return res.status(404).json({ success: false, error: 'Ticket not found. Check your reference.' });
     return res.json({ success: true, data: result.results[0] });
   } catch (error: any) {
     console.error('Support ticket lookup failed:', error?.message || error);
