@@ -718,7 +718,7 @@ export async function POST(req: NextRequest) {
     const amount = Number(body.amount);
     const metadata = body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata) ? body.metadata : {};
     const orderId = String(metadata.orderId || '');
-    if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ success: false, error: 'A valid email is required for Paystack checkout' }, { status: 400 });
     }
     if (!Number.isFinite(amount) || amount <= 0 || !orderId) {
