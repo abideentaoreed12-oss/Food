@@ -64,6 +64,7 @@ export const CartDrawer: React.FC = () => {
     distanceKm: number;
     distanceText: string;
     durationText: string;
+    durationMinutes: number;
     estimatedDeliveryFee: number;
     isCalculating?: boolean;
   } | null>(null);
@@ -123,6 +124,7 @@ export const CartDrawer: React.FC = () => {
         });
         if (requestId !== distanceRequestId.current) return;
         if (!res || !Number.isFinite(Number(res.distanceKm)) ||
+            !Number.isFinite(Number(res.durationMinutes)) || Number(res.durationMinutes) <= 0 ||
             !Number.isFinite(Number(res.estimatedDeliveryFee)) ||
             !res.distanceText || !res.durationText) {
           throw new Error('The routing service did not return a valid distance quote. Please retry.');
@@ -131,6 +133,7 @@ export const CartDrawer: React.FC = () => {
           distanceKm: Number(res.distanceKm),
           distanceText: String(res.distanceText),
           durationText: String(res.durationText),
+          durationMinutes: Number(res.durationMinutes),
           estimatedDeliveryFee: Number(res.estimatedDeliveryFee),
           isCalculating: false
         });
@@ -222,6 +225,7 @@ export const CartDrawer: React.FC = () => {
         deliveryNotes,
         tip,
         deliveryFee: fulfillmentType === 'pickup' ? 0 : liveDistanceResult?.estimatedDeliveryFee,
+        drivingMinutes: fulfillmentType === 'pickup' ? 0 : liveDistanceResult?.durationMinutes,
         paymentMethod: walletDeduction >= preWalletTotal ? 'Veyrang Wallet' : paymentMethod
       });
       setCheckoutStep('cart');
