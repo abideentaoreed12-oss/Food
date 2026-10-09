@@ -598,6 +598,116 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Logged out' });
   }
 
+  if (pathname === '/orders') {
+    const user = await getUser(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+
+    const restaurantId = String(body.restaurantId || '').trim();
+    const customerName = String(body.customerName || user.name || '').trim();
+    const customerPhone = String(body.customerPhone || user.phone || '').trim();
+    const customerAddress = String(body.customerAddress || '').trim();
+    const items = Array.isArray(body.items) ? body.items : [];
+    const currency = String(body.currency || 'NGN').toUpperCase();
+    const paymentMethod = String(body.paymentMethod || 'Debit Card');
+    const fulfillmentType = String(body.fulfillmentType || 'delivery');
+    const walletDeduction = Math.max(0, Number(body.walletDeduction) || 0);
+
+    if (!restaurantId || customerName.length < 2 || customerPhone.length < 6 ||
+        (fulfillmentType !== 'pickup' && customerAddress.length < 5) ||
+        !items.length || !['NGN', 'USD'].includes(currency)) {
+      return NextResponse.json({ success: false, error: 'Order details are incomplete. Check your delivery address, contact details, and cart items.' }, { status: 400 });
+    }
+
+    const restaurantResult = await d1.query('SELECT id, name, raw_json FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+    const restaurantRow: any = restaurantResult.results?.[0];
+    if (!restaurantResult.success) {
+      return NextResponse.json({ success: false, error: 'Restaurant data is temporarily unavailable.' }, { status: 503 });
+    }
+    if (!restaurantRow) {
+      return NextResponse.json({ success: false, error: 'The selected restaurant could not be found.' }, { status: 404 });
+    }
+
+    let restaurant: any;
+    try { restaurant = typeof restaurantRow.raw_json === 'string' ? JSON.parse(restaurantRow.raw_json) : restaurantRow.raw_json; }
+    catch { return NextResponse.json({ success: false, error: 'Restaurant menu data is invalid.' }, { status: 503 }); }
+
+    let verifiedSubtotal = 0;
+    const verifiedItems: any[] = [];
+    for (const item of items) {
+      const menuItemId = String(item.menuItemId || item.id || '').trim();
+      const quantity = Number(item.quantity);
+      if (!menuItemId || !Number.isInteger(quantity) || quantity < 1 || quantity > 50) {
+        return NextResponse.json({ success: false, error: 'One or more cart items are invalid.' }, { status: 400 });
+      }
+      let menuItem: any = null;
+      for (const category of restaurant.categories || []) {
+        const match = (category.items || []).find((candidate: any) => String(candidate.id) === menuItemId);
+        if (match) { menuItem = match; break; }
+      }
+      if (!menuItem || menuItem.isAvailable === false) {
+        return NextResponse.json({ success: false, error: 'A selected menu item is unavailable. Refresh the menu and try again.' }, { status: 409 });
+      }
+      let optionsTotal = 0;
+      const selectedOptions = Array.isArray(item.selectedOptions) ? item.selectedOptions : [];
+      for (const option of selectedOptions) {
+        let trustedOption: any = null;
+        for (const group of menuItem.customizations || menuItem.optionGroups || []) {
+          trustedOption = (group.options || []).find((candidate: any) => String(candidate.id) === String(option.optionId));
+          if (trustedOption) break;
+        }
+        if (!trustedOption) {
+          return NextResponse.json({ success: false, error: 'A selected customization is no longer available. Refresh your cart and try again.' }, { status: 409 });
+        }
+        optionsTotal += Math.max(0, Number(trustedOption.price) || 0);
+      }
+      const unitPrice = Math.max(0, Number(menuItem.price) || 0) + optionsTotal;
+      const itemTotal = Math.round(unitPrice * quantity * 100) / 100;
+      verifiedSubtotal += itemTotal;
+      verifiedItems.push({
+        menuItemId, name: menuItem.name, price: Number(menuItem.price) || 0, quantity,
+        selectedOptions, specialInstructions: String(item.specialInstructions || '').slice(0, 250), itemTotal
+      });
+    }
+
+    const subtotal = Math.round(verifiedSubtotal * 100) / 100;
+    const deliveryFee = fulfillmentType === 'pickup' ? 0 : Math.max(0, Number(body.deliveryFee) || 0);
+    const serviceFee = Math.max(0, Number(body.serviceFee) || 0);
+    const tip = Math.max(0, Number(body.tip) || 0);
+    const discountAmount = Math.max(0, Number(body.discountAmount) || 0);
+    const total = Math.max(0, Math.round((subtotal + deliveryFee + serviceFee + tip - discountAmount) * 100) / 100);
+    const chargeAmount = Math.max(0, Math.round((total - Math.min(walletDeduction, total)) * 100) / 100);
+    const orderId = `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const shortId = `QB-${Math.floor(1000 + Math.random() * 9000)}`;
+    const now = new Date().toISOString();
+    const paymentStatus = chargeAmount <= 0 ? 'paid' : 'pending';
+    const order: any = {
+      id: orderId, shortId, customerId: user.id, customerName, customerPhone, customerEmail: user.email,
+      customerAddress, customerApartment: String(body.customerApartment || ''), deliveryNotes: String(body.deliveryNotes || ''),
+      restaurantId, restaurantName: restaurant.name || restaurantRow.name, restaurantAddress: restaurant.address || '',
+      items: verifiedItems, subtotal, deliveryFee, serviceFee, tip, discountAmount,
+      walletDeduction: Math.min(walletDeduction, total), total, chargeAmount, currency, paymentMethod,
+      paymentStatus, transactionRef: null, status: 'placed', fulfillmentType,
+      scheduledSlot: body.scheduledSlot || null, isContactless: Boolean(body.isContactless),
+      createdAt: now, updatedAt: now
+    };
+
+    const inserted = await d1.query(
+      `INSERT INTO orders (id, short_id, customer_id, customer_name, customer_phone, customer_address, restaurant_id, restaurant_name, items, total, currency, payment_method, payment_status, status, raw_json, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [orderId, shortId, user.id, customerName, customerPhone, customerAddress, restaurantId,
+       order.restaurantName, JSON.stringify(verifiedItems), total, currency, paymentMethod,
+       paymentStatus, 'placed', JSON.stringify(order), now, now]
+    );
+    if (!inserted.success) {
+      console.error('[Orders API] Failed to persist order to D1');
+      return NextResponse.json({ success: false, error: 'Could not save your order. No payment has been started. Please try again.' }, { status: 503 });
+    }
+
+    return NextResponse.json({ success: true, data: order }, { status: 201 });
+  }
+
   if (pathname === '/payment/initialize') {
     const user = await getUser(req);
     if (!user) {
