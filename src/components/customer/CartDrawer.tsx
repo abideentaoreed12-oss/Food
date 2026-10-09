@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { formatCurrency } from '../../utils/format';
 import { useAuth } from '../../context/AuthContext';
@@ -67,6 +67,8 @@ export const CartDrawer: React.FC = () => {
     estimatedDeliveryFee: number;
     isCalculating?: boolean;
   } | null>(null);
+  const [distanceError, setDistanceError] = useState<string | null>(null);
+  const distanceRequestId = useRef(0);
 
   useEffect(() => {
     if (selectedAddress?.address && selectedAddress.address.trim()) {
@@ -82,29 +84,51 @@ export const CartDrawer: React.FC = () => {
     if (user?.phone) setCustomerPhone(user.phone);
   }, [user, selectedAddress]);
 
-  // Live real-time distance calculation when customer types/changes address
+  // Recalculate for each selected address. Never retain or display a previous quote after a failure.
   const calculateDistanceNow = useCallback(
     async (addressStr: string, coords?: { lat: number; lng: number }) => {
-      if (!cartRestaurant || !addressStr.trim()) { setLiveDistanceResult(null); return; }
+      const requestId = ++distanceRequestId.current;
+      const address = addressStr.trim();
+      if (!cartRestaurant || !address) {
+        setLiveDistanceResult(null);
+        setDistanceError(null);
+        return;
+      }
+
+      setLiveDistanceResult({
+        distanceKm: 0,
+        distanceText: '',
+        durationText: '',
+        estimatedDeliveryFee: 0,
+        isCalculating: true
+      });
+      setDistanceError(null);
+
       try {
-        setLiveDistanceResult((prev) => (prev ? { ...prev, isCalculating: true } : null));
+        const hasCoords = coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng) &&
+          coords.lat >= -90 && coords.lat <= 90 && coords.lng >= -180 && coords.lng <= 180;
         const res = await api.restaurants.calculateDistance({
           restaurantId: cartRestaurant.id,
-          userAddress: addressStr.trim(),
-          userLat: coords?.lat,
-          userLng: coords?.lng
+          userAddress: address,
+          ...(hasCoords ? { userLat: coords!.lat, userLng: coords!.lng } : {})
         });
-        if (res) {
-          setLiveDistanceResult({
-            distanceKm: res.distanceKm,
-            distanceText: res.distanceText,
-            durationText: res.durationText,
-            estimatedDeliveryFee: res.estimatedDeliveryFee,
-            isCalculating: false
-          });
+        if (requestId !== distanceRequestId.current) return;
+        if (!res || !Number.isFinite(Number(res.distanceKm)) ||
+            !Number.isFinite(Number(res.estimatedDeliveryFee)) ||
+            !res.distanceText || !res.durationText) {
+          throw new Error('The routing service did not return a valid distance quote. Please retry.');
         }
+        setLiveDistanceResult({
+          distanceKm: Number(res.distanceKm),
+          distanceText: String(res.distanceText),
+          durationText: String(res.durationText),
+          estimatedDeliveryFee: Number(res.estimatedDeliveryFee),
+          isCalculating: false
+        });
       } catch (err) {
-        setLiveDistanceResult((prev) => (prev ? { ...prev, isCalculating: false } : null));
+        if (requestId !== distanceRequestId.current) return;
+        setLiveDistanceResult(null);
+        setDistanceError(err instanceof Error ? err.message : 'Live distance could not be calculated. Please retry.');
       }
     },
     [cartRestaurant]
@@ -151,7 +175,7 @@ export const CartDrawer: React.FC = () => {
   const deliveryFee =
     fulfillmentType === 'pickup'
       ? 0
-      : liveDistanceResult?.estimatedDeliveryFee ?? cartRestaurant?.calculatedDeliveryFee ?? cartRestaurant?.deliveryFee ?? 0;
+      : liveDistanceResult && !liveDistanceResult.isCalculating ? liveDistanceResult.estimatedDeliveryFee : 0;
   // serviceFee resolved dynamically from Platform D1 settings
   const discount = appliedPromo ? appliedPromo.discountAmount : 0;
   const tip = fulfillmentType === 'pickup' ? 0 : selectedTipNGN;
@@ -514,11 +538,25 @@ export const CartDrawer: React.FC = () => {
                         </span>
                         <span className="font-bold font-mono text-orange-700">
                           {liveDistanceResult?.isCalculating ? (
-                            <span className="text-orange-500 font-normal italic">Calculating live...</span>
+                            <span className="text-orange-500 font-normal italic">Calculating live road distance…</span>
+                          ) : liveDistanceResult ? (
+                            `${liveDistanceResult.distanceText} · ${liveDistanceResult.durationText}`
                           ) : (
-                            `${liveDistanceResult?.distanceText || cartRestaurant.distanceText || (cartRestaurant.distanceKm ? `${cartRestaurant.distanceKm} km away` : 'Live Distance')} · ${liveDistanceResult?.durationText || cartRestaurant.durationText || `${cartRestaurant.deliveryTimeMin}–${cartRestaurant.deliveryTimeMax} min`}`
+                            <span className="text-red-600 font-medium">Live distance not verified</span>
                           )}
                         </span>
+                      </div>
+                    )}
+                    {distanceError && fulfillmentType !== 'pickup' && (
+                      <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700" role="alert">
+                        <p>{distanceError}</p>
+                        <button
+                          type="button"
+                          onClick={() => calculateDistanceNow(customAddress || selectedAddress?.address || user?.address || '')}
+                          className="mt-2 font-bold underline underline-offset-2"
+                        >
+                          Retry live distance
+                        </button>
                       </div>
                     )}
                   </div>
