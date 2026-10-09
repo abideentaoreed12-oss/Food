@@ -12,7 +12,7 @@ export async function sendEmail({ to, subject, html, text, hostHeader }: SendEma
   const apiKey = CONFIG.RESEND_API_KEY;
   if (!apiKey) {
     console.warn('[Email] RESEND_API_KEY is not configured; email delivery is disabled.');
-    return { success: true, mock: true };
+    return { success: false, disabled: true };
   }
 
   // Derive sender domain
@@ -52,7 +52,7 @@ export async function sendEmail({ to, subject, html, text, hostHeader }: SendEma
       console.error('[Email] Resend rejected the delivery request.');
       // Fallback gracefully so registration/auth is never blocked even if Resend restricts recipient/domain
       console.warn('Resend API restricted delivery, falling back to console-delivered mode.');
-      return { success: true, fallback: true, error: errBody.message };
+      return { success: false, error: 'Email provider rejected the delivery request.' };
     }
 
     const data = await res.json();
@@ -61,6 +61,6 @@ export async function sendEmail({ to, subject, html, text, hostHeader }: SendEma
   } catch (err: any) {
     console.error('[Email] Delivery request failed.');
     // Fallback gracefully so auth flow is smooth
-    return { success: true, fallback: true, error: err.message };
+    return { success: false, error: 'Email delivery failed.' };
   }
 }
