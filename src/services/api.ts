@@ -448,6 +448,26 @@ export const api = {
     updateSettings: async (data: any) =>
       request('/api/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
     purgeCache: async () =>
+      request('/api/admin/cache/purge', { method: 'POST' }),
+    createStaff: async (data: any) =>
+      request('/api/admin/staff', { method: 'POST', body: JSON.stringify(data) }),
+    deleteUser: async (id: string) =>
+      request(`/api/admin/users/${id}`, { method: 'DELETE' }),
+    adjustUserWallet: async (userId: string, amount: number, reason?: string) =>
+      request(`/api/admin/users/${userId}/wallet`, { method: 'POST', body: JSON.stringify({ amount, reason }) }),
+    deleteDriver: async (userId: string) =>
+      request(`/api/admin/drivers/${userId}`, { method: 'DELETE' }),
+    uploadAsset: async (key: string, dataBase64: string, contentType?: string) =>
+      request('/api/storage/upload', { method: 'POST', body: JSON.stringify({ key, dataBase64, contentType }) }),
+    deleteAsset: async (key: string) =>
+      request(`/api/storage/file/${encodeURIComponent(key)}`, { method: 'DELETE' }),
+    bulkUpdateCMS: async (settings: Record<string, string>) =>
+      request('/api/settings/bulk', { method: 'POST', body: JSON.stringify({ settings }) }),
+    saveSeoTags: async (data: { title: string; description: string; keywords: string }) =>
+      request('/api/admin/seo', { method: 'POST', body: JSON.stringify(data) }),
+    runDeveloperQuery: async (sql: string) =>
+      request('/api/admin/developer/query', { method: 'POST', body: JSON.stringify({ sql }) }),
+    purgeEdgeCache: async () =>
       request('/api/admin/cache/purge', { method: 'POST' })
   },
 
