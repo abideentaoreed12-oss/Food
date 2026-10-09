@@ -1,6 +1,7 @@
 import type { Currency } from '../types/index.ts';
 
-export const USD_TO_NGN_RATE = 1500;
+/** Fallback only — live rate should come from D1 platform_settings.currency_ngn_usd_rate */
+export const USD_TO_NGN_RATE = 1400;
 
 export function formatCurrency(amount: number | string | undefined | null, currency: Currency = 'NGN'): string {
   const numeric = typeof amount === 'number' ? amount : Number(amount);
