@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { api } from '../../services/api';
 import { useDelivery } from '../../context/DeliveryContext';
 import { formatCurrency } from '../../utils/format';
 import { Search, Plus, Star, Clock, Utensils, Store } from 'lucide-react';
@@ -7,6 +8,7 @@ import { MenuItem } from '../../types';
 export const SearchPage: React.FC = () => {
   const {
     restaurants,
+    selectedAddress,
     setSelectedRestaurantId,
     openCustomizer,
     addToCart,
@@ -14,20 +16,70 @@ export const SearchPage: React.FC = () => {
   } = useDelivery();
 
   const [query, setQuery] = useState('');
+  const [serverRestaurants, setServerRestaurants] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
 
-  const trendingTags = [
-    'Party Jollof',
-    'Classic Burger',
-    'Pepperoni Pizza',
-    'Beef Suya',
-    'Avocado Salad',
-    'Dumplings',
-    'French Fries'
-  ];
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setServerRestaurants([]);
+      setSearchError('');
+      setIsSearching(false);
+      return;
+    }
+    let cancelled = false;
+    setIsSearching(true);
+    setSearchError('');
+    const timer = setTimeout(async () => {
+      try {
+        const result: any = await api.restaurants.getAll({
+          search: q,
+          ...(selectedAddress?.address ? { address: selectedAddress.address } : {})
+        });
+        const list = Array.isArray(result) ? result : Array.isArray(result?.restaurants) ? result.restaurants : [];
+        if (!cancelled) setServerRestaurants(list);
+      } catch {
+        if (!cancelled) {
+          setServerRestaurants([]);
+          setSearchError('Live search is temporarily unavailable. Showing matches from loaded menus.');
+        }
+      } finally {
+        if (!cancelled) setIsSearching(false);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query, selectedAddress?.address]);
+
+  const searchableRestaurants = useMemo(() => {
+    const byId = new Map<string, any>();
+    [...(restaurants || []), ...serverRestaurants].forEach((restaurant: any) => {
+      if (restaurant?.id) byId.set(restaurant.id, restaurant);
+    });
+    return Array.from(byId.values());
+  }, [restaurants, serverRestaurants]);
+
+  const trendingTags = useMemo(() => {
+    const counts = new Map<string, number>();
+    searchableRestaurants.forEach((restaurant: any) => {
+      (restaurant.categories || []).forEach((category: any) => {
+        (category.items || []).forEach((item: any) => {
+          if (item?.isAvailable && item.name?.trim()) {
+            const name = item.name.trim();
+            counts.set(name, (counts.get(name) || 0) + 1);
+          }
+        });
+      });
+    });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([name]) => name);
+  }, [searchableRestaurants]);
 
   // Collect all dishes across all restaurants safely
   const allDishes: { dish: MenuItem; restaurantName: string }[] = [];
-  (restaurants || []).forEach((r) => {
+  searchableRestaurants.forEach((r) => {
     if (!r) return;
     (r.categories || []).forEach((cat) => {
       if (!cat) return;
@@ -49,7 +101,7 @@ export const SearchPage: React.FC = () => {
     : [];
 
   const matchingRestaurants = q
-    ? (restaurants || []).filter(
+    ? searchableRestaurants.filter(
         (r) =>
           r &&
           ((r.name || '').toLowerCase().includes(q) ||
@@ -59,6 +111,7 @@ export const SearchPage: React.FC = () => {
     : [];
 
   const handleAddDish = (dish: MenuItem) => {
+    if (dish.restaurantId) setSelectedRestaurantId(dish.restaurantId);
     if (dish.customizations && dish.customizations.length > 0) {
       openCustomizer(dish);
     } else {
@@ -113,6 +166,7 @@ export const SearchPage: React.FC = () => {
               {tag}
             </button>
           ))}
+          {trendingTags.length === 0 && <p className="text-xs text-slate-400">Popular dishes appear when live menus are available.</p>}
         </div>
       </div>
 
@@ -126,7 +180,9 @@ export const SearchPage: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-3">
+          {isSearching && <p className="text-xs text-slate-500">Searching live menus and kitchens…</p>}
+          {searchError && <p className="text-xs text-amber-700">{searchError}</p>}
           {/* Matching Dishes */}
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
@@ -196,14 +252,14 @@ export const SearchPage: React.FC = () => {
                       <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-slate-500">
                         <div className="flex items-center gap-1 text-slate-800">
                           <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                          <span className="font-bold">{(r.rating != null ? Number(r.rating) : 4.5).toFixed(1)}</span>
+                          <span className="font-bold">{r.rating != null && Number.isFinite(Number(r.rating)) ? Number(r.rating).toFixed(1) : 'Not rated'}</span>
                         </div>
                         <span>·</span>
-                        <span>{r.durationText || `${r.deliveryTimeMin} min`}</span>
+                        <span>{r.durationText || (r.deliveryTimeMin ? `${r.deliveryTimeMin} min` : 'Time unavailable')}</span>
                         <span>·</span>
-                        <span className="text-orange-600 font-medium">{r.distanceText || (r.distanceKm ? `${r.distanceKm} km` : 'Live Distance')}</span>
+                        <span className="text-orange-600 font-medium">{r.distanceText || (Number.isFinite(Number(r.distanceKm)) && Number(r.distanceKm) > 0 ? `${r.distanceKm} km` : 'Distance unavailable')}</span>
                         <span>·</span>
-                        <span>{formatCurrency(r.calculatedDeliveryFee || r.deliveryFee, currency)} fee</span>
+                        <span>{Number.isFinite(Number(r.calculatedDeliveryFee ?? r.deliveryFee)) ? `${formatCurrency(Number(r.calculatedDeliveryFee ?? r.deliveryFee), currency)} fee` : 'Fee unavailable'}</span>
                       </div>
                     </div>
                     <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-lg">
