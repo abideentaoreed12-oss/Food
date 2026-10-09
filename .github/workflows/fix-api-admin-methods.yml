@@ -11,10 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Inject missing admin methods
-        run: python3 scripts/inject_admin_methods.py
+      - name: Align api signatures with AdminPortal
+        run: python3 scripts/fix_api_signatures.py
 
-      - name: Commit and push
+      - name: Commit and push once
         run: |
           git config user.name "veyrang-bot"
           git config user.email "bot@veyrang.com"
@@ -23,5 +23,5 @@ jobs:
             echo "No changes"
             exit 0
           fi
-          git commit -m "fix(api): add missing admin methods (createStaff, deleteUser, ...)"
+          git commit -m "fix(api): align updateCMS(key,value) + ensure AdminPortal methods"
           git push
