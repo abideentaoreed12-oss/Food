@@ -109,6 +109,7 @@ export const CartDrawer: React.FC = () => {
         distanceKm: 0,
         distanceText: '',
         durationText: '',
+        durationMinutes: 0,
         estimatedDeliveryFee: 0,
         isCalculating: true
       });
