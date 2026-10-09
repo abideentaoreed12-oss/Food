@@ -1051,6 +1051,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (ord.id === orderId) {
           const nowStr = formatOrderTime(new Date());
           const descMap: Record<OrderStatus, string> = {
+            awaiting_payment: 'Awaiting payment confirmation',
             placed: 'Order placed by customer',
             confirmed: 'Restaurant accepted ticket',
             preparing: 'Kitchen started cooking meal',
