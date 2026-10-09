@@ -21,6 +21,7 @@ import settingsRoutes from './routes/settings';
 import storageRoutes from './routes/storage';
 import reviewsRoutes from './routes/reviews';
 import geocodeRoutes from './routes/geocode';
+import supportRoutes from './routes/support';
 
 export function createServerApp(): Express {
   const app = express();
@@ -56,6 +57,7 @@ export function createServerApp(): Express {
   apiRouter.use('/storage', storageRoutes);
   apiRouter.use('/reviews', reviewsRoutes);
   apiRouter.use('/geocode', geocodeRoutes);
+  apiRouter.use('/support', supportRoutes);
 
   app.get(['/api', '/api/'], (req: Request, res: Response) => {
     res.status(200).json({ success: true, status: 'operational' });
