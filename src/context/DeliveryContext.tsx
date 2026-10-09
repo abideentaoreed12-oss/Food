@@ -99,6 +99,8 @@ interface DeliveryContextType {
     deliveryNotes?: string;
     tip: number;
     paymentMethod: string;
+    deliveryFee?: number;
+    drivingMinutes?: number;
   }) => Promise<Order>;
   advanceOrderStatus: (orderId: string, newStatus: OrderStatus, note?: string) => Promise<void>;
   verifyOrderHandover: (orderId: string, pin: string) => Promise<boolean>;
