@@ -715,13 +715,19 @@ async function deleteR2Asset(urlOrKey?: string | null) {
     key = key.replace(/[^a-zA-Z0-9_\-\.\/]/g, '').replace(/^\/+/, '');
     if (!key) return;
 
-    const r2Url = `https://api.cloudflare.com/client/v4/accounts/${CONFIG.CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${CONFIG.CLOUDFLARE_R2_BUCKET}/objects/${key}`;
-    await fetch(r2Url, {
+    const encodedKey = key.split('/').map(encodeURIComponent).join('/');
+    const r2Url = `https://api.cloudflare.com/client/v4/accounts/${CONFIG.CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${CONFIG.CLOUDFLARE_R2_BUCKET}/objects/${encodedKey}`;
+    const response = await fetch(r2Url, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${CONFIG.CLOUDFLARE_R2_API_TOKEN}`
-      }
+      },
+      cache: 'no-store'
     });
+    const result = await response.json().catch(() => null) as any;
+    if (!response.ok || result?.success !== true) {
+      console.error('Failed to clean up R2 asset:', result?.errors?.[0]?.message || `HTTP ${response.status}`);
+    }
   } catch (err) {
     console.error('Failed to clean up R2 asset:', err);
   }
