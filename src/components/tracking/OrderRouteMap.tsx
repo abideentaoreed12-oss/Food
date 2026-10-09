@@ -1,13 +1,18 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { Map, AdvancedMarker, useApiIsLoaded, useMap } from '@vis.gl/react-google-maps';
 import { Order } from '../../types';
 import { useDelivery } from '../../context/DeliveryContext';
-import { Store, MapPin, Bike, Navigation, Compass, Radio, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Store, MapPin, Bike, Navigation, Compass, Radio } from 'lucide-react';
 
 interface OrderRouteMapProps {
   order: Order;
   courierLocation?: { lat: number; lng: number; heading?: number; speed?: number } | null;
-  signalStatus?: 'live' | 'paused' | 'searching';
+  signalStatus?: 'live' | 'paused' | 'searching' | 'transmitting';
+  routePoints?: { lat: number; lng: number }[];
+  remainingDistanceKm?: number;
+  totalDistanceKm?: number;
+  kitchenLocation?: { lat: number; lng: number; name?: string; formattedAddress?: string };
+  customerLocation?: { lat: number; lng: number; formattedAddress?: string };
   className?: string;
 }
 
@@ -19,7 +24,7 @@ const GoogleMapsPolylineRoute: React.FC<{
   const map = useMap();
 
   useEffect(() => {
-    if (!map || typeof window === 'undefined' || !window.google || !window.google.maps) return;
+    if (!map || typeof window === 'undefined' || !window.google || !window.google.maps || path.length < 2) return;
 
     const polyline = new window.google.maps.Polyline({
       path,
@@ -30,7 +35,6 @@ const GoogleMapsPolylineRoute: React.FC<{
       map
     });
 
-    // Auto-fit map viewport to include all points
     try {
       const bounds = new window.google.maps.LatLngBounds();
       path.forEach((p) => bounds.extend(p));
@@ -45,41 +49,7 @@ const GoogleMapsPolylineRoute: React.FC<{
   return null;
 };
 
-// Helper: resolve realistic coordinates based on Lagos/Abuja addresses
-function resolveAddressCoordinates(addr: string, fallbackLat = 6.4474, fallbackLng = 3.4723): { lat: number; lng: number; hub: string } {
-  const lower = (addr || '').toLowerCase();
-  if (lower.includes('lekki') || lower.includes('admiralty')) {
-    return { lat: 6.4520, lng: 3.4880, hub: 'Lekki Phase 1, Lagos' };
-  }
-  if (lower.includes('victoria') || lower.includes('vi ') || lower.includes('v.i') || lower.includes('ahmadu')) {
-    return { lat: 6.4281, lng: 3.4219, hub: 'Victoria Island, Lagos' };
-  }
-  if (lower.includes('ikoyi') || lower.includes('bourdillon') || lower.includes('banana')) {
-    return { lat: 6.4549, lng: 3.4357, hub: 'Ikoyi, Lagos' };
-  }
-  if (lower.includes('ikeja') || lower.includes('allen') || lower.includes('gra') || lower.includes('isaac')) {
-    return { lat: 6.5866, lng: 3.3578, hub: 'Ikeja GRA, Lagos' };
-  }
-  if (lower.includes('yaba') || lower.includes('macaulay') || lower.includes('akoka')) {
-    return { lat: 6.5059, lng: 3.3781, hub: 'Yaba, Lagos' };
-  }
-  if (lower.includes('surulere') || lower.includes('adeniran')) {
-    return { lat: 6.4975, lng: 3.3572, hub: 'Surulere, Lagos' };
-  }
-  if (lower.includes('marina') || lower.includes('lagos island') || lower.includes('broad')) {
-    return { lat: 6.4531, lng: 3.3958, hub: 'Lagos Island, Lagos' };
-  }
-  if (lower.includes('abuja') || lower.includes('wuse') || lower.includes('maitama') || lower.includes('garki')) {
-    return { lat: 9.0765, lng: 7.4721, hub: 'Wuse 2, Abuja' };
-  }
-  if (lower.includes('ibadan') || lower.includes('bodija')) {
-    return { lat: 7.4225, lng: 3.9056, hub: 'Bodija, Ibadan' };
-  }
-  // Default offset slightly from origin
-  return { lat: fallbackLat + 0.012, lng: fallbackLng + 0.018, hub: 'Metropolitan Delivery Zone' };
-}
-
-// Great-circle distance calculation
+// Accurate Haversine distance calculation
 function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -95,84 +65,203 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
   order,
   courierLocation,
   signalStatus = 'live',
+  routePoints: propRoutePoints,
+  remainingDistanceKm: propRemainingKm,
+  totalDistanceKm: propTotalKm,
+  kitchenLocation: propKitchenLoc,
+  customerLocation: propCustomerLoc,
   className = ''
 }) => {
   const { restaurants } = useDelivery();
   const apiIsLoaded = useApiIsLoaded();
 
-  // 1. Resolve Kitchen Origin Coordinates
+  const [geocodedCustomer, setGeocodedCustomer] = useState<{ lat: number; lng: number } | null>(null);
+
+  // 1. Resolve Kitchen Origin Coordinates Dynamically
   const kitchenCoord = useMemo(() => {
-    const matchingRest = (restaurants || []).find((r) => r.id === order.restaurantId);
-    if (matchingRest && typeof matchingRest.lat === 'number' && typeof matchingRest.lng === 'number') {
-      return { lat: matchingRest.lat, lng: matchingRest.lng, name: matchingRest.name, address: matchingRest.address };
+    if (propKitchenLoc && Number.isFinite(propKitchenLoc.lat) && Number.isFinite(propKitchenLoc.lng)) {
+      return {
+        lat: propKitchenLoc.lat,
+        lng: propKitchenLoc.lng,
+        name: propKitchenLoc.name || order.restaurantName || 'Kitchen Hub',
+        address: propKitchenLoc.formattedAddress || order.restaurantAddress || 'Kitchen Address'
+      };
     }
-    const resolved = resolveAddressCoordinates(order.restaurantAddress || order.restaurantName || '');
-    return { lat: resolved.lat, lng: resolved.lng, name: order.restaurantName || 'Kitchen Hub', address: order.restaurantAddress || resolved.hub };
-  }, [order.restaurantId, order.restaurantAddress, order.restaurantName, restaurants]);
+    const matchingRest = (restaurants || []).find((r) => r.id === order.restaurantId);
+    if (matchingRest && Number.isFinite(matchingRest.lat) && Number.isFinite(matchingRest.lng)) {
+      return {
+        lat: matchingRest.lat,
+        lng: matchingRest.lng,
+        name: matchingRest.name,
+        address: matchingRest.address
+      };
+    }
+    if (Number.isFinite(order.restaurantLat) && Number.isFinite(order.restaurantLng)) {
+      return {
+        lat: order.restaurantLat!,
+        lng: order.restaurantLng!,
+        name: order.restaurantName || 'Kitchen Hub',
+        address: order.restaurantAddress || 'Kitchen Address'
+      };
+    }
+    return {
+      lat: 6.4474,
+      lng: 3.4723,
+      name: order.restaurantName || 'Kitchen Hub',
+      address: order.restaurantAddress || '14 Admiralty Way, Lekki'
+    };
+  }, [propKitchenLoc, order.restaurantId, order.restaurantLat, order.restaurantLng, order.restaurantName, order.restaurantAddress, restaurants]);
 
-  // 2. Resolve Customer Delivery Destination Coordinates
+  // Dynamic client-side geocoding for customer address if no coordinates stored
+  useEffect(() => {
+    if (propCustomerLoc?.lat || (Number.isFinite(order.customerLat) && Number.isFinite(order.customerLng))) {
+      return;
+    }
+    const addr = order.customerAddress?.trim();
+    if (!addr) return;
+
+    let isMounted = true;
+    fetch(`/api/geocode?address=${encodeURIComponent(addr)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && data.data && Number.isFinite(data.data.lat) && Number.isFinite(data.data.lng)) {
+          setGeocodedCustomer({ lat: data.data.lat, lng: data.data.lng });
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [order.customerAddress, order.customerLat, order.customerLng, propCustomerLoc]);
+
+  // 2. Resolve Customer Delivery Destination Coordinates Dynamically
   const customerCoord = useMemo(() => {
-    const resolved = resolveAddressCoordinates(order.customerAddress || '', kitchenCoord.lat, kitchenCoord.lng);
-    return { lat: resolved.lat, lng: resolved.lng, address: order.customerAddress || resolved.hub };
-  }, [order.customerAddress, kitchenCoord]);
+    if (propCustomerLoc && Number.isFinite(propCustomerLoc.lat) && Number.isFinite(propCustomerLoc.lng)) {
+      return {
+        lat: propCustomerLoc.lat,
+        lng: propCustomerLoc.lng,
+        address: propCustomerLoc.formattedAddress || order.customerAddress || 'Delivery Address'
+      };
+    }
+    if (Number.isFinite(order.customerLat) && Number.isFinite(order.customerLng)) {
+      return {
+        lat: order.customerLat!,
+        lng: order.customerLng!,
+        address: order.customerAddress || 'Delivery Address'
+      };
+    }
+    if (geocodedCustomer) {
+      return {
+        lat: geocodedCustomer.lat,
+        lng: geocodedCustomer.lng,
+        address: order.customerAddress || 'Delivery Address'
+      };
+    }
+    // Dynamic offset based on city hash to give stable, distinct realistic coordinates
+    let hash = 0;
+    for (let i = 0; i < (order.customerAddress || '').length; i++) {
+      hash = (hash << 5) - hash + order.customerAddress!.charCodeAt(i);
+      hash |= 0;
+    }
+    const deltaLat = 0.008 + (Math.abs(hash % 100) / 100) * 0.02;
+    const deltaLng = 0.008 + (Math.abs((hash >> 4) % 100) / 100) * 0.02;
+    return {
+      lat: kitchenCoord.lat + deltaLat,
+      lng: kitchenCoord.lng + deltaLng,
+      address: order.customerAddress || 'Delivery Address'
+    };
+  }, [propCustomerLoc, order.customerLat, order.customerLng, order.customerAddress, geocodedCustomer, kitchenCoord]);
 
-  // 3. Compute Live Courier Position
-  // If active telemetry is coming from /api/orders/:id/tracking, use it.
-  // Otherwise, interpolate smoothly based on order.routeProgress along the vector.
+  // 3. Compute Progress Ratio
   const progressRatio = useMemo(() => {
     if (order.status === 'delivered') return 1;
     if (order.status === 'placed') return 0.05;
     if (order.status === 'confirmed') return 0.15;
-    if (order.status === 'preparing') return 0.3;
-    if (order.status === 'ready_for_pickup') return 0.5;
+    if (order.status === 'preparing') return 0.25;
+    if (order.status === 'ready_for_pickup') return 0.35;
     if (order.status === 'in_transit') {
       const p = order.routeProgress != null ? order.routeProgress : 65;
-      return Math.max(0.5, Math.min(0.95, p / 100));
+      return Math.max(0.4, Math.min(0.96, p / 100));
     }
     return 0;
   }, [order.status, order.routeProgress]);
 
+  // 4. Generate or Use Real Road Waypoints for Route
+  const routeWaypoints = useMemo(() => {
+    if (propRoutePoints && propRoutePoints.length >= 2) {
+      return propRoutePoints;
+    }
+    // Generate curved road waypoints along the geographic arc
+    const points: { lat: number; lng: number }[] = [];
+    const steps = 8;
+    for (let i = 0; i <= steps; i++) {
+      const frac = i / steps;
+      const curve = Math.sin(frac * Math.PI) * 0.0025;
+      points.push({
+        lat: kitchenCoord.lat + (customerCoord.lat - kitchenCoord.lat) * frac + curve,
+        lng: kitchenCoord.lng + (customerCoord.lng - kitchenCoord.lng) * frac - curve * 0.7
+      });
+    }
+    return points;
+  }, [propRoutePoints, kitchenCoord, customerCoord]);
+
+  // 5. Compute Live Courier Position along Route
   const courierCoord = useMemo(() => {
-    if (courierLocation && typeof courierLocation.lat === 'number' && typeof courierLocation.lng === 'number') {
+    if (courierLocation && Number.isFinite(courierLocation.lat) && Number.isFinite(courierLocation.lng)) {
       return courierLocation;
     }
-    // Interpolated waypoint
+    if (progressRatio >= 1) {
+      return { lat: customerCoord.lat, lng: customerCoord.lng, speed: 0, heading: 0 };
+    }
+    if (progressRatio <= 0.05) {
+      return { lat: kitchenCoord.lat, lng: kitchenCoord.lng, speed: 0, heading: 0 };
+    }
+    // Interpolate along actual route road waypoints
+    if (routeWaypoints.length >= 2) {
+      const totalSegs = routeWaypoints.length - 1;
+      const targetIdx = progressRatio * totalSegs;
+      const segIdx = Math.min(totalSegs - 1, Math.floor(targetIdx));
+      const segFrac = targetIdx - segIdx;
+      const pA = routeWaypoints[segIdx];
+      const pB = routeWaypoints[segIdx + 1];
+
+      const lat = pA.lat + (pB.lat - pA.lat) * segFrac;
+      const lng = pA.lng + (pB.lng - pA.lng) * segFrac;
+
+      const y = Math.sin((pB.lng - pA.lng) * Math.PI / 180) * Math.cos(pB.lat * Math.PI / 180);
+      const x = Math.cos(pA.lat * Math.PI / 180) * Math.sin(pB.lat * Math.PI / 180) -
+                Math.sin(pA.lat * Math.PI / 180) * Math.cos(pB.lat * Math.PI / 180) * Math.cos((pB.lng - pA.lng) * Math.PI / 180);
+      const heading = Math.round((Math.atan2(y, x) * 180 / Math.PI + 360) % 360);
+
+      return {
+        lat,
+        lng,
+        speed: order.status === 'in_transit' ? 28 : (order.status === 'preparing' ? 12 : 0),
+        heading
+      };
+    }
+
     return {
       lat: kitchenCoord.lat + (customerCoord.lat - kitchenCoord.lat) * progressRatio,
       lng: kitchenCoord.lng + (customerCoord.lng - kitchenCoord.lng) * progressRatio,
       speed: order.status === 'in_transit' ? 28 : 0,
       heading: 45
     };
-  }, [courierLocation, kitchenCoord, customerCoord, progressRatio, order.status]);
+  }, [courierLocation, progressRatio, customerCoord, kitchenCoord, routeWaypoints, order.status]);
 
-  // Total trip distance and remaining distance
+  // Trip and remaining distances
   const totalTripKm = useMemo(() => {
-    return calculateDistanceKm(kitchenCoord.lat, kitchenCoord.lng, customerCoord.lat, customerCoord.lng) || 3.5;
-  }, [kitchenCoord, customerCoord]);
+    if (propTotalKm && Number.isFinite(propTotalKm)) return propTotalKm;
+    return calculateDistanceKm(kitchenCoord.lat, kitchenCoord.lng, customerCoord.lat, customerCoord.lng) || 2.5;
+  }, [propTotalKm, kitchenCoord, customerCoord]);
 
   const remainingDistanceKm = useMemo(() => {
     if (order.status === 'delivered') return 0;
+    if (propRemainingKm && Number.isFinite(propRemainingKm)) return propRemainingKm;
     const dist = calculateDistanceKm(courierCoord.lat, courierCoord.lng, customerCoord.lat, customerCoord.lng);
     return Math.max(0.2, dist);
-  }, [courierCoord, customerCoord, order.status]);
-
-  // Route path waypoints for polyline
-  const routeWaypoints = useMemo(() => {
-    // Generate curved/intermediate road points between kitchen, courier, and destination
-    const midLat1 = kitchenCoord.lat + (courierCoord.lat - kitchenCoord.lat) * 0.5 + 0.002;
-    const midLng1 = kitchenCoord.lng + (courierCoord.lng - kitchenCoord.lng) * 0.5 - 0.001;
-
-    const midLat2 = courierCoord.lat + (customerCoord.lat - courierCoord.lat) * 0.5 - 0.002;
-    const midLng2 = courierCoord.lng + (customerCoord.lng - courierCoord.lng) * 0.5 + 0.001;
-
-    return [
-      { lat: kitchenCoord.lat, lng: kitchenCoord.lng },
-      { lat: midLat1, lng: midLng1 },
-      { lat: courierCoord.lat, lng: courierCoord.lng },
-      { lat: midLat2, lng: midLng2 },
-      { lat: customerCoord.lat, lng: customerCoord.lng }
-    ];
-  }, [kitchenCoord, courierCoord, customerCoord]);
+  }, [order.status, propRemainingKm, courierCoord, customerCoord]);
 
   const centerCoord = useMemo(() => {
     return {
@@ -181,23 +270,55 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
     };
   }, [kitchenCoord, customerCoord]);
 
-  // Dynamic 2D projection for the interactive vector route map
+  // True Geographic Bounding-Box Coordinate Projection for the SVG Vector Map
   const svgMapPoints = useMemo(() => {
-    const p0 = { x: 70, y: 75 }; // Kitchen Origin
-    const p1 = { x: 230, y: 175 }; // Control 1
-    const p2 = { x: 370, y: 65 }; // Control 2
-    const p3 = { x: 530, y: 165 }; // Customer Destination
+    const allPoints = [...routeWaypoints, courierCoord, kitchenCoord, customerCoord];
+    let minLat = Infinity, maxLat = -Infinity;
+    let minLng = Infinity, maxLng = -Infinity;
 
-    const t = Math.max(0, Math.min(1, progressRatio));
-    // Cubic bezier calculation
-    const mt = 1 - t;
-    const riderX = mt * mt * mt * p0.x + 3 * mt * mt * t * p1.x + 3 * mt * t * t * p2.x + t * t * t * p3.x;
-    const riderY = mt * mt * mt * p0.y + 3 * mt * mt * t * p1.y + 3 * mt * t * t * p2.y + t * t * t * p3.y;
+    for (const p of allPoints) {
+      if (p.lat < minLat) minLat = p.lat;
+      if (p.lat > maxLat) maxLat = p.lat;
+      if (p.lng < minLng) minLng = p.lng;
+      if (p.lng > maxLng) maxLng = p.lng;
+    }
 
-    const pathD = `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${p3.x} ${p3.y}`;
+    const padX = 70;
+    const padY = 55;
+    const w = 600 - padX * 2;
+    const h = 240 - padY * 2;
 
-    return { p0, p1, p2, p3, riderX, riderY, pathD, t };
-  }, [progressRatio]);
+    const latSpan = Math.max(0.004, maxLat - minLat);
+    const lngSpan = Math.max(0.004, maxLng - minLng);
+
+    const project = (pt: { lat: number; lng: number }) => ({
+      x: Math.round(padX + ((pt.lng - minLng) / lngSpan) * w),
+      y: Math.round(padY + ((maxLat - pt.lat) / latSpan) * h)
+    });
+
+    const projectedWaypoints = routeWaypoints.map(project);
+    const pOrigin = project(kitchenCoord);
+    const pDest = project(customerCoord);
+    const pRider = project(courierCoord);
+
+    // Build SVG Path
+    let pathD = `M ${projectedWaypoints[0]?.x || pOrigin.x} ${projectedWaypoints[0]?.y || pOrigin.y}`;
+    for (let i = 1; i < projectedWaypoints.length; i++) {
+      const prev = projectedWaypoints[i - 1];
+      const curr = projectedWaypoints[i];
+      const midX = (prev.x + curr.x) / 2;
+      const midY = (prev.y + curr.y) / 2;
+      pathD += ` Q ${prev.x} ${prev.y}, ${midX} ${midY}`;
+    }
+    const last = projectedWaypoints[projectedWaypoints.length - 1] || pDest;
+    pathD += ` L ${last.x} ${last.y}`;
+
+    return {
+      pathD,
+      riderX: pRider.x,
+      riderY: pRider.y
+    };
+  }, [routeWaypoints, courierCoord, kitchenCoord, customerCoord]);
 
   return (
     <div className={`relative w-full rounded-2xl overflow-hidden border border-slate-200/90 shadow-sm bg-slate-900 text-white ${className}`}>
@@ -371,7 +492,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
                   {order.status === 'delivered' ? 'Destination Reached' : `${remainingDistanceKm} km remaining`}
                 </div>
                 <div className="text-[10px] text-slate-400 font-mono">
-                  Speed: {order.status === 'in_transit' ? '28 km/h' : '0 km/h'} · Active GPS
+                  Speed: {order.status === 'in_transit' ? `${courierCoord.speed || 28} km/h` : '0 km/h'} · Active GPS
                 </div>
               </div>
 
@@ -420,3 +541,4 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
     </div>
   );
 };
+

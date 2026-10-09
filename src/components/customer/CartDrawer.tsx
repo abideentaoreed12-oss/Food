@@ -59,6 +59,7 @@ export const CartDrawer: React.FC = () => {
   const [customerPhone, setCustomerPhone] = useState(user?.phone || '');
   const [customAddress, setCustomAddress] = useState(selectedAddress?.address || user?.address || '');
   const [customerApartment, setCustomerApartment] = useState(selectedAddress?.apartment || '');
+  const [customCoords, setCustomCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [liveDistanceResult, setLiveDistanceResult] = useState<{
     distanceKm: number;
@@ -66,6 +67,8 @@ export const CartDrawer: React.FC = () => {
     durationText: string;
     durationMinutes: number;
     estimatedDeliveryFee: number;
+    userLocation?: { lat: number; lng: number; formattedAddress?: string };
+    restaurantLocation?: { lat: number; lng: number; formattedAddress?: string };
     isCalculating?: boolean;
   } | null>(null);
   const [distanceError, setDistanceError] = useState<string | null>(null);
@@ -136,8 +139,13 @@ export const CartDrawer: React.FC = () => {
           durationText: String(res.durationText),
           durationMinutes: Number(res.durationMinutes),
           estimatedDeliveryFee: Number(res.estimatedDeliveryFee),
+          userLocation: res.userLocation,
+          restaurantLocation: res.restaurantLocation,
           isCalculating: false
         });
+        if (res.userLocation?.lat && res.userLocation?.lng) {
+          setCustomCoords({ lat: res.userLocation.lat, lng: res.userLocation.lng });
+        }
       } catch (err) {
         if (requestId !== distanceRequestId.current) return;
         setLiveDistanceResult(null);
@@ -223,6 +231,8 @@ export const CartDrawer: React.FC = () => {
         customerPhone: customerPhone || user?.phone || '+234 800 000 0000',
         customerAddress: customAddress || selectedAddress?.address || 'Delivery Address',
         customerApartment,
+        customerLat: customCoords?.lat || liveDistanceResult?.userLocation?.lat,
+        customerLng: customCoords?.lng || liveDistanceResult?.userLocation?.lng,
         deliveryNotes,
         tip,
         deliveryFee: fulfillmentType === 'pickup' ? 0 : liveDistanceResult?.estimatedDeliveryFee,
@@ -519,6 +529,9 @@ export const CartDrawer: React.FC = () => {
                         setCustomAddress(data.address);
                         if (data.apartment && !customerApartment) {
                           setCustomerApartment(data.apartment);
+                        }
+                        if (data.latitude && data.longitude) {
+                          setCustomCoords({ lat: data.latitude, lng: data.longitude });
                         }
                         if (data.address) {
                           calculateDistanceNow(

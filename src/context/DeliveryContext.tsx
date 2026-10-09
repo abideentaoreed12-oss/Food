@@ -96,6 +96,8 @@ interface DeliveryContextType {
     customerPhone: string;
     customerAddress: string;
     customerApartment?: string;
+    customerLat?: number;
+    customerLng?: number;
     deliveryNotes?: string;
     tip: number;
     paymentMethod: string;
@@ -801,6 +803,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     customerPhone: string;
     customerAddress: string;
     customerApartment?: string;
+    customerLat?: number;
+    customerLng?: number;
     deliveryNotes?: string;
     tip: number;
     paymentMethod: string;
@@ -847,10 +851,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       customerPhone: details.customerPhone,
       customerAddress: details.customerAddress,
       customerApartment: details.customerApartment,
+      customerLat: details.customerLat,
+      customerLng: details.customerLng,
       deliveryNotes: details.deliveryNotes,
       restaurantId: cartRestaurant.id,
       restaurantName: cartRestaurant.name,
       restaurantAddress: cartRestaurant.address,
+      restaurantLat: cartRestaurant.lat,
+      restaurantLng: cartRestaurant.lng,
       items: [...cart],
       status: 'placed',
       subtotal: itemsSubtotal,
@@ -889,6 +897,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         customerEmail: user?.email || undefined,
         customerAddress: details.customerAddress,
         customerApartment: details.customerApartment,
+        customerLat: details.customerLat,
+        customerLng: details.customerLng,
         deliveryNotes: details.deliveryNotes,
         restaurantId: cartRestaurant.id,
         restaurantName: cartRestaurant.name,

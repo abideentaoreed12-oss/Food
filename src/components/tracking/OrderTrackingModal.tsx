@@ -42,8 +42,16 @@ export const OrderTrackingModal: React.FC = () => {
   const [secondsLeft, setSecondsLeft] = useState<number>(0);
 
   // Live Courier GPS Location & Connection Health Polling
-  const [courierLoc, setCourierLoc] = useState<{ lat: number; lng: number; updatedAt?: string } | null>(null);
-  const [signalStatus, setSignalStatus] = useState<'live' | 'paused' | 'searching'>('searching');
+  const [courierLoc, setCourierLoc] = useState<{ lat: number; lng: number; heading?: number; speed?: number; updatedAt?: string } | null>(null);
+  const [signalStatus, setSignalStatus] = useState<'live' | 'paused' | 'searching' | 'transmitting'>('searching');
+  const [trackingData, setTrackingData] = useState<{
+    routePoints?: { lat: number; lng: number }[];
+    remainingDistanceKm?: number;
+    remainingDurationMinutes?: number;
+    totalDistanceKm?: number;
+    kitchenLocation?: { lat: number; lng: number; name?: string; formattedAddress?: string };
+    customerLocation?: { lat: number; lng: number; formattedAddress?: string };
+  } | null>(null);
 
   const order = activeTrackingOrder;
   const isDelivered = order?.status === 'delivered';
@@ -60,13 +68,21 @@ export const OrderTrackingModal: React.FC = () => {
       try {
         const res = await fetch(`/api/orders/${orderId}/tracking`);
         const json = await res.json();
-        if (json.success) {
-          if (json.tracking?.location) {
+        if (json.success && json.tracking) {
+          if (json.tracking.location) {
             setCourierLoc(json.tracking.location);
           }
-          if (json.tracking?.signalStatus) {
+          if (json.tracking.signalStatus) {
             setSignalStatus(json.tracking.signalStatus || 'searching');
           }
+          setTrackingData({
+            routePoints: json.tracking.routePoints,
+            remainingDistanceKm: json.tracking.remainingDistanceKm,
+            remainingDurationMinutes: json.tracking.remainingDurationMinutes,
+            totalDistanceKm: json.tracking.totalDistanceKm,
+            kitchenLocation: json.tracking.kitchenLocation,
+            customerLocation: json.tracking.customerLocation
+          });
           if (json.order?.status && json.order.status !== orderStatus) {
             refreshData();
           }
@@ -77,7 +93,7 @@ export const OrderTrackingModal: React.FC = () => {
     };
 
     fetchLiveTracking();
-    const trackingInterval = setInterval(fetchLiveTracking, 5000);
+    const trackingInterval = setInterval(fetchLiveTracking, 4000);
     return () => clearInterval(trackingInterval);
   }, [orderId, isDelivered]);
 
@@ -285,6 +301,11 @@ export const OrderTrackingModal: React.FC = () => {
               order={order}
               courierLocation={courierLoc}
               signalStatus={signalStatus}
+              routePoints={trackingData?.routePoints}
+              remainingDistanceKm={trackingData?.remainingDistanceKm}
+              totalDistanceKm={trackingData?.totalDistanceKm}
+              kitchenLocation={trackingData?.kitchenLocation}
+              customerLocation={trackingData?.customerLocation}
             />
           </div>
 

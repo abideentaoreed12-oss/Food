@@ -213,10 +213,14 @@ export interface Order {
   customerPhone: string;
   customerAddress: string;
   customerApartment?: string;
+  customerLat?: number;
+  customerLng?: number;
   deliveryNotes?: string;
   restaurantId: string;
   restaurantName: string;
   restaurantAddress: string;
+  restaurantLat?: number;
+  restaurantLng?: number;
   items: CartItem[];
   subtotal: number;
   deliveryFee: number;
