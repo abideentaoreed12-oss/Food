@@ -89,6 +89,8 @@ export const AdminPortal: React.FC = () => {
   const [promosList, setPromosList] = useState<any[]>([]);
   const [reviewsList, setReviewsList] = useState<any[]>([]);
   const [supportTicketsList, setSupportTicketsList] = useState<any[]>([]);
+  const [supportReplyDrafts, setSupportReplyDrafts] = useState<Record<string, string>>({});
+  const [sendingSupportReply, setSendingSupportReply] = useState<string | null>(null);
   const [restaurantsList, setRestaurantsList] = useState<any[]>([]);
   const [cmsCopy, setCmsCopy] = useState<Record<string, string>>({});
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -982,6 +984,20 @@ export const AdminPortal: React.FC = () => {
     } catch (err: any) {
       showActionFeedback(`Update failed: ${err.message}`);
     }
+  };
+
+  const handleReplySupportTicket = async (id: string) => {
+    const reply = (supportReplyDrafts[id] || '').trim();
+    if (reply.length < 2) { showActionFeedback('Write a reply before sending it to the customer.'); return; }
+    setSendingSupportReply(id);
+    try {
+      await api.admin.replySupportTicket(id, reply);
+      setSupportReplyDrafts(prev => ({ ...prev, [id]: '' }));
+      showActionFeedback('Reply saved. The customer can see it using their ticket reference and email.');
+      await fetchData();
+    } catch (err: any) {
+      showActionFeedback('Reply failed: ' + err.message);
+    } finally { setSendingSupportReply(null); }
   };
 
   // Driver Verification Handlers
@@ -3559,62 +3575,34 @@ export const AdminPortal: React.FC = () => {
 
           {/* CUSTOMER SUPPORT DESK */}
           {activeTab === 'support' && (
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-5">
-              <div className="border-b border-slate-100 pb-4">
-                <h3 className="text-base font-bold text-slate-900">Customer Support Desk</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Live inquiry resolution pipeline synced with Platform D1 support_tickets.</p>
+            <div className="space-y-5">
+              <div className="flex flex-col gap-3 rounded-2xl bg-slate-950 p-6 text-white sm:flex-row sm:items-center sm:justify-between">
+                <div><p className="text-xs font-bold uppercase tracking-widest text-orange-300">Customer experience</p><h3 className="mt-2 text-xl font-bold">Support operations</h3><p className="mt-1 text-sm text-slate-300">Review incoming requests, manage status and reply to customers. Replies are saved to D1 and shown in ticket lookup.</p></div>
+                <button onClick={() => fetchData()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold hover:bg-white/10"><RefreshCw className="h-4 w-4" /> Refresh tickets</button>
               </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-600 uppercase border-b border-slate-200 font-bold text-[11px]">
-                    <tr>
-                      <th className="p-3">Subject</th>
-                      <th className="p-3">Customer Email</th>
-                      <th className="p-3">Message</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3">Update Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {supportTicketsList.map((t) => (
-                      <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="p-3 font-semibold text-slate-900">{t.subject}</td>
-                        <td className="p-3 font-mono text-slate-500">{t.user_email || t.email || ''}</td>
-                        <td className="p-3 text-slate-700 max-w-[250px] truncate">{t.message}</td>
-                        <td className="p-3">
-                          <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${
-                            t.status === 'resolved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                          }`}>
-                            {t.status || 'open'}
-                          </span>
-                        </td>
-                        <td className="p-3 flex items-center gap-2">
-                          <button
-                            onClick={() => handleUpdateTicketStatus(t.id, 'resolved')}
-                            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold cursor-pointer"
-                          >
-                            Resolve
-                          </button>
-                          <button
-                            onClick={() => handleUpdateTicketStatus(t.id, 'in_progress')}
-                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold cursor-pointer"
-                          >
-                            In Progress
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {supportTicketsList.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="p-6 text-center text-slate-500 text-xs">
-                          No open support tickets. All customer inquiries are resolved.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {[
+                  {label:'All tickets',value:supportTicketsList.length},
+                  {label:'Open',value:supportTicketsList.filter(t => (t.status || 'open') === 'open').length},
+                  {label:'In progress',value:supportTicketsList.filter(t => t.status === 'in_progress').length},
+                  {label:'Waiting on customer',value:supportTicketsList.filter(t => t.status === 'waiting_on_customer').length}
+                ].map(item => <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-xs font-semibold text-slate-500">{item.label}</p><p className="mt-2 text-2xl font-bold text-slate-950">{item.value}</p></div>)}
               </div>
+              {supportTicketsList.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center"><HelpCircle className="mx-auto h-8 w-8 text-slate-300" /><h4 className="mt-3 text-base font-bold text-slate-900">No support tickets yet</h4><p className="mt-1 text-sm text-slate-500">New requests submitted from Contact Support will appear here.</p></div> : (
+                <div className="space-y-4">
+                  {supportTicketsList.map((t) => (
+                    <article key={t.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                      <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs font-bold text-orange-700">{t.id}</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold capitalize text-slate-700">{String(t.status || 'open').replaceAll('_',' ')}</span><span className="rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-semibold capitalize text-slate-500">{t.priority || 'normal'} priority</span></div><h4 className="mt-2 text-base font-bold text-slate-950">{t.subject || 'Support request'}</h4><p className="mt-1 text-xs text-slate-500">{t.customer_name || 'Customer'} · {t.user_email || t.email || 'No email'} · {t.created_at ? new Date(t.created_at).toLocaleString() : 'Date unavailable'}</p></div>
+                        <select aria-label="Ticket status" value={t.status || 'open'} onChange={e => handleUpdateTicketStatus(t.id, e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-orange-500"><option value="open">Open</option><option value="in_progress">In progress</option><option value="waiting_on_customer">Waiting on customer</option><option value="resolved">Resolved</option><option value="closed">Closed</option></select>
+                      </div>
+                      <div className="py-4"><p className="mb-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">Customer message</p><p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{t.message}</p></div>
+                      {t.admin_reply && <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4"><p className="text-[11px] font-bold uppercase tracking-widest text-emerald-800">Latest saved reply</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-emerald-950">{t.admin_reply}</p></div>}
+                      <div className="rounded-xl bg-slate-50 p-4"><label className="mb-2 block text-xs font-bold text-slate-700">Reply to customer<textarea rows={3} maxLength={4000} value={supportReplyDrafts[t.id] || ''} onChange={e => setSupportReplyDrafts(prev => ({...prev,[t.id]:e.target.value}))} placeholder="Write a clear, helpful response…" className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-100" /></label><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-slate-500">Saved replies are visible to the customer when they check this ticket.</p><button disabled={sendingSupportReply === t.id || !(supportReplyDrafts[t.id] || '').trim()} onClick={() => handleReplySupportTicket(t.id)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50">{sendingSupportReply === t.id ? 'Saving reply…' : 'Send reply'} <Send className="h-3.5 w-3.5" /></button></div></div>
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
