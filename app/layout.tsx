@@ -8,7 +8,6 @@ export const metadata: Metadata = {
     template: '%s | Veyrang'
   },
   description: 'Discover restaurants and order food for delivery with Veyrang.',
-  alternates: { canonical: '/' },
   robots: { index: true, follow: true },
   openGraph: {
     title: 'Veyrang | Food Delivery & Cloud Kitchens',
