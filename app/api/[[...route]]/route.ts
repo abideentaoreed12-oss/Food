@@ -86,7 +86,7 @@ async function ensureSchema() {
 
 function toPublicRestaurant(source: any, id: string) {
   const restaurant = source && typeof source === 'object' ? source : {};
-  const fields = ['name','description','cuisine','tags','tagline','image','imageUrl','coverImage','logo','rating','reviewCount','deliveryTimeMin','deliveryFee','minimumOrder','minimumOrderAmount','isOpen','isAvailable','address','city','latitude','longitude','openingHours','categories','distanceKm','distanceText','durationText','calculatedDeliveryFee'];
+  const fields = ['name','description','cuisine','tags','tagline','image','imageUrl','coverImage','logo','rating','reviewCount','deliveryTimeMin','deliveryFee','minimumOrder','minimumOrderAmount','isOpen','isAvailable','address','city','openingHours','categories','distanceKm','distanceText','durationText','calculatedDeliveryFee'];
   const result: any = { id };
   for (const field of fields) if (restaurant[field] !== undefined) result[field] = restaurant[field];
   result.categories = (Array.isArray(restaurant.categories) ? restaurant.categories : []).map((category: any) => ({
