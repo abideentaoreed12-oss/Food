@@ -198,22 +198,42 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   // Restore saved active page on client mount after hydration
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('veyrang_active_page');
-      if (saved) {
-        setActivePageState(saved as ActivePage);
-      }
+      const savedPage = localStorage.getItem('veyrang_active_page');
+      if (savedPage) setActivePageState(savedPage as ActivePage);
+      
+      const savedCurrency = localStorage.getItem('veyrang_currency');
+      if (savedCurrency) setCurrency(savedCurrency as Currency);
+      
+      const savedZone = localStorage.getItem('veyrang_selected_zone');
+      if (savedZone) setSelectedZone(savedZone as DeliveryZone);
+      
+      const savedFulfillment = localStorage.getItem('veyrang_fulfillment_type');
+      if (savedFulfillment) setFulfillmentType(savedFulfillment as FulfillmentType);
     } catch {}
   }, []);
 
   const setActivePage = useCallback((page: ActivePage) => {
     setActivePageState(page);
-    try {
-      localStorage.setItem('veyrang_active_page', page);
-    } catch {}
+    try { localStorage.setItem('veyrang_active_page', page); } catch {}
   }, []);
+
   const [isRightDrawerOpen, setIsRightDrawerOpen] = useState<boolean>(false);
   const [currency, setCurrency] = useState<Currency>('NGN');
   const [selectedZone, setSelectedZone] = useState<DeliveryZone>('LEKKI');
+  const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>('delivery');
+
+  useEffect(() => {
+    try { localStorage.setItem('veyrang_currency', currency); } catch {}
+  }, [currency]);
+
+  useEffect(() => {
+    try { localStorage.setItem('veyrang_selected_zone', selectedZone); } catch {}
+  }, [selectedZone]);
+
+  useEffect(() => {
+    try { localStorage.setItem('veyrang_fulfillment_type', fulfillmentType); } catch {}
+  }, [fulfillmentType]);
+  
   const [walletDeposits, setWalletDeposits] = useState<WalletDepositRecord[]>([]);
   const [platformSettings, setPlatformSettings] = useState<Record<string, string>>({
     currency_ngn_usd_rate: '1400',
@@ -413,6 +433,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     instructions?: string;
     newRestaurantName: string;
   } | null>(null);
+  const [cartAlert, setCartAlert] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isCartLoaded) return;
@@ -425,7 +446,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
 
   const [favourites, setFavourites] = useState<string[]>([]);
 
-  const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>('delivery');
   const [scheduledSlot, setScheduledSlot] = useState<string>('Today, 6:00 PM – 6:30 PM');
   const [isContactless, setIsContactless] = useState<boolean>(false);
   const [appliedPromo, setAppliedPromo] = useState<{
@@ -458,6 +478,29 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         ? serverRestaurants
         : (serverRestaurants?.data && Array.isArray(serverRestaurants.data) ? serverRestaurants.data : []);
       setRestaurants(rests);
+
+      // Validate cart against fresh restaurant data
+      setCart(prevCart => {
+        let changed = false;
+        const newCart = prevCart.map(item => {
+          const rest = rests.find(r => r.id === item.menuItem.restaurantId);
+          const menuItem = rest?.menuItems?.find(mi => mi.id === item.menuItem.id);
+          
+          if (menuItem && (menuItem.price !== item.menuItem.price || menuItem.isAvailable !== item.menuItem.isAvailable)) {
+            changed = true;
+            const optionsTotal = item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0);
+            const unitPrice = menuItem.price + optionsTotal;
+            return {
+              ...item,
+              menuItem,
+              itemTotal: Math.round(unitPrice * item.quantity)
+            };
+          }
+          return item;
+        });
+        if (changed) setCartAlert('Some items in your cart have been updated due to price or availability changes.');
+        return newCart;
+      });
 
       const liveSettings = settingsRes?.settings || settingsRes?.data?.settings || settingsRes;
       if (liveSettings && typeof liveSettings === 'object') {
