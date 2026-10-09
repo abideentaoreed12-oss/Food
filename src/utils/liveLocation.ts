@@ -126,99 +126,10 @@ export async function acquireLiveLocation(
     console.warn('Backend geocode API note:', backendErr);
   }
 
-  // Reverse Tier 1: Google Maps Geocoder if available
-  if (!resolvedAddress && window.google?.maps?.Geocoder) {
-    try {
-      const geocoder = new window.google.maps.Geocoder();
-      const res = await geocoder.geocode({ location: { lat, lng } });
-      if (res.results && res.results[0]) {
-        formattedAddress = res.results[0].formatted_address;
-        resolvedAddress = formattedAddress.split(',')[0] || formattedAddress;
-        for (const comp of res.results[0].address_components) {
-          if (comp.types.includes('locality')) resolvedCity = comp.long_name;
-          if (comp.types.includes('administrative_area_level_1')) resolvedState = comp.long_name;
-          if (comp.types.includes('country')) resolvedCountry = comp.long_name;
-        }
-      }
-    } catch (gErr) {
-      console.warn('Google reverse geocode note:', gErr);
-    }
-  }
-
-  // Reverse Tier 2: OpenStreetMap Reverse Geocoding
-  if (!resolvedAddress) {
-    try {
-      const resp = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-        { headers: { 'Accept': 'application/json' } }
-      );
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data && data.address) {
-          const addr = data.address;
-          const road = addr.road || addr.pedestrian || addr.suburb || addr.neighbourhood || addr.amenity || 'Current Location';
-          const house = addr.house_number ? `${addr.house_number} ` : '';
-          resolvedAddress = `${house}${road}`.trim();
-          resolvedCity = addr.city || addr.town || addr.county || addr.state || '';
-          resolvedState = addr.state || '';
-          resolvedCountry = addr.country || '';
-          formattedAddress = data.display_name || [resolvedAddress, resolvedCity, resolvedState, resolvedCountry].filter(Boolean).join(', ');
-        }
-      }
-    } catch (osmErr) {
-      console.warn('OSM reverse geocode note:', osmErr);
-    }
-  }
-
-  // Reverse Tier 3: Photon Komoot Reverse Geocoding
-  if (!resolvedAddress) {
-    try {
-      const pResp = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`);
-      if (pResp.ok) {
-        const pData = await pResp.json();
-        const props = pData.features?.[0]?.properties;
-        if (props) {
-          resolvedAddress = [props.housenumber, props.street || props.name].filter(Boolean).join(' ') || props.name || 'Current Location';
-          resolvedCity = props.city || props.county || props.state || '';
-          resolvedState = props.state || '';
-          resolvedCountry = props.country || '';
-          formattedAddress = [resolvedAddress, resolvedCity, resolvedCountry].filter(Boolean).join(', ');
-        }
-      }
-    } catch (pErr) {
-      console.warn('Photon reverse geocode note:', pErr);
-    }
-  }
-
-  // Reverse Tier 4: BigDataCloud Reverse Geocoding
-  if (!resolvedAddress) {
-    try {
-      const bResp = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
-      if (bResp.ok) {
-        const bData = await bResp.json();
-        if (bData) {
-          resolvedAddress = [bData.locality, bData.principalSubdivision].filter(Boolean).join(', ') || 'Current Location';
-          resolvedCity = bData.city || bData.locality || bData.principalSubdivision || '';
-          resolvedState = bData.principalSubdivision || '';
-          resolvedCountry = bData.countryName || '';
-          formattedAddress = [resolvedAddress, resolvedCountry].filter(Boolean).join(', ');
-        }
-      }
-    } catch (bErr) {
-      console.warn('BigDataCloud reverse geocode note:', bErr);
-    }
-  }
-
-  // Never expose raw GPS coordinates or a generic label as a delivery address.
-  if (!resolvedAddress || /^(current location|device gps location|live location)(\b|\s*\()/i.test(resolvedAddress.trim())) {
-    const readableFallback = formattedAddress && !/^(current location|device gps location|live location)(\b|\s*\()/i.test(formattedAddress.trim())
-      ? formattedAddress
-      : [resolvedCity, resolvedState, resolvedCountry].filter(Boolean).join(', ');
-    if (!readableFallback) {
-      throw new Error('Your live location was detected, but we could not find a readable street or area address. Enter your street, area, city and state, or try again.');
-    }
-    resolvedAddress = readableFallback;
-    formattedAddress = readableFallback;
+  // Reverse geocoding is handled by our backend only. This avoids exposing provider
+  // URLs in the browser and prevents third-party non-open-source fallback services.
+  if (!resolvedAddress || !/\\bnigeria\\b/i.test(resolvedCountry)) {
+    throw new Error('Your live coordinates were captured, but we could not verify a Nigerian street or area address. Please enter your address manually or try again.');
   }
 
   return {
