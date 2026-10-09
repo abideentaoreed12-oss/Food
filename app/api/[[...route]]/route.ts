@@ -84,6 +84,26 @@ async function ensureSchema() {
     .catch(() => {});
 }
 
+function toPublicRestaurant(source: any, id: string) {
+  const restaurant = source && typeof source === 'object' ? source : {};
+  const fields = ['name','description','cuisine','tags','tagline','image','imageUrl','coverImage','logo','rating','reviewCount','deliveryTimeMin','deliveryFee','minimumOrder','minimumOrderAmount','isOpen','isAvailable','address','city','latitude','longitude','openingHours','categories','distanceKm','distanceText','durationText','calculatedDeliveryFee'];
+  const result: any = { id };
+  for (const field of fields) if (restaurant[field] !== undefined) result[field] = restaurant[field];
+  result.categories = (Array.isArray(restaurant.categories) ? restaurant.categories : []).map((category: any) => ({
+    name: typeof category?.name === 'string' ? category.name : '',
+    items: (Array.isArray(category?.items) ? category.items : []).map((item: any) => {
+      const safe: any = {};
+      for (const field of ['id','name','description','price','image','imageUrl','isAvailable','isVegetarian','isVegan','dietary','tags','category','restaurantId','preparationTime','options','addons','discountPrice']) {
+        if (item?.[field] !== undefined) safe[field] = item[field];
+      }
+      safe.restaurantId = safe.restaurantId || id;
+      safe.category = safe.category || category?.name || '';
+      return safe;
+    })
+  }));
+  return result;
+}
+
 export async function GET(req: NextRequest) {
   await ensureSchema();
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
@@ -205,8 +225,29 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
-  if (pathname === '/restaurants' || pathname === '/admin/restaurants') {
-    const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC');
+  if (pathname === '/restaurants') {
+    const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC LIMIT 200');
+    if (!d1Res.success) return NextResponse.json({ success: false, error: 'Restaurant data is temporarily unavailable' }, { status: 503 });
+    const q = (req.nextUrl.searchParams.get('search') || '').trim().toLocaleLowerCase();
+    const cuisine = (req.nextUrl.searchParams.get('cuisine') || '').trim().toLocaleLowerCase();
+    const dietary = (req.nextUrl.searchParams.get('dietary') || '').trim().toLocaleLowerCase();
+    const all = (d1Res.results || []).map((row: any) => {
+      let data: any = row;
+      try { data = row.raw_json ? JSON.parse(row.raw_json) : row; } catch {}
+      return toPublicRestaurant(data, String(row.id || data.id || ''));
+    });
+    const filtered = all.filter((r: any) => {
+      const text = [r.name,r.cuisine,r.tagline,r.description,...(r.tags || []),...(r.categories || []).map((cat: any) => cat.name),...(r.categories || []).flatMap((cat: any) => (cat.items || []).flatMap((item: any) => [item.name,item.description,item.category]))].filter((v: any) => typeof v === 'string').join(' ').toLocaleLowerCase();
+      return (!q || text.includes(q)) && (!cuisine || String(r.cuisine || '').toLocaleLowerCase().includes(cuisine)) && (!dietary || (r.categories || []).some((cat: any) => (cat.items || []).some((item: any) => Array.isArray(item.dietary) && item.dietary.some((tag: any) => String(tag).toLocaleLowerCase() === dietary))));
+    });
+    return NextResponse.json({ success: true, data: filtered }, { headers: { 'Cache-Control': 'public, max-age=30, stale-while-revalidate=60' } });
+  }
+
+  if (pathname === '/admin/restaurants') {
+    const admin = await getUser(req);
+    if (!admin) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (admin.role !== 'admin' && admin.role !== 'sub_admin') return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 });
+    const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC LIMIT 200');
     if (!d1Res.success) {
       return NextResponse.json({ success: false, error: 'Restaurant data is temporarily unavailable' }, { status: 503 });
     }
@@ -268,15 +309,13 @@ export async function GET(req: NextRequest) {
         .query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id])
         .catch(() => ({ results: [] as any[] }));
       if (d1Res.results?.[0]) {
-        const r = d1Res.results[0];
-        try {
-          return NextResponse.json({
-            success: true,
-            data: r.raw_json ? JSON.parse(r.raw_json) : r
-          });
-        } catch {
-          return NextResponse.json({ success: true, data: r });
-        }
+        const row = d1Res.results[0];
+        let restaurant: any = row;
+        try { restaurant = row.raw_json ? JSON.parse(row.raw_json) : row; } catch {}
+        return NextResponse.json(
+          { success: true, data: toPublicRestaurant(restaurant, String(row.id || restaurant.id || id)) },
+          { headers: { 'Cache-Control': 'public, max-age=30, stale-while-revalidate=60' } }
+        );
       }
       return NextResponse.json({ success: false, error: 'Restaurant not found' }, { status: 404 });
     }
