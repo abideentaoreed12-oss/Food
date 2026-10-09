@@ -11,86 +11,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Add missing admin methods
-        run: |
-          set -euo pipefail
-          python3 scripts/inject_admin_methods.py || python3 -c "
-          from pathlib import Path
-          p = Path('src/services/api.ts')
-          t = p.read_text()
-          methods = '''
-              createStaff: async (data: any) =>
-                request('/api/admin/staff', { method: 'POST', body: JSON.stringify(data) }),
-              deleteUser: async (id: string) =>
-                request(\`/api/admin/users/\${id}\`, { method: 'DELETE' }),
-              adjustUserWallet: async (userId: string, amount: number, reason?: string) =>
-                request(\`/api/admin/users/\${userId}/wallet\`, { method: 'POST', body: JSON.stringify({ amount, reason }) }),
-              deleteDriver: async (userId: string) =>
-                request(\`/api/admin/drivers/\${userId}\`, { method: 'DELETE' }),
-              uploadAsset: async (key: string, dataBase64: string, contentType?: string) =>
-                request('/api/storage/upload', { method: 'POST', body: JSON.stringify({ key, dataBase64, contentType }) }),
-              deleteAsset: async (key: string) =>
-                request(\`/api/storage/file/\${encodeURIComponent(key)}\`, { method: 'DELETE' }),
-              bulkUpdateCMS: async (settings: Record<string, string>) =>
-                request('/api/settings/bulk', { method: 'POST', body: JSON.stringify({ settings }) }),
-              saveSeoTags: async (data: { title: string; description: string; keywords: string }) =>
-                request('/api/admin/seo', { method: 'POST', body: JSON.stringify(data) }),
-              runDeveloperQuery: async (sql: string) =>
-                request('/api/admin/developer/query', { method: 'POST', body: JSON.stringify({ sql }) }),
-              purgeEdgeCache: async () =>
-                request('/api/admin/cache/purge', { method: 'POST' }),
-          '''
-          # Only add methods not already present
-          lines_to_add = []
-          for line in methods.strip().splitlines():
-              lines_to_add.append(line)
-          block = chr(10).join(lines_to_add)
-          # Filter: rebuild block with only missing names
-          names = ['createStaff','deleteUser','adjustUserWallet','deleteDriver','uploadAsset','deleteAsset','bulkUpdateCMS','saveSeoTags','runDeveloperQuery','purgeEdgeCache']
-          keep = []
-          current = []
-          for line in block.splitlines():
-              stripped = line.strip()
-              if any(stripped.startswith(n + ':') for n in names):
-                  if current:
-                      keep.append(chr(10).join(current))
-                      current = []
-                  name = stripped.split(':')[0]
-                  if name in t:
-                      print('skip', name)
-                      current = None  # skip this method
-                  else:
-                      print('add', name)
-                      current = [line]
-              elif current is not None:
-                  current.append(line)
-          if current:
-              keep.append(chr(10).join(current))
-          if not keep:
-              print('nothing to add')
-          else:
-              injection = ',' + chr(10) + (',' + chr(10)).join(keep)
-              # Insert before admin closing: look for purgeCache then closing
-              needle = \"purgeCache: async () => request('/api/admin/cache/purge', { method: 'POST' })\"
-              if needle in t:
-                  t = t.replace(needle, needle + injection, 1)
-              else:
-                  # multiline form
-                  needle2 = \"request('/api/admin/cache/purge', { method: 'POST' })\\n  },\"
-                  if needle2 in t:
-                      t = t.replace(needle2, \"request('/api/admin/cache/purge', { method: 'POST' })\" + injection + \"\\n  },\", 1)
-                  else:
-                      raise SystemExit('injection point not found')
-              p.write_text(t)
-              print('written', len(t))
-          assert 'createStaff' in p.read_text()
-          assert 'health' in p.read_text()
-          print('verified OK')
-          "
+      - name: Inject missing admin methods
+        run: python3 scripts/inject_admin_methods.py
 
+      - name: Commit and push
+        run: |
           git config user.name "veyrang-bot"
           git config user.email "bot@veyrang.com"
           git add src/services/api.ts
-          if git diff --staged --quiet; then echo 'No changes'; exit 0; fi
+          if git diff --staged --quiet; then
+            echo "No changes"
+            exit 0
+          fi
           git commit -m "fix(api): add missing admin methods (createStaff, deleteUser, ...)"
           git push
