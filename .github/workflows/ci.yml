@@ -28,6 +28,9 @@ jobs:
           fi
           npm ci
 
+      - name: Security audit
+        run: npm audit --audit-level=moderate
+
       - name: Typecheck
         run: npm run lint
 
