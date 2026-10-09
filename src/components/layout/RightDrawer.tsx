@@ -70,6 +70,28 @@ export const RightDrawer: React.FC = () => {
   const { user, logout, setIsAuthModalOpen } = useAuth();
   const [isZoneDropdownOpen, setIsZoneDropdownOpen] = useState(false);
 
+  // Build the menu from persisted saved addresses, while also including the active
+  // address/profile address if address syncing has not populated the list yet.
+  const deliveryAddressOptions = (() => {
+    const options = [...(savedAddresses || [])];
+    const addIfMissing = (address: any, fallbackId: string, fallbackLabel: string) => {
+      const value = String(address?.address || '').trim();
+      if (!value) return;
+      const exists = options.some((item) => String(item.address || '').trim().toLowerCase() === value.toLowerCase());
+      if (!exists) options.unshift({
+        id: address.id || fallbackId,
+        label: address.label || fallbackLabel,
+        address: value,
+        apartment: address.apartment || '',
+        city: address.city || '',
+        isDefault: true
+      } as any);
+    };
+    addIfMissing(selectedAddress, 'active-selected-address', 'Selected address');
+    addIfMissing({ address: user?.address }, 'profile-address', 'Profile address');
+    return options.filter((addr) => Boolean(addr.address && String(addr.address).trim()));
+  })();
+
   if (!isRightDrawerOpen) return null;
 
   const handleNavigatePage = (page: ActivePage) => {
@@ -327,9 +349,9 @@ export const RightDrawer: React.FC = () => {
                       <span className="text-slate-500 font-normal">Deliver to:</span>
                       <span className="text-slate-900 font-bold truncate">
                         {selectedAddress && selectedAddress.address && selectedAddress.address.trim()
-                          ? `${selectedAddress.label || 'Home'}: ${selectedAddress.address.trim().split(',')[0]}`
+                          ? `${selectedAddress.label || 'Home'}: ${selectedAddress.address.trim()}`
                           : user?.address && user.address.trim()
-                          ? user.address.trim().split(',')[0]
+                          ? user.address.trim()
                           : 'Set Address'}
                       </span>
                     </div>
@@ -341,13 +363,13 @@ export const RightDrawer: React.FC = () => {
                       <div className="px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                         Your Saved Addresses
                       </div>
-                      {savedAddresses.filter((addr) => Boolean(addr.address && addr.address.trim())).map((addr) => {
+                      {deliveryAddressOptions.map((addr) => {
                         const isSelected = selectedAddress?.id === addr.id || selectedAddress?.address?.trim().toLowerCase() === addr.address.trim().toLowerCase();
                         return (
                           <button
                             key={addr.id}
                             onClick={() => {
-                              void setSelectedAddress(addr);
+                              setSelectedAddress(addr);
                               setIsZoneDropdownOpen(false);
                             }}
                             className={`w-full text-left px-3.5 py-3 flex items-start justify-between gap-3 hover:bg-[#FFF1E8]/50 transition-colors cursor-pointer ${
@@ -365,7 +387,7 @@ export const RightDrawer: React.FC = () => {
                           </button>
                         );
                       })}
-                      {savedAddresses.filter((addr) => Boolean(addr.address && addr.address.trim())).length === 0 && (
+                      {deliveryAddressOptions.length === 0 && (
                         <div className="px-3.5 py-3 text-slate-500">
                           No saved addresses yet. Add one in your account before choosing a delivery address.
                         </div>
