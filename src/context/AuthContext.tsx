@@ -1,168 +1,278 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { UserRole } from '../types';
+import { UserRole, ActivePage } from '../types';
 import { STORAGE_KEYS, safeGet, safeSet, safeRemove, toUserShell, clearAuthStorage, purgeLegacyAuthoritativeCaches } from '../lib/clientStorage';
 
 export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  phone?: string;
   role: UserRole;
-  restaurantId?: string;
+  phone?: string;
   address?: string;
-  walletBalance?: number;
-  avatar?: string;
-  [key: string]: any;
+  restaurantId?: string;
+  walletBalanceUSD?: number;
+  walletBalanceNGN?: number;
+  savedAddresses?: Array<{
+    id: string;
+    label: string;
+    address: string;
+    apartment?: string;
+    city?: string;
+    isDefault?: boolean;
+  }>;
 }
+
+export const PUBLIC_PAGES: ActivePage[] = [
+  'landing',
+  'home',
+  'restaurants',
+  'search',
+  'offers',
+  'help',
+  'partner',
+  'terms',
+  'privacy',
+  'contact'
+];
+
+export const PRIVATE_CUSTOMER_PAGES: ActivePage[] = [
+  'orders',
+  'account',
+  'favourites'
+];
+
+export const RESTRICTED_ROLES: UserRole[] = [
+  'restaurant',
+  'courier',
+  'admin'
+];
 
 interface AuthContextType {
   user: AuthUser | null;
-  isLoading: boolean;
+  isAuthenticated: boolean;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; user?: AuthUser; error?: string }>;
+  register: (payload: { email: string; password: string; name: string; role?: UserRole; phone?: string; address?: string; code: string }) => Promise<{ success: boolean; pendingApproval?: boolean; message?: string; error?: string }>;
+  sendVerification: (email: string) => Promise<{ success: boolean; error?: string }>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string, code: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: { name: string; email: string; phone?: string; password: string; role?: UserRole }) => Promise<void>;
-  logout: () => void;
-  refreshUser: () => Promise<void>;
+  intendedPortal: UserRole | null;
+  setIntendedPortal: (role: UserRole | null) => void;
   openAuthModalForPortal: (role: UserRole) => void;
-  pendingPortalRole: UserRole | null;
+  canAccessRole: (role: UserRole) => boolean;
+  isPublicPage: (page: ActivePage) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function sanitizeUser(rawUser: any): AuthUser | null {
+  if (!rawUser) return null;
+  const actualUser = rawUser.user && typeof rawUser.user === 'object' && !Array.isArray(rawUser.user) ? rawUser.user : rawUser;
+  if (!actualUser || typeof actualUser !== 'object' || !actualUser.email) return null;
+  return {
+    ...actualUser,
+    id: actualUser.id || actualUser._id || 'usr-default',
+    email: actualUser.email,
+    role: (actualUser.role as UserRole) || 'customer',
+    name: actualUser.name || (actualUser.email ? actualUser.email.split('@')[0] : 'User'),
+    walletBalanceUSD: typeof actualUser.walletBalanceUSD === 'number' ? actualUser.walletBalanceUSD : 0,
+    walletBalanceNGN: typeof actualUser.walletBalanceNGN === 'number' ? actualUser.walletBalanceNGN : 0,
+    savedAddresses: Array.isArray(actualUser.savedAddresses) ? actualUser.savedAddresses : []
+  };
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [pendingPortalRole, setPendingPortalRole] = useState<UserRole | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [intendedPortal, setIntendedPortal] = useState<UserRole | null>(null);
 
-  // On mount: restore shell only (never wallet / authoritative balance)
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        purgeLegacyAuthoritativeCaches();
-        const token = safeGet(STORAGE_KEYS.JWT);
-        const cached = safeGet(STORAGE_KEYS.USER_SHELL) || safeGet(STORAGE_KEYS.USER_CACHE_LEGACY);
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            if (parsed && parsed.id) {
-              // Strip any wallet fields that might have leaked from legacy cache
-              const shell = toUserShell(parsed);
-              if (mounted) setUser(shell as AuthUser);
-            }
-          } catch {}
-        }
-        if (token) {
-          const res: any = await api.auth.me().catch((e: any) => ({ transientError: true, error: e }));
-          if (!mounted) return;
-          if (res && res.id) {
-            const sanitized = toUserShell(res);
-            setUser(sanitized as AuthUser);
-            if (sanitized) safeSet(STORAGE_KEYS.USER_SHELL, JSON.stringify(toUserShell(sanitized as any)));
-          } else if (res && !res.transientError) {
-            // Hard auth failure — clear
-            safeRemove(STORAGE_KEYS.JWT);
-            safeRemove(STORAGE_KEYS.USER_SHELL); safeRemove(STORAGE_KEYS.USER_CACHE_LEGACY);
-            setUser(null);
-          } else if (!res.transientError && !safeGet(STORAGE_KEYS.JWT)) {
-            setUser(null);
-          }
-        }
-      } catch {
-        // keep shell if present
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, []);
-
-  const refreshUser = useCallback(async () => {
+    purgeLegacyAuthoritativeCaches();
+    // Restore cached user shell (no wallet) on client mount after hydration
     try {
-      const res: any = await api.auth.me();
-      if (res && res.id) {
-        const sanitized = toUserShell(res);
-        setUser(sanitized as AuthUser);
-        try { safeSet(STORAGE_KEYS.USER_SHELL, JSON.stringify(toUserShell(sanitized as any))); } catch {}
+      const token = safeGet(STORAGE_KEYS.JWT);
+      const cached = safeGet(STORAGE_KEYS.USER_SHELL) || safeGet(STORAGE_KEYS.USER_CACHE_LEGACY);
+      if (token && cached) {
+        const sanitized = sanitizeUser(JSON.parse(cached));
+        if (sanitized) setUser(sanitized);
       }
-    } catch (err) {
-      console.warn('refreshUser failed', err);
-    }
-  }, []);
-
-  const login = useCallback(async (email: string, password: string) => {
-    const res: any = await api.auth.login({ email, password });
-    if (res?.token) {
-      // token already stored by api layer via safeSet
-    }
-    if (res?.user) {
-      const sanitized = toUserShell(res.user);
-      setUser(sanitized as AuthUser);
-      safeSet(STORAGE_KEYS.USER_SHELL, JSON.stringify(sanitized));
-    } else {
-      await refreshUser();
-    }
-    setIsAuthModalOpen(false);
-    setPendingPortalRole(null);
-  }, [refreshUser]);
-
-  const register = useCallback(async (data: { name: string; email: string; phone?: string; password: string; role?: UserRole }) => {
-    const res: any = await api.auth.register(data);
-    if (res?.user) {
-      const sanitized = toUserShell(res.user);
-      setUser(sanitized as AuthUser);
-      safeSet(STORAGE_KEYS.USER_SHELL, JSON.stringify(sanitized));
-    } else {
-      await refreshUser();
-    }
-    setIsAuthModalOpen(false);
-    setPendingPortalRole(null);
-  }, [refreshUser]);
-
-  const logout = useCallback(() => {
-    try {
-      clearAuthStorage();
-      safeRemove(STORAGE_KEYS.JWT);
-      safeRemove(STORAGE_KEYS.USER_SHELL); safeRemove(STORAGE_KEYS.USER_CACHE_LEGACY);
     } catch {}
-    setUser(null);
-    setPendingPortalRole(null);
+
+    // Check existing authenticated session
+    api.auth
+      .getMe()
+      .then((res) => {
+        if (res.user) {
+          const sanitized = sanitizeUser(res.user);
+          setUser(sanitized);
+          if (sanitized) safeSet(STORAGE_KEYS.USER_SHELL, JSON.stringify(toUserShell(sanitized as any)));
+        } else if (res.invalidSession) {
+          setUser(null);
+          safeRemove(STORAGE_KEYS.JWT);
+          safeRemove(STORAGE_KEYS.USER_SHELL); safeRemove(STORAGE_KEYS.USER_CACHE_LEGACY);
+        } else if (!res.transientError && !safeGet(STORAGE_KEYS.JWT)) {
+          setUser(null);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
-  const openAuthModalForPortal = useCallback((role: UserRole) => {
-    setPendingPortalRole(role);
-    setIsAuthModalOpen(true);
-  }, []);
-
-  // Persist shell on user change (never wallet)
-  useEffect(() => {
-    if (user) {
-      try {
-        const sanitized = toUserShell(user);
-        if (sanitized) safeSet(STORAGE_KEYS.USER_SHELL, JSON.stringify(toUserShell(sanitized as any)));
-      } catch {}
-    } else {
-      safeRemove(STORAGE_KEYS.JWT);
-      safeRemove(STORAGE_KEYS.USER_SHELL); safeRemove(STORAGE_KEYS.USER_CACHE_LEGACY);
+  const login = async (email: string, password: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> => {
+    try {
+      const res = await api.auth.login(email, password);
+      if (res && res.user) {
+        const sanitized = sanitizeUser(res.user);
+        if (sanitized) {
+          setUser(sanitized);
+          try { safeSet(STORAGE_KEYS.USER_SHELL, JSON.stringify(toUserShell(sanitized as any))); } catch {}
+          setIsAuthModalOpen(false);
+          return { success: true, user: sanitized };
+        }
+      }
+      return { success: false, error: 'Invalid login response from server' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Invalid email or password' };
     }
-  }, [user]);
+  };
+
+  const register = async (payload: {
+    email: string;
+    password: string;
+    name: string;
+    role?: UserRole;
+    phone?: string;
+    address?: string;
+    code: string;
+  }): Promise<{ success: boolean; pendingApproval?: boolean; message?: string; error?: string }> => {
+    try {
+      const res = await api.auth.register(payload);
+      if (res && res.pendingApproval) {
+        return { success: true, pendingApproval: true, message: res.message };
+      }
+      if (res && res.user) {
+        setUser(sanitizeUser(res.user));
+        setIsAuthModalOpen(false);
+        return { success: true };
+      }
+      return { success: false, error: 'Registration failed' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Registration failed' };
+    }
+  };
+
+  const sendVerification = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await api.auth.sendVerification(email);
+      return { success: res.success };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to send verification email' };
+    }
+  };
+
+  const forgotPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await api.auth.forgotPassword(email);
+      return { success: res.success };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to send reset code' };
+    }
+  };
+
+  const resetPassword = async (email: string, code: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await api.auth.resetPassword(email, code, newPassword);
+      return { success: res.success };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to reset password' };
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await api.auth.logout();
+    } catch (err) {
+      console.warn('Logout API error:', err);
+    } finally {
+      setUser(null);
+      setIntendedPortal(null);
+      try {
+        safeRemove(STORAGE_KEYS.JWT);
+        safeRemove(STORAGE_KEYS.USER_SHELL); safeRemove(STORAGE_KEYS.USER_CACHE_LEGACY);
+      } catch {}
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('veyrang-user-logout'));
+        if (window.location.pathname.startsWith('/admin')) {
+          window.location.replace('/');
+        }
+      }
+    }
+  };
+
+  const openAuthModalForPortal = (role: UserRole) => {
+    setIntendedPortal(role);
+    setIsAuthModalOpen(true);
+  };
+
+  const canAccessRole = (role: UserRole): boolean => {
+    if (role === 'customer') return true;
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    if (user.role === 'sub_admin') {
+      return role === 'admin' || role === 'sub_admin';
+    }
+    return user.role === role;
+  };
+
+  const isPublicPage = (page: ActivePage): boolean => {
+    return PUBLIC_PAGES.includes(page);
+  };
+
+  const refreshUser = async () => {
+    try {
+      const res = await api.auth.getMe();
+      if (res && res.user) {
+        const sanitized = sanitizeUser(res.user);
+        setUser(sanitized);
+        if (sanitized) safeSet(STORAGE_KEYS.USER_SHELL, JSON.stringify(toUserShell(sanitized as any)));
+      } else if (res.invalidSession) {
+        setUser(null);
+        safeRemove(STORAGE_KEYS.JWT);
+        safeRemove(STORAGE_KEYS.USER_SHELL); safeRemove(STORAGE_KEYS.USER_CACHE_LEGACY);
+      }
+    } catch (e) {
+      console.warn('refreshUser failed:', e);
+    }
+  };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        isLoading,
-        isAuthModalOpen,
-        setIsAuthModalOpen,
+        isAuthenticated: !!user,
+        loading,
         login,
         register,
+        sendVerification,
+        forgotPassword,
+        resetPassword,
         logout,
         refreshUser,
+        isAuthModalOpen,
+        setIsAuthModalOpen,
+        intendedPortal,
+        setIntendedPortal,
         openAuthModalForPortal,
-        pendingPortalRole,
+        canAccessRole,
+        isPublicPage
       }}
     >
       {children}
@@ -171,7 +281,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };
