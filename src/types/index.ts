@@ -170,6 +170,7 @@ export interface CartItem {
 }
 
 export type OrderStatus =
+  | 'awaiting_payment'
   | 'placed'
   | 'confirmed'
   | 'preparing'
