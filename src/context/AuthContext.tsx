@@ -226,10 +226,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const canAccessRole = (role: UserRole): boolean => {
     if (role === 'customer') return true;
     if (!user) return false;
-    if (user.role === 'admin') return true; // Super Admin has super-access across all portals
-    if (user.role === 'sub_admin') {
-      // Sub Admin has direct access to Admin Operations Control Center
-      return role === 'admin' || role === 'sub_admin';
+    if (user.role === 'admin' || user.role === 'sub_admin') {
+      return role === 'admin';
     }
     return user.role === role;
   };

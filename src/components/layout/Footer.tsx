@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   Utensils,
   Phone,
@@ -22,10 +23,11 @@ import {
   Twitter,
   Linkedin
 } from 'lucide-react';
-import { VeyrangLogo } from '../common/VeyrangLogo.tsx';
+import { VeyrangLogo } from '../common/VeyrangLogo';
 
 export const Footer: React.FC = () => {
   const { setActiveRole, setActivePage, platformSettings, deliveryZones } = useDelivery();
+  const { user } = useAuth();
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
 
@@ -190,22 +192,30 @@ export const Footer: React.FC = () => {
                   Veyrang Corporate Catering
                 </button>
               </li>
-              <li>
-                <button onClick={() => handleNavClick('home', 'restaurant')} className="hover:text-orange-400 transition-colors cursor-pointer text-[#FF5500] font-semibold">
-                  Merchant Kitchen Portal (KDS)
-                </button>
-              </li>
-              <li>
-                <button onClick={() => handleNavClick('home', 'courier')} className="hover:text-orange-400 transition-colors cursor-pointer text-[#FF5500] font-semibold">
-                  Rider Dispatch Portal
-                </button>
-              </li>
-              <li>
-                <button onClick={() => handleNavClick('home', 'admin')} className="hover:text-amber-300 transition-colors cursor-pointer text-amber-500 font-bold flex items-center gap-1.5">
-                  <ShieldAlert className="w-3.5 h-3.5" />
-                  <span>Admin Operations Console</span>
-                </button>
-              </li>
+              {user?.role === 'restaurant' && (
+                <li>
+                  <button onClick={() => handleNavClick('home', 'restaurant')} className="hover:text-emerald-400 transition-colors cursor-pointer text-emerald-400 font-semibold flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <span>Merchant Kitchen Portal (KDS)</span>
+                  </button>
+                </li>
+              )}
+              {user?.role === 'courier' && (
+                <li>
+                  <button onClick={() => handleNavClick('home', 'courier')} className="hover:text-sky-400 transition-colors cursor-pointer text-sky-400 font-semibold flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                    <span>Rider Dispatch Portal</span>
+                  </button>
+                </li>
+              )}
+              {user && (user.role === 'admin' || user.role === 'sub_admin') && (
+                <li>
+                  <button onClick={() => handleNavClick('home', 'admin')} className="hover:text-amber-300 transition-colors cursor-pointer text-amber-500 font-bold flex items-center gap-1.5">
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>Admin Operations Console</span>
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
 

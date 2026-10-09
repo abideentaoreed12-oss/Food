@@ -44,7 +44,7 @@ import {
   ArrowLeft,
   Utensils
 } from 'lucide-react';
-import { VeyrangLogo } from '../common/VeyrangLogo.tsx';
+import { VeyrangLogo } from '../common/VeyrangLogo';
 
 export const RightDrawer: React.FC = () => {
   const {
@@ -481,8 +481,8 @@ export const RightDrawer: React.FC = () => {
                   })}
 
                   {user && ['admin', 'sub_admin', 'restaurant', 'courier'].includes(user.role) && (() => {
-                    let label = 'Admin Console';
-                    let badge = 'A-Z Master';
+                    let label = 'Admin Operations Console';
+                    let badge = 'Admin Staff';
                     let buttonClass = 'bg-amber-500/10 text-amber-800 hover:bg-amber-500/20';
                     let badgeClass = 'bg-amber-200 text-amber-900';
                     let IconComponent = ShieldAlert;
@@ -490,7 +490,7 @@ export const RightDrawer: React.FC = () => {
                     let targetRole: 'admin' | 'restaurant' | 'courier' = 'admin';
 
                     if (user.role === 'sub_admin') {
-                      label = 'Admin Console';
+                      label = 'Admin Operations Console';
                       badge = 'Sub Admin';
                       buttonClass = 'bg-indigo-500/10 text-indigo-800 hover:bg-indigo-500/20';
                       badgeClass = 'bg-indigo-200 text-indigo-900';
@@ -498,7 +498,7 @@ export const RightDrawer: React.FC = () => {
                       iconColorClass = 'text-indigo-600';
                       targetRole = 'admin';
                     } else if (user.role === 'restaurant') {
-                      label = 'Kitchen Portal';
+                      label = 'Merchant Kitchen (KDS)';
                       badge = 'Merchant';
                       buttonClass = 'bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/20';
                       badgeClass = 'bg-emerald-200 text-emerald-900';
@@ -506,7 +506,7 @@ export const RightDrawer: React.FC = () => {
                       iconColorClass = 'text-emerald-600';
                       targetRole = 'restaurant';
                     } else if (user.role === 'courier') {
-                      label = 'Rider Portal';
+                      label = 'Courier Rider Portal';
                       badge = 'Courier';
                       buttonClass = 'bg-sky-500/10 text-sky-800 hover:bg-sky-500/20';
                       badgeClass = 'bg-sky-200 text-sky-900';
@@ -516,82 +516,30 @@ export const RightDrawer: React.FC = () => {
                     }
 
                     return (
-                      <button
-                        onClick={() => {
-                          setActiveRole(targetRole);
-                          if (targetRole === 'admin') {
-                            setAdminActiveTab('dashboard');
-                          }
-                          setIsRightDrawerOpen(false);
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 sm:py-3 rounded-2xl text-sm font-bold transition-all cursor-pointer mt-1 ${buttonClass}`}
-                      >
-                        <IconComponent className={`w-5 h-5 shrink-0 ${iconColorClass}`} />
-                        <span className="flex-1 text-left">{label}</span>
-                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${badgeClass}`}>
-                          {badge}
-                        </span>
-                      </button>
+                      <div className="pt-2.5 mt-2.5 border-t border-slate-100 space-y-1">
+                        <div className="px-3 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                          My Staff Portal
+                        </div>
+                        <button
+                          onClick={() => {
+                            setActiveRole(targetRole);
+                            if (targetRole === 'admin') {
+                              setAdminActiveTab('dashboard');
+                            }
+                            setIsRightDrawerOpen(false);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 sm:py-3 rounded-2xl text-sm font-bold transition-all cursor-pointer ${buttonClass}`}
+                        >
+                          <IconComponent className={`w-5 h-5 shrink-0 ${iconColorClass}`} />
+                          <span className="flex-1 text-left">{label}</span>
+                          <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${badgeClass}`}>
+                            {badge}
+                          </span>
+                        </button>
+                      </div>
                     );
                   })()}
-
-                  {(!user || user.role === 'customer') && (
-                    <div className="pt-2.5 mt-2.5 border-t border-slate-100 space-y-1">
-                      <div className="px-3 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                        Staff & Portals
-                      </div>
-                      <button
-                        onClick={() => {
-                          setIsRightDrawerOpen(false);
-                          if (user && (user.role === 'admin' || user.role === 'sub_admin')) {
-                            setActiveRole('admin');
-                            setAdminActiveTab('dashboard');
-                          } else {
-                            openAuthModalForPortal('admin');
-                          }
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-amber-900 bg-amber-500/10 hover:bg-amber-500/20 transition-all cursor-pointer"
-                      >
-                        <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
-                        <span className="flex-1 text-left">Admin Operations Console</span>
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">
-                          Staff
-                        </span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsRightDrawerOpen(false);
-                          if (user && user.role === 'restaurant') {
-                            setActiveRole('restaurant');
-                          } else {
-                            openAuthModalForPortal('restaurant');
-                          }
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-emerald-900 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all cursor-pointer"
-                      >
-                        <ChefHat className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span className="flex-1 text-left">Merchant Kitchen (KDS)</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsRightDrawerOpen(false);
-                          if (user && user.role === 'courier') {
-                            setActiveRole('courier');
-                          } else {
-                            openAuthModalForPortal('courier');
-                          }
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-sky-900 bg-sky-500/10 hover:bg-sky-500/20 transition-all cursor-pointer"
-                      >
-                        <Bike className="w-4 h-4 text-sky-600 shrink-0" />
-                        <span className="flex-1 text-left">Courier Rider Portal</span>
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
 

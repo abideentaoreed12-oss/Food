@@ -275,25 +275,25 @@ export const Navbar: React.FC = () => {
                     </button>
 
                     {['admin', 'sub_admin', 'restaurant', 'courier'].includes(user.role) && (() => {
-                      let label = 'Admin Console';
-                      let badge = 'A-Z Master';
+                      let label = 'Admin Operations Console';
+                      let badge = 'Admin Staff';
                       let targetRole: 'admin' | 'restaurant' | 'courier' = 'admin';
                       let IconComponent = ShieldAlert;
                       let textClass = 'text-amber-600 hover:text-amber-700';
 
                       if (user.role === 'sub_admin') {
-                        label = 'Admin Console';
+                        label = 'Admin Operations Console';
                         badge = 'Sub Admin';
                         targetRole = 'admin';
                         textClass = 'text-indigo-600 hover:text-indigo-700';
                       } else if (user.role === 'restaurant') {
-                        label = 'Kitchen Portal';
+                        label = 'Merchant Kitchen (KDS)';
                         badge = 'Merchant';
                         targetRole = 'restaurant';
                         IconComponent = ChefHat;
                         textClass = 'text-emerald-600 hover:text-emerald-700';
                       } else if (user.role === 'courier') {
-                        label = 'Rider Portal';
+                        label = 'Courier Rider Portal';
                         badge = 'Courier';
                         targetRole = 'courier';
                         textClass = 'text-sky-600 hover:text-sky-700';
