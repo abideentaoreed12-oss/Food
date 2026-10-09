@@ -6,7 +6,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function getAdmin(req: NextRequest) {
-  const secret = process.env.JWT_SECRET || 'veyrang-jwt-production-auth-secure-key-2026';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) return null;
   const auth = req.headers.get('authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
@@ -35,6 +36,6 @@ export async function PATCH(
   }
   const nextActive = current.results[0].is_active === 1 ? 0 : 1;
   const updated = await d1.query('UPDATE promo_codes SET is_active = ? WHERE id = ? OR code = ?', [nextActive, id, id]);
-  if (!updated.success || updated.meta?.rows_written === 0) return NextResponse.json({ success: false, error: 'Promo status was not updated' }, { status: 503 });
+  if (!updated.success) return NextResponse.json({ success: false, error: 'Promo status was not updated' }, { status: 503 });
   return NextResponse.json({ success: true, isActive: nextActive === 1, data: { isActive: nextActive === 1 } });
 }
