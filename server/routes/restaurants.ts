@@ -10,6 +10,7 @@ import {
   calculateBatchRestaurantDistanceMetrics,
   geocodeAddress
 } from '../utils/distance.ts';
+import { cachedQuery, CacheKeys, cacheInvalidate } from '../../lib/queryCache.ts';
 
 const router = Router();
 
@@ -23,8 +24,11 @@ router.get('/', async (req: Request, res: Response) => {
     const userLat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
     const userLng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
 
-    const d1Res = await d1Client.query('SELECT * FROM restaurants ORDER BY rating DESC');
-    let list: any[] = d1Res.results.map((r: any) => {
+    const listRaw = await cachedQuery(CacheKeys.restaurants('all'), async () => {
+      const d1Res = await d1Client.query('SELECT * FROM restaurants ORDER BY rating DESC');
+      return d1Res.results || [];
+    });
+    let list: any[] = listRaw.map((r: any) => {
       if (r.raw_json) {
         try {
           const parsed = JSON.parse(r.raw_json);
@@ -71,13 +75,12 @@ router.get('/', async (req: Request, res: Response) => {
       );
     }
 
-    // Determine target location for live road distance calculation
     const userLocation =
       userLat !== undefined && userLng !== undefined && !isNaN(userLat) && !isNaN(userLng)
         ? { lat: userLat, lng: userLng }
         : userAddress && userAddress.trim()
         ? userAddress.trim()
-        : { lat: 6.4474, lng: 3.4735 }; // Central Lagos / Lekki Hub default
+        : { lat: 6.4474, lng: 3.4735 };
 
     list = await calculateBatchRestaurantDistanceMetrics(list, userLocation);
 
@@ -93,7 +96,6 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// Calculate distance endpoint for single restaurant or arbitrary addresses
 const CalculateDistanceSchema = z.object({
   restaurantId: z.string().optional(),
   restaurantAddress: z.string().optional(),
@@ -180,7 +182,6 @@ router.post('/calculate-distance', validateBody(CalculateDistanceSchema), async 
   }
 });
 
-// Public: Get specific restaurant by ID (with optional address distance calculation)
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -190,21 +191,31 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     let restaurant: any = null;
     try {
-      const d1Res = await d1Client.query('SELECT * FROM restaurants WHERE id = ?', [id]);
-      if (d1Res.results && d1Res.results.length > 0) {
-        const r: any = d1Res.results[0];
-        if (r.raw_json) {
-          try {
-            restaurant = JSON.parse(r.raw_json);
-            restaurant.id = r.id;
-            restaurant.name = r.name || restaurant.name;
-            restaurant.cuisine = r.cuisine || restaurant.cuisine;
-            restaurant.rating = r.rating ?? restaurant.rating;
-            restaurant.isOpen = r.is_open === 1;
-            restaurant.isBusyPaused = r.is_busy_paused === 1;
-          } catch (e) {}
+      restaurant = await cachedQuery(CacheKeys.restaurant(id), async () => {
+        const d1Res = await d1Client.query('SELECT * FROM restaurants WHERE id = ?', [id]);
+        if (d1Res.results && d1Res.results.length > 0) {
+          const r: any = d1Res.results[0];
+          if (r.raw_json) {
+            try {
+              const parsed = JSON.parse(r.raw_json);
+              return {
+                ...parsed,
+                id: r.id,
+                name: r.name || parsed.name,
+                cuisine: r.cuisine || parsed.cuisine,
+                rating: r.rating ?? parsed.rating,
+                isOpen: r.is_open === 1,
+                isBusyPaused: r.is_busy_paused === 1,
+                deliveryFee: r.delivery_fee ?? parsed.deliveryFee
+              };
+            } catch {
+              return null;
+            }
+          }
+          return r;
         }
-      }
+        return null;
+      });
     } catch (e) {}
 
     if (!restaurant) {
@@ -215,7 +226,6 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Restaurant not found' });
     }
 
-    // Attach distance metrics if location provided
     const userLocation =
       userLat !== undefined && userLng !== undefined
         ? { lat: userLat, lng: userLng }
@@ -246,7 +256,6 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Merchant / Admin: Toggle dish availability (86-list)
 const AvailabilitySchema = z.object({
   isAvailable: z.boolean()
 });
@@ -261,7 +270,6 @@ router.patch(
       const { id: restaurantId, itemId } = req.params;
       const { isAvailable } = req.body;
 
-      // Ensure merchant owns this restaurant if not admin
       if (req.user!.role === 'restaurant' && req.user!.restaurantId && req.user!.restaurantId !== restaurantId) {
         return res.status(403).json({
           success: false,
@@ -285,6 +293,7 @@ router.patch(
         ip: req.ip
       });
 
+      cacheInvalidate('restaurants:');
       return res.json({
         success: true,
         message: `Dish availability updated to ${isAvailable ? 'available' : 'sold out'}.`
@@ -296,7 +305,6 @@ router.patch(
   }
 );
 
-// Merchant / Admin: Toggle Kitchen Busy Mode (pause new orders)
 const BusyModeSchema = z.object({
   isBusyPaused: z.boolean()
 });
@@ -334,6 +342,8 @@ router.patch(
         ip: req.ip
       });
 
+      cacheInvalidate('restaurants:');
+      cacheInvalidate(CacheKeys.restaurant(restaurantId));
       return res.json({
         success: true,
         message: `Kitchen busy mode ${isBusyPaused ? 'enabled (orders paused)' : 'disabled (accepting orders)'}.`,
@@ -345,7 +355,6 @@ router.patch(
   }
 );
 
-// Admin & Merchant: Update Restaurant Profile & Branding in Cloudflare D1
 const handleUpdateRestaurant = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -358,7 +367,6 @@ const handleUpdateRestaurant = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // 1. Fetch current D1 restaurant record
     const existingRes = await d1Client.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id]);
     if (!existingRes.results || existingRes.results.length === 0) {
       return res.status(404).json({ success: false, error: 'Restaurant not found in D1' });
@@ -374,7 +382,6 @@ const handleUpdateRestaurant = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // 2. Merge updates into raw_json
     const mergedData = {
       ...rawData,
       id,
@@ -393,7 +400,6 @@ const handleUpdateRestaurant = async (req: AuthRequest, res: Response) => {
       zone: updates.zone !== undefined ? updates.zone : (rawData.zone || current.zone || 'Lekki Phase 1')
     };
 
-    // 3. Update D1 restaurants table
     await d1Client.query(
       `UPDATE restaurants SET
         name = ?,
@@ -410,7 +416,6 @@ const handleUpdateRestaurant = async (req: AuthRequest, res: Response) => {
       ]
     );
 
-    // Optional column sync in D1 if columns exist
     await d1Client.query(
       `UPDATE restaurants SET
         delivery_fee = ?,
@@ -442,6 +447,8 @@ const handleUpdateRestaurant = async (req: AuthRequest, res: Response) => {
       ip: req.ip
     });
 
+    cacheInvalidate('restaurants:');
+    cacheInvalidate(CacheKeys.restaurant(id));
     return res.json({
       success: true,
       message: `Restaurant "${mergedData.name}" updated successfully in Cloudflare D1`,
