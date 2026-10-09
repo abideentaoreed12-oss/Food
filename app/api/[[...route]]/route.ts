@@ -598,6 +598,63 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Logged out' });
   }
 
+  if (pathname === '/payment/initialize') {
+    const user = await getUser(req);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+
+    const email = String(body.email || user.email || '').trim();
+    const amount = Number(body.amount);
+    const metadata = body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata) ? body.metadata : {};
+    const orderId = String(metadata.orderId || '');
+    if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+      return NextResponse.json({ success: false, error: 'A valid email is required for Paystack checkout' }, { status: 400 });
+    }
+    if (!Number.isFinite(amount) || amount <= 0 || !orderId) {
+      return NextResponse.json({ success: false, error: 'A positive payment amount and order ID are required' }, { status: 400 });
+    }
+
+    const orderResult = await d1.query(
+      'SELECT id, customer_id, total, currency FROM orders WHERE id = ? LIMIT 1',
+      [orderId]
+    );
+    const order = orderResult.results?.[0];
+    if (!order || String(order.customer_id) !== String(user.id)) {
+      return NextResponse.json({ success: false, error: 'Order was not found for this customer' }, { status: 404 });
+    }
+
+    const expectedAmount = Number(order.total);
+    if (!Number.isFinite(expectedAmount) || expectedAmount <= 0 || Math.round(amount * 100) > Math.round(expectedAmount * 100)) {
+      return NextResponse.json({ success: false, error: 'Payment amount does not match the order total' }, { status: 400 });
+    }
+
+    const result = await paymentGateway.initializePayment({
+      email,
+      amountNGN: amount,
+      callbackUrl: typeof body.callbackUrl === 'string' ? body.callbackUrl : `${req.nextUrl.origin}/?order_id=${encodeURIComponent(orderId)}`,
+      metadata: { ...metadata, orderId, userId: user.id, type: 'order_payment', provider: 'paystack' }
+    });
+    if (!result.success || !result.authorizationUrl || !result.reference) {
+      return NextResponse.json({ success: false, error: result.error || 'Paystack could not initialize this payment' }, { status: 502 });
+    }
+
+    const transactionId = `txn-${result.reference}`;
+    const now = new Date().toISOString();
+    const saved = await d1.query(
+      `INSERT INTO transactions (id, order_id, reference, amount, currency, status, payment_method, created_at)
+       VALUES (?, ?, ?, ?, 'NGN', 'pending', 'Paystack', ?)`,
+      [transactionId, orderId, result.reference, amount, now]
+    );
+    if (!saved.success) {
+      return NextResponse.json({ success: false, error: 'Could not save payment reference. Please contact support before retrying.' }, { status: 503 });
+    }
+    return NextResponse.json({
+      success: true,
+      data: { authorizationUrl: result.authorizationUrl, accessCode: result.accessCode, reference: result.reference }
+    });
+  }
+
   if (pathname === '/payment/verify') {
     const user = await getUser(req);
     if (!user) {
