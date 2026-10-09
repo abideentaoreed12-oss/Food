@@ -2,15 +2,18 @@ import { Router, Request, Response } from 'express';
 import { d1Client } from '../db/d1Client.ts';
 import { requireAuth, requireRole, AuthRequest } from '../middleware/auth.ts';
 import { db } from '../db/index.ts';
+import { cachedQuery, CacheKeys, cacheInvalidate } from '../../lib/queryCache.ts';
 
 const router = Router();
 
 // 1. Get Live Dynamic Platform Settings (Public)
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const results = await d1Client.query(
-      'SELECT key, value, description, category, updated_at FROM platform_settings'
-    );
+    const results = await cachedQuery(CacheKeys.settings(), async () => {
+      return await d1Client.query(
+        'SELECT key, value, description, category, updated_at FROM platform_settings'
+      );
+    });
     const SENSITIVE_SETTING_KEYS = [
       'platform_commission_percent',
       'driver_payout_percent',
@@ -54,9 +57,11 @@ router.get('/', async (req: Request, res: Response) => {
 // 2. Get Live Dynamic Delivery Zones (Public)
 router.get('/zones', async (_req: Request, res: Response) => {
   try {
-    const results = await d1Client.query(
-      'SELECT * FROM delivery_zones WHERE is_active = 1 ORDER BY name ASC'
-    );
+    const results = await cachedQuery(CacheKeys.zones(), async () => {
+      return await d1Client.query(
+        'SELECT * FROM delivery_zones WHERE is_active = 1 ORDER BY name ASC'
+      );
+    });
     return res.json({ success: true, data: results.results });
   } catch (error: any) {
     return res.status(503).json({ success: false, error: 'Delivery zone service is unavailable' });
@@ -101,6 +106,7 @@ const handleSettingUpdate = async (req: AuthRequest, res: Response) => {
       ip: req.ip
     });
 
+    cacheInvalidate();
     return res.json({
       success: true,
       message: `Setting ${key} updated successfully`,
@@ -139,6 +145,7 @@ const handleBulkSettingsUpdate = async (req: AuthRequest, res: Response) => {
       ip: req.ip
     });
 
+    cacheInvalidate();
     return res.json({
       success: true,
       message: 'All settings updated successfully in Cloudflare D1',
@@ -193,6 +200,7 @@ const handleZoneUpdate = async (req: AuthRequest, res: Response) => {
       ip: req.ip
     });
 
+    cacheInvalidate();
     return res.json({
       success: true,
       message: `Delivery zone ${id} updated successfully`
