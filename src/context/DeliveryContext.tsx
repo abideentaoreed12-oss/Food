@@ -911,6 +911,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         serviceFee: serviceFee + packagingFee,
         tip: details.tip,
         total: grossTotal,
+        drivingMinutes: fulfillmentType === 'pickup' ? 0 : drivingMinutes,
         paymentMethod: details.paymentMethod,
         currency,
         fulfillmentType,
