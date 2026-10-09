@@ -1,0 +1,21 @@
+name: restore-delivery-context
+on:
+  workflow_dispatch:
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore DeliveryContext from last good commit
+        run: |
+          git show f2fe85d1acb27cc738af56d9faeef5385ee0974a:src/context/DeliveryContext.tsx > src/context/DeliveryContext.tsx
+          git config user.name "veyrang-bot"
+          git config user.email "bot@veyrang.com"
+          git add src/context/DeliveryContext.tsx
+          git diff --staged --quiet && echo 'No changes' && exit 0
+          git commit -m "fix: restore DeliveryContext from pre-placeholder commit"
+          git push
