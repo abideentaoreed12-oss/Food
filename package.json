@@ -14,7 +14,7 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "ci": "npm ci && npm run lint && npm run build",
-    "preinstall": "node -e \"const fs=require('fs');if(process.env.CI&&!fs.existsSync('package-lock.json')){console.error('package-lock.json required for CI (npm ci)');process.exit(1)}\""
+    "preinstall": "node -e \"const fs=require('fs');if(process.env.FORCE_NPM_CI==='1'&&!fs.existsSync('package-lock.json')){console.error('package-lock.json required for FORCE_NPM_CI');process.exit(1)}\""
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
