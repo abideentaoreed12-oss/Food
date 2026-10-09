@@ -30,12 +30,12 @@ router.post('/tickets', async (req: AuthRequest, res: Response) => {
       'INSERT INTO support_tickets (id, user_id, user_email, customer_name, customer_phone, subject, message, category, status, priority, access_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [id, req.user?.id || null, email, name, phone || null, subject, message, category, 'open', 'normal', accessToken, now, now]
     );
-    if (result.meta?.rows_written === 0) {
+    if (!result.success || result.meta?.rows_written === 0) {
       return res.status(503).json({ success: false, error: 'Your ticket could not be saved. Please try again.' });
     }
     return res.status(201).json({ success: true, data: { id, accessToken, status: 'open', createdAt: now }, message: 'Your support ticket has been received.' });
   } catch (error: any) {
-    console.error('Support ticket submission failed:', error?.message || error);
+    console.error('Support ticket submission failed.');
     return res.status(500).json({ success: false, error: 'Support is temporarily unavailable. Please try again shortly.' });
   }
 });
@@ -53,7 +53,7 @@ router.get('/tickets/:id', async (req: AuthRequest, res: Response) => {
     if (!result.results?.length) return res.status(404).json({ success: false, error: 'Ticket not found. Check your reference and access token.' });
     return res.json({ success: true, data: result.results[0] });
   } catch (error: any) {
-    console.error('Support ticket lookup failed:', error?.message || error);
+    console.error('Support ticket lookup failed.');
     return res.status(500).json({ success: false, error: 'Unable to load this ticket right now.' });
   }
 });
