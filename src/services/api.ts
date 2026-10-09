@@ -442,8 +442,8 @@ export const api = {
     verifyDriverKYC: async (userId: string, status: string) =>
       request(`/api/admin/drivers/${userId}/verify`, { method: 'PATCH', body: JSON.stringify({ status }) }),
     getCMS: async () => request('/api/admin/cms'),
-    updateCMS: async (data: any) =>
-      request('/api/admin/cms', { method: 'PUT', body: JSON.stringify(data) }),
+    updateCMS: async (key: string, value: string) =>
+      request('/api/settings/update', { method: 'PUT', body: JSON.stringify({ key, value }) }),
     getSettings: async () => request('/api/admin/settings'),
     updateSettings: async (data: any) =>
       request('/api/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
