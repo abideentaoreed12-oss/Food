@@ -88,6 +88,7 @@ function sanitizeUser(rawUser: any): AuthUser | null {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(() => {
     try {
+      if (typeof window === 'undefined') return null;
       const token = localStorage.getItem('veyrang_jwt_token');
       const cached = localStorage.getItem('veyrang_user_cache');
       if (!token || !cached) return null;

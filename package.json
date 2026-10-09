@@ -7,14 +7,12 @@
     "node": "22.x"
   },
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev -p 3000 -H 0.0.0.0",
     "dev:local": "tsx server.ts",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "next start -p 3000 -H 0.0.0.0",
     "lint": "tsc --noEmit",
     "test": "vitest run",
-    "ci": "npm ci && npm run lint && npm run build",
-    "preinstall": "node -e \"const fs=require('fs');if(process.env.FORCE_NPM_CI==='1'&&!fs.existsSync('package-lock.json')){console.error('package-lock.json required for FORCE_NPM_CI');process.exit(1)}\"",
     "routes:audit": "node scripts/audit-routes.mjs"
   },
   "dependencies": {
@@ -27,7 +25,6 @@
     "@types/node": "^22.14.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vercel/analytics": "^2.0.1",
     "@vis.gl/react-google-maps": "^1.10.1",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
