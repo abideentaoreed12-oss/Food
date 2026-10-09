@@ -6,7 +6,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function getUser(req: NextRequest) {
-  const secret = process.env.JWT_SECRET || 'veyrang-jwt-production-auth-secure-key-2026';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) return null;
   const auth = req.headers.get('authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
@@ -33,7 +34,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Promo code required' }, { status: 400 });
   }
 
-  const d1Res = await d1.query(`SELECT * FROM promo_codes WHERE UPPER(code) = ? AND is_active = 1 LIMIT 1`, [codeUpper]);
+  const d1Res = await d1.query(
+    `SELECT * FROM promo_codes WHERE UPPER(code) = ? AND is_active = 1 LIMIT 1`,
+    [codeUpper]
+  );
   if (!d1Res.success) {
     return NextResponse.json({ success: false, valid: false, error: 'Promo service is temporarily unavailable' }, { status: 503 });
   }
