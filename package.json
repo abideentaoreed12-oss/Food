@@ -62,9 +62,9 @@
     "postcss": "^8.5.29"
   },
   "allowScripts": {
-    "@google/genai@2.28.0": false,
-    "core-js@3.50.0": true,
-    "esbuild@0.28.2": true,
-    "protobufjs@7.6.6": true
+    "@google/genai": false,
+    "core-js": true,
+    "esbuild": true,
+    "protobufjs": true
   }
 }
