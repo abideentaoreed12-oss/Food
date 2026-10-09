@@ -17,7 +17,7 @@ export class R2Client {
 
   constructor() {
     this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || CONFIG.CLOUDFLARE_ACCOUNT_ID;
-    this.apiToken = process.env.CLOUDFLARE_API_TOKEN || CONFIG.CLOUDFLARE_API_TOKEN;
+    this.apiToken = process.env.CLOUDFLARE_R2_API_TOKEN || CONFIG.CLOUDFLARE_R2_API_TOKEN;
     this.bucketName = process.env.CLOUDFLARE_R2_BUCKET || CONFIG.CLOUDFLARE_R2_BUCKET;
     this.publicCdnUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || CONFIG.CLOUDFLARE_R2_PUBLIC_URL || '').replace(/\/$/, '');
     this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || CONFIG.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, '');
@@ -38,12 +38,15 @@ export class R2Client {
 
   public getCdnUrl(key: string): string {
     const cleanKey = key.replace(/^\//, '');
-    return `${this.publicCdnUrl}/${cleanKey}`;
+    if (!this.publicCdnUrl) return '';
+    return `${this.publicCdnUrl}/${cleanKey.split('/').map(encodeURIComponent).join('/')}`;
   }
 
   public async upload(key: string, dataBase64: string, contentType: string = 'image/jpeg'): Promise<R2UploadResult> {
     const cleanKey = key.replace(/^\//, '');
     const cdnUrl = this.getCdnUrl(cleanKey);
+    if (!this.isConfigured()) return { success: false, key: cleanKey, cdnUrl, error: 'R2 credentials or bucket configuration are missing.' };
+    if (!cdnUrl && !this.workerUrl) return { success: false, key: cleanKey, cdnUrl, error: 'R2 public delivery URL is not configured.' };
 
     // Strategy 1: Cloudflare Worker R2 proxy upload endpoint
     if (this.workerUrl) {
@@ -113,16 +116,46 @@ export class R2Client {
     };
   }
 
-  public async delete(key: string): Promise<{ success: boolean }> {
-    const cleanKey = key.replace(/^\//, '');
+  public async delete(key: string): Promise<{ success: boolean; error?: string }> {
+    const cleanKey = key.replace(/^\\/+/, '');
+    if (!cleanKey || cleanKey.split('/').some(part => !part || part === '.' || part === '..')) {
+      return { success: false, error: 'Invalid R2 object key.' };
+    }
+
+    // Try the configured Worker first, but never report success unless it confirms success.
     if (this.workerUrl) {
       try {
-        await fetch(`${this.workerUrl}/storage/file/${encodeURIComponent(cleanKey)}`, {
-          method: 'DELETE'
+        const response = await fetch(`${this.workerUrl}/storage/file/${cleanKey.split('/').map(encodeURIComponent).join('/')}`, {
+          method: 'DELETE',
+          cache: 'no-store'
         });
-      } catch {}
+        if (response.ok) {
+          const result = await response.json().catch(() => null) as any;
+          if (result?.success === true) return { success: true };
+        }
+      } catch {
+        // Fall through to the direct R2 API.
+      }
     }
-    return { success: true };
+
+    if (!this.accountId || !this.apiToken || !this.bucketName) {
+      return { success: false, error: 'R2 account, bucket, or scoped API token is not configured.' };
+    }
+    try {
+      const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${cleanKey.split('/').map(encodeURIComponent).join('/')}`;
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${this.apiToken}` },
+        cache: 'no-store'
+      });
+      const result = await response.json().catch(() => null) as any;
+      if (!response.ok || result?.success !== true) {
+        return { success: false, error: result?.errors?.[0]?.message || `Cloudflare R2 deletion failed (HTTP ${response.status}).` };
+      }
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Cloudflare R2 deletion failed.' };
+    }
   }
 }
 
