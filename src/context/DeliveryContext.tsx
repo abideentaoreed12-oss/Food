@@ -844,6 +844,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     let finalOrder: Order = newOrder;
+    let paystackInitializationError: string | null = null;
 
     try {
       const serverOrder = await api.orders.create({
@@ -909,22 +910,35 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       refreshData().catch(() => {});
 
-      // If online card charge is remaining, initialize payment gateway session and redirect
-      if (finalPayable > 0 && (details.paymentMethod === 'Debit Card' || details.paymentMethod === 'Instant Bank Transfer' || details.paymentMethod === 'Online Payment')) {
+      // Paystack-hosted checkout is the only online card processor. Never mark an
+      // unpaid card order as successful if initialization fails.
+      if (finalPayable > 0 && details.paymentMethod === 'Debit Card') {
+        if (!user?.email) {
+          paystackInitializationError = 'A valid account email is required to pay securely with Paystack.';
+          throw new Error(paystackInitializationError);
+        }
         const payRes: any = await api.payment.initialize({
-          email: user?.email || 'customer@veyrang.com',
+          email: user.email,
           amount: finalPayable,
           callbackUrl: `${window.location.origin}/?order_id=${finalOrder.id}&reference=ref-${finalOrder.id}`,
-          metadata: { orderId: finalOrder.id, userId: user?.id || user?.email, type: 'order_payment' }
-        }).catch(() => null);
+          metadata: { orderId: finalOrder.id, userId: user.id || user.email, type: 'order_payment', provider: 'paystack' }
+        }).catch((error: any) => {
+          paystackInitializationError = error?.message || 'Paystack could not start the card payment. Please try again.';
+          return null;
+        });
 
         if (payRes?.data?.authorizationUrl) {
           clearCart();
           window.location.href = payRes.data.authorizationUrl;
           return finalOrder;
         }
+        paystackInitializationError = payRes?.error || payRes?.message || 'Paystack could not start the card payment. Please try again.';
+        throw new Error(paystackInitializationError);
       }
-    } catch {
+    } catch (error) {
+      if (paystackInitializationError) {
+        throw new Error(paystackInitializationError);
+      }
       setOrders((prev) => [newOrder, ...prev]);
       setActiveTrackingOrderId(newOrder.id);
       const orderTx: WalletDepositRecord = {
