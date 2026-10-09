@@ -335,7 +335,7 @@ router.post('/forgot-password', forgotLimiter, async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ success: false, error: 'Email is required' });
     const code = String(Math.floor(100000 + Math.random() * 900000));
-    await db.createOtp(email, code, 'forgot');
+    await db.saveOtp(email, code, 'forgot');
     await sendEmail({
       to: email,
       subject: 'Reset your Veyrang Password',
