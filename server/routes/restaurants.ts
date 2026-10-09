@@ -262,7 +262,7 @@ router.patch(
       const { isAvailable } = req.body;
 
       // Ensure merchant owns this restaurant if not admin
-      if (req.user!.role === 'restaurant' && req.user!.restaurantId && req.user!.restaurantId !== restaurantId) {
+      if (req.user!.role === 'restaurant' && (!req.user!.restaurantId || req.user!.restaurantId !== restaurantId)) {
         return res.status(403).json({
           success: false,
           error: 'You can only update menu items for your designated kitchen.'
