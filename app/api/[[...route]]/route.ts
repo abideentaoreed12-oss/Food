@@ -212,13 +212,54 @@ export async function GET(req: NextRequest) {
     if (!d1Res.success) {
       return NextResponse.json({ success: false, error: 'Restaurant data is temporarily unavailable' }, { status: 503 });
     }
-    const list = (d1Res.results || []).map((r: any) => {
+
+    const normalizedQuery = (req.nextUrl.searchParams.get('search') || '').trim().toLocaleLowerCase();
+    const cuisineFilter = (req.nextUrl.searchParams.get('cuisine') || '').trim().toLocaleLowerCase();
+    const dietaryFilter = (req.nextUrl.searchParams.get('dietary') || '').trim().toLocaleLowerCase();
+
+    const allRestaurants = (d1Res.results || []).map((row: any) => {
+      let restaurant: any = row;
       try {
-        return r.raw_json ? { ...JSON.parse(r.raw_json), id: r.id } : r;
+        restaurant = row.raw_json ? JSON.parse(row.raw_json) : row;
       } catch {
-        return r;
+        restaurant = row;
       }
+      const id = String(row.id || restaurant.id || '');
+      const categories = Array.isArray(restaurant.categories) ? restaurant.categories : [];
+      return {
+        ...restaurant,
+        id,
+        categories: categories.map((category: any) => ({
+          ...category,
+          items: (Array.isArray(category.items) ? category.items : []).map((item: any) => ({
+            ...item,
+            restaurantId: item.restaurantId || id,
+            category: item.category || category.name || ''
+          }))
+        }))
+      };
     });
+
+    const list = allRestaurants.filter((restaurant: any) => {
+      const restaurantText = [
+        restaurant.name, restaurant.cuisine, restaurant.tagline, restaurant.description,
+        ...(Array.isArray(restaurant.tags) ? restaurant.tags : []),
+        ...(Array.isArray(restaurant.categories) ? restaurant.categories.map((category: any) => category.name) : []),
+        ...(Array.isArray(restaurant.categories) ? restaurant.categories.flatMap((category: any) =>
+          (Array.isArray(category.items) ? category.items : []).flatMap((item: any) => [item.name, item.description, item.category])
+        ) : [])
+      ].filter((value) => typeof value === 'string').join(' ').toLocaleLowerCase();
+
+      const matchesSearch = !normalizedQuery || restaurantText.includes(normalizedQuery);
+      const matchesCuisine = !cuisineFilter || String(restaurant.cuisine || '').toLocaleLowerCase().includes(cuisineFilter);
+      const matchesDietary = !dietaryFilter || (restaurant.categories || []).some((category: any) =>
+        (category.items || []).some((item: any) =>
+          Array.isArray(item.dietary) && item.dietary.some((tag: any) => String(tag).toLocaleLowerCase() === dietaryFilter)
+        )
+      );
+      return matchesSearch && matchesCuisine && matchesDietary;
+    });
+
     return NextResponse.json({ success: true, data: list });
   }
 
