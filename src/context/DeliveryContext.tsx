@@ -955,8 +955,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           window.location.assign(authorizationUrl);
           return finalOrder;
         }
-        paystackInitializationError = payRes?.error || payRes?.message || payRes?.data?.error || 'Paystack could not start the card payment. Please try again.';
-        throw new Error(paystackInitializationError);
+        const initializationMessage = payRes?.error || payRes?.message || payRes?.data?.error || 'Paystack could not start the card payment. Please try again.';
+        paystackInitializationError = initializationMessage;
+        throw new Error(initializationMessage);
       }
     } catch (error) {
       if (paystackInitializationError) {
