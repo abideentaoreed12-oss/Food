@@ -795,7 +795,7 @@ export async function POST(req: NextRequest) {
     }
 
     const orderResult = await d1.query(
-      'SELECT id, customer_id, total, currency FROM orders WHERE id = ? LIMIT 1',
+      'SELECT id, customer_id, total, currency, raw_json FROM orders WHERE id = ? LIMIT 1',
       [orderId]
     );
     const order = orderResult.results?.[0];
@@ -803,9 +803,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Order was not found for this customer' }, { status: 404 });
     }
 
-    const expectedAmount = Number(order.total);
-    if (!Number.isFinite(expectedAmount) || expectedAmount <= 0 || Math.round(amount * 100) > Math.round(expectedAmount * 100)) {
-      return NextResponse.json({ success: false, error: 'Payment amount does not match the order total' }, { status: 400 });
+    let orderDetails: any = {};
+    try { orderDetails = order.raw_json ? JSON.parse(String(order.raw_json)) : {}; } catch { orderDetails = {}; }
+    const expectedAmount = Number(orderDetails.chargeAmount);
+    if (!Number.isFinite(expectedAmount) || expectedAmount <= 0 ||
+        Math.round(amount * 100) !== Math.round(expectedAmount * 100) ||
+        String(order.currency || 'NGN').toUpperCase() !== 'NGN') {
+      return NextResponse.json({ success: false, error: 'Payment amount does not match the saved amount due after wallet deduction' }, { status: 400 });
     }
 
     const result = await paymentGateway.initializePayment({
