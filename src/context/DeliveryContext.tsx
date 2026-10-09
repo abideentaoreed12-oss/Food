@@ -483,14 +483,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(`/api/payments/verify?reference=${encodeURIComponent(ref)}`, {
-          method: 'GET',
-          credentials: 'same-origin',
-          cache: 'no-store'
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || result?.isPaid !== true) {
-          console.warn('Paystack payment is not yet confirmed:', result?.error || result?.status || response.status);
+        // Use the existing authenticated payment API route (/api/payment/verify, POST).
+        // The previous plural GET URL did not match the app's route and left users on cart.
+        const result: any = await api.payment.verify(ref);
+        const verified = result?.isPaid === true ||
+          result?.status === 'success' ||
+          result?.data?.status === 'success' ||
+          result?.data?.isPaid === true;
+        if (!verified) {
+          console.warn('Paystack payment is not yet confirmed:', result?.error || result?.status || 'verification pending');
           return;
         }
         if (cancelled) return;
