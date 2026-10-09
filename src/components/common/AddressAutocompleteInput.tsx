@@ -237,14 +237,28 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
         // 2. High-speed open geocoding fallback if Google returned 0 or wasn't loaded
         if (items.length === 0) {
           try {
-            const queryParam = encodeURIComponent(trimmed);
+            const params = new URLSearchParams({
+              q: /\\b(nigeria|lagos|ibadan|abuja|oyo|ogun|rivers|enugu|kano)\\b/i.test(trimmed)
+                ? trimmed
+                : `${trimmed}, Nigeria`,
+              limit: '5',
+              lang: 'en',
+              countrycode: 'ng'
+            });
             const resp = await fetch(
-              `https://photon.komoot.io/api/?q=${queryParam}&limit=5`
+              `https://photon.komoot.io/api/?${params.toString()}`
             );
             if (resp.ok) {
               const data = await resp.json();
               if (data?.features?.length > 0) {
-                items = data.features.map((f: any, i: number) => {
+                items = data.features.filter((f: any) => {
+                  const country = String(f?.properties?.country || '');
+                  const coords = f?.geometry?.coordinates || [];
+                  return (!country || /nigeria/i.test(country)) &&
+                    Number.isFinite(Number(coords[0])) && Number.isFinite(Number(coords[1])) &&
+                    Number(coords[1]) >= 4 && Number(coords[1]) <= 14 &&
+                    Number(coords[0]) >= 2 && Number(coords[0]) <= 15;
+                }).map((f: any, i: number) => {
                   const props = f.properties || {};
                   const main = [props.housenumber, props.street || props.name].filter(Boolean).join(' ') || props.name || trimmed;
                   const secParts = [props.district, props.city, props.state, props.country].filter(Boolean);
