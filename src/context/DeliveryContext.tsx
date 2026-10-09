@@ -333,23 +333,43 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [cmsContent, setCmsContent] = useState<Record<string, string>>({});
 
-  // Auto-verify online payment when returning from payment gateway redirect
+  // Reconcile Paystack's real transaction reference when the customer returns.
+  // The GET endpoint verifies the amount against D1 and marks the associated order paid.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const urlParams = new URLSearchParams(window.location.search);
     const ref = urlParams.get('reference') || urlParams.get('trxref');
-    if (ref) {
-      api.payment.verify(ref).then(async (res: any) => {
-        if (res?.isPaid || res?.success) {
-          if (refreshUser) await refreshUser();
-          const newUrl = window.location.pathname;
-          window.history.replaceState({}, document.title, newUrl);
+    if (!ref) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(`/api/payments/verify?reference=${encodeURIComponent(ref)}`, {
+          method: 'GET',
+          credentials: 'same-origin',
+          cache: 'no-store'
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result?.isPaid !== true) {
+          console.warn('Paystack payment is not yet confirmed:', result?.error || result?.status || response.status);
+          return;
         }
-      }).catch((err) => {
-        console.warn('Payment verification callback warning:', err);
-      });
-    }
-  }, [refreshUser]);
+        if (cancelled) return;
+        if (refreshUser) await refreshUser();
+        // Reload server-managed orders and wallet/payment state after verified payment.
+        if (typeof refreshData === 'function') await refreshData();
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('reference');
+        cleanUrl.searchParams.delete('trxref');
+        cleanUrl.searchParams.delete('order_id');
+        window.history.replaceState({}, document.title, cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+      } catch (err) {
+        console.warn('Paystack callback reconciliation warning:', err);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [refreshUser, refreshData]);
 
   useEffect(() => {
     api.admin.getCMS?.().then((res: any) => {
@@ -920,7 +940,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const payRes: any = await api.payment.initialize({
           email: user.email,
           amount: finalPayable,
-          callbackUrl: `${window.location.origin}/?order_id=${finalOrder.id}&reference=ref-${finalOrder.id}`,
+          callbackUrl: `${window.location.origin}/?order_id=${encodeURIComponent(finalOrder.id)}`,
           metadata: { orderId: finalOrder.id, userId: user.id || user.email, type: 'order_payment', provider: 'paystack' }
         }).catch((error: any) => {
           paystackInitializationError = error?.message || 'Paystack could not start the card payment. Please try again.';
