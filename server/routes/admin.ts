@@ -212,10 +212,12 @@ router.get('/orders', async (req: AuthRequest, res: Response) => {
 router.patch('/orders/:id/status', async (req: AuthRequest, res: Response) => {
   try {
     const { status, note } = req.body;
-    const allowedStatuses = ['placed', 'confirmed', 'preparing', 'ready_for_pickup', 'in_transit', 'delivered', 'cancelled'];
-    if (typeof status !== 'string' || !allowedStatuses.includes(status)) {
+    const allowedStatuses = ['placed', 'confirmed', 'preparing', 'ready_for_pickup', 'in_transit', 'delivered', 'cancelled'] as const;
+    type AllowedOrderStatus = typeof allowedStatuses[number];
+    if (typeof status !== 'string' || !allowedStatuses.includes(status as AllowedOrderStatus)) {
       return res.status(400).json({ success: false, error: 'Invalid order status' });
     }
+    const validatedStatus = status as AllowedOrderStatus;
     if (note !== undefined && (typeof note !== 'string' || note.length > 500)) {
       return res.status(400).json({ success: false, error: 'Status note must be 500 characters or fewer' });
     }
@@ -223,12 +225,12 @@ router.patch('/orders/:id/status', async (req: AuthRequest, res: Response) => {
     if (!existingOrder) return res.status(404).json({ success: false, error: 'Order not found' });
     const statusUpdate = await d1Client.query(
       'UPDATE orders SET status = ?, updated_at = ? WHERE id = ?',
-      [status, new Date().toISOString(), req.params.id]
+      [validatedStatus, new Date().toISOString(), req.params.id]
     );
     if (!statusUpdate.success) {
       return res.status(503).json({ success: false, error: 'Could not update order status in the database' });
     }
-    await db.updateOrderStatus(req.params.id, status, note);
+    await db.updateOrderStatus(req.params.id, validatedStatus, note);
 
     await db.logAudit({
       userId: req.user!.id,
@@ -237,11 +239,11 @@ router.patch('/orders/:id/status', async (req: AuthRequest, res: Response) => {
       action: 'ADMIN_ORDER_STATUS_CHANGED',
       resource: 'ORDER',
       resourceId: req.params.id,
-      details: { newStatus: status, note },
+      details: { newStatus: validatedStatus, note },
       ip: req.ip
     });
 
-    return res.json({ success: true, message: `Order status changed to ${status}` });
+    return res.json({ success: true, message: `Order status changed to ${validatedStatus}` });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }
