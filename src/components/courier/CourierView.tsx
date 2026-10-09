@@ -45,8 +45,8 @@ export const CourierView: React.FC = () => {
 
   // Find assigned active order for courier
   const activeDelivery = orders.find(
-    (o) => o.status === 'in_transit' || o.status === 'ready_for_pickup' || o.status === 'preparing'
-  ) || orders.find((o) => o.status === 'delivered') || orders[0];
+    (o) => o.status === 'in_transit' || o.status === 'ready_for_pickup' || o.status === 'out_for_delivery' || o.status === 'picked_up'
+  );
 
   const readyForPickupOrders = orders.filter((o) => o.status === 'ready_for_pickup');
 
