@@ -476,6 +476,12 @@ export const api = {
     getSupportTickets: async () => {
       return request('/api/admin/support');
     },
+    replySupportTicket: async (id: string, reply: string) => {
+      return request(`/api/admin/support/${id}/reply`, {
+        method: 'POST',
+        body: JSON.stringify({ reply })
+      });
+    },
     updateSupportTicket: async (id: string, status: string) => {
       return request(`/api/admin/support/${id}/status`, {
         method: 'PATCH',
