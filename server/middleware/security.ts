@@ -6,11 +6,15 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   const allowedOrigins = [
     'https://veyrang.com',
     'https://www.veyrang.com',
+    // Preserve the required AI Studio preview origins explicitly.
     'https://ais-dev-nzkiazjmqpaqtk7xu2qe3k-22582271178.europe-west2.run.app',
-    'https://ais-pre-nzkiazjmqpaqtk7xu2qe3k-22582271178.europe-west2.run.app'
+    'https://ais-pre-nzkiazjmqpaqtk7xu2qe3k-22582271178.europe-west2.run.app',
+    ...(process.env.ADDITIONAL_CORS_ORIGINS || '').split(',').map((value) => value.trim()).filter(Boolean)
   ];
+  const isLocalDevelopmentOrigin = process.env.NODE_ENV !== 'production' &&
+    !!origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
 
-  if (origin && (allowedOrigins.includes(origin) || origin.includes('localhost') || origin.includes('127.0.0.1') || origin.endsWith('.run.app'))) {
+  if (origin && (allowedOrigins.includes(origin) || isLocalDevelopmentOrigin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   } else {
