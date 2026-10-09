@@ -2,13 +2,26 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Veyrang - On-Demand Food Delivery & Cloud Kitchens',
-  description: 'Hot, delicious meals delivered to your door in 25 minutes across Nigeria and international hubs.',
+  metadataBase: new URL('https://www.veyrang.com'),
+  title: {
+    default: 'Veyrang | Food Delivery & Cloud Kitchens',
+    template: '%s | Veyrang'
+  },
+  description: 'Discover restaurants and order food for delivery with Veyrang.',
+  alternates: { canonical: '/' },
+  robots: { index: true, follow: true },
   openGraph: {
-    title: 'Veyrang - On-Demand Food Delivery & Cloud Kitchens',
-    description: 'Hot, delicious meals delivered to your door in 25 minutes across Nigeria and international hubs.',
+    title: 'Veyrang | Food Delivery & Cloud Kitchens',
+    description: 'Discover restaurants and order food for delivery with Veyrang.',
+    url: 'https://www.veyrang.com/',
     siteName: 'Veyrang',
-    type: 'website'
+    type: 'website',
+    locale: 'en_NG'
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Veyrang | Food Delivery & Cloud Kitchens',
+    description: 'Discover restaurants and order food for delivery with Veyrang.'
   }
 };
 
