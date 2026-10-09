@@ -79,81 +79,130 @@ export function calculateHaversineDistanceKm(
  * Tier 4: BigDataCloud
  */
 export async function geocodeAddress(addressStr: string): Promise<GeoLocation & { isLive: boolean; provider?: string }> {
-  const cleanAddr = (addressStr || '').trim();
+  const cleanAddr = (addressStr || '').trim().replace(/\\s+/g, ' ');
   if (!cleanAddr) {
-    throw new Error('A customer or restaurant address is required for live distance calculation');
+    throw new Error('Enter a delivery address or use the current-location button.');
   }
 
-  // No-key open-source geocoders are tried first.
-  // Tier 1: OpenStreetMap Nominatim Geocoder
-  try {
-    const nomUrl = `${CONFIG.NOMINATIM_BASE_URL}/search?format=json&q=${encodeURIComponent(
-      cleanAddr + ', Nigeria'
-    )}&limit=1`;
-    const nomRes = await fetch(nomUrl, {
-      headers: { 'User-Agent': 'VeyraNG-FoodDelivery-RoadRouter/2.0' },
-      signal: AbortSignal.timeout(2500)
-    });
-    if (nomRes.ok) {
-      const nomData = await nomRes.json();
-      if (Array.isArray(nomData) && nomData.length > 0) {
+  // A street name alone can match places in several countries. Restrict searches to
+  // Nigeria, try the customer's literal address first, then a Nigeria-qualified query.
+  const queries = [...new Set([cleanAddr, `${cleanAddr}, Nigeria`])];
+  const isValidPoint = (lat: unknown, lng: unknown) => {
+    const y = Number(lat);
+    const x = Number(lng);
+    return Number.isFinite(y) && Number.isFinite(x) &&
+      y >= 4 && y <= 14 && x >= 2 && x <= 15;
+  };
+
+  // Tier 1: Photon. Search-as-you-type friendly and supports a country filter.
+  for (const query of queries) {
+    try {
+      const params = new URLSearchParams({ q: query, limit: '5', lang: 'en', countrycode: 'ng' });
+      const photonUrl = `${CONFIG.PHOTON_BASE_URL}/api/?${params.toString()}`;
+      const response = await fetch(photonUrl, {
+        headers: { 'User-Agent': 'VeyraNG-FoodDelivery/2.1 (delivery address geocoding)' },
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!response.ok) continue;
+      const data = await response.json();
+      const features = Array.isArray(data?.features) ? data.features : [];
+      for (const feature of features) {
+        const [lng, lat] = feature?.geometry?.coordinates || [];
+        if (!isValidPoint(lat, lng)) continue;
+        const props = feature.properties || {};
+        // Avoid returning an unrelated international match or a result without a place label.
+        if (props.country && !/nigeria/i.test(String(props.country))) continue;
+        const label = [
+          [props.housenumber, props.street || props.name].filter(Boolean).join(' '),
+          props.district || props.suburb,
+          props.city || props.county,
+          props.state,
+          props.country || 'Nigeria'
+        ].filter(Boolean).join(', ');
         return {
-          lat: parseFloat(nomData[0].lat),
-          lng: parseFloat(nomData[0].lon),
-          formattedAddress: nomData[0].display_name || cleanAddr,
+          lat: Number(lat),
+          lng: Number(lng),
+          formattedAddress: label || props.name || cleanAddr,
           isLive: true,
-          provider: 'OpenStreetMap Nominatim'
+          provider: 'Photon (OpenStreetMap)'
         };
       }
+    } catch (error: any) {
+      console.warn('[Geocoding] Photon attempt failed:', error?.message || String(error));
     }
-  } catch (e: any) {
-    console.log('Nominatim geocode fallback note:', e?.message || String(e));
   }
 
-  // Tier 3: Photon Komoot Geocoder
-  try {
-    const photonUrl = `${CONFIG.PHOTON_BASE_URL}/api/?q=${encodeURIComponent(cleanAddr)}&limit=1`;
-    const pRes = await fetch(photonUrl, {
-      headers: { 'User-Agent': 'VeyraNG-FoodDelivery-RoadRouter/2.0' },
-      signal: AbortSignal.timeout(2500)
-    });
-    if (pRes.ok) {
-      const pData = await pRes.json();
-      const feature = pData.features?.[0];
-      if (feature && feature.geometry && feature.geometry.coordinates) {
-        const [lon, lat] = feature.geometry.coordinates;
-        return {
-          lat,
-          lng: lon,
-          formattedAddress: feature.properties?.name || cleanAddr,
-          isLive: true,
-          provider: 'Photon Komoot'
-        };
-      }
+  // Tier 2: Nominatim. This is a one-off server-side lookup, not autocomplete.
+  for (const query of queries) {
+    try {
+      const params = new URLSearchParams({
+        format: 'jsonv2',
+        q: query,
+        countrycodes: 'ng',
+        addressdetails: '1',
+        limit: '5'
+      });
+      const response = await fetch(`${CONFIG.NOMINATIM_BASE_URL}/search?${params.toString()}`, {
+        headers: { 'User-Agent': 'VeyraNG-FoodDelivery/2.1 (delivery address geocoding)' },
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!response.ok) continue;
+      const results = await response.json();
+      if (!Array.isArray(results)) continue;
+      const match = results.find((item: any) =>
+        /nigeria/i.test(String(item?.address?.country || '')) &&
+        isValidPoint(item?.lat, item?.lon)
+      );
+      if (!match) continue;
+      return {
+        lat: Number(match.lat),
+        lng: Number(match.lon),
+        formattedAddress: match.display_name || cleanAddr,
+        isLive: true,
+        provider: 'OpenStreetMap Nominatim'
+      };
+    } catch (error: any) {
+      console.warn('[Geocoding] Nominatim attempt failed:', error?.message || String(error));
     }
-  } catch (e: any) {
-    console.log('Photon geocode fallback note:', e?.message || String(e));
   }
 
-  // Final fallback: Google Maps geocoding, after no-key open-source providers fail.
+  // Final fallback: Google Maps, if the server has a key configured.
   const googleApiKey = CONFIG.GOOGLE_MAPS_API_KEY;
   if (googleApiKey && isGoogleMapsQuotaAvailable()) {
-    try {
-      const googleUrl = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + encodeURIComponent(cleanAddr) + '&key=' + googleApiKey;
-      const googleRes = await fetch(googleUrl, { signal: AbortSignal.timeout(3500) });
-      if (googleRes.ok) {
-        const googleData = await googleRes.json();
-        if (googleData.status === 'OK' && googleData.results && googleData.results.length) {
-          const result = googleData.results[0];
-          return { lat: result.geometry.location.lat, lng: result.geometry.location.lng, formattedAddress: result.formatted_address || cleanAddr, isLive: true, provider: 'Google Maps (last-resort fallback)' };
+    for (const query of queries) {
+      try {
+        const params = new URLSearchParams({ address: query, components: 'country:NG', key: googleApiKey });
+        const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`, {
+          signal: AbortSignal.timeout(5000)
+        });
+        if (!response.ok) continue;
+        const data = await response.json();
+        if (data.status === 'OK' && Array.isArray(data.results)) {
+          const match = data.results.find((item: any) =>
+            isValidPoint(item?.geometry?.location?.lat, item?.geometry?.location?.lng) &&
+            item?.address_components?.some((part: any) => part.types?.includes('country') && part.short_name === 'NG')
+          );
+          if (match) {
+            return {
+              lat: Number(match.geometry.location.lat),
+              lng: Number(match.geometry.location.lng),
+              formattedAddress: match.formatted_address || cleanAddr,
+              isLive: true,
+              provider: 'Google Maps (fallback)'
+            };
+          }
         }
-        if (['OVER_QUERY_LIMIT', 'OVER_DAILY_LIMIT', 'RESOURCE_EXHAUSTED', 'REQUEST_DENIED'].includes(googleData.status)) markGoogleMapsQuotaExceeded(googleData.status);
+        if (['OVER_QUERY_LIMIT', 'OVER_DAILY_LIMIT', 'RESOURCE_EXHAUSTED', 'REQUEST_DENIED'].includes(data.status)) {
+          markGoogleMapsQuotaExceeded(data.status);
+          break;
+        }
+      } catch (error: any) {
+        console.warn('[Geocoding] Google Maps fallback failed:', error?.message || String(error));
       }
-    } catch (error: any) { console.warn('[Geocoding] Google Maps last-resort fallback failed:', error?.message || String(error)); }
+    }
   }
 
-  throw new Error('Could not geocode the supplied address with open-source providers or configured Google Maps fallback');
-
+  throw new Error('We could not locate this address in Nigeria. Choose one of the address suggestions or use the current-location button, then retry.');
 }
 
 /**
