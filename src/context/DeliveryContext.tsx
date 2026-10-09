@@ -954,7 +954,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const payRes: any = await api.payment.initialize({
           email: user.email,
           amount: finalPayable,
-          callbackUrl: `${window.location.origin}/?order_id=${encodeURIComponent(finalOrder.id)}`,
+          callbackUrl: `${window.location.origin}/payment/callback?order_id=${encodeURIComponent(finalOrder.id)}`,
           metadata: { orderId: finalOrder.id, userId: user.id || user.email, type: 'order_payment', provider: 'paystack' }
         }).catch((error: any) => {
           paystackInitializationError = error?.message || 'Paystack could not start the card payment. Please try again.';
