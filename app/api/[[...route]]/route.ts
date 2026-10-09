@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
     const match = pathname.match(/^\/orders\/([^/]+)\/tracking$/);
     if (!match) return NextResponse.json({ success: false, error: 'Invalid order route' }, { status: 400 });
     const orderId = decodeURIComponent(match[1]);
-    const orderResult = await d1.query('SELECT id, user_id, status, raw_json FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
+    const orderResult = await d1.query('SELECT id, customer_id, status, raw_json FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
     if (!orderResult.success) return NextResponse.json({ success: false, error: 'Order storage is temporarily unavailable' }, { status: 503 });
     const row = orderResult.results?.[0];
     if (!row) return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
@@ -123,7 +123,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Stored order data is invalid' }, { status: 500 });
     }
     const assignedCourierId = order.courierId || order.driverId || order.courier?.id || order.driver?.id;
-    const ownerId = order.userId || order.customerId || row.user_id;
+    const ownerId = order.userId || order.customerId || row.customer_id;
     const canView = user.role === 'admin' || user.role === 'sub_admin' || user.id === ownerId || (user.role === 'courier' && user.id === assignedCourierId);
     if (!canView) return NextResponse.json({ success: false, error: 'You are not allowed to view this order tracking' }, { status: 403 });
     await d1.query(`CREATE TABLE IF NOT EXISTS courier_locations (
