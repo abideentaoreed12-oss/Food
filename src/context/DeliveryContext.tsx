@@ -138,34 +138,67 @@ const EMPTY_ADDRESS: SavedAddress = {
 };
 
 export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole?: UserRole }> = ({ children, initialRole }) => {
-  const { user, setIsAuthModalOpen, refreshUser } = useAuth();
+  const { user, setIsAuthModalOpen, refreshUser, openAuthModalForPortal } = useAuth();
 
   const [activeRole, setActiveRoleState] = useState<UserRole>(() => {
     if (initialRole) return initialRole;
     try {
       if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search);
-        const queryRole = urlParams.get('role') || urlParams.get('portal');
-        if (queryRole === 'admin' || queryRole === 'restaurant' || queryRole === 'courier' || queryRole === 'customer') {
-          return queryRole as UserRole;
-        }
         if (window.location.pathname.startsWith('/admin')) {
           return 'admin';
         }
       }
-      const saved = localStorage.getItem('veyrang_active_role');
-      return (saved as UserRole) || 'customer';
+      return 'customer';
     } catch {
       return 'customer';
     }
   });
 
+  // Automatically lock and synchronize activeRole to user's authenticated role
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'restaurant') {
+        setActiveRoleState('restaurant');
+      } else if (user.role === 'courier') {
+        setActiveRoleState('courier');
+      } else if (user.role === 'admin' || user.role === 'sub_admin') {
+        setActiveRoleState('admin');
+      } else {
+        setActiveRoleState('customer');
+      }
+    } else {
+      if (!initialRole || initialRole === 'customer') {
+        setActiveRoleState('customer');
+      }
+    }
+  }, [user, initialRole]);
+
   const setActiveRole = useCallback((role: UserRole) => {
-    setActiveRoleState(role);
-    try {
-      localStorage.setItem('veyrang_active_role', role);
-    } catch {}
-  }, []);
+    if (user) {
+      // Locked to the authenticated role: users can only see their own assigned portal
+      if (user.role === 'restaurant') {
+        setActiveRoleState('restaurant');
+        return;
+      }
+      if (user.role === 'courier') {
+        setActiveRoleState('courier');
+        return;
+      }
+      if (user.role === 'admin' || user.role === 'sub_admin') {
+        setActiveRoleState('admin');
+        return;
+      }
+      setActiveRoleState('customer');
+      return;
+    }
+
+    // Unauthenticated public visitors: can only view customer storefront
+    if (role !== 'customer') {
+      openAuthModalForPortal(role);
+      return;
+    }
+    setActiveRoleState('customer');
+  }, [user, openAuthModalForPortal]);
 
   const [activePage, setActivePageState] = useState<ActivePage>(() => {
     try {

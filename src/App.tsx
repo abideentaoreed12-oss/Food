@@ -78,31 +78,6 @@ const AppContent: React.FC = () => {
       {/* Sticky Top Header Navigation */}
       <Navbar />
 
-      {/* Role View Banner when not in Customer Mode */}
-      {activeRole !== 'customer' && (
-        <div className="bg-slate-900 text-white px-4 sm:px-6 py-2.5 text-xs flex items-center justify-between border-b border-slate-800 shadow-md sticky top-14 sm:top-16 z-30">
-          <div className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-semibold text-slate-300 hidden sm:inline">Active Portal:</span>
-            <span className="font-extrabold text-white uppercase tracking-wider bg-slate-800 px-2.5 py-0.5 rounded-md border border-slate-700">
-              {activeRole === 'restaurant' && 'Merchant Kitchen (KDS)'}
-              {activeRole === 'admin' && 'Admin Operations Console'}
-              {activeRole === 'courier' && 'Courier Rider Portal'}
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              setActiveRole('customer');
-              setActivePage('home');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className="bg-[#FF5500] hover:bg-[#EA4C00] text-white px-3.5 py-1 rounded-xl font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <span>← Back to Customer Storefront</span>
-          </button>
-        </div>
-      )}
-
       {/* Main Content Area */}
       <main className={`flex-1 w-full ${activeRole === 'admin' ? 'max-w-none px-0 pt-0 pb-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-36'}`}>
         {activeRole === 'customer' && renderCustomerPage()}
@@ -126,17 +101,21 @@ const AppContent: React.FC = () => {
       {/* Right Drawer Navigation (Triggered by ☰ Menu button) */}
       <RightDrawer />
 
-      {/* Slide-overs & Interactive Modals */}
-      <DishCustomizationModal />
-      <CartDrawer />
-      <RestaurantDetailModal />
+      {/* Customer Modals & Drawers */}
+      {activeRole === 'customer' && (
+        <>
+          <DishCustomizationModal />
+          <CartDrawer />
+          <RestaurantDetailModal />
+          <MultiRestaurantConflictModal />
+          <FloatingCartBar />
+        </>
+      )}
+
+      {/* Cross-Role Modals */}
       <OrderTrackingModal />
       <AuthModal />
       <WalletModal isOpen={isWalletModalOpen} onClose={() => setIsWalletModalOpen(false)} />
-      <MultiRestaurantConflictModal />
-
-      {/* Floating Sticky Cart Banner */}
-      <FloatingCartBar />
 
       {/* Corporate Multi-Column Footer */}
       {activeRole === 'customer' && <Footer />}
