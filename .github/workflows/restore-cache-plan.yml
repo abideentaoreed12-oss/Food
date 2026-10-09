@@ -1,0 +1,43 @@
+name: restore-cache-plan
+on:
+  workflow_dispatch:
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore known-good files from history
+        run: |
+          set -e
+          git config user.name "veyrang-bot"
+          git config user.email "bot@veyrang.com"
+
+          # settings (full cachedQuery version)
+          git show 1598deaa02fefee9e66de67ae20764f00e1ac432:server/routes/settings.ts > server/routes/settings.ts
+          echo "settings: $(wc -c < server/routes/settings.ts) bytes"
+
+          # restaurants (full cachedQuery version)
+          git show 03b1ed9ef04091f43c7c743aab616043a9a4c2e1:server/routes/restaurants.ts > server/routes/restaurants.ts
+          echo "restaurants: $(wc -c < server/routes/restaurants.ts) bytes"
+
+          # AuthContext (shell / no wallet cache)
+          git show 2cc03572da8328b24fda6166f51b6e52498d4224:src/context/AuthContext.tsx > src/context/AuthContext.tsx
+          echo "AuthContext: $(wc -c < src/context/AuthContext.tsx) bytes"
+
+          # api safe storage
+          git show f2fe85d1acb27cc738af56d9faeef5385ee0974a:src/services/api.ts > src/services/api.ts
+          echo "api: $(wc -c < src/services/api.ts) bytes"
+
+          # DeliveryContext — last full non-placeholder (pre structural-cart wipe)
+          git show f2fe85d1acb27cc738af56d9faeef5385ee0974a:src/context/DeliveryContext.tsx > src/context/DeliveryContext.tsx
+          echo "DeliveryContext: $(wc -c < src/context/DeliveryContext.tsx) bytes"
+
+          git add server/routes/settings.ts server/routes/restaurants.ts src/context/AuthContext.tsx src/services/api.ts src/context/DeliveryContext.tsx
+          git status
+          git diff --staged --quiet && echo 'No changes' && exit 0
+          git commit -m "fix: restore settings, restaurants, AuthContext, api, DeliveryContext from last good commits"
+          git push
