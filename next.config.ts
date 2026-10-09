@@ -26,6 +26,23 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Only explicitly approved image origins may be fetched by the public optimizer.
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '**.r2.dev', pathname: '/**' },
+      { protocol: 'https', hostname: '**.r2.cloudflarestorage.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'veyrang.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'www.veyrang.com', pathname: '/**' }
+    ],
+    dangerouslyAllowSVG: false,
+    contentDispositionType: 'attachment',
+    maximumRedirects: 2,
+    maximumResponseBody: 5_000_000,
+    minimumCacheTTL: 60
+  },
+  productionBrowserSourceMaps: false,
   async headers() {
     return [
       {
