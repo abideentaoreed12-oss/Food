@@ -200,6 +200,10 @@ export const CartDrawer: React.FC = () => {
 
   const handleCheckout = async () => {
     if (cart.length === 0 || !cartRestaurant) return;
+    if (fulfillmentType !== 'pickup' && (!liveDistanceResult || liveDistanceResult.isCalculating || distanceError)) {
+      setPromoMessage({ text: 'A fresh live road-distance quote is required before delivery checkout. Verify your address and retry the distance calculation.', isError: true });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -717,7 +721,7 @@ export const CartDrawer: React.FC = () => {
                   }
                   handleCheckout();
                 }}
-                disabled={isSubmitting}
+                disabled={isSubmitting || (fulfillmentType !== 'pickup' && (!liveDistanceResult || liveDistanceResult.isCalculating || Boolean(distanceError)))}
                 className="w-full py-3.5 px-4 rounded-2xl bg-orange-600 text-white font-bold text-sm hover:bg-orange-700 transition-colors shadow-md shadow-orange-600/20 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
