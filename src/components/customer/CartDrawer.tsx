@@ -191,9 +191,7 @@ export const CartDrawer: React.FC = () => {
 
   const preWalletTotal = Math.max(0, subtotal + deliveryFee + serviceFee + tip - discount);
 
-  const walletDeduction = useWalletCredit
-    ? Math.min(walletBalanceNGN, preWalletTotal)
-    : 0;
+  const walletDeduction = Math.min(Math.max(0, Number(walletBalanceNGN) || 0), preWalletTotal);
 
   const finalCardCharge = Math.max(0, preWalletTotal - walletDeduction);
 
