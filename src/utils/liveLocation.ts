@@ -209,9 +209,16 @@ export async function acquireLiveLocation(
     }
   }
 
-  if (!resolvedAddress) {
-    resolvedAddress = `Device GPS Location (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
-    formattedAddress = resolvedAddress;
+  // Never expose raw GPS coordinates or a generic label as a delivery address.
+  if (!resolvedAddress || /^(current location|device gps location|live location)(\\b|\\s*\\()/i.test(resolvedAddress.trim())) {
+    const readableFallback = formattedAddress && !/^(current location|device gps location|live location)(\\b|\\s*\\()/i.test(formattedAddress.trim())
+      ? formattedAddress
+      : [resolvedCity, resolvedState, resolvedCountry].filter(Boolean).join(', ');
+    if (!readableFallback) {
+      throw new Error('Your live location was detected, but we could not find a readable street or area address. Enter your street, area, city and state, or try again.');
+    }
+    resolvedAddress = readableFallback;
+    formattedAddress = readableFallback;
   }
 
   return {
