@@ -243,15 +243,15 @@ export const Footer: React.FC = () => {
               <div className="flex items-start gap-2.5">
                 <Phone className="w-4 h-4 text-[#FF5500] shrink-0 mt-0.5" />
                 <div>
-                  <div className="text-white font-bold">{platformSettings['cms_support_phone'] || '+234 (0) 800 784 2524'}</div>
-                  <div className="text-[11px] text-slate-500">Toll-free 24/7 Dispatch Desk</div>
+                  <div className="text-white font-bold">{platformSettings['cms_support_phone'] || ''}</div>
+                  {platformSettings['cms_support_phone'] && <div className="text-[11px] text-slate-500">Support phone</div>}
                 </div>
               </div>
 
               <div className="flex items-start gap-2.5">
                 <Mail className="w-4 h-4 text-[#FF5500] shrink-0 mt-0.5" />
                 <div>
-                  <div className="text-white font-bold">{platformSettings['cms_support_email'] || 'support@veyrang.com'}</div>
+                  <div className="text-white font-bold">{platformSettings['cms_support_email'] || ''}</div>
                   <div className="text-[11px] text-slate-500">10-min average response time</div>
                 </div>
               </div>
