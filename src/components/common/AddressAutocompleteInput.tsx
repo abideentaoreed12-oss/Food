@@ -111,7 +111,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
   value,
   onChange,
   onAddressSelect,
-  placeholder = 'Start typing street address or landmark...',
+  placeholder = 'Enter street, estate, landmark or area in Nigeria...',
   className = '',
   required = false,
   disabled = false,
@@ -181,104 +181,32 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
       try {
         let items: SuggestionItem[] = [];
 
-        // 1. Try Google Places Autocomplete (New or Classic)
-        if (placesLib) {
-          try {
-            if ((placesLib as any).AutocompleteSuggestion?.fetchAutocompleteSuggestions) {
-              if (!sessionTokenRef.current && (placesLib as any).AutocompleteSessionToken) {
-                sessionTokenRef.current = new (placesLib as any).AutocompleteSessionToken();
-              }
-
-              const res = await (placesLib as any).AutocompleteSuggestion.fetchAutocompleteSuggestions({
-                input: trimmed,
-                sessionToken: sessionTokenRef.current || undefined
-              });
-
-              if (res?.suggestions?.length) {
-                items = res.suggestions.map((s: any, idx: number) => {
-                  const placePred = s.placePrediction;
-                  return {
-                    id: placePred?.placeId || `google-${idx}`,
-                    mainText: placePred?.mainText?.toString() || placePred?.text?.toString() || trimmed,
-                    secondaryText: placePred?.secondaryText?.toString() || 'Verified Location',
-                    fullText: placePred?.text?.toString() || trimmed,
-                    placeId: placePred?.placeId,
-                    source: 'google'
-                  };
-                });
-              }
-            } else if ((placesLib as any).AutocompleteService) {
-              const svc = new (placesLib as any).AutocompleteService();
-              const preds: google.maps.places.AutocompletePrediction[] = await new Promise((resolve) => {
-                svc.getPlacePredictions(
-                  {
-                    input: trimmed,
-                    componentRestrictions: { country: 'ng' }
-                  },
-                  (results: any) => resolve(results || [])
-                );
-              });
-
-              if (preds && preds.length > 0) {
-                items = preds.map((p) => ({
-                  id: p.place_id,
-                  mainText: p.structured_formatting?.main_text || p.description,
-                  secondaryText: p.structured_formatting?.secondary_text || '',
-                  fullText: p.description,
-                  placeId: p.place_id,
-                  source: 'google'
-                }));
-              }
-            }
-          } catch (gErr) {
-            console.warn('Google Places suggestion fetch notice:', gErr);
+        // Search through our same-origin backend, which uses open-source Photon
+        // and strictly filters results to Nigeria. No Google API key or client URL.
+        try {
+          const resp = await fetch(`/api/geocode/search?q=${encodeURIComponent(trimmed)}`, {
+            headers: { Accept: 'application/json' },
+            signal: AbortSignal.timeout(6000)
+          });
+          if (resp.ok) {
+            const payload = await resp.json();
+            const results = Array.isArray(payload?.data) ? payload.data : [];
+            items = results.filter((item: any) =>
+              /\\bnigeria\\b/i.test(String(item?.country || '')) &&
+              Number.isFinite(Number(item?.latitude)) &&
+              Number.isFinite(Number(item?.longitude))
+            ).map((item: any, idx: number) => ({
+              id: String(item.id || `ng-${idx}`),
+              mainText: String(item.address || item.formattedAddress || ''),
+              secondaryText: [item.city, item.state, 'Nigeria'].filter(Boolean).join(', '),
+              fullText: String(item.formattedAddress || item.address || ''),
+              source: 'fallback' as const,
+              lat: Number(item.latitude),
+              lng: Number(item.longitude)
+            })).filter((item: SuggestionItem) => item.mainText && item.fullText);
           }
-        }
-
-        // 2. High-speed open geocoding fallback if Google returned 0 or wasn't loaded
-        if (items.length === 0) {
-          try {
-            const params = new URLSearchParams({
-              q: /\b(nigeria|lagos|ibadan|abuja|oyo|ogun|rivers|enugu|kano)\b/i.test(trimmed)
-                ? trimmed
-                : `${trimmed}, Nigeria`,
-              limit: '5',
-              lang: 'en',
-              countrycode: 'ng'
-            });
-            const resp = await fetch(
-              `https://photon.komoot.io/api/?${params.toString()}`
-            );
-            if (resp.ok) {
-              const data = await resp.json();
-              if (data?.features?.length > 0) {
-                items = data.features.filter((f: any) => {
-                  const country = String(f?.properties?.country || '');
-                  const coords = f?.geometry?.coordinates || [];
-                  return (!country || /nigeria/i.test(country)) &&
-                    Number.isFinite(Number(coords[0])) && Number.isFinite(Number(coords[1])) &&
-                    Number(coords[1]) >= 4 && Number(coords[1]) <= 14 &&
-                    Number(coords[0]) >= 2 && Number(coords[0]) <= 15;
-                }).map((f: any, i: number) => {
-                  const props = f.properties || {};
-                  const main = [props.housenumber, props.street || props.name].filter(Boolean).join(' ') || props.name || trimmed;
-                  const secParts = [props.district, props.city, props.state, props.country].filter(Boolean);
-                  const sec = secParts.join(', ') || 'Nigeria';
-                  return {
-                    id: `geo-${i}-${props.osm_id || Math.random()}`,
-                    mainText: main,
-                    secondaryText: sec,
-                    fullText: [main, sec].filter(Boolean).join(', '),
-                    source: 'fallback',
-                    lat: f.geometry?.coordinates?.[1],
-                    lng: f.geometry?.coordinates?.[0]
-                  };
-                });
-              }
-            }
-          } catch (fallErr) {
-            console.warn('Fallback geocoding notice:', fallErr);
-          }
+        } catch (searchErr) {
+          console.warn('Open-source Nigerian address search unavailable:', searchErr);
         }
 
         // 3. Fallback to matching popular zones
@@ -682,7 +610,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
           {/* Footer note */}
           <div className="px-3 py-1.5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
             <span>Press Enter to select</span>
-            <span className="font-semibold text-slate-500">Live Maps Verification</span>
+            <span className="font-semibold text-slate-500">OpenStreetMap Address Search</span>
           </div>
         </div>
       )}
