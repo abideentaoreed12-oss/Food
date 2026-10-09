@@ -1,148 +1,26 @@
 import React, { useState } from 'react';
-import { HelpCircle, ChevronDown, Phone, MessageSquare, ShieldCheck, Clock } from 'lucide-react';
+import { ChevronDown, CircleHelp, MessageCircle, Phone, ShieldCheck, Truck, WalletCards } from 'lucide-react';
 import { useDelivery } from '../../context/DeliveryContext';
 
 export const HelpPage: React.FC = () => {
-  const { platformSettings } = useDelivery();
+  const { platformSettings, setActivePage } = useDelivery();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-
-  const whatsappNumber = (platformSettings['cms_whatsapp_phone'] || '2348007842524').replace(/\D/g, '');
-  const supportPhone = platformSettings['cms_support_phone'] || '+234 800 839 7264';
-
-  const defaultFaqs = [
-    {
-      q: 'How long does doorstep delivery take in Lagos?',
-      a: 'Average delivery takes between 25 to 35 minutes depending on traffic and your delivery zone (Lekki Phase 1, Victoria Island, Ikoyi, Ikeja). You can monitor your order progress in real-time in the My Orders tab.'
-    },
-    {
-      q: 'What payment methods do you accept?',
-      a: 'Veyrang accepts all debit cards, instant Bank Transfer / Virtual Accounts, and Veyrang in-app Wallet balances.'
-    },
-    {
-      q: 'How does the Handover PIN work?',
-      a: 'Every delivery is assigned a unique 4-digit Handover PIN (visible in your order details). When your rider arrives at your gate or door, share this code with them to verify that the meal was delivered to the right person.'
-    },
-    {
-      q: 'Can I cancel or modify my food order after placing it?',
-      a: 'You can cancel an order within 60 seconds of placing it before the kitchen accepts the ticket. Once the kitchen starts food preparation, orders cannot be cancelled to prevent food waste.'
-    },
-    {
-      q: 'How do refunds work if an item is missing or sold out?',
-      a: 'If a kitchen 86s (sells out) an item or an issue arises, refunds are instantly credited to your Veyrang Wallet balance with zero deduction, ready for your next meal or bank payout.'
-    },
-    {
-      q: 'What is the delivery fee and minimum order?',
-      a: 'Delivery fees start at ₦500 within your local neighborhood zone. Minimum order values vary by restaurant (typically ₦1,500 to ₦2,000).'
-    }
-  ];
-
   const faqs = [
-    {
-      q: platformSettings['cms_faq1_q'] || defaultFaqs[0].q,
-      a: platformSettings['cms_faq1_a'] || defaultFaqs[0].a
-    },
-    {
-      q: platformSettings['cms_faq2_q'] || defaultFaqs[1].q,
-      a: platformSettings['cms_faq2_a'] || defaultFaqs[1].a
-    },
-    {
-      q: platformSettings['cms_faq3_q'] || defaultFaqs[2].q,
-      a: platformSettings['cms_faq3_a'] || defaultFaqs[2].a
-    },
-    {
-      q: platformSettings['cms_faq4_q'] || defaultFaqs[3].q,
-      a: platformSettings['cms_faq4_a'] || defaultFaqs[3].a
-    },
-    {
-      q: platformSettings['cms_faq5_q'] || defaultFaqs[4].q,
-      a: platformSettings['cms_faq5_a'] || defaultFaqs[4].a
-    },
-    {
-      q: platformSettings['cms_faq6_q'] || defaultFaqs[5].q,
-      a: platformSettings['cms_faq6_a'] || defaultFaqs[5].a
-    }
+    { group: 'Orders & delivery', q: 'Where can I follow my order?', a: 'Open My Orders to view the latest order status and delivery progress. If an order appears stuck, submit a support ticket and include your order reference.' },
+    { group: 'Orders & delivery', q: 'Can I cancel an order?', a: 'Cancellation depends on the current order stage and the restaurant’s preparation status. Contact support promptly with your order reference if you need help.' },
+    { group: 'Payments & refunds', q: 'What should I do if a payment looks incorrect?', a: 'Do not retry repeatedly if a payment is pending or unclear. Save the transaction reference and submit a Payment or wallet ticket so the team can investigate.' },
+    { group: 'Payments & refunds', q: 'How do I report a missing item or request a refund?', a: 'Submit a Refund or missing item ticket. Include your order reference and describe the issue; support will review the order and payment record.' },
+    { group: 'Account & privacy', q: 'What information should I send to support?', a: 'Include the email associated with your account and relevant order or transaction references. Never send your password, one-time codes, or full card details.' },
+    { group: 'Account & privacy', q: 'How do I see the team’s response?', a: 'Every submitted request has a ticket reference. Use Contact Support to check its status and view the latest reply using that reference and the same email address.' }
   ];
-
+  const whatsappNumber = (platformSettings?.cms_whatsapp_phone || '').replace(/\D/g, '');
+  const phone = platformSettings?.cms_support_phone || '';
   return (
-    <div className="max-w-xl sm:max-w-2xl md:max-w-4xl lg:max-w-6xl mx-auto space-y-6 pb-20">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 font-display">
-          {platformSettings['cms_help_title'] || 'Help & Support'}
-        </h1>
-        <p className="text-xs text-slate-500 mt-0.5">
-          {platformSettings['cms_help_subtitle'] || 'Frequently asked questions, delivery policies, and customer support'}
-        </p>
-      </div>
-
-      {/* Direct Support Channels */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <a
-          href={`https://wa.me/${whatsappNumber}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="p-4 rounded-3xl bg-emerald-50 border border-emerald-200 hover:border-emerald-300 transition-all flex items-center gap-3.5 cursor-pointer"
-        >
-          <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
-            <MessageSquare className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">WhatsApp Support</div>
-            <div className="text-sm font-bold text-emerald-950">Chat with Customer Care</div>
-            <div className="text-[11px] text-emerald-600">{platformSettings['cms_whatsapp_desc'] || 'Available 8am – 11pm WAT'}</div>
-          </div>
-        </a>
-
-        <a
-          href={`tel:${supportPhone.replace(/\s+/g, '')}`}
-          className="p-4 rounded-3xl bg-orange-50 border border-orange-200 hover:border-orange-300 transition-all flex items-center gap-3.5 cursor-pointer"
-        >
-          <div className="w-10 h-10 rounded-2xl bg-orange-600 text-white flex items-center justify-center shrink-0">
-            <Phone className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-orange-700">Customer Hotline</div>
-            <div className="text-sm font-bold text-orange-950 font-mono">{supportPhone}</div>
-            <div className="text-[11px] text-orange-600">{platformSettings['cms_support_phone_desc'] || 'Direct telephone support'}</div>
-          </div>
-        </a>
-      </div>
-
-      {/* FAQ Accordion */}
-      <div className="rounded-3xl bg-white border border-slate-200/90 p-5 shadow-2xs space-y-3">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-2">
-          Frequently Asked Questions
-        </h2>
-
-        <div className="space-y-2">
-          {faqs.map((faq, idx) => {
-            const isOpen = openFaq === idx;
-
-            return (
-              <div
-                key={idx}
-                className="rounded-2xl border border-slate-100 bg-slate-50/50 overflow-hidden transition-all"
-              >
-                <button
-                  onClick={() => setOpenFaq(isOpen ? null : idx)}
-                  className="w-full text-left p-3.5 flex items-center justify-between gap-3 text-xs sm:text-sm font-bold text-slate-900 cursor-pointer hover:text-orange-600"
-                >
-                  <span>{faq.q}</span>
-                  <ChevronDown
-                    className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${
-                      isOpen ? 'rotate-180 text-orange-600' : ''
-                    }`}
-                  />
-                </button>
-
-                {isOpen && (
-                  <div className="px-3.5 pb-3.5 text-xs text-slate-600 leading-relaxed border-t border-slate-100/80 pt-2 animate-in fade-in">
-                    {faq.a}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+    <div className="min-h-[70vh] bg-slate-50 pb-16">
+      <section className="bg-slate-950 text-white"><div className="mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-14"><p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-orange-200"><CircleHelp className="h-4 w-4" /> HELP CENTRE</p><h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-5xl">{platformSettings?.cms_help_title || 'Help, without the guesswork.'}</h1><p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">{platformSettings?.cms_help_subtitle || 'Find answers about orders, delivery, payments and your account. If you need personal assistance, our support team can follow your request through a ticket.'}</p><button onClick={() => setActivePage('contact')} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-white hover:bg-orange-700">Contact support <MessageCircle className="h-4 w-4" /></button></div></section>
+      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:py-10">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"><div className="mb-6"><p className="text-xs font-bold uppercase tracking-widest text-orange-600">Knowledge base</p><h2 className="mt-2 text-2xl font-bold text-slate-950">Frequently asked questions</h2><p className="mt-2 text-sm text-slate-500">Choose a question to see the answer.</p></div><div className="space-y-3">{faqs.map((faq, idx) => { const isOpen = openFaq === idx; return <div key={faq.q} className="overflow-hidden rounded-xl border border-slate-200"><button aria-expanded={isOpen} onClick={() => setOpenFaq(isOpen ? null : idx)} className="flex w-full items-center justify-between gap-4 p-4 text-left hover:bg-slate-50"><span><span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-orange-600">{faq.group}</span><span className="text-sm font-semibold text-slate-900">{faq.q}</span></span><ChevronDown className={'h-4 w-4 shrink-0 text-slate-500 transition-transform ' + (isOpen ? 'rotate-180' : '')} /></button>{isOpen && <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-4 text-sm leading-6 text-slate-600">{faq.a}</div>}</div>; })}</div></section>
+        <aside className="space-y-4"><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-bold text-slate-950">Need a person?</h2><p className="mt-2 text-sm leading-6 text-slate-500">For account-specific issues, open a ticket. Your request is recorded for the admin support team and you can check the response later.</p><button onClick={() => setActivePage('contact')} className="mt-4 w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800">Open a support ticket</button></div><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-3"><span className="rounded-xl bg-orange-50 p-2.5 text-orange-600"><Truck className="h-5 w-5" /></span><div><h3 className="text-sm font-bold text-slate-900">Order support</h3><p className="mt-1 text-xs leading-5 text-slate-500">Keep your order reference nearby.</p></div></div><div className="my-4 border-t border-slate-100" /><div className="flex items-center gap-3"><span className="rounded-xl bg-emerald-50 p-2.5 text-emerald-700"><WalletCards className="h-5 w-5" /></span><div><h3 className="text-sm font-bold text-slate-900">Payment support</h3><p className="mt-1 text-xs leading-5 text-slate-500">Include transaction references, never card details.</p></div></div><div className="my-4 border-t border-slate-100" /><div className="flex items-center gap-3"><span className="rounded-xl bg-blue-50 p-2.5 text-blue-700"><ShieldCheck className="h-5 w-5" /></span><div><h3 className="text-sm font-bold text-slate-900">Account safety</h3><p className="mt-1 text-xs leading-5 text-slate-500">Support will never ask for your password or OTP.</p></div></div>{whatsappNumber && <a href={'https://wa.me/' + whatsappNumber} target="_blank" rel="noopener noreferrer" className="mt-5 flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50"><MessageCircle className="h-4 w-4 text-emerald-600" /> WhatsApp</a>}{phone && <a href={'tel:' + phone.replace(/[^+\d]/g, '')} className="mt-2 flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50"><Phone className="h-4 w-4" /> Call support</a>}</div></aside>
       </div>
     </div>
   );
