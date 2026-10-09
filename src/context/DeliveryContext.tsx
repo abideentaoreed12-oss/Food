@@ -333,44 +333,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const [cmsContent, setCmsContent] = useState<Record<string, string>>({});
 
-  // Reconcile Paystack's real transaction reference when the customer returns.
-  // The GET endpoint verifies the amount against D1 and marks the associated order paid.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const urlParams = new URLSearchParams(window.location.search);
-    const ref = urlParams.get('reference') || urlParams.get('trxref');
-    if (!ref) return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const response = await fetch(`/api/payments/verify?reference=${encodeURIComponent(ref)}`, {
-          method: 'GET',
-          credentials: 'same-origin',
-          cache: 'no-store'
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || result?.isPaid !== true) {
-          console.warn('Paystack payment is not yet confirmed:', result?.error || result?.status || response.status);
-          return;
-        }
-        if (cancelled) return;
-        if (refreshUser) await refreshUser();
-        // Reload server-managed orders and wallet/payment state after verified payment.
-        if (typeof refreshData === 'function') await refreshData();
-        const cleanUrl = new URL(window.location.href);
-        cleanUrl.searchParams.delete('reference');
-        cleanUrl.searchParams.delete('trxref');
-        cleanUrl.searchParams.delete('order_id');
-        window.history.replaceState({}, document.title, cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
-      } catch (err) {
-        console.warn('Paystack callback reconciliation warning:', err);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [refreshUser, refreshData]);
-
   useEffect(() => {
     api.admin.getCMS?.().then((res: any) => {
       if (res) setCmsContent(res);
@@ -509,6 +471,44 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.warn('Silent sync error:', e);
     }
   }, [user, selectedAddress?.address]);
+
+  // Reconcile Paystack's real transaction reference when the customer returns.
+  // The GET endpoint verifies the amount against D1 and marks the associated order paid.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('reference') || urlParams.get('trxref');
+    if (!ref) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(`/api/payments/verify?reference=${encodeURIComponent(ref)}`, {
+          method: 'GET',
+          credentials: 'same-origin',
+          cache: 'no-store'
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result?.isPaid !== true) {
+          console.warn('Paystack payment is not yet confirmed:', result?.error || result?.status || response.status);
+          return;
+        }
+        if (cancelled) return;
+        if (refreshUser) await refreshUser();
+        // Reload server-managed orders and wallet/payment state after verified payment.
+        if (typeof refreshData === 'function') await refreshData();
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('reference');
+        cleanUrl.searchParams.delete('trxref');
+        cleanUrl.searchParams.delete('order_id');
+        window.history.replaceState({}, document.title, cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+      } catch (err) {
+        console.warn('Paystack callback reconciliation warning:', err);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [refreshUser, refreshData]);
 
   // Immediate & Absolute User Data Purge when unauthenticated or on logout event
   useEffect(() => {
