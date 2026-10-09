@@ -66,56 +66,77 @@ export async function POST(req: NextRequest) {
 
       if (orderId) {
         const order = await db.getOrderById(orderId);
-        if (order) {
-          order.paymentStatus = 'paid';
-          const txId = `txn-paystack-${Date.now()}`;
-
-          await db.createTransaction({
-            id: txId,
-            orderId,
-            reference,
-            amount: amountPaid,
-            currency: order.currency || 'NGN',
-            status: 'completed',
-            paymentMethod: 'Paystack Online',
-            idempotencyKey: `idemp_webhook_${reference}`,
-            createdAt: nowIso
-          });
-
-          await d1Client.query(
-            'UPDATE orders SET payment_status = ?, updated_at = ? WHERE id = ?',
-            ['paid', nowIso, orderId]
-          ).catch(() => {});
-
-          await d1Client.query(
-            'INSERT INTO transactions (id, order_id, reference, amount, currency, status, payment_method, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [txId, orderId, reference, amountPaid, order.currency || 'NGN', 'completed', 'Paystack Online', nowIso]
-          ).catch(() => {});
-
-          await db.logAudit({
-            action: 'PAYSTACK_WEBHOOK_SUCCESS',
-            resource: 'ORDER',
-            resourceId: orderId,
-            details: { reference, amount: amountPaid }
-          });
+        if (!order) {
+          return NextResponse.json({ success: false, error: 'Order could not be verified' }, { status: 400 });
         }
+        const expectedAmountMinor = Math.round((Number(order.total) - Number(order.walletDeduction || 0)) * 100);
+        if (!Number.isSafeInteger(expectedAmountMinor) || expectedAmountMinor <= 0 ||
+            expectedAmountMinor !== amountMinor ||
+            String(order.currency || 'NGN').toUpperCase() !== String(data.currency || '').toUpperCase()) {
+          return NextResponse.json({ success: false, error: 'Payment amount or currency does not match the order' }, { status: 400 });
+        }
+        if (String(order.paymentStatus).toLowerCase() === 'paid') {
+          return NextResponse.json({ success: true, message: 'Order is already paid' });
+        }
+        const txId = `txn-paystack-${Date.now()}`;
+        const transactionResult = await d1Client.query(
+          'INSERT INTO transactions (id, order_id, reference, amount, currency, status, payment_method, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [txId, orderId, reference, amountPaid, String(order.currency || 'NGN').toUpperCase(), 'completed', 'Paystack Online', nowIso]
+        );
+        if (!transactionResult.success) {
+          return NextResponse.json({ success: false, error: 'Payment transaction could not be recorded' }, { status: 503 });
+        }
+        const orderResult = await d1Client.query(
+          'UPDATE orders SET payment_status = ?, updated_at = ? WHERE id = ? AND LOWER(COALESCE(payment_status, \'pending\')) != \'paid\'',
+          ['paid', nowIso, orderId]
+        );
+        if (!orderResult.success) {
+          return NextResponse.json({ success: false, error: 'Order payment status could not be updated' }, { status: 503 });
+        }
+        order.paymentStatus = 'paid';
+        await db.createTransaction({
+          id: txId,
+          orderId,
+          reference,
+          amount: amountPaid,
+          currency: String(order.currency || 'NGN').toUpperCase(),
+          status: 'completed',
+          paymentMethod: 'Paystack Online',
+          idempotencyKey: `idemp_webhook_${reference}`,
+          createdAt: nowIso
+        });
+        await db.logAudit({
+          action: 'PAYSTACK_WEBHOOK_SUCCESS',
+          resource: 'ORDER',
+          resourceId: orderId,
+          details: { reference, amount: amountPaid }
+        });
       }
 
       if (metadata.type === 'wallet_topup' || (userId && !orderId)) {
+        if (String(data.currency || '').toUpperCase() !== 'NGN') {
+          return NextResponse.json({ success: false, error: 'Wallet top-ups must be paid in NGN' }, { status: 400 });
+        }
         const targetUserId = userId || (data.customer?.email ? (await d1Client.query('SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1', [data.customer.email])).results?.[0]?.id : null);
 
         if (targetUserId) {
           const txId = `tx-dep-${Date.now()}`;
-          await d1Client.query(
+          const walletUpdate = await d1Client.query(
             'UPDATE users SET wallet_balance_ngn = wallet_balance_ngn + ?, updated_at = ? WHERE id = ?',
             [amountPaid, nowIso, targetUserId]
-          ).catch(() => {});
+          );
+          if (!walletUpdate.success || (walletUpdate.meta?.rows_written ?? 0) < 1) {
+            return NextResponse.json({ success: false, error: 'Wallet balance could not be updated' }, { status: 503 });
+          }
 
-          await d1Client.query(
+          const walletLedger = await d1Client.query(
             `INSERT INTO wallet_transactions (id, user_id, type, amount, currency, description, reference, payment_method, status, created_at)
              VALUES (?, ?, 'deposit', ?, 'NGN', 'Wallet Deposit via Paystack', ?, 'Paystack', 'completed', ?)`,
             [txId, targetUserId, amountPaid, reference, nowIso]
-          ).catch(() => {});
+          );
+          if (!walletLedger.success) {
+            return NextResponse.json({ success: false, error: 'Wallet transaction could not be recorded; manual reconciliation is required' }, { status: 503 });
+          }
 
           await db.logAudit({
             action: 'PAYSTACK_WALLET_TOPUP_SUCCESS',
