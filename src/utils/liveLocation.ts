@@ -210,8 +210,8 @@ export async function acquireLiveLocation(
   }
 
   // Never expose raw GPS coordinates or a generic label as a delivery address.
-  if (!resolvedAddress || /^(current location|device gps location|live location)(\\b|\\s*\\()/i.test(resolvedAddress.trim())) {
-    const readableFallback = formattedAddress && !/^(current location|device gps location|live location)(\\b|\\s*\\()/i.test(formattedAddress.trim())
+  if (!resolvedAddress || /^(current location|device gps location|live location)(\b|\s*\()/i.test(resolvedAddress.trim())) {
+    const readableFallback = formattedAddress && !/^(current location|device gps location|live location)(\b|\s*\()/i.test(formattedAddress.trim())
       ? formattedAddress
       : [resolvedCity, resolvedState, resolvedCountry].filter(Boolean).join(', ');
     if (!readableFallback) {
