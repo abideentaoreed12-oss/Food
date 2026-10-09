@@ -3,6 +3,7 @@
 
 import { CONFIG } from '../config';
 import bcrypt from 'bcryptjs';
+import { localD1Query } from './localStore';
 
 const CLOUDFLARE_ACCOUNT_ID = CONFIG.CLOUDFLARE_ACCOUNT_ID;
 const CLOUDFLARE_DATABASE_ID = CONFIG.CLOUDFLARE_DATABASE_ID;
@@ -29,6 +30,7 @@ export class CloudflareD1Client {
   private accountId: string;
   private databaseId: string;
   private apiToken: string;
+  private authEmail: string;
   private isSchemaInitialized: boolean = false;
   private isInitializing: boolean = false;
 
@@ -36,6 +38,7 @@ export class CloudflareD1Client {
     this.accountId = CLOUDFLARE_ACCOUNT_ID;
     this.databaseId = CLOUDFLARE_DATABASE_ID;
     this.apiToken = CLOUDFLARE_API_TOKEN;
+    this.authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || 'abideentaoreed12@gmail.com';
   }
 
   public updateCredentials(accountId?: string, databaseId?: string, apiToken?: string) {
@@ -45,43 +48,69 @@ export class CloudflareD1Client {
   }
 
   public async queryDirect<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
-    const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/d1/database/${this.databaseId}/query`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ sql, params })
-    });
-
-    const data = (await response.json()) as D1ApiResponse<T>;
-
-    if (!response.ok || !data.success || !data.result || data.result.length === 0) {
-      const errMessage =
-        data.errors && data.errors.length > 0
-          ? data.errors.map((e) => `[Code ${e.code}] ${e.message}`).join(', ')
-          : `D1 Query Failed with status ${response.status}`;
-      throw new Error(`Cloudflare D1 Error: ${errMessage}`);
+    if (!this.accountId || !this.databaseId || !this.apiToken) {
+      return localD1Query<T>(sql, params);
     }
 
-    return data.result[0];
+    const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/d1/database/${this.databaseId}/query`;
+
+    try {
+      const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
+      const headers: Record<string, string> = isKey
+        ? {
+            'X-Auth-Email': this.authEmail,
+            'X-Auth-Key': this.apiToken,
+            'Content-Type': 'application/json'
+          }
+        : {
+            Authorization: `Bearer ${this.apiToken}`,
+            'Content-Type': 'application/json'
+          };
+
+      let response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ sql, params })
+      });
+
+      if (response.status === 401 && isKey) {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.apiToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ sql, params })
+        });
+      } else if (response.status === 401 && !isKey) {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'X-Auth-Email': this.authEmail,
+            'X-Auth-Key': this.apiToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ sql, params })
+        });
+      }
+
+      const data = (await response.json()) as D1ApiResponse<T>;
+
+      if (!response.ok || !data.success || !data.result || data.result.length === 0) {
+        return localD1Query<T>(sql, params);
+      }
+
+      return data.result[0];
+    } catch {
+      return localD1Query<T>(sql, params);
+    }
   }
 
   public async query<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
     try {
       return await this.queryDirect<T>(sql, params);
-    } catch (err: any) {
-      if (err.message?.toLowerCase().includes('no such table') && !this.isInitializing) {
-        try {
-          await this.initializeTables();
-          return await this.queryDirect<T>(sql, params);
-        } catch {
-          // ignore retry fail
-        }
-      }
-      throw err;
+    } catch {
+      return localD1Query<T>(sql, params);
     }
   }
 

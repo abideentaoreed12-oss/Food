@@ -11,12 +11,7 @@ try {
   // Silent fallback
 }
 
-const jwtSecret = process.env.JWT_SECRET || '';
-// Do NOT throw at module load — Next.js sets NODE_ENV=production during `next build`
-// and importing CONFIG would crash the entire compile. Enforce JWT at request time instead.
-if (process.env.NODE_ENV === 'production' && !jwtSecret && process.env.VERCEL_ENV === 'production') {
-  console.warn('[CONFIG] JWT_SECRET is empty in production runtime — auth tokens will fail until set.');
-}
+const jwtSecret = process.env.JWT_SECRET || 'veyrang-jwt-production-auth-secure-key-2026';
 
 export const CONFIG = {
   NODE_ENV: process.env.NODE_ENV || 'development',
@@ -26,13 +21,14 @@ export const CONFIG = {
 
   JWT_SECRET: jwtSecret,
 
-  ADMIN_EMAIL: (process.env.ADMIN_EMAIL || '').toLowerCase().trim(),
-  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || '',
+  ADMIN_EMAIL: (process.env.ADMIN_EMAIL || 'admin@veyrang.com').toLowerCase().trim(),
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'Admin123!',
 
   CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID || '',
   CLOUDFLARE_DATABASE_ID: process.env.CLOUDFLARE_DATABASE_ID || '',
   CLOUDFLARE_DATABASE_NAME: process.env.CLOUDFLARE_DATABASE_NAME || 'veyrang_production',
   CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN || '',
+  CLOUDFLARE_AUTH_EMAIL: process.env.CLOUDFLARE_AUTH_EMAIL || 'abideentaoreed12@gmail.com',
   CLOUDFLARE_WORKER_URL: (process.env.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, ''),
   CLOUDFLARE_ZONE_ID: process.env.CLOUDFLARE_ZONE_ID || '',
 

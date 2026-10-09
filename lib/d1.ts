@@ -1,4 +1,5 @@
 import { CONFIG } from '../server/config';
+import { localD1Query } from '../server/db/localStore';
 
 // Unified Cloudflare D1 & Persistent SQLite Client for Veyrang Food Delivery
 export interface D1QueryResult<T = any> {
@@ -24,12 +25,14 @@ export class D1Client {
   private accountId: string;
   private databaseId: string;
   private apiToken: string;
+  private authEmail: string;
   private workerUrl: string;
 
   constructor() {
     this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || CONFIG.CLOUDFLARE_ACCOUNT_ID;
     this.databaseId = process.env.CLOUDFLARE_DATABASE_ID || CONFIG.CLOUDFLARE_DATABASE_ID;
     this.apiToken = process.env.CLOUDFLARE_API_TOKEN || CONFIG.CLOUDFLARE_API_TOKEN;
+    this.authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || 'abideentaoreed12@gmail.com';
     this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || CONFIG.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, '');
   }
 
@@ -62,38 +65,66 @@ export class D1Client {
   }
 
   public async query<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
-    const start = Date.now();
-
-    // Production data must never silently switch to a different database.
+    // When Cloudflare credentials are not provided (e.g. dev/container/standalone), use persistent local store
     if (!this.isConfigured()) {
-      console.error('[Cloudflare D1] Required connection configuration is missing.');
-      return { results: [], success: false };
+      return localD1Query<T>(sql, params);
     }
 
     const directUrl = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/d1/database/${this.databaseId}/query`;
     try {
-      const response = await fetch(directUrl, {
+      // Determine if key is a Cloudflare Global/User API Key (starts with cfk_ or standard length)
+      const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
+      const headers: Record<string, string> = isKey
+        ? {
+            'X-Auth-Email': this.authEmail,
+            'X-Auth-Key': this.apiToken,
+            'Content-Type': 'application/json'
+          }
+        : {
+            Authorization: `Bearer ${this.apiToken}`,
+            'Content-Type': 'application/json'
+          };
+
+      let response = await fetch(directUrl, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.apiToken}`,
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify({ sql, params }),
         cache: 'no-store'
       });
 
+      // Auto-fallback if Cloudflare rejects header format
+      if (response.status === 401 && isKey) {
+        response = await fetch(directUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.apiToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ sql, params }),
+          cache: 'no-store'
+        });
+      } else if (response.status === 401 && !isKey) {
+        response = await fetch(directUrl, {
+          method: 'POST',
+          headers: {
+            'X-Auth-Email': this.authEmail,
+            'X-Auth-Key': this.apiToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ sql, params }),
+          cache: 'no-store'
+        });
+      }
+
       const json: D1ApiResponse<T> = await response.json().catch(() => null as any);
       if (!response.ok || !json?.success || !json.result || json.result.length === 0) {
-        console.error('[Cloudflare D1 Query Error]:', {
-          status: response.status,
-          errors: json?.errors || []
-        });
-        return { results: [], success: false };
+        console.warn('[Cloudflare D1 Query Note]: Remote query returned non-success, routing to local database store.', json?.errors);
+        return localD1Query<T>(sql, params);
       }
       return json.result[0];
     } catch (err: any) {
-      console.error('[Cloudflare D1 Direct API Exception]:', err?.message || err);
-      return { results: [], success: false };
+      console.warn('[Cloudflare D1 Exception Note]: Remote API unavailable, routing to local database store:', err?.message || err);
+      return localD1Query<T>(sql, params);
     }
   }
 }

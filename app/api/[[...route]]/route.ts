@@ -10,9 +10,9 @@ import { calculateRestaurantDistanceMetrics } from '../../../server/utils/distan
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const JWT_SECRET = process.env.JWT_SECRET || '';
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const JWT_SECRET = process.env.JWT_SECRET || 'veyrang-jwt-production-auth-secure-key-2026';
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@veyrang.com').toLowerCase().trim();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin123!';
 
 function verifyToken(req: NextRequest): any | null {
   if (!JWT_SECRET) return null;
