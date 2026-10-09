@@ -803,6 +803,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     tip: number;
     paymentMethod: string;
     deliveryFee?: number;
+    drivingMinutes?: number;
   }): Promise<Order> => {
     if (!user) {
       setIsAuthModalOpen(true);
@@ -828,8 +829,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const walletDeduction = Math.min(Math.max(0, Number(walletBalanceNGN) || 0), Math.max(0, grossTotal));
     const finalPayable = Math.max(0, grossTotal - walletDeduction);
 
-    const roadDistanceMins = cartRestaurant.distanceKm ? Math.round(cartRestaurant.distanceKm * 3.5) : 12;
-    const computedETA = Math.max(15, roadDistanceMins + 15); // Location road distance + 15 minute admin kitchen prep buffer
+    // ETA is based on the live road-routing duration returned by OSRM/Google/etc.
+    // Add the agreed 15-minute kitchen/dispatch buffer; never invent a drive time.
+    const drivingMinutes = Number(details.drivingMinutes);
+    const hasLiveDriveTime = fulfillmentType === 'pickup' || (Number.isFinite(drivingMinutes) && drivingMinutes > 0);
+    if (!hasLiveDriveTime) {
+      throw new Error('Live driving time is not available yet. Please recalculate your delivery distance before placing the order.');
+    }
+    const computedETA = fulfillmentType === 'pickup' ? 0 : Math.ceil(drivingMinutes) + 15;
 
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
