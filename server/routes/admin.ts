@@ -719,7 +719,7 @@ async function deleteR2Asset(urlOrKey?: string | null) {
     await fetch(r2Url, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${CONFIG.CLOUDFLARE_API_TOKEN}`
+        'Authorization': `Bearer ${CONFIG.CLOUDFLARE_R2_API_TOKEN}`
       }
     });
   } catch (err) {
