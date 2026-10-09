@@ -231,6 +231,10 @@ export async function GET(req: NextRequest) {
     const q = (req.nextUrl.searchParams.get('search') || '').trim().toLocaleLowerCase();
     const cuisine = (req.nextUrl.searchParams.get('cuisine') || '').trim().toLocaleLowerCase();
     const dietary = (req.nextUrl.searchParams.get('dietary') || '').trim().toLocaleLowerCase();
+    const zone = (req.nextUrl.searchParams.get('zone') || '').trim().toLocaleLowerCase();
+    const openParam = (req.nextUrl.searchParams.get('open') || '').trim().toLocaleLowerCase();
+    const page = Math.max(1, Number.parseInt(req.nextUrl.searchParams.get('page') || '1', 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(req.nextUrl.searchParams.get('limit') || '20', 10) || 20));
     const all = (d1Res.results || []).map((row: any) => {
       let data: any = row;
       try { data = row.raw_json ? JSON.parse(row.raw_json) : row; } catch {}
@@ -238,9 +242,21 @@ export async function GET(req: NextRequest) {
     });
     const filtered = all.filter((r: any) => {
       const text = [r.name,r.cuisine,r.tagline,r.description,...(r.tags || []),...(r.categories || []).map((cat: any) => cat.name),...(r.categories || []).flatMap((cat: any) => (cat.items || []).flatMap((item: any) => [item.name,item.description,item.category]))].filter((v: any) => typeof v === 'string').join(' ').toLocaleLowerCase();
-      return (!q || text.includes(q)) && (!cuisine || String(r.cuisine || '').toLocaleLowerCase().includes(cuisine)) && (!dietary || (r.categories || []).some((cat: any) => (cat.items || []).some((item: any) => Array.isArray(item.dietary) && item.dietary.some((tag: any) => String(tag).toLocaleLowerCase() === dietary))));
+      const matchesZone = !zone || String(r.zone || '').toLocaleLowerCase() === zone;
+      const isOpen = r.isOpen === true || r.isOpen === 1 || String(r.isOpen).toLocaleLowerCase() === 'true';
+      const matchesOpen = !openParam || (openParam === 'true' ? isOpen : openParam === 'false' ? !isOpen : true);
+      return (!q || text.includes(q)) &&
+        (!cuisine || String(r.cuisine || '').toLocaleLowerCase().includes(cuisine)) &&
+        (!dietary || (r.categories || []).some((cat: any) => (cat.items || []).some((item: any) => Array.isArray(item.dietary) && item.dietary.some((tag: any) => String(tag).toLocaleLowerCase() === dietary)))) &&
+        matchesZone && matchesOpen;
     });
-    return NextResponse.json({ success: true, data: filtered }, { headers: { 'Cache-Control': 'public, max-age=30, stale-while-revalidate=60' } });
+    const total = filtered.length;
+    const paginated = filtered.slice((page - 1) * limit, page * limit);
+    return NextResponse.json({
+      success: true,
+      data: paginated,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    }, { headers: { 'Cache-Control': 'public, max-age=30, stale-while-revalidate=60' } });
   }
 
   if (pathname === '/admin/restaurants') {
