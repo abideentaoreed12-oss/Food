@@ -11,8 +11,7 @@ interface SendEmailParams {
 export async function sendEmail({ to, subject, html, text, hostHeader }: SendEmailParams) {
   const apiKey = CONFIG.RESEND_API_KEY;
   if (!apiKey) {
-    console.warn(`[Email Mock Fallback] To: ${to} | Subject: ${subject}`);
-    console.warn(`Content: ${text || html}`);
+    console.warn('[Email] RESEND_API_KEY is not configured; email delivery is disabled.');
     return { success: true, mock: true };
   }
 
@@ -32,13 +31,6 @@ export async function sendEmail({ to, subject, html, text, hostHeader }: SendEma
   const senderEmail = `noreply@${domain}`;
   const fromName = 'Veyrang';
 
-  // Always log code/email to console for debugging and testing convenience
-  console.log(`========================================`);
-  console.log(`[EMAIL DISPATCH] To: ${to}`);
-  console.log(`Subject: ${subject}`);
-  console.log(`Content / Code: ${text || html.replace(/<[^>]*>/g, '')}`);
-  console.log(`========================================`);
-
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -57,17 +49,17 @@ export async function sendEmail({ to, subject, html, text, hostHeader }: SendEma
 
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));
-      console.error('Resend API error response:', errBody);
+      console.error('[Email] Resend rejected the delivery request.');
       // Fallback gracefully so registration/auth is never blocked even if Resend restricts recipient/domain
       console.warn('Resend API restricted delivery, falling back to console-delivered mode.');
       return { success: true, fallback: true, error: errBody.message };
     }
 
     const data = await res.json();
-    console.log(`[Email Sent Successfully] To: ${to} via Resend. ID: ${data.id || 'unknown'}`);
+    console.log('[Email] Message accepted by Resend.');
     return { success: true, id: data.id };
   } catch (err: any) {
-    console.error(`[Email Failed] To: ${to} - Error: ${err.message}`);
+    console.error('[Email] Delivery request failed.');
     // Fallback gracefully so auth flow is smooth
     return { success: true, fallback: true, error: err.message };
   }
