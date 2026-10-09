@@ -23,5 +23,18 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "veyrang.com"
+        }
+      ],
+      "destination": "https://www.veyrang.com/:path*",
+      "permanent": true
+    }
   ]
 }
