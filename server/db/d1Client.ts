@@ -123,6 +123,9 @@ export class CloudflareD1Client {
       const res = await this.queryDirect(
         'SELECT 1 as live_status, CURRENT_TIMESTAMP as cf_timestamp;'
       );
+      if (!res.success || !res.results?.[0]) {
+        return { connected: false, error: 'Database query did not succeed' };
+      }
       return { connected: true, details: res.results[0] };
     } catch (err: any) {
       return { connected: false, error: err.message || 'Unknown connection error' };
