@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { d1 } from '../../../lib/d1';
 import { r2 } from '../../../lib/r2';
 import { paymentGateway } from '../../../lib/payment';
+import { calculateRestaurantDistanceMetrics } from '../../../server/utils/distance';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -373,6 +374,77 @@ export async function POST(req: NextRequest) {
   await ensureSchema();
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
   const body = await req.json().catch(() => ({}));
+
+  // Live restaurant road-distance calculation. This catch-all Next.js route is the
+  // production API entry point, so the Express-only route is not sufficient on Vercel.
+  if (pathname === '/restaurants/calculate-distance') {
+    const restaurantId = typeof body.restaurantId === 'string' ? body.restaurantId.trim() : '';
+    const userAddress = typeof body.userAddress === 'string' ? body.userAddress.trim() : '';
+    const userLat = body.userLat;
+    const userLng = body.userLng;
+    const hasCoordinates = Number.isFinite(userLat) && Number.isFinite(userLng) &&
+      userLat >= -90 && userLat <= 90 && userLng >= -180 && userLng <= 180;
+
+    if (!restaurantId) {
+      return NextResponse.json({ success: false, error: 'A restaurant ID is required to calculate delivery distance.' }, { status: 400 });
+    }
+    if (!userAddress && !hasCoordinates) {
+      return NextResponse.json({ success: false, error: 'Select a delivery address before calculating distance.' }, { status: 400 });
+    }
+
+    try {
+      const restaurantResult = await d1.query(
+        'SELECT * FROM restaurants WHERE id = ? LIMIT 1',
+        [restaurantId]
+      );
+      if (!restaurantResult.success) {
+        return NextResponse.json({ success: false, error: 'Restaurant data is temporarily unavailable from D1.' }, { status: 503 });
+      }
+      const row: any = restaurantResult.results?.[0];
+      if (!row) {
+        return NextResponse.json({ success: false, error: 'Restaurant was not found in D1.' }, { status: 404 });
+      }
+
+      let stored: any = {};
+      try {
+        stored = typeof row.raw_json === 'string' ? JSON.parse(row.raw_json) : (row.raw_json || {});
+      } catch {
+        return NextResponse.json({ success: false, error: 'Restaurant data in D1 is invalid.' }, { status: 503 });
+      }
+      const lat = stored.lat ?? stored.latitude ?? row.lat ?? row.latitude;
+      const lng = stored.lng ?? stored.longitude ?? row.lng ?? row.longitude;
+      const address = stored.address ?? row.address;
+      const deliveryFee = stored.deliveryFee ?? stored.delivery_fee ?? row.delivery_fee ?? row.deliveryFee;
+
+      if (lat === undefined || lng === undefined || !Number.isFinite(Number(lat)) ||
+          !Number.isFinite(Number(lng)) || Number(lat) < -90 || Number(lat) > 90 ||
+          Number(lng) < -180 || Number(lng) > 180) {
+        return NextResponse.json({ success: false, error: 'This restaurant has no valid coordinates configured in D1.' }, { status: 422 });
+      }
+      if (typeof address !== 'string' || !address.trim()) {
+        return NextResponse.json({ success: false, error: 'This restaurant has no address configured in D1.' }, { status: 422 });
+      }
+      if (deliveryFee === undefined || deliveryFee === null ||
+          !Number.isFinite(Number(deliveryFee)) || Number(deliveryFee) < 0) {
+        return NextResponse.json({ success: false, error: 'This restaurant has no valid delivery fee configured in D1.' }, { status: 422 });
+      }
+
+      const origin = hasCoordinates ? { lat: userLat, lng: userLng } : userAddress;
+      const metrics = await calculateRestaurantDistanceMetrics({
+        lat: Number(lat),
+        lng: Number(lng),
+        address: address.trim(),
+        deliveryFee: Number(deliveryFee)
+      }, origin);
+      return NextResponse.json({ success: true, data: metrics });
+    } catch (error) {
+      console.error('[Live distance] Calculation failed:', error);
+      return NextResponse.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Live road-distance calculation failed. Please retry.'
+      }, { status: 502 });
+    }
+  }
 
   // Accept POST as well as PATCH for clients that still use the legacy method.
   const postRoleMatch = pathname.match(/^\/admin\/users\/([^/]+)\/role$/);
