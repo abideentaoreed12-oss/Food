@@ -1,3 +1,4 @@
+import { STORAGE_KEYS, safeGet } from '../lib/clientStorage';
 /** Extra payment helpers (virtual account) — no hardcoded account numbers */
 
 export async function fetchVirtualAccount(): Promise<{
@@ -5,7 +6,7 @@ export async function fetchVirtualAccount(): Promise<{
   bankName: string;
   accountName: string;
 } | null> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('veyrang_jwt_token') : null;
+  const token = typeof window !== 'undefined' ? safeGet(STORAGE_KEYS.JWT) : null;
   const res = await fetch('/api/payment/virtual-account', {
     credentials: 'include',
     headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -24,7 +25,7 @@ export async function createVirtualAccount(): Promise<{
   bankName: string;
   accountName: string;
 }> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('veyrang_jwt_token') : null;
+  const token = typeof window !== 'undefined' ? safeGet(STORAGE_KEYS.JWT) : null;
   const res = await fetch('/api/payment/virtual-account', {
     method: 'POST',
     credentials: 'include',
