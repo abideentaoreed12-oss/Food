@@ -38,8 +38,6 @@ const nextConfig: NextConfig = {
     ],
     dangerouslyAllowSVG: false,
     contentDispositionType: 'attachment',
-    maximumRedirects: 2,
-    maximumResponseBody: 5_000_000,
     minimumCacheTTL: 60
   },
   productionBrowserSourceMaps: false,
