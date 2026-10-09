@@ -40,6 +40,23 @@ export const OrdersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'delivered' | 'cancelled'>('all');
   const [selectedReviewOrder, setSelectedReviewOrder] = useState<Order | null>(null);
+  const [clockNow, setClockNow] = useState<number>(() => Date.now());
+
+  // Receipt/order ETA is a countdown from the server-created order timestamp,
+  // not a static hardcoded display value.
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const getRemainingEtaMinutes = (order: Order): number => {
+    if (order.status === 'awaiting_payment' || order.paymentStatus === 'pending') return -1;
+    if (order.status === 'delivered' || order.status === 'cancelled') return 0;
+    const created = new Date(order.createdAt).getTime();
+    const eta = Number(order.estimatedArrivalMinutes);
+    if (!Number.isFinite(created) || !Number.isFinite(eta) || eta < 0) return -1;
+    return Math.max(0, Math.ceil((created + eta * 60_000 - clockNow) / 60_000));
+  };
 
   // Filter orders associated with the authenticated user session
   const safeOrders = useMemo(() => {
@@ -284,7 +301,7 @@ export const OrdersPage: React.FC = () => {
 
                   <div className="flex items-center gap-1 font-bold text-orange-950 font-mono">
                     <Clock className="w-3.5 h-3.5 text-[#FF5500]" />
-                    <span>ETA: {order.estimatedArrivalMinutes} min</span>
+                    <span>{getRemainingEtaMinutes(order) < 0 ? 'Awaiting payment' : getRemainingEtaMinutes(order) === 0 ? 'ETA reached' : `ETA: ${getRemainingEtaMinutes(order)} min`}</span>
                   </div>
                 </div>
 
