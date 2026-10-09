@@ -239,7 +239,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
         if (items.length === 0) {
           try {
             const params = new URLSearchParams({
-              q: /\\b(nigeria|lagos|ibadan|abuja|oyo|ogun|rivers|enugu|kano)\\b/i.test(trimmed)
+              q: /\b(nigeria|lagos|ibadan|abuja|oyo|ogun|rivers|enugu|kano)\b/i.test(trimmed)
                 ? trimmed
                 : `${trimmed}, Nigeria`,
               limit: '5',
@@ -427,7 +427,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
     try {
       const loc = await acquireLiveLocation(10000);
       const addr = loc.address || loc.formattedAddress || '';
-      if (!addr.trim() || /^(current location|device gps location|live location)(\\b|\\s*\\()/i.test(addr.trim()) || /^-?\\d+(?:\\.\\d+)?\\s*,\\s*-?\\d+(?:\\.\\d+)?$/.test(addr.trim())) {
+      if (!addr.trim() || /^(current location|device gps location|live location)(\b|\s*\()/i.test(addr.trim()) || /^-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?$/.test(addr.trim())) {
         throw new Error('We found your GPS position but could not verify a readable address. Please enter your Nigerian street, area, city and state.');
       }
       setIsVerified(true);
