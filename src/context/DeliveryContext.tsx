@@ -1024,6 +1024,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const advanceOrderStatus = async (orderId: string, newStatus: OrderStatus, note?: string) => {
     const progressMap: Record<OrderStatus, number> = {
+      awaiting_payment: 0,
       placed: 5,
       confirmed: 15,
       preparing: 30,
@@ -1033,6 +1034,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       cancelled: 0
     };
     const etaMap: Record<OrderStatus, number> = {
+      awaiting_payment: 0,
       placed: 35,
       confirmed: 30,
       preparing: 22,
