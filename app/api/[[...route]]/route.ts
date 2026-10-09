@@ -510,6 +510,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   await ensureSchema();
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
+
+  const rawBody = await req.text();
+  let body: any = {};
+  try { body = rawBody ? JSON.parse(rawBody) : {}; } catch { body = {}; }
+
   if (pathname === '/couriers/location') {
     const user = await getUser(req);
     if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
@@ -557,9 +562,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: { orderId: row.id, lat, lng, accuracy, updatedAt: now } }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
   }
 
-  const rawBody = await req.text();
-  let body: any = {};
-  try { body = rawBody ? JSON.parse(rawBody) : {}; } catch { body = {}; }
 
   // Paystack server-to-server webhook. Only a valid signature and a successful,
   // amount-matched charge.success event can mark an order paid.
