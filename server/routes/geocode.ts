@@ -90,7 +90,8 @@ router.get('/reverse', geocodeLimiter, async (req: Request, res: Response) => {
       }
     }
 
-    // Tier 3: BigDataCloud Server-Side Call
+    // Do not use a non-open-source third-party fallback. If OSM sources fail,
+    // return an explicit unavailable result rather than inventing a verified address.
     if (!resolvedAddress) {
       try {
         const bResp = await fetch(
@@ -112,9 +113,12 @@ router.get('/reverse', geocodeLimiter, async (req: Request, res: Response) => {
       }
     }
 
-    if (!resolvedAddress) {
-      resolvedAddress = `Device GPS (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
-      formattedAddress = resolvedAddress;
+    // Only return a delivery address when the geocoder explicitly identifies Nigeria.
+    if (!resolvedAddress || !/\\bnigeria\\b/i.test(resolvedCountry)) {
+      return res.status(422).json({
+        success: false,
+        error: 'Live coordinates were captured, but a Nigerian street/area address could not be verified. Please enter the address manually.'
+      });
     }
 
     return res.status(200).json({
@@ -135,6 +139,53 @@ router.get('/reverse', geocodeLimiter, async (req: Request, res: Response) => {
       success: false,
       error: err?.message || 'Failed to reverse geocode coordinates.'
     });
+  }
+});
+
+/**
+ * Nigeria-only open-source address search.
+ * Browser clients call this same-origin endpoint; no API key or client-side provider URL is needed.
+ * Photon is based on OpenStreetMap data and is used for autocomplete (not public Nominatim autocomplete).
+ */
+router.get('/search', geocodeLimiter, async (req: Request, res: Response) => {
+  try {
+    const query = String(req.query.q || '').trim();
+    if (query.length < 3 || query.length > 160) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+    const url = new URL('https://photon.komoot.io/api/');
+    url.searchParams.set('q', /\\bnigeria\\b/i.test(query) ? query : query + ', Nigeria');
+    url.searchParams.set('limit', '8');
+    url.searchParams.set('lang', 'en');
+    url.searchParams.set('lat', '9.0820');
+    url.searchParams.set('lon', '8.6753');
+    url.searchParams.set('zoom', '5');
+    const upstream = await fetch(url, {
+      headers: { 'User-Agent': 'VeyraNG-FoodDelivery/1.0', 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!upstream.ok) return res.status(502).json({ success: false, error: 'Address search is temporarily unavailable.' });
+    const body = await upstream.json();
+    const features = Array.isArray(body.features) ? body.features : [];
+    const data = features.flatMap((feature: any, index: number) => {
+      const p = feature?.properties || {};
+      const coords = feature?.geometry?.coordinates || [];
+      const country = String(p.country || '');
+      const lat = Number(coords[1]);
+      const lng = Number(coords[0]);
+      // Nigeria bounding box is a secondary safety check, not a substitute for country metadata.
+      if (!/\\bnigeria\\b/i.test(country) || !Number.isFinite(lat) || !Number.isFinite(lng) ||
+          lat < 4 || lat > 14 || lng < 2 || lng > 15) return [];
+      const street = [p.housenumber, p.street || p.name].filter(Boolean).join(' ').trim();
+      const area = [p.district, p.city || p.county, p.state, 'Nigeria'].filter(Boolean).join(', ');
+      const label = [street || p.name, area].filter(Boolean).join(', ');
+      if (!label) return [];
+      return [{ id: String(p.osm_id || index), address: street || p.name, city: p.city || p.county || '', state: p.state || '', country: 'Nigeria', formattedAddress: label, latitude: lat, longitude: lng }];
+    });
+    return res.status(200).json({ success: true, data });
+  } catch (err: any) {
+    console.error('Backend address search notice:', err?.message || String(err));
+    return res.status(502).json({ success: false, error: 'Address search is temporarily unavailable.' });
   }
 });
 
