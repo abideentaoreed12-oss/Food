@@ -82,7 +82,11 @@ router.get('/', async (req: Request, res: Response) => {
         ? userAddress.trim()
         : { lat: 6.4474, lng: 3.4735 };
 
-    list = await calculateBatchRestaurantDistanceMetrics(list, userLocation);
+    try {
+      list = await calculateBatchRestaurantDistanceMetrics(list, userLocation);
+    } catch (metricErr: any) {
+      console.warn('[Restaurants Route] Distance metrics notice:', metricErr?.message || String(metricErr));
+    }
 
     const publicList = list.map((r) => {
       const { commissionPercent, ...publicRest } = r;

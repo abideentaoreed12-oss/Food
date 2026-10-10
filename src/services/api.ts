@@ -10,16 +10,36 @@ async function request(url: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? safeGet(STORAGE_KEYS.JWT) : null;
   const headers: Record<string, string> = {
     'Accept': 'application/json',
-    'Content-Type': 'application/json',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
     'Pragma': 'no-cache',
     'Expires': '0',
-    ...(options.headers as any || {})
   };
 
+  // Only attach Content-Type if there is an outgoing payload or mutation method
+  const methodUpper = (options.method || 'GET').toUpperCase();
+  if (options.body || methodUpper === 'POST' || methodUpper === 'PUT' || methodUpper === 'PATCH') {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  // Merge custom headers safely whether provided as plain object or Headers instance
+  if (options.headers) {
+    if (typeof (options.headers as any).forEach === 'function') {
+      (options.headers as any).forEach((value: string, key: string) => {
+        headers[key] = value;
+      });
+    } else {
+      Object.assign(headers, options.headers);
+    }
+  }
+
+  // Sanitize and validate authorization token to prevent WebKit/Safari header pattern syntax errors
   if (token && typeof token === 'string' && !headers['Authorization']) {
-    const cleanToken = token.trim().replace(/[\r\n\t]/g, '');
-    if (cleanToken && cleanToken !== 'undefined' && cleanToken !== 'null') {
+    let cleanToken = token.trim().replace(/[\r\n\t]/g, '');
+    if (cleanToken.startsWith('"') && cleanToken.endsWith('"')) {
+      cleanToken = cleanToken.slice(1, -1).trim();
+    }
+    // Only accept valid ASCII token characters (standard JWT / alphanumeric / dot / dash / underscore)
+    if (cleanToken && cleanToken !== 'undefined' && cleanToken !== 'null' && /^[A-Za-z0-9._-]+$/.test(cleanToken)) {
       headers['Authorization'] = `Bearer ${cleanToken}`;
     }
   }
@@ -27,29 +47,24 @@ async function request(url: string, options: RequestInit = {}) {
   try {
     const fullUrl = `${BASE_URL}${url}`;
     const response = await fetch(fullUrl, { ...options, headers, credentials: 'include', cache: 'no-store' });
-    const contentType = response.headers.get('content-type') || '';
-    const isJson = contentType.includes('application/json');
+
+    // Read response as text first to prevent native WebKit DOMException ("The string did not match the expected pattern" / json@[native code])
+    const rawText = await response.text().catch(() => '');
 
     if (!response.ok) {
       let errorMsg = `Server Request Failed (${response.status})`;
       let errorData: any = {};
-      if (isJson) {
+      if (rawText && rawText.trim()) {
         try {
-          errorData = await response.json();
+          errorData = JSON.parse(rawText);
           if (errorData?.error) errorMsg = errorData.error;
+          else if (errorData?.message) errorMsg = errorData.message;
         } catch {
-          // ignore parsing error
-        }
-      } else {
-        try {
-          const rawText = await response.text();
-          if (rawText && !rawText.includes('<html') && rawText.length < 300) {
+          if (!rawText.includes('<html') && rawText.length < 300) {
             errorMsg = rawText.trim();
           } else if (response.status === 502 || response.status === 503 || response.status === 504) {
             errorMsg = 'Service is temporarily warming up. Please retry in a few moments.';
           }
-        } catch {
-          // ignore
         }
       }
       const err: any = new Error(errorMsg);
@@ -58,20 +73,22 @@ async function request(url: string, options: RequestInit = {}) {
       throw err;
     }
 
-    if (!isJson) {
-      const rawText = await response.text();
-      try {
-        const parsed = JSON.parse(rawText);
-        return parsed.data !== undefined ? parsed.data : parsed;
-      } catch {
-        throw new Error(`Unexpected non-JSON response from server for ${url}.`);
-      }
+    if (!rawText || !rawText.trim()) {
+      return null;
     }
 
-    const json = await response.json();
-    return json.data !== undefined ? json.data : json;
-  } catch (error) {
-    console.error('API Request failed:', url, error);
+    try {
+      const parsed = JSON.parse(rawText);
+      return parsed.data !== undefined ? parsed.data : parsed;
+    } catch {
+      // If server returned plain text or non-JSON body with 200 OK
+      return rawText;
+    }
+  } catch (error: any) {
+    // Suppress noisy console error logs on normal unauthenticated 401/403 status codes
+    if (error?.status !== 401 && error?.status !== 403) {
+      console.warn('API Request issue:', url, error?.message || error);
+    }
     throw error;
   }
 }
@@ -85,13 +102,17 @@ export const api = {
         body: JSON.stringify({ email, password })
       });
 
+      const rawText = await res.text().catch(() => '');
+      let errorData: any = {};
+      let json: any = {};
+      try { json = JSON.parse(rawText); } catch {}
+
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
+        errorData = json || {};
         throw new Error(errorData.error || 'Invalid email or password.');
       }
 
-      const json = await res.json();
-      const { user, token } = json.data;
+      const { user, token } = json?.data || json || {};
       if (token && typeof window !== 'undefined') {
         safeSet(STORAGE_KEYS.JWT, token);
       }
@@ -117,13 +138,15 @@ export const api = {
         body: JSON.stringify(payload)
       });
 
+      const rawText = await res.text().catch(() => '');
+      let json: any = {};
+      try { json = JSON.parse(rawText); } catch {}
+
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Registration failed.');
+        throw new Error(json?.error || 'Registration failed.');
       }
 
-      const json = await res.json();
-      const { user, token } = json.data;
+      const { user, token } = json?.data || json || {};
       if (token && typeof window !== 'undefined') {
         safeSet(STORAGE_KEYS.JWT, token);
       }
@@ -139,11 +162,13 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
+      const rawText = await res.text().catch(() => '');
+      let json: any = {};
+      try { json = JSON.parse(rawText); } catch {}
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to send verification email.');
+        throw new Error(json?.error || 'Failed to send verification email.');
       }
-      return await res.json();
+      return json;
     },
 
     forgotPassword: async (email: string) => {
@@ -152,11 +177,13 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
+      const rawText = await res.text().catch(() => '');
+      let json: any = {};
+      try { json = JSON.parse(rawText); } catch {}
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to send password reset code.');
+        throw new Error(json?.error || 'Failed to send password reset code.');
       }
-      return await res.json();
+      return json;
     },
 
     resetPassword: async (email: string, code: string, newPassword: string) => {
@@ -165,11 +192,13 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code, newPassword })
       });
+      const rawText = await res.text().catch(() => '');
+      let json: any = {};
+      try { json = JSON.parse(rawText); } catch {}
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to reset password.');
+        throw new Error(json?.error || 'Failed to reset password.');
       }
-      return await res.json();
+      return json;
     },
 
     getMe: async () => {

@@ -147,9 +147,18 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
     throw new Error('Enter a delivery address or use the current-location button.');
   }
 
+  // Parse Plus Codes (Open Location Codes, e.g. "56MJ+55C, Oda" or "6FP52X3X+Q9")
+  const plusMatch = cleanAddr.match(/^([23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,4})[,\s]*(.*)$/i);
+  const plusLocality = plusMatch ? plusMatch[2].trim() : '';
+
   // A street name alone can match places in several countries. Restrict searches to
-  // Nigeria, try the customer's literal address first, then a Nigeria-qualified query.
-  const queries = [...new Set([cleanAddr, `${cleanAddr}, Nigeria`])];
+  // Nigeria, try the customer's literal address first, then a Nigeria-qualified query, and plus locality if present.
+  const rawQueries = [cleanAddr, `${cleanAddr}, Nigeria`];
+  if (plusLocality) {
+    rawQueries.push(`${plusLocality}, Nigeria`);
+    rawQueries.push(plusLocality);
+  }
+  const queries = [...new Set(rawQueries)];
   const isValidPoint = (lat: unknown, lng: unknown) => {
     const y = Number(lat);
     const x = Number(lng);
@@ -304,27 +313,30 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
 
   // Tier 5: Resilient Nigerian metropolitan zone fallback for network outages
   const KNOWN_NIGERIAN_AREAS: { pattern: RegExp; lat: number; lng: number; label: string }[] = [
-    { pattern: /admiralty|lekki|chevron|agungi|osapa|ikate|elegushi|marwa/i, lat: 6.4474, lng: 3.4723, label: 'Lekki Phase 1, Lagos' },
-    { pattern: /victoria\s*island|ahmadu\s*bello|adeola\s*odeku|kofo\s*abayomi|ozumba/i, lat: 6.4281, lng: 3.4219, label: 'Victoria Island, Lagos' },
-    { pattern: /ikoyi|bourdillon|banana\s*island|parkview|glover/i, lat: 6.4549, lng: 3.4357, label: 'Ikoyi, Lagos' },
-    { pattern: /ajah|sangotedo|abraham\s*adesanya|vgc|victoria\s*garden|badore/i, lat: 6.4698, lng: 3.5679, label: 'Ajah, Lagos' },
-    { pattern: /ikeja|allen|isaac\s*john|alausa|adeniyi\s*jones|agidingbi|oregun/i, lat: 6.5866, lng: 3.3578, label: 'Ikeja, Lagos' },
-    { pattern: /yaba|herbert\s*macaulay|akoka|al办事|ebute\s*metta|onike|tejuosho/i, lat: 6.5059, lng: 3.3781, label: 'Yaba, Lagos' },
-    { pattern: /surulere|ojuelegba|bode\s*thomas|masha|adeniran\s*ogunsanya/i, lat: 6.5000, lng: 3.3500, label: 'Surulere, Lagos' },
-    { pattern: /gbagada|anthony|maryland|ilupeju|mende|palmgrove/i, lat: 6.5569, lng: 3.3857, label: 'Gbagada, Lagos' },
-    { pattern: /magodo|shangisha|ketu|ojota|ogudu|cmd/i, lat: 6.6170, lng: 3.3820, label: 'Magodo, Lagos' },
-    { pattern: /festac|amuwo|okota|isolo|mile\s*2/i, lat: 6.4694, lng: 3.2847, label: 'Festac, Lagos' },
-    { pattern: /agege|ogba|ojodu|berger|alimosho|egbeda|ikotun/i, lat: 6.6180, lng: 3.3209, label: 'Ogba / Agege, Lagos' },
-    { pattern: /marina|broad\s*street|cms|obalende|apapa|lagos\s*island/i, lat: 6.4531, lng: 3.3958, label: 'Lagos Island, Lagos' },
-    { pattern: /ikorodu|epe|badagry/i, lat: 6.6194, lng: 3.5105, label: 'Ikorodu, Lagos' },
-    { pattern: /wuse|maitama|garki|abuja|fct|asokoro|guzape|jabi|utako|gwarinpa/i, lat: 9.0765, lng: 7.4721, label: 'Abuja, FCT' },
-    { pattern: /ibadan|bodija|dugbe|ring\s*road|iwo\s*road|ui|samonda/i, lat: 7.3775, lng: 3.9470, label: 'Ibadan, Oyo' },
-    { pattern: /port\s*harcourt|trans\s*amadi|gra|diobu|rumuokoro|choba/i, lat: 4.8156, lng: 7.0498, label: 'Port Harcourt, Rivers' },
-    { pattern: /benin|ring\s*road|airport\s*road/i, lat: 6.3350, lng: 5.6037, label: 'Benin City, Edo' },
-    { pattern: /enugu|independence\s*layout|ogui/i, lat: 6.4584, lng: 7.5464, label: 'Enugu, Enugu' },
-    { pattern: /asaba|warri|effurun/i, lat: 6.1984, lng: 6.7295, label: 'Delta State' },
-    { pattern: /abeokuta|panseke|kuto/i, lat: 7.1475, lng: 3.3619, label: 'Abeokuta, Ogun' },
-    { pattern: /kano|kaduna|jos|ilorin|akure|osogbo|owerri|calabar|uyo/i, lat: 8.9669, lng: 7.4403, label: 'Nigeria' },
+    { pattern: /admiralty|lekki\s*(phase\s*1)?/i, lat: 6.4474, lng: 3.4723, label: 'Lekki Phase 1, Lagos' },
+    { pattern: /victoria\s*island|ahmadu\s*bello/i, lat: 6.4281, lng: 3.4219, label: 'Victoria Island, Lagos' },
+    { pattern: /ikoyi|bourdillon/i, lat: 6.4549, lng: 3.4357, label: 'Ikoyi, Lagos' },
+    { pattern: /ikeja|allen|isaac\s*john/i, lat: 6.5866, lng: 3.3578, label: 'Ikeja, Lagos' },
+    { pattern: /yaba|herbert\s*macaulay/i, lat: 6.5059, lng: 3.3781, label: 'Yaba, Lagos' },
+    { pattern: /surulere|ojuelegba/i, lat: 6.5000, lng: 3.3500, label: 'Surulere, Lagos' },
+    { pattern: /wuse|maitama|garki|abuja|fct/i, lat: 9.0765, lng: 7.4721, label: 'Abuja, FCT' },
+    { pattern: /ibadan|bodija|dugbe/i, lat: 7.3775, lng: 3.9470, label: 'Ibadan, Oyo' },
+    { pattern: /port\s*harcourt|trans\s*amadi/i, lat: 4.8156, lng: 7.0498, label: 'Port Harcourt, Rivers' },
+    { pattern: /akure|oda/i, lat: 7.2571, lng: 5.2058, label: 'Akure / Oda, Ondo' },
+    { pattern: /ondo/i, lat: 7.0929, lng: 4.8415, label: 'Ondo, Nigeria' },
+    { pattern: /ilorin/i, lat: 8.4966, lng: 4.5421, label: 'Ilorin, Kwara' },
+    { pattern: /kano/i, lat: 12.0022, lng: 8.5920, label: 'Kano, Nigeria' },
+    { pattern: /enugu/i, lat: 6.4584, lng: 7.5464, label: 'Enugu, Nigeria' },
+    { pattern: /benin/i, lat: 6.3350, lng: 5.6037, label: 'Benin City, Edo' },
+    { pattern: /calabar/i, lat: 4.9757, lng: 8.3417, label: 'Calabar, Cross River' },
+    { pattern: /abeokuta/i, lat: 7.1475, lng: 3.3619, label: 'Abeokuta, Ogun' },
+    { pattern: /asaba|warri/i, lat: 6.1983, lng: 6.7329, label: 'Delta, Nigeria' },
+    { pattern: /osogbo/i, lat: 7.7827, lng: 4.5418, label: 'Osogbo, Osun' },
+    { pattern: /ado\s*ekiti|ekiti/i, lat: 7.6212, lng: 5.2215, label: 'Ado-Ekiti, Ekiti' },
+    { pattern: /jos/i, lat: 9.8965, lng: 8.8583, label: 'Jos, Plateau' },
+    { pattern: /kaduna/i, lat: 10.5105, lng: 7.4165, label: 'Kaduna, Nigeria' },
+    { pattern: /owerri/i, lat: 5.4840, lng: 7.0355, label: 'Owerri, Imo' },
+    { pattern: /uyo/i, lat: 5.0377, lng: 7.9128, label: 'Uyo, Akwa Ibom' },
     { pattern: /lagos/i, lat: 6.5244, lng: 3.3792, label: 'Lagos, Nigeria' }
   ];
   for (const area of KNOWN_NIGERIAN_AREAS) {
@@ -339,14 +351,18 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
     }
   }
 
-  // Tier 6: Safe default metropolitan centroid fallback to avoid crashing batch distance
-  return {
-    lat: 6.5244,
-    lng: 3.3792,
-    formattedAddress: `${cleanAddr}, Nigeria`,
-    isLive: false,
-    provider: 'Nigeria Default Geocode Fallback'
-  };
+  // If this was a Plus Code with no external resolution, provide a safe Nigerian location fallback
+  if (plusMatch) {
+    return {
+      lat: 7.2571,
+      lng: 5.2058,
+      formattedAddress: cleanAddr,
+      isLive: false,
+      provider: 'Plus Code Location Fallback'
+    };
+  }
+
+  throw new Error('We could not locate this address in Nigeria. Choose one of the address suggestions or use the current-location button, then retry.');
 }
 
 /**
@@ -708,8 +724,17 @@ export async function calculateRestaurantDistanceMetrics(
 
   let userLocation: GeoLocation;
   if (typeof userAddressOrCoords === 'string') {
-    const geo = await geocodeAddress(userAddressOrCoords);
-    userLocation = { lat: geo.lat, lng: geo.lng, formattedAddress: geo.formattedAddress };
+    try {
+      const geo = await geocodeAddress(userAddressOrCoords);
+      userLocation = { lat: geo.lat, lng: geo.lng, formattedAddress: geo.formattedAddress };
+    } catch (err: any) {
+      console.warn('[Restaurant Distance] Geocoding notice for user address (using fallback):', userAddressOrCoords, err?.message || String(err));
+      userLocation = {
+        lat: 6.4474,
+        lng: 3.4723,
+        formattedAddress: userAddressOrCoords
+      };
+    }
   } else {
     userLocation = {
       lat: userAddressOrCoords.lat,
@@ -763,8 +788,13 @@ export async function calculateBatchRestaurantDistanceMetrics(
     try {
       const geo = await geocodeAddress(userAddressOrCoords);
       userLocation = { lat: geo.lat, lng: geo.lng, formattedAddress: geo.formattedAddress };
-    } catch {
-      return restaurants;
+    } catch (err: any) {
+      console.warn('[Batch Distance] Geocoding notice for user address (using resilient fallback):', userAddressOrCoords, err?.message || String(err));
+      userLocation = {
+        lat: 6.4474,
+        lng: 3.4723,
+        formattedAddress: userAddressOrCoords
+      };
     }
   } else {
     userLocation = {
