@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomInt } from 'crypto';
+import { sendVerificationEmail } from '../../../lib/email';
 import { d1 } from '../../../lib/d1';
 import { r2 } from '../../../lib/r2';
 import { siteDataManager, PUBLIC_SETTINGS_WHITELIST } from '../../../lib/siteDataSnapshot';
@@ -950,11 +951,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Email already registered' }, { status: 409 });
     }
 
-    if (code) {
-      await d1.query(
-        'UPDATE otps SET is_used = 1 WHERE LOWER(email) = ? AND code = ? AND purpose = \'register\'',
-        [email, code]
-      ).catch(() => {});
+    if (!code) {
+      return NextResponse.json({ success: false, error: 'Please verify your email with the code we sent before creating your account.' }, { status: 400 });
+    }
+    const verification = await d1.query(
+      'SELECT id FROM otps WHERE LOWER(email) = ? AND code = ? AND purpose = \'register\' AND is_used = 0 AND CAST(expires_at AS INTEGER) > ? ORDER BY created_at DESC LIMIT 1',
+      [email, code, Date.now()]
+    );
+    if (!verification.results?.length) {
+      return NextResponse.json({ success: false, error: 'Invalid or expired email verification code. Please request a new code.' }, { status: 400 });
     }
 
     const id = `usr-${Date.now().toString(36)}`;
@@ -969,6 +974,7 @@ export async function POST(req: NextRequest) {
        VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, 1, ?, ?)`,
       [id, email, hash, name, role, phone, address, savedAddresses, now, now]
     );
+    await d1.query('UPDATE otps SET is_used = 1 WHERE id = ?', [verification.results[0].id]);
 
     if (role === 'courier') {
       await d1.query(
@@ -1643,21 +1649,31 @@ export async function POST(req: NextRequest) {
 
   // 30. Auth Password Recovery & Verification
   if (pathname === '/auth/forgot-password') {
-    const { email } = body;
-    if (!email) return NextResponse.json({ success: false, error: 'Email is required' }, { status: 400 });
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const email = String(body.email || '').toLowerCase().trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ success: false, error: 'Please enter a valid email address.' }, { status: 400 });
+    }
+
+    // Only issue a recovery code for a real account in the primary database.
+    const account = await d1.query('SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1', [email]);
+    if (!account.results?.length) {
+      return NextResponse.json({ success: false, error: 'No account exists with that email address. Check the email or create an account first.' }, { status: 404 });
+    }
+
+    const code = String(randomInt(100000, 1000000));
     const now = new Date().toISOString();
     const expiresAt = Date.now() + 15 * 60 * 1000;
+    const delivery = await sendVerificationEmail({ to: email, code, type: 'forgot_password' });
+    if (!delivery.success) {
+      console.error('[Auth] Password-reset email delivery failed:', delivery.error || 'No delivery provider accepted the message');
+      return NextResponse.json({ success: false, error: 'We could not send your reset code right now. Please try again later.' }, { status: 502 });
+    }
+
     await d1.query(
       'INSERT INTO otps (id, email, code, purpose, expires_at, is_used, created_at) VALUES (?, ?, ?, \'forgot\', ?, 0, ?)',
-      [`otp-${Date.now()}`, email.toLowerCase().trim(), code, expiresAt, now]
+      [`otp-${randomUUID()}`, email, code, expiresAt, now]
     );
-    return NextResponse.json({
-      success: true,
-      message: 'Recovery code sent',
-      devCode: code,
-      emailSent: false
-    });
+    return NextResponse.json({ success: true, message: 'Password reset code sent', emailSent: true });
   }
 
   if (pathname === '/auth/reset-password') {
@@ -1667,8 +1683,8 @@ export async function POST(req: NextRequest) {
     }
     const cleanEmail = email.toLowerCase().trim();
     const d1Res = await d1.query(
-      'SELECT * FROM otps WHERE email = ? AND code = ? AND purpose = \'forgot\' AND is_used = 0 ORDER BY created_at DESC LIMIT 1',
-      [cleanEmail, String(code).trim()]
+      'SELECT * FROM otps WHERE email = ? AND code = ? AND purpose = \'forgot\' AND is_used = 0 AND CAST(expires_at AS INTEGER) > ? ORDER BY created_at DESC LIMIT 1',
+      [cleanEmail, String(code).trim(), Date.now()]
     );
     if (!d1Res.results?.length) {
       return NextResponse.json({ success: false, error: 'Invalid or expired reset code' }, { status: 400 });
@@ -1681,21 +1697,30 @@ export async function POST(req: NextRequest) {
   }
 
   if (pathname === '/auth/send-verification') {
-    const { email } = body;
-    if (!email) return NextResponse.json({ success: false, error: 'Email is required' }, { status: 400 });
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const email = String(body.email || '').toLowerCase().trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ success: false, error: 'Please enter a valid email address.' }, { status: 400 });
+    }
+
+    const existing = await d1.query('SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1', [email]);
+    if (existing.results?.length) {
+      return NextResponse.json({ success: false, error: 'Email already registered. Please sign in instead.' }, { status: 409 });
+    }
+
+    const code = String(randomInt(100000, 1000000));
     const now = new Date().toISOString();
     const expiresAt = Date.now() + 15 * 60 * 1000;
+    const delivery = await sendVerificationEmail({ to: email, code, type: 'signup' });
+    if (!delivery.success) {
+      console.error('[Auth] Signup verification email delivery failed:', delivery.error || 'No delivery provider accepted the message');
+      return NextResponse.json({ success: false, error: 'We could not send your verification code right now. Please try again later.' }, { status: 502 });
+    }
+
     await d1.query(
       'INSERT INTO otps (id, email, code, purpose, expires_at, is_used, created_at) VALUES (?, ?, ?, \'register\', ?, 0, ?)',
-      [`otp-${Date.now()}`, email.toLowerCase().trim(), code, expiresAt, now]
+      [`otp-${randomUUID()}`, email, code, expiresAt, now]
     );
-    return NextResponse.json({
-      success: true,
-      message: 'Verification code sent',
-      devCode: code,
-      emailSent: false
-    });
+    return NextResponse.json({ success: true, message: 'Verification code sent', emailSent: true });
   }
 
   return NextResponse.json({ success: false, error: `API route POST /api${pathname} not found.` }, { status: 404 });
