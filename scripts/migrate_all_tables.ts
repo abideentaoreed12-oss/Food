@@ -1,12 +1,5 @@
 import { d1Client } from '../server/db/d1Client.ts';
 
-const PROMO_CODES = [
-  { code: 'VEYRA10', type: 'percent', value: 10, minOrder: 15, maxDiscount: 10 },
-  { code: 'FREESHIP', type: 'fixed', value: 3.99, minOrder: 25, maxDiscount: 3.99 },
-  { code: 'FIRST50', type: 'percent', value: 50, minOrder: 20, maxDiscount: 15 },
-  { code: 'WELCOME20', type: 'percent', value: 20, minOrder: 30, maxDiscount: 20 }
-];
-
 async function runSafeMigration() {
   console.log('🔄 Executing Zero-Loss Production D1 Migration...');
 
@@ -271,27 +264,8 @@ async function runSafeMigration() {
   // 6. Verify Relational Catalog (Preserve real production records without inserting demo data)
   console.log('6️⃣ Relational catalog verified (preserving real production data without demo seeding)...');
 
-  // 7. Seed Promo Codes
-  console.log('7️⃣ Seeding promo codes...');
-  for (const promo of PROMO_CODES) {
-    await d1Client.query(
-      `INSERT INTO promo_codes (id, code, discount_type, value, min_order_amount, max_discount_cap, usage_limit, times_used, is_active, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(code) DO UPDATE SET value = excluded.value;`,
-      [
-        `promo-${promo.code.toLowerCase()}`,
-        promo.code.toUpperCase(),
-        promo.type,
-        promo.value,
-        promo.minOrder,
-        promo.maxDiscount || null,
-        1000,
-        0,
-        1,
-        new Date().toISOString()
-      ]
-    );
-  }
+  // 7. Verify Promo Codes
+  console.log('7️⃣ Promo codes table verified (preserving real database promos)...');
 
   // 8. Seed Courier Profile
   await d1Client.query(

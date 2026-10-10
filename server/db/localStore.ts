@@ -101,77 +101,36 @@ export function seedInitialData(): DatabaseSchema {
   // Preserves verified restaurants without injecting demo seed data
   const restaurants: Restaurant[] = [];
 
-  const promoCodes: PromoCodeRecord[] = [
-    {
-      id: 'promo-1',
-      code: 'VEYRA10',
-      discount_type: 'percent',
-      value: 10,
-      min_order_amount: 3000,
-      max_discount_cap: 2000,
-      usage_limit: 1000,
-      times_used: 12,
-      is_active: 1,
-      description: '10% off entire order for all dishes',
-      created_at: now
-    },
-    {
-      id: 'promo-2',
-      code: 'FREESHIP',
-      discount_type: 'fixed',
-      value: 800,
-      min_order_amount: 5000,
-      max_discount_cap: 800,
-      usage_limit: 500,
-      times_used: 28,
-      is_active: 1,
-      description: 'Free doorstep delivery on orders above ₦5,000',
-      created_at: now
-    },
-    {
-      id: 'promo-3',
-      code: 'FIRST50',
-      discount_type: 'percent',
-      value: 50,
-      min_order_amount: 4000,
-      max_discount_cap: 2500,
-      usage_limit: 1000,
-      times_used: 41,
-      is_active: 1,
-      description: '50% off on your first order up to ₦2,500',
-      created_at: now
-    },
-    {
-      id: 'promo-4',
-      code: 'WELCOME20',
-      discount_type: 'percent',
-      value: 20,
-      min_order_amount: 3500,
-      max_discount_cap: 1500,
-      usage_limit: 1000,
-      times_used: 19,
-      is_active: 1,
-      description: '20% welcome discount for new food lovers',
-      created_at: now
+  const snapshot = siteDataManager.getLastKnownGood();
+  const promoCodes: PromoCodeRecord[] = (snapshot?.promoCodes || []).map((p: any) => ({
+    id: p.id || `promo-${p.code.toLowerCase()}`,
+    code: p.code,
+    discount_type: p.discount_type || 'percent',
+    value: p.value,
+    min_order_amount: p.min_order_amount || 0,
+    max_discount_cap: p.max_discount_cap || null,
+    usage_limit: p.usage_limit || 1000,
+    times_used: p.times_used || 0,
+    is_active: p.is_active ?? 1,
+    description: p.description || `${p.code} Promotional Discount`,
+    created_at: p.created_at || now
+  }));
+
+  const deliveryZones: DeliveryZoneRecord[] = (snapshot?.deliveryZones || []).map((z: any) => ({
+    id: z.id,
+    name: z.name,
+    code: z.code || 'ZONE',
+    base_fee: z.base_delivery_fee || z.base_fee || 800,
+    is_active: z.is_active ?? 1,
+    created_at: z.created_at || now
+  }));
+
+  const platformSettings: Record<string, string> = {};
+  if (snapshot?.platformSettings) {
+    for (const [k, v] of Object.entries(snapshot.platformSettings)) {
+      platformSettings[k] = typeof v === 'string' ? v : JSON.stringify(v);
     }
-  ];
-
-  const deliveryZones: DeliveryZoneRecord[] = [
-    { id: 'zone-1', name: 'Lekki Phase 1', code: 'LEKKI', base_fee: 800, is_active: 1, created_at: now },
-    { id: 'zone-2', name: 'Victoria Island', code: 'VI', base_fee: 1000, is_active: 1, created_at: now },
-    { id: 'zone-3', name: 'Ikoyi', code: 'IKOYI', base_fee: 900, is_active: 1, created_at: now },
-    { id: 'zone-4', name: 'Ikeja GRA', code: 'IKEJA', base_fee: 1200, is_active: 1, created_at: now },
-    { id: 'zone-5', name: 'Maitama, Abuja', code: 'MAITAMA', base_fee: 1000, is_active: 1, created_at: now }
-  ];
-
-  const platformSettings: Record<string, string> = {
-    currency_ngn_usd_rate: '1400',
-    platform_commission_percent: '15',
-    base_service_fee_ngn: '500',
-    base_service_fee_usd: '1.99',
-    minimum_order_ngn: '2500',
-    minimum_order_usd: '10.00'
-  };
+  }
 
   const auditLogs: AuditLog[] = [
     {

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "version": 194,
-  "updatedAt": "2026-10-10T12:58:43.229Z",
-  "lastAttemptedAt": "2026-10-10T12:58:43.229Z",
+  "version": 227,
+  "updatedAt": "2026-10-10T13:25:02.756Z",
+  "lastAttemptedAt": "2026-10-10T13:25:02.756Z",
   "source": "cloudflare_d1",
   "syncStatus": "synced",
   "restaurants": [
@@ -886,6 +886,6 @@
     "promoCodeCount": 3,
     "persistedToD1": true,
     "persistedToR2": true,
-    "lastSuccessfulSync": "2026-10-10T12:58:43.409Z"
+    "lastSuccessfulSync": "2026-10-10T13:25:02.931Z"
   }
 }

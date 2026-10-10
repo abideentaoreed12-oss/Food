@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { d1 } from '../../../lib/d1';
 import { r2 } from '../../../lib/r2';
-import { siteDataManager } from '../../../lib/siteDataSnapshot';
+import { siteDataManager, PUBLIC_SETTINGS_WHITELIST } from '../../../lib/siteDataSnapshot';
 import { paymentGateway } from '../../../lib/payment';
 import {
   calculateRestaurantDistanceMetrics,
@@ -193,15 +193,23 @@ export async function GET(req: NextRequest) {
   if (pathname === '/settings' || pathname === '/admin/settings') {
     const user = await getUser(req);
     const isAdmin = user && (user.role === 'admin' || user.role === 'sub_admin');
-    const d1Res = await d1.query('SELECT key, value FROM platform_settings').catch(() => ({ results: [] as any[] }));
+    let d1Res: any = { results: [] };
+    try {
+      d1Res = await d1.query('SELECT key, value FROM platform_settings');
+    } catch {}
+
     const settingsMap: Record<string, any> = {};
-    const SAFE = new Set([
-      'currency_ngn_usd_rate', 'base_service_fee_ngn', 'base_service_fee_usd',
-      'minimum_order_ngn', 'minimum_order_usd', 'support_phone', 'support_email',
-      'maintenance_mode', 'delivery_notice', 'cms_hero_title', 'cms_hero_subtitle',
-      'cms_hero_badge', 'cms_announcement_banner', 'platform_commission_percent'
-    ]);
-    for (const row of d1Res.results || []) {
+    const SAFE = PUBLIC_SETTINGS_WHITELIST;
+    const snap = siteDataManager.getLastKnownGood();
+
+    const rows = (d1Res && d1Res.success !== false && d1Res.results?.length > 0)
+      ? d1Res.results
+      : Object.entries(snap?.platformSettings || {}).map(([key, value]) => ({
+          key,
+          value: typeof value === 'string' ? value : JSON.stringify(value)
+        }));
+
+    for (const row of rows) {
       if (!isAdmin && !SAFE.has(row.key)) continue;
       try { settingsMap[row.key] = JSON.parse(row.value); } catch { settingsMap[row.key] = row.value; }
     }
@@ -210,14 +218,34 @@ export async function GET(req: NextRequest) {
 
   // 9. Delivery Zones
   if (pathname === '/settings/zones' || pathname === '/admin/delivery-zones') {
-    const d1Res = await d1.query('SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL ORDER BY created_at DESC');
-    return NextResponse.json({ success: true, data: d1Res.results || [] });
+    let zones: any[] = [];
+    try {
+      const d1Res = await d1.query('SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL ORDER BY created_at DESC');
+      if (d1Res && d1Res.success !== false && Array.isArray(d1Res.results) && d1Res.results.length > 0) {
+        zones = d1Res.results;
+      }
+    } catch {}
+
+    if (zones.length === 0) {
+      zones = siteDataManager.getLastKnownGood()?.deliveryZones || [];
+    }
+    return NextResponse.json({ success: true, data: zones });
   }
 
   // 10. Promo Codes
   if (pathname === '/settings/promos' || pathname === '/admin/promos') {
-    const d1Res = await d1.query('SELECT * FROM promo_codes WHERE is_active = 1 ORDER BY created_at DESC');
-    return NextResponse.json({ success: true, data: d1Res.results || [] });
+    let promos: any[] = [];
+    try {
+      const d1Res = await d1.query('SELECT * FROM promo_codes WHERE is_active = 1 ORDER BY created_at DESC');
+      if (d1Res && d1Res.success !== false && Array.isArray(d1Res.results) && d1Res.results.length > 0) {
+        promos = d1Res.results;
+      }
+    } catch {}
+
+    if (promos.length === 0) {
+      promos = siteDataManager.getLastKnownGood()?.promoCodes || [];
+    }
+    return NextResponse.json({ success: true, data: promos });
   }
 
   // 10b. Site Data Snapshot Status

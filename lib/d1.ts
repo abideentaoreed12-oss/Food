@@ -412,54 +412,40 @@ export class D1Client {
         );
       }
 
-        // Seed Delivery Zones
-        const zones = [
-          ['zone-1', 'Lekki Phase 1', 'LEKKI', 'NGN', 800, 200, 1],
-          ['zone-2', 'Victoria Island', 'VI', 'NGN', 1000, 250, 1],
-          ['zone-3', 'Ikoyi', 'IKOYI', 'NGN', 900, 220, 1],
-          ['zone-4', 'Ikeja GRA', 'IKEJA', 'NGN', 1200, 300, 1],
-          ['zone-5', 'Maitama, Abuja', 'MAITAMA', 'NGN', 1000, 250, 1]
-        ];
-        for (const z of zones) {
-          this.executeLocal(
-            `INSERT OR IGNORE INTO delivery_zones (id, name, code, currency, base_delivery_fee, per_km_fee, is_active, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [...z, now]
-          );
+        // Populate delivery_zones, promo_codes, and platform_settings from last-known-good site data snapshot if empty
+        const snapshot = siteDataManager.getLastKnownGood();
+
+        const zoneCount = this.executeLocal('SELECT count(*) as c FROM delivery_zones');
+        if (Number(zoneCount.results?.[0]?.c || 0) === 0 && snapshot?.deliveryZones?.length) {
+          for (const z of snapshot.deliveryZones) {
+            this.executeLocal(
+              `INSERT OR IGNORE INTO delivery_zones (id, name, code, currency, base_delivery_fee, per_km_fee, is_active, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              [z.id, z.name, z.code || 'ZONE', z.currency || 'NGN', z.base_delivery_fee || z.base_fee || 800, z.per_km_fee || 200, z.is_active ?? 1, now]
+            );
+          }
         }
 
-        // Seed Promo Codes
-        const promos = [
-          ['promo-1', 'VEYRA10', 'percentage', 10, 3000, 2000, 1],
-          ['promo-2', 'FREESHIP', 'fixed', 800, 5000, 800, 1],
-          ['promo-3', 'FIRST50', 'percentage', 50, 4000, 2500, 1],
-          ['promo-4', 'WELCOME20', 'percentage', 20, 3500, 1500, 1]
-        ];
-        for (const p of promos) {
-          this.executeLocal(
-            `INSERT OR IGNORE INTO promo_codes (id, code, discount_type, value, min_order_amount, max_discount_cap, is_active, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [...p, now]
-          );
+        const promoCount = this.executeLocal('SELECT count(*) as c FROM promo_codes');
+        if (Number(promoCount.results?.[0]?.c || 0) === 0 && snapshot?.promoCodes?.length) {
+          for (const p of snapshot.promoCodes) {
+            this.executeLocal(
+              `INSERT OR IGNORE INTO promo_codes (id, code, discount_type, value, min_order_amount, max_discount_cap, is_active, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              [p.id || `promo-${p.code.toLowerCase()}`, p.code, p.discount_type || 'percent', p.value, p.min_order_amount || 0, p.max_discount_cap || null, p.is_active ?? 1, now]
+            );
+          }
         }
 
-        // Seed Platform Settings
-        const settings = [
-          ['currency_ngn_usd_rate', '1400', 'Exchange Rate NGN to USD'],
-          ['base_service_fee_ngn', '500', 'Base Service Fee in NGN'],
-          ['base_service_fee_usd', '1.99', 'Base Service Fee in USD'],
-          ['minimum_order_ngn', '2500', 'Minimum Order Amount in NGN'],
-          ['minimum_order_usd', '10.00', 'Minimum Order Amount in USD'],
-          ['platform_commission_percent', '15', 'Platform Commission Percentage'],
-          ['support_phone', '+234 800 839 7264', 'Customer Support Helpline'],
-          ['support_email', 'support@veyrang.com', 'Official Support Email']
-        ];
-        for (const [k, v, desc] of settings) {
-          this.executeLocal(
-            `INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at)
-             VALUES (?, ?, ?, ?)`,
-            [k, v, desc, now]
-          );
+        const settingsCount = this.executeLocal('SELECT count(*) as c FROM platform_settings');
+        if (Number(settingsCount.results?.[0]?.c || 0) === 0 && snapshot?.platformSettings) {
+          for (const [k, v] of Object.entries(snapshot.platformSettings)) {
+            this.executeLocal(
+              `INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at)
+               VALUES (?, ?, ?, ?)`,
+              [k, typeof v === 'string' ? v : JSON.stringify(v), k, now]
+            );
+          }
         }
 
       this.isSchemaInitialized = true;
