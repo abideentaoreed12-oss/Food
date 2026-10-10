@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
     const signature = req.headers.get('x-paystack-signature');
-    const webhookSecret = process.env.PAYSTACK_WEBHOOK_SECRET || process.env.PAYMENT_WEBHOOK_SECRET || '';
+    const webhookSecret = process.env.PAYSTACK_WEBHOOK_SECRET || process.env.PAYMENT_WEBHOOK_SECRET || process.env.PAYSTACK_SECRET_KEY || process.env.PAYMENT_SECRET_KEY || '';
     const isProd = process.env.NODE_ENV === 'production';
 
     if (!webhookSecret) {
