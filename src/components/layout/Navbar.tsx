@@ -302,7 +302,7 @@ export const Navbar: React.FC = () => {
                         <ChevronDown className="w-3.5 h-3.5 text-[#FF5500] stroke-[2.5] shrink-0" />
                       </div>
                     ) : (
-                      <div className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#FF5500] hover:bg-[#EA4C00] text-white text-xs sm:text-sm font-bold transition-all shadow-xs hover:shadow-md cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95">
+                      <div className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#C2410C] hover:bg-[#9A3412] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2 disabled:bg-slate-400 disabled:text-white text-white text-xs sm:text-sm font-bold transition-all shadow-xs hover:shadow-md cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95">
                         <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
                         <span>Sign In</span>
                       </div>
