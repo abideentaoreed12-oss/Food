@@ -329,8 +329,11 @@ export class D1Client {
           value REAL NOT NULL,
           min_order_amount REAL DEFAULT 0,
           max_discount_cap REAL,
+          usage_limit INTEGER DEFAULT 1000,
           times_used INTEGER DEFAULT 0,
           is_active INTEGER DEFAULT 1,
+          expires_at TEXT,
+          description TEXT DEFAULT '',
           created_at TEXT NOT NULL
         );`,
         `CREATE TABLE IF NOT EXISTS platform_settings (
@@ -393,6 +396,26 @@ export class D1Client {
           await this.queryDirect(sql, [], true).catch(() => {});
         }
         this.executeLocal(sql);
+      }
+
+      // Migrate older promo_codes tables in both authoritative D1 and local development SQLite.
+      // CREATE TABLE IF NOT EXISTS does not add columns to tables that already exist.
+      const promoColumnMigrations = [
+        'ALTER TABLE promo_codes ADD COLUMN usage_limit INTEGER DEFAULT 1000',
+        "ALTER TABLE promo_codes ADD COLUMN expires_at TEXT",
+        "ALTER TABLE promo_codes ADD COLUMN description TEXT DEFAULT ''"
+      ];
+      for (const migration of promoColumnMigrations) {
+        if (this.isConfigured()) {
+          await this.queryDirect(migration, [], true).catch(() => {
+            // An existing column is expected on subsequent cold starts; other failures surface on insert.
+          });
+        }
+        try {
+          this.executeLocal(migration);
+        } catch {
+          // Ignore duplicate-column errors in the local development database.
+        }
       }
 
       const now = new Date().toISOString();
