@@ -168,8 +168,9 @@ describe('Orders, Financial Calculations & Webhooks Security', () => {
 
   it('calculates trusted server-side menu prices regardless of client payload', async () => {
     const restaurants = await db.getRestaurants();
-    const rest = restaurants[0];
-    const menuItem = rest.categories[0]?.items[0];
+    const rest = restaurants.find((r) => r.categories?.some((c) => c.items?.length > 0)) || restaurants[0];
+    const category = rest.categories?.find((c) => c.items?.length > 0) || rest.categories[0];
+    const menuItem = category?.items?.[0];
 
     expect(menuItem).toBeDefined();
     const trustedPrice = menuItem.price;

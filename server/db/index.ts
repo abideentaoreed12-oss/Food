@@ -543,13 +543,23 @@ export const db = {
   },
 
   updateMenuItemAvailability: async (restaurantId: string, itemId: string, isAvailable: boolean): Promise<boolean> => {
-    const data = loadDatabase();
-    let rest = data.restaurants.find((r) => r.id === restaurantId);
+    let rest: any = null;
+    try {
+      const d1Res = await d1Client.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+      if (d1Res?.results?.length) {
+        const r: any = d1Res.results[0];
+        rest = r.raw_json ? JSON.parse(r.raw_json) : r;
+      }
+    } catch {}
+    if (!rest) {
+      const data = loadDatabase();
+      rest = data.restaurants.find((r) => r.id === restaurantId);
+    }
     if (!rest) return false;
 
     let found = false;
-    for (const cat of rest.categories) {
-      for (const item of cat.items) {
+    for (const cat of rest.categories || []) {
+      for (const item of cat.items || []) {
         if (item.id === itemId) {
           item.isAvailable = isAvailable;
           found = true;
@@ -558,23 +568,50 @@ export const db = {
       }
     }
     if (found) {
-      await saveDatabase(data);
       try {
         await d1Client.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(rest), restaurantId]);
       } catch (e) {}
+      const data = loadDatabase();
+      const localRest = data.restaurants.find((r) => r.id === restaurantId);
+      if (localRest) {
+        for (const cat of localRest.categories || []) {
+          for (const item of cat.items || []) {
+            if (item.id === itemId) {
+              item.isAvailable = isAvailable;
+              break;
+            }
+          }
+        }
+        await saveDatabase(data);
+      }
     }
     return found;
   },
 
   updateRestaurantBusyMode: async (restaurantId: string, isBusyPaused: boolean): Promise<Restaurant | null> => {
-    const data = loadDatabase();
-    const rest = data.restaurants.find((r) => r.id === restaurantId);
+    let rest: any = null;
+    try {
+      const d1Res = await d1Client.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+      if (d1Res?.results?.length) {
+        const r: any = d1Res.results[0];
+        rest = r.raw_json ? JSON.parse(r.raw_json) : r;
+      }
+    } catch {}
+    if (!rest) {
+      const data = loadDatabase();
+      rest = data.restaurants.find((r) => r.id === restaurantId);
+    }
     if (!rest) return null;
     rest.isBusyPaused = isBusyPaused;
-    await saveDatabase(data);
     try {
       await d1Client.query('UPDATE restaurants SET is_busy_paused = ?, raw_json = ? WHERE id = ?', [isBusyPaused ? 1 : 0, JSON.stringify(rest), restaurantId]);
     } catch (e) {}
+    const data = loadDatabase();
+    const localRest = data.restaurants.find((r) => r.id === restaurantId);
+    if (localRest) {
+      localRest.isBusyPaused = isBusyPaused;
+      await saveDatabase(data);
+    }
     return rest;
   },
 

@@ -365,6 +365,15 @@ export class D1Client {
           price REAL NOT NULL DEFAULT 0,
           group_id TEXT,
           created_at TEXT NOT NULL
+        );`,
+        `CREATE TABLE IF NOT EXISTS otps (
+          id TEXT PRIMARY KEY,
+          email TEXT NOT NULL,
+          code TEXT NOT NULL,
+          purpose TEXT NOT NULL,
+          expires_at INTEGER NOT NULL,
+          is_used INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL
         );`
       ];
 
@@ -440,15 +449,30 @@ export class D1Client {
           }
         }
 
-        // Seed Admin user
-        const adminEmail = (CONFIG.ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'admin@veyrang.com').toLowerCase().trim();
-        const adminPass = CONFIG.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'Admin123!';
-        const hash = bcrypt.hashSync(adminPass, 10);
-        this.executeLocal(
-          `INSERT INTO users (id, email, password_hash, name, role, phone, address, wallet_balance_usd, wallet_balance_ngn, saved_addresses, is_approved, created_at, updated_at)
-           VALUES ('usr-admin-1', ?, ?, 'System Administrator', 'admin', '+234 801 234 5678', 'Admiralty Way, Lekki Phase 1', 250, 350000, '[]', 1, ?, ?)`,
-          [adminEmail, hash, now, now]
-        );
+        // Seed System Users
+        const standardUsers = [
+          { id: 'usr-admin-1', email: (CONFIG.ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'admin@veyrang.com').toLowerCase().trim(), pass: CONFIG.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'Admin123!', name: 'System Administrator', role: 'admin', phone: '+234 801 234 5678', balUsd: 250, balNgn: 350000 },
+          { id: 'usr-admin-2', email: 'admin@veyrang.com', pass: 'Admin123!', name: 'System Administrator', role: 'admin', phone: '+234 800 839 7264', balUsd: 500, balNgn: 500000 },
+          { id: 'usr-cust-1', email: 'customer@veyrang.com', pass: 'Customer123!', name: 'Amina Bello', role: 'customer', phone: '+234 803 111 2233', balUsd: 50, balNgn: 50000 },
+          { id: 'usr-rest-1', email: 'restaurant@veyrang.com', pass: 'Merchant123!', name: 'Fiorella Merchant', role: 'restaurant', phone: '+234 805 444 5566', restaurantId: 'rest-1', balUsd: 100, balNgn: 120000 },
+          { id: 'usr-cour-1', email: 'courier@veyrang.com', pass: 'Courier123!', name: 'Emeka Okonkwo', role: 'courier', phone: '+234 807 777 8899', balUsd: 20, balNgn: 25000 }
+        ];
+
+        for (const su of standardUsers) {
+          const passHash = bcrypt.hashSync(su.pass, 10);
+          this.executeLocal(
+            `INSERT OR IGNORE INTO users (id, email, password_hash, name, role, phone, address, restaurant_id, wallet_balance_usd, wallet_balance_ngn, saved_addresses, is_approved, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'Lekki Phase 1, Lagos', ?, ?, ?, '[]', 1, ?, ?)`,
+            [su.id, su.email, passHash, su.name, su.role, su.phone, su.restaurantId || null, su.balUsd, su.balNgn, now, now]
+          );
+          if (su.role === 'courier') {
+            this.executeLocal(
+              `INSERT OR IGNORE INTO courier_profiles (user_id, vehicle_type, vehicle_plate, is_verified, is_online, rating, trips_completed, total_deliveries)
+               VALUES (?, 'Motorcycle', 'LND-452-XY', 1, 1, 4.9, 142, 142)`,
+              [su.id]
+            );
+          }
+        }
 
         // Seed Delivery Zones
         const zones = [

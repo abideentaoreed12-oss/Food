@@ -86,14 +86,17 @@ describe('Production Database & Security Ledger', () => {
 
   it('updates dish availability atomically', async () => {
     const list = await db.getRestaurants();
-    const restId = list[0]?.id || 'rest-1';
-    const itemId = list[0]?.categories[0]?.items[0]?.id || 'item-101';
+    const rest = list.find((r) => r.categories?.some((c) => c.items?.length > 0)) || list[0];
+    const restId = rest?.id || 'rest-1';
+    const category = rest.categories?.find((c) => c.items?.length > 0) || rest.categories[0];
+    const itemId = category?.items?.[0]?.id || 'item-101';
 
     const success = await db.updateMenuItemAvailability(restId, itemId, false);
     expect(success).toBe(true);
 
-    const rest = await db.getRestaurantById(restId);
-    const item = rest?.categories[0].items.find((i) => i.id === itemId);
+    const updatedRest = await db.getRestaurantById(restId);
+    const updatedCategory = updatedRest?.categories?.find((c) => c.items?.length > 0) || updatedRest?.categories?.[0];
+    const item = updatedCategory?.items.find((i) => i.id === itemId);
     expect(item?.isAvailable).toBe(false);
 
     // Reset back to available
