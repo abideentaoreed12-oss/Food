@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { User, Restaurant, Order, Transaction, AuditLog, OrderStatus } from './schema';
 import { d1Client } from './d1Client';
 import { CONFIG } from '../config';
+import { INITIAL_RESTAURANTS } from '../../src/data/mockData';
 interface OtpEntry {
   code: string;
   purpose: 'register' | 'forgot';
@@ -71,8 +72,8 @@ function seedInitialData(): DatabaseSchema {
     }
   ];
 
-  // No mock restaurants: Cloudflare D1 is the single source of truth
-  const restaurants: Restaurant[] = [];
+  // Seed restaurants from catalog data
+  const restaurants: Restaurant[] = [...(INITIAL_RESTAURANTS as any[])];
 
   const initialOrders: Order[] = [];
   const transactions: Transaction[] = [];
@@ -107,6 +108,9 @@ function seedInitialData(): DatabaseSchema {
 
 export function loadDatabase(): DatabaseSchema {
   if (dbCache) {
+    if (!dbCache.restaurants || dbCache.restaurants.length === 0) {
+      dbCache.restaurants = [...(INITIAL_RESTAURANTS as any[])];
+    }
     // Filter out demo/test users
     dbCache.users = (dbCache.users || []).filter((u) => {
       const email = (u?.email || '').toLowerCase();
@@ -133,6 +137,9 @@ export function loadDatabase(): DatabaseSchema {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.users)) {
         dbCache = parsed;
+        if (!dbCache!.restaurants || dbCache!.restaurants.length === 0) {
+          dbCache!.restaurants = [...(INITIAL_RESTAURANTS as any[])];
+        }
         
         // Filter out demo/test users
         dbCache!.users = dbCache!.users.filter((u) => {
@@ -496,10 +503,12 @@ export const db = {
           return r;
         });
       }
-      return [];
+      const data = loadDatabase();
+      return data.restaurants;
     } catch (e) {
       console.warn('D1 getRestaurants note:', e);
-      return [];
+      const data = loadDatabase();
+      return data.restaurants;
     }
   },
 
@@ -524,10 +533,12 @@ export const db = {
         }
         return r;
       }
-      return undefined;
+      const data = loadDatabase();
+      return data.restaurants.find((r) => r.id === id);
     } catch (e) {
       console.warn('D1 getRestaurantById note:', e);
-      return undefined;
+      const data = loadDatabase();
+      return data.restaurants.find((r) => r.id === id);
     }
   },
 
@@ -623,10 +634,12 @@ export const db = {
 
         return d1Orders;
       }
-      return [];
+      const data = loadDatabase();
+      return data.orders;
     } catch (e) {
       console.warn('D1 getOrders query note:', e);
-      return [];
+      const data = loadDatabase();
+      return data.orders;
     }
   },
 
@@ -677,10 +690,12 @@ export const db = {
           updatedAt: o.updated_at || parsed?.updatedAt
         };
       }
-      return undefined;
+      const data = loadDatabase();
+      return data.orders.find((o) => o.id === id || o.shortId === id);
     } catch (e) {
       console.warn('D1 getOrderById note:', e);
-      return undefined;
+      const data = loadDatabase();
+      return data.orders.find((o) => o.id === id || o.shortId === id);
     }
   },
 

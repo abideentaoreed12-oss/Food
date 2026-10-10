@@ -22,7 +22,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
+  serverExternalPackages: ['node:sqlite'],
   reactStrictMode: true,
   env: {
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:
