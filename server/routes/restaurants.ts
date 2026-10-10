@@ -29,6 +29,7 @@ router.get('/', async (req: Request, res: Response) => {
     const userLng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
 
     let list: any[] = [];
+    let d1QueryFailed = false;
     try {
       const listRaw = await cachedQuery(CacheKeys.restaurants('all'), async () => {
         const d1Res = await d1Client.query('SELECT * FROM restaurants ORDER BY rating DESC');
@@ -57,12 +58,14 @@ router.get('/', async (req: Request, res: Response) => {
         }
         return r;
       });
+      d1QueryFailed = false;
     } catch (queryErr) {
       console.warn('[Restaurants Route] Primary D1 query warning, using last-known-good snapshot:', queryErr);
+      d1QueryFailed = true;
     }
 
-    // Never fall back to demo data: use persistent last-known-good snapshot
-    if (!list || list.length === 0) {
+    // Only fallback to last-known-good snapshot if the primary database query failed
+    if (d1QueryFailed) {
       list = siteDataManager.getRestaurants();
     }
 

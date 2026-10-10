@@ -396,98 +396,25 @@ export class D1Client {
         this.executeLocal(sql);
       }
 
-      // Seed catalog and default admin if local database is empty
-      const restCount = this.executeLocal('SELECT count(*) as c FROM restaurants');
-      const hasRestaurants = Number(restCount.results?.[0]?.c || 0) > 0;
-      if (!hasRestaurants) {
-        const now = new Date().toISOString();
-        const initialList = siteDataManager.getRestaurants();
-        for (const rest of initialList) {
-          this.executeLocal(
-            `INSERT INTO restaurants (id, name, slug, cuisine, rating, review_count, delivery_time_min, delivery_time_max, delivery_fee, min_order, price_tier, address, distance_km, tags, badge, accent_color, is_open, is_busy_paused, commission_percent, zone, raw_json, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              rest.id,
-              rest.name,
-              rest.id,
-              rest.cuisine,
-              rest.rating,
-              rest.reviewCount,
-              rest.deliveryTimeMin,
-              rest.deliveryTimeMax,
-              rest.deliveryFee,
-              rest.minOrder,
-              rest.priceTier,
-              rest.address,
-              rest.distanceKm,
-              JSON.stringify(rest.tags || []),
-              rest.badge || null,
-              rest.accentColor || '#FF5500',
-              rest.isOpen ? 1 : 0,
-              rest.isBusyPaused ? 1 : 0,
-              rest.commissionPercent || 15,
-              rest.zone || 'LAGOS',
-              JSON.stringify(rest),
-              now
-            ]
-          );
+      const now = new Date().toISOString();
 
-          for (const cat of rest.categories || []) {
-            this.executeLocal(
-              `INSERT INTO menu_categories (id, restaurant_id, name, description, sort_order, created_at)
-               VALUES (?, ?, ?, ?, 0, ?)`,
-              [cat.id, rest.id, cat.name, cat.description || null, now]
-            );
+      // Provision initial administrator if not present in users table
+      const adminCount = this.executeLocal("SELECT count(*) as c FROM users WHERE role = 'admin'");
+      const hasAdmin = Number(adminCount.results?.[0]?.c || 0) > 0;
+      if (!hasAdmin) {
+        const adminEmail = (CONFIG.ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'admin@veyrang.com').toLowerCase().trim();
+        const adminPassword = CONFIG.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'Admin123!';
+        const passHash = bcrypt.hashSync(adminPassword, 10);
+        this.executeLocal(
+          `INSERT OR IGNORE INTO users (id, email, password_hash, name, role, phone, address, wallet_balance_usd, wallet_balance_ngn, saved_addresses, is_approved, created_at, updated_at)
+           VALUES ('usr-admin-1', ?, ?, 'System Administrator', 'admin', '+234 801 234 5678', 'Lekki Phase 1, Lagos', 0, 0, '[]', 1, ?, ?)`,
+          [adminEmail, passHash, now, now]
+        );
+      }
 
-            for (const item of cat.items || []) {
-              this.executeLocal(
-                `INSERT INTO menu_items (id, restaurant_id, category_id, name, description, price, dietary_tags, popular, calories, prep_time_min, is_available, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [
-                  item.id,
-                  rest.id,
-                  cat.id,
-                  item.name,
-                  item.description || '',
-                  item.price,
-                  JSON.stringify(item.dietary || []),
-                  item.popular ? 1 : 0,
-                  item.calories || null,
-                  item.prepTimeMin || 15,
-                  item.isAvailable ? 1 : 0,
-                  now
-                ]
-              );
-            }
-          }
-        }
-
-        // Seed System Users
-        const standardUsers = [
-          { id: 'usr-admin-1', email: (CONFIG.ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'admin@veyrang.com').toLowerCase().trim(), pass: CONFIG.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'Admin123!', name: 'System Administrator', role: 'admin', phone: '+234 801 234 5678', balUsd: 250, balNgn: 350000 },
-          { id: 'usr-admin-2', email: 'admin@veyrang.com', pass: 'Admin123!', name: 'System Administrator', role: 'admin', phone: '+234 800 839 7264', balUsd: 500, balNgn: 500000 },
-          { id: 'usr-cust-1', email: 'customer@veyrang.com', pass: 'Customer123!', name: 'Amina Bello', role: 'customer', phone: '+234 803 111 2233', balUsd: 50, balNgn: 50000 },
-          { id: 'usr-rest-1', email: 'restaurant@veyrang.com', pass: 'Merchant123!', name: 'Fiorella Merchant', role: 'restaurant', phone: '+234 805 444 5566', restaurantId: 'rest-1', balUsd: 100, balNgn: 120000 },
-          { id: 'usr-cour-1', email: 'courier@veyrang.com', pass: 'Courier123!', name: 'Emeka Okonkwo', role: 'courier', phone: '+234 807 777 8899', balUsd: 20, balNgn: 25000 }
-        ];
-
-        for (const su of standardUsers) {
-          const passHash = bcrypt.hashSync(su.pass, 10);
-          this.executeLocal(
-            `INSERT OR IGNORE INTO users (id, email, password_hash, name, role, phone, address, restaurant_id, wallet_balance_usd, wallet_balance_ngn, saved_addresses, is_approved, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, 'Lekki Phase 1, Lagos', ?, ?, ?, '[]', 1, ?, ?)`,
-            [su.id, su.email, passHash, su.name, su.role, su.phone, su.restaurantId || null, su.balUsd, su.balNgn, now, now]
-          );
-          if (su.role === 'courier') {
-            this.executeLocal(
-              `INSERT OR IGNORE INTO courier_profiles (user_id, vehicle_type, vehicle_plate, is_verified, is_online, rating, trips_completed, total_deliveries)
-               VALUES (?, 'Motorcycle', 'LND-452-XY', 1, 1, 4.9, 142, 142)`,
-              [su.id]
-            );
-          }
-        }
-
-        // Seed Delivery Zones
+      // Initialize default Delivery Zones if table is empty
+      const zoneCount = this.executeLocal('SELECT count(*) as c FROM delivery_zones');
+      if (Number(zoneCount.results?.[0]?.c || 0) === 0) {
         const zones = [
           ['zone-1', 'Lekki Phase 1', 'LEKKI', 'NGN', 800, 200, 1],
           ['zone-2', 'Victoria Island', 'VI', 'NGN', 1000, 250, 1],
@@ -502,8 +429,11 @@ export class D1Client {
             [...z, now]
           );
         }
+      }
 
-        // Seed Promo Codes
+      // Initialize default Promo Codes if table is empty
+      const promoCount = this.executeLocal('SELECT count(*) as c FROM promo_codes');
+      if (Number(promoCount.results?.[0]?.c || 0) === 0) {
         const promos = [
           ['promo-1', 'VEYRA10', 'percentage', 10, 3000, 2000, 1],
           ['promo-2', 'FREESHIP', 'fixed', 800, 5000, 800, 1],
@@ -517,8 +447,11 @@ export class D1Client {
             [...p, now]
           );
         }
+      }
 
-        // Seed Platform Settings
+      // Initialize baseline Platform Settings if table is empty
+      const settingsCount = this.executeLocal('SELECT count(*) as c FROM platform_settings');
+      if (Number(settingsCount.results?.[0]?.c || 0) === 0) {
         const settings = [
           ['currency_ngn_usd_rate', '1400', 'Exchange Rate NGN to USD'],
           ['base_service_fee_ngn', '500', 'Base Service Fee in NGN'],

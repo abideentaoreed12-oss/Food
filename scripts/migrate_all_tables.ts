@@ -1,5 +1,4 @@
 import { d1Client } from '../server/db/d1Client.ts';
-import { INITIAL_RESTAURANTS } from '../src/data/mockData.ts';
 
 const PROMO_CODES = [
   { code: 'VEYRA10', type: 'percent', value: 10, minOrder: 15, maxDiscount: 10 },
@@ -269,100 +268,8 @@ async function runSafeMigration() {
     }
   }
 
-  // 6. Populate Relational Catalog
-  console.log('6️⃣ Populating Relational Catalog Data...');
-  for (const rest of INITIAL_RESTAURANTS) {
-    await d1Client.query(
-      `INSERT INTO restaurants (id, name, slug, cuisine, rating, review_count, delivery_time_min, delivery_time_max, delivery_fee, min_order, price_tier, address, distance_km, tags, badge, accent_color, is_open, is_busy_paused, commission_percent, zone, raw_json, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET
-         name = excluded.name,
-         cuisine = excluded.cuisine,
-         rating = excluded.rating,
-         delivery_fee = excluded.delivery_fee,
-         is_open = excluded.is_open,
-         raw_json = excluded.raw_json;`,
-      [
-        rest.id,
-        rest.name,
-        rest.id,
-        rest.cuisine,
-        rest.rating,
-        rest.reviewCount,
-        rest.deliveryTimeMin,
-        rest.deliveryTimeMax,
-        rest.deliveryFee,
-        rest.minOrder,
-        rest.priceTier,
-        rest.address,
-        rest.distanceKm,
-        JSON.stringify(rest.tags),
-        rest.badge || null,
-        rest.accentColor,
-        rest.isOpen ? 1 : 0,
-        rest.isBusyPaused ? 1 : 0,
-        rest.commissionPercent || 15,
-        rest.zone || 'NYC',
-        JSON.stringify(rest),
-        (rest as any).createdAt || new Date().toISOString()
-      ]
-    );
-
-    let sortIdx = 0;
-    for (const cat of rest.categories) {
-      sortIdx++;
-      await d1Client.query(
-        `INSERT INTO menu_categories (id, restaurant_id, name, description, sort_order, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET name = excluded.name;`,
-        [cat.id, rest.id, cat.name, cat.description || null, sortIdx, new Date().toISOString()]
-      );
-
-      for (const item of cat.items) {
-        await d1Client.query(
-          `INSERT INTO menu_items (id, restaurant_id, category_id, name, description, price, dietary_tags, popular, calories, prep_time_min, is_available, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-           ON CONFLICT(id) DO UPDATE SET
-             price = excluded.price,
-             is_available = excluded.is_available;`,
-          [
-            item.id,
-            rest.id,
-            cat.id,
-            item.name,
-            item.description || '',
-            item.price,
-            JSON.stringify(item.dietary || []),
-            item.popular ? 1 : 0,
-            item.calories || null,
-            item.prepTimeMin || 15,
-            item.isAvailable ? 1 : 0,
-            new Date().toISOString()
-          ]
-        );
-
-        if (item.customizations && item.customizations.length > 0) {
-          for (const group of item.customizations) {
-            await d1Client.query(
-              `INSERT INTO item_modifier_groups (id, menu_item_id, name, is_required, max_select, created_at)
-               VALUES (?, ?, ?, ?, ?, ?)
-               ON CONFLICT(id) DO UPDATE SET name = excluded.name;`,
-              [group.id, item.id, group.name, group.required ? 1 : 0, group.maxSelect || 1, new Date().toISOString()]
-            );
-
-            for (const opt of group.options) {
-              await d1Client.query(
-                `INSERT INTO item_modifiers (id, group_id, name, price, is_available, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?)
-                 ON CONFLICT(id) DO UPDATE SET price = excluded.price;`,
-                [opt.id, group.id, opt.name, opt.price, 1, new Date().toISOString()]
-              );
-            }
-          }
-        }
-      }
-    }
-  }
+  // 6. Schema and Table Verification Only
+  console.log('6️⃣ Relational Catalog: Preserving live production data (no mock overwrite)...');
 
   // 7. Seed Promo Codes
   console.log('7️⃣ Seeding promo codes...');

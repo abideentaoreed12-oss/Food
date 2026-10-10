@@ -249,17 +249,27 @@ export async function GET(req: NextRequest) {
     siteDataManager.syncIfStale().catch(() => {});
 
     let list: any[] = [];
+    let d1QueryFailed = false;
     try {
       const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC LIMIT 200');
-      list = (d1Res.results || []).map((r: any) => {
-        try { return r.raw_json ? { ...JSON.parse(r.raw_json), id: r.id, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 } : r; } catch { return r; }
-      });
+      if (d1Res && d1Res.success !== false && Array.isArray(d1Res.results)) {
+        list = d1Res.results.map((r: any) => {
+          try {
+            return r.raw_json ? { ...JSON.parse(r.raw_json), id: r.id, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 } : r;
+          } catch {
+            return r;
+          }
+        });
+      } else {
+        d1QueryFailed = true;
+      }
     } catch (err: any) {
-      console.warn('[Restaurants Route] Primary D1 fetch warning, serving last-known-good snapshot:', err?.message || err);
+      console.warn('[Restaurants Route] Primary D1 query warning, serving last-known-good snapshot:', err?.message || err);
+      d1QueryFailed = true;
     }
 
-    // Never fall back to demo data: use persistent last-known-good snapshot if query failed or was empty
-    if (!list || list.length === 0) {
+    // Only fallback to last-known-good snapshot if the primary database query failed
+    if (d1QueryFailed) {
       list = siteDataManager.getRestaurants();
     }
 

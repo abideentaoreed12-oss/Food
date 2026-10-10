@@ -6,6 +6,7 @@ export interface R2UploadResult {
   key: string;
   cdnUrl: string;
   error?: string;
+  verified?: boolean;
 }
 
 export class R2Client {
@@ -16,15 +17,17 @@ export class R2Client {
   private workerUrl: string;
 
   constructor() {
-    this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || CONFIG.CLOUDFLARE_ACCOUNT_ID;
-    this.apiToken = process.env.CLOUDFLARE_API_TOKEN || CONFIG.CLOUDFLARE_API_TOKEN;
-    this.bucketName = process.env.CLOUDFLARE_R2_BUCKET || CONFIG.CLOUDFLARE_R2_BUCKET;
+    this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || CONFIG.CLOUDFLARE_ACCOUNT_ID || '';
+    this.apiToken = process.env.CLOUDFLARE_API_TOKEN || CONFIG.CLOUDFLARE_API_TOKEN || '';
+    this.bucketName = process.env.CLOUDFLARE_R2_BUCKET || CONFIG.CLOUDFLARE_R2_BUCKET || '';
     this.publicCdnUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || CONFIG.CLOUDFLARE_R2_PUBLIC_URL || '').replace(/\/$/, '');
     this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || CONFIG.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, '');
   }
 
   public isConfigured(): boolean {
-    return Boolean(this.bucketName && (this.apiToken || this.workerUrl));
+    const hasDirectCreds = Boolean(this.accountId && this.apiToken && this.bucketName && this.apiToken.length > 20);
+    const hasWorkerCreds = Boolean(this.workerUrl && this.bucketName);
+    return hasDirectCreds || hasWorkerCreds;
   }
 
   public getDetails() {
@@ -38,14 +41,75 @@ export class R2Client {
 
   public getCdnUrl(key: string): string {
     const cleanKey = key.replace(/^\//, '');
-    return `${this.publicCdnUrl}/${cleanKey}`;
+    if (this.publicCdnUrl) {
+      return `${this.publicCdnUrl}/${cleanKey}`;
+    }
+    return `/api/storage/file/${cleanKey}`;
   }
 
   public async upload(key: string, dataBase64: string, contentType: string = 'image/jpeg'): Promise<R2UploadResult> {
     const cleanKey = key.replace(/^\//, '');
     const cdnUrl = this.getCdnUrl(cleanKey);
 
-    // Strategy 1: Cloudflare Worker R2 proxy upload endpoint
+    if (!this.isConfigured()) {
+      return {
+        success: false,
+        key: cleanKey,
+        cdnUrl,
+        error: 'Cloudflare R2 credentials or worker endpoint not configured.'
+      };
+    }
+
+    let lastError: string | undefined;
+
+    // Strategy 1: Direct Cloudflare API R2 storage REST PUT request
+    if (this.accountId && this.apiToken && this.bucketName) {
+      try {
+        const directR2Url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${cleanKey}`;
+        const binaryData = Buffer.from(dataBase64.replace(/^data:[^;]+;base64,/, ''), 'base64');
+        const authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || 'abideentaoreed12@gmail.com';
+        const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
+
+        const headers: Record<string, string> = isKey
+          ? {
+              'X-Auth-Email': authEmail,
+              'X-Auth-Key': this.apiToken,
+              'Content-Type': contentType
+            }
+          : {
+              Authorization: `Bearer ${this.apiToken}`,
+              'Content-Type': contentType
+            };
+
+        const res = await fetch(directR2Url, {
+          method: 'PUT',
+          headers,
+          body: binaryData,
+          cache: 'no-store'
+        });
+
+        if (res.ok) {
+          const resJson = await res.json().catch(() => ({}));
+          if (resJson.success !== false) {
+            return {
+              success: true,
+              key: cleanKey,
+              cdnUrl,
+              verified: true
+            };
+          } else {
+            lastError = resJson.errors?.[0]?.message || 'Cloudflare R2 returned API failure';
+          }
+        } else {
+          const errText = await res.text().catch(() => '');
+          lastError = `Cloudflare R2 HTTP ${res.status}: ${errText.slice(0, 150)}`;
+        }
+      } catch (err: any) {
+        lastError = err?.message || String(err);
+      }
+    }
+
+    // Strategy 2: Cloudflare Worker R2 proxy upload endpoint
     if (this.workerUrl) {
       const workerUploadEndpoints = [
         `${this.workerUrl}/storage/upload`,
@@ -68,61 +132,22 @@ export class R2Client {
               return {
                 success: true,
                 key: cleanKey,
-                cdnUrl: json.cdnUrl || json.url || cdnUrl
+                cdnUrl: json.cdnUrl || json.url || cdnUrl,
+                verified: true
               };
             }
           }
-        } catch {}
-      }
-    }
-
-    // Strategy 2: Direct Cloudflare API R2 storage REST PUT request
-    if (this.accountId && this.apiToken && this.bucketName) {
-      try {
-        const directR2Url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${cleanKey}`;
-        const binaryData = Buffer.from(dataBase64.replace(/^data:[^;]+;base64,/, ''), 'base64');
-        const authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || 'abideentaoreed12@gmail.com';
-        const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
-
-        const headers: Record<string, string> = isKey
-          ? {
-              'X-Auth-Email': authEmail,
-              'X-Auth-Key': this.apiToken,
-              'Content-Type': contentType
-            }
-          : {
-              'Authorization': `Bearer ${this.apiToken}`,
-              'Content-Type': contentType
-            };
-
-        const res = await fetch(directR2Url, {
-          method: 'PUT',
-          headers,
-          body: binaryData,
-          cache: 'no-store'
-        });
-
-        if (res.ok) {
-          const resJson = await res.json().catch(() => ({}));
-          if (resJson.success !== false) {
-            return {
-              success: true,
-              key: cleanKey,
-              cdnUrl: `/api/storage/file/${cleanKey}`
-            };
-          }
+        } catch (workerErr: any) {
+          lastError = workerErr?.message || String(workerErr);
         }
-      } catch (err: any) {
-        console.warn('[R2 Direct Upload Exception]', err?.message || err);
       }
     }
 
-    // Return failure when R2 is not configured or direct upload fails
     return {
       success: false,
       key: cleanKey,
       cdnUrl,
-      error: 'R2 storage is not configured or upload failed.'
+      error: lastError || 'R2 storage upload operation could not be completed.'
     };
   }
 
@@ -135,7 +160,7 @@ export class R2Client {
       const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
       const headers: Record<string, string> = isKey
         ? { 'X-Auth-Email': authEmail, 'X-Auth-Key': this.apiToken }
-        : { 'Authorization': `Bearer ${this.apiToken}` };
+        : { Authorization: `Bearer ${this.apiToken}` };
 
       const res = await fetch(directR2Url, { method: 'GET', headers, cache: 'no-store' });
       if (!res.ok) return null;
@@ -163,7 +188,7 @@ export class R2Client {
     }
   }
 
-  public async delete(key: string): Promise<{ success: boolean }> {
+  public async delete(key: string): Promise<{ success: boolean; error?: string }> {
     const cleanKey = key.replace(/^\//, '');
     if (this.accountId && this.apiToken && this.bucketName) {
       try {
@@ -172,12 +197,15 @@ export class R2Client {
         const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
         const headers: Record<string, string> = isKey
           ? { 'X-Auth-Email': authEmail, 'X-Auth-Key': this.apiToken }
-          : { 'Authorization': `Bearer ${this.apiToken}` };
+          : { Authorization: `Bearer ${this.apiToken}` };
 
-        await fetch(directR2Url, { method: 'DELETE', headers, cache: 'no-store' });
-      } catch {}
+        const res = await fetch(directR2Url, { method: 'DELETE', headers, cache: 'no-store' });
+        return { success: res.ok };
+      } catch (err: any) {
+        return { success: false, error: err?.message || String(err) };
+      }
     }
-    return { success: true };
+    return { success: false, error: 'R2 credentials not configured for deletion' };
   }
 }
 

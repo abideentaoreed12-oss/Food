@@ -16,13 +16,21 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.googleapis.com",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.paystack.co https://checkout.paystack.com https://*.googleapis.com https://*.gstatic.com",
       "worker-src 'self' blob:",
-      "connect-src 'self' https: wss: https://api.paystack.co https://*.googleapis.com https://*.gstatic.com https://*.google-analytics.com",
-      "frame-src 'self' https://checkout.paystack.com https://*.paystack.com https://www.google.com https://maps.google.com"
+      "connect-src 'self' https: wss: https://*.run.app https://*.workers.dev https://api.paystack.co https://*.googleapis.com https://*.gstatic.com https://*.google-analytics.com",
+      "frame-src 'self' https://checkout.paystack.com https://*.paystack.com https://www.google.com https://maps.google.com https://*.run.app",
+      "frame-ancestors 'self' https://*.run.app https://*.google.com https://aistudio.google.com"
     ].join('; ')
   }
 ];
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: [
+    '*.run.app',
+    'localhost:3000',
+    '127.0.0.1:3000',
+    'ais-dev-dtzuewdyabbb4pombmlfxk-22582271178.europe-west2.run.app',
+    'ais-pre-dtzuewdyabbb4pombmlfxk-22582271178.europe-west2.run.app'
+  ],
   serverExternalPackages: ['node:sqlite'],
   reactStrictMode: true,
   env: {
@@ -78,14 +86,19 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 31536000, // Optimize cache for 1 year
     formats: ['image/avif', 'image/webp']
   },
+  typedRoutes: true,
+  devIndicators: false,
   experimental: {
     optimizePackageImports: ['lucide-react', 'motion/react'],
-    typedRoutes: true,
+    devtoolSegmentExplorer: false,
   },
   productionBrowserSourceMaps: false,
   compress: true,
   poweredByHeader: false,
   async headers() {
+    if (process.env.NODE_ENV !== 'production') {
+      return [];
+    }
     return [
       {
         source: '/:path*',
