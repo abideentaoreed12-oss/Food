@@ -251,15 +251,22 @@ export async function GET(req: NextRequest) {
 
   // 10b. Centralized Public Site Data Snapshot & Status
   if (pathname === '/site-data/public') {
-    // Background sync throttled at 10s if stale
-    siteDataManager.syncIfStale().catch(() => {});
-    const snapshot = siteDataManager.getLastKnownGood();
+    // Load durable last-known-good data first. If no snapshot exists yet, attempt a real D1 refresh
+    // before returning unavailable; never manufacture sample data to make the endpoint look healthy.
+    let snapshot = await siteDataManager.loadSnapshot();
+    if (!snapshot) {
+      snapshot = await siteDataManager.refreshSnapshot({ force: true });
+    } else {
+      // Refresh in the background after returning the last successful snapshot.
+      siteDataManager.syncIfStale().catch(() => {});
+    }
+
     if (!snapshot) {
       return NextResponse.json({
         success: false,
-        error: 'Site data snapshot is warming up. Please retry shortly.',
+        error: 'No verified live site-data snapshot is available yet. Check the authoritative database.',
         data: null
-      }, { status: 503 });
+      }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
     return NextResponse.json({
       success: true,
