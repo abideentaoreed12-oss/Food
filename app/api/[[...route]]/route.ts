@@ -1365,9 +1365,9 @@ export async function POST(req: NextRequest) {
       if (!profile.success) return NextResponse.json({ success: false, error: 'Courier profile unavailable' }, { status: 503 });
       const row = profile.results?.[0];
       if (!row) return NextResponse.json({ success: true, data: { courierId: user.id, isOnline: false, verificationStatus: 'not_submitted', isVerified: false, kycSubmitted: false } });
-      return NextResponse.json({ success: true, data: { courierId: user.id, isOnline: Number(row.is_online) === 1, verificationStatus: row.verification_status || (Number(row.is_verified) === 1 ? 'verified' : 'not_submitted'), isVerified: Number(row.is_verified) === 1, kycSubmitted: Boolean(row.kyc_submitted_at || row.verification_status), vehicleType: row.vehicle_type || null, vehiclePlate: row.vehicle_plate || null, updatedAt: row.updated_at || null }});
+      return NextResponse.json({ success: true, data: { courierId: user.id, isOnline: Number(row.is_online) === 1, verificationStatus: row.verification_status || (Number(row.is_verified) === 1 ? 'verified' : 'not_submitted'), isVerified: Number(row.is_verified) === 1, kycSubmitted: Boolean(row.kyc_doc_r2_url || row.kyc_document_url || row.verification_status), vehicleType: row.vehicle_type || null, vehiclePlate: row.vehicle_plate || null, updatedAt: row.updated_at || null }});
     }
-    const history = await d1.query("SELECT id, short_id, status, courier_payout, delivered_at, created_at FROM orders WHERE courier_id = ? AND status = 'delivered' ORDER BY delivered_at DESC, created_at DESC", [user.id]);
+    const history = await d1.query("SELECT id, short_id, status, courier_payout, updated_at, created_at FROM orders WHERE courier_id = ? AND status = 'delivered' ORDER BY updated_at DESC, created_at DESC", [user.id]);
     if (!history.success) return NextResponse.json({ success: false, error: 'Delivery history unavailable' }, { status: 503 });
     const rows = history.results || [];
     const earnings = rows.reduce((sum: number, row: any) => sum + Number(row.courier_payout || 0), 0);
@@ -1385,7 +1385,7 @@ export async function POST(req: NextRequest) {
     const documentUrl = String(body.documentUrl || '').trim();
     if (!vehicleType || !vehiclePlate || !licenseNumber || !documentUrl) return NextResponse.json({ success: false, error: 'Vehicle type, plate, licence number and document URL are required' }, { status: 400 });
     const now = new Date().toISOString();
-    const saved = await d1.query("INSERT INTO courier_profiles (user_id, vehicle_type, vehicle_plate, license_number, kyc_document_url, kyc_submitted_at, verification_status, is_verified, is_online, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, 0, ?) ON CONFLICT(user_id) DO UPDATE SET vehicle_type = excluded.vehicle_type, vehicle_plate = excluded.vehicle_plate, license_number = excluded.license_number, kyc_document_url = excluded.kyc_document_url, kyc_submitted_at = excluded.kyc_submitted_at, verification_status = 'pending', is_verified = 0, is_online = 0, updated_at = excluded.updated_at", [user.id, vehicleType, vehiclePlate, licenseNumber, documentUrl, now, now]);
+    const saved = await d1.query("INSERT INTO courier_profiles (user_id, vehicle_type, vehicle_plate, license_number, kyc_doc_r2_url, verification_status, is_verified, is_online, updated_at) VALUES (?, ?, ?, ?, ?, 'pending', 0, 0, ?) ON CONFLICT(user_id) DO UPDATE SET vehicle_type = excluded.vehicle_type, vehicle_plate = excluded.vehicle_plate, license_number = excluded.license_number, kyc_doc_r2_url = excluded.kyc_doc_r2_url, verification_status = 'pending', is_verified = 0, is_online = 0, updated_at = excluded.updated_at", [user.id, vehicleType, vehiclePlate, licenseNumber, documentUrl, now]);
     if (!saved.success) return NextResponse.json({ success: false, error: 'KYC submission failed' }, { status: 503 });
     return NextResponse.json({ success: true, data: { verificationStatus: 'pending', submittedAt: now } }, { status: 201 });
   }
