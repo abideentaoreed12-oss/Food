@@ -260,6 +260,8 @@ router.get('/', async (req: AuthRequest, res: Response) => {
             ...(parsed || {}),
             id: o.id,
             customerId: o.customer_id || parsed?.customerId,
+            restaurantId: o.restaurant_id || parsed?.restaurantId,
+            courierId: o.courier_id || parsed?.courierId || parsed?.courier?.id,
             total: o.total ?? parsed?.total,
             paymentStatus: o.payment_status || parsed?.paymentStatus,
             status: o.status || parsed?.status,
