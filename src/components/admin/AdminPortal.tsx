@@ -207,6 +207,10 @@ export const AdminPortal: React.FC = () => {
   const [newStaffEmail, setNewStaffEmail] = useState('');
   const [newStaffRole, setNewStaffRole] = useState<UserRole>('sub_admin');
   const [newStaffRestaurantId, setNewStaffRestaurantId] = useState('');
+  const [createRestaurantForStaff, setCreateRestaurantForStaff] = useState(false);
+  const [newStaffRestaurantName, setNewStaffRestaurantName] = useState('');
+  const [newStaffRestaurantAddress, setNewStaffRestaurantAddress] = useState('');
+  const [newStaffRestaurantCuisine, setNewStaffRestaurantCuisine] = useState('');
   const [newStaffPhone, setNewStaffPhone] = useState('');
   const [newStaffPassword, setNewStaffPassword] = useState('StaffPass2026!');
 
@@ -422,13 +426,33 @@ export const AdminPortal: React.FC = () => {
     if (!newStaffName || !newStaffEmail) return;
 
     try {
+      let restaurantId = newStaffRestaurantId;
+      if (newStaffRole === 'restaurant' && createRestaurantForStaff) {
+        if (!newStaffRestaurantName.trim() || !newStaffRestaurantAddress.trim()) {
+          showActionFeedback('Enter the new restaurant name and address first.');
+          return;
+        }
+        const token = typeof window !== 'undefined' ? localStorage.getItem('veyrang_jwt_token') : null;
+        const restaurantResponse = await fetch('/api/admin/restaurants/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ name: newStaffRestaurantName.trim(), address: newStaffRestaurantAddress.trim(), cuisine: newStaffRestaurantCuisine.trim() })
+        });
+        const restaurantResult = await restaurantResponse.json();
+        if (!restaurantResponse.ok || !restaurantResult?.data?.id) throw new Error(restaurantResult?.error || 'Restaurant creation failed');
+        restaurantId = restaurantResult.data.id;
+      }
+      if (newStaffRole === 'restaurant' && !restaurantId) {
+        showActionFeedback('Select an existing restaurant or choose Create new restaurant.');
+        return;
+      }
       await api.admin.createStaff({
         name: newStaffName,
         email: newStaffEmail,
         role: newStaffRole,
         phone: newStaffPhone,
         password: newStaffPassword,
-        ...(newStaffRole === 'restaurant' ? { restaurantId: newStaffRestaurantId } : {})
+        ...(newStaffRole === 'restaurant' ? { restaurantId } : {})
       });
 
       showActionFeedback(`Staff member "${newStaffName}" created successfully with role "${newStaffRole}" in Platform D1!`);
@@ -437,6 +461,10 @@ export const AdminPortal: React.FC = () => {
       setNewStaffEmail('');
       setNewStaffPhone('');
       setNewStaffRestaurantId('');
+      setCreateRestaurantForStaff(false);
+      setNewStaffRestaurantName('');
+      setNewStaffRestaurantAddress('');
+      setNewStaffRestaurantCuisine('');
       fetchData();
     } catch (err: any) {
       showActionFeedback(`Failed to create staff member: ${err.message}`);
@@ -1674,19 +1702,31 @@ export const AdminPortal: React.FC = () => {
                       </div>
                       {newStaffRole === 'restaurant' && (
                         <div className="sm:col-span-2 rounded-xl border border-orange-200 bg-orange-50 p-3">
-                          <label className="text-[11px] text-orange-900 font-bold block mb-1">Assign Restaurant *</label>
-                          <select
-                            required
-                            value={newStaffRestaurantId}
-                            onChange={(e) => setNewStaffRestaurantId(e.target.value)}
-                            className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:border-[#FF5500] outline-none"
-                          >
-                            <option value="">Select an existing restaurant</option>
-                            {restaurantsList.map((restaurant: any) => (
-                              <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>
-                            ))}
-                          </select>
-                          <p className="mt-1 text-[11px] text-orange-800">This account will be linked to this restaurant only. Create a restaurant first if it is not listed.</p>
+                          <label className="text-[11px] text-orange-900 font-bold block mb-1">Restaurant setup *</label>
+                          <div className="flex flex-wrap gap-4 mb-3 text-xs font-semibold text-slate-700">
+                            <label className="flex items-center gap-2"><input type="radio" checked={!createRestaurantForStaff} onChange={() => setCreateRestaurantForStaff(false)} /> Link existing</label>
+                            <label className="flex items-center gap-2"><input type="radio" checked={createRestaurantForStaff} onChange={() => setCreateRestaurantForStaff(true)} /> Create new restaurant</label>
+                          </div>
+                          {!createRestaurantForStaff ? (
+                            <select
+                              required={!createRestaurantForStaff}
+                              value={newStaffRestaurantId}
+                              onChange={(e) => setNewStaffRestaurantId(e.target.value)}
+                              className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:border-[#FF5500] outline-none"
+                            >
+                              <option value="">Select an existing restaurant</option>
+                              {restaurantsList.map((restaurant: any) => (
+                                <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <input required placeholder="Restaurant name" value={newStaffRestaurantName} onChange={(e) => setNewStaffRestaurantName(e.target.value)} className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900" />
+                              <input required placeholder="Restaurant address" value={newStaffRestaurantAddress} onChange={(e) => setNewStaffRestaurantAddress(e.target.value)} className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900" />
+                              <input placeholder="Cuisine (optional)" value={newStaffRestaurantCuisine} onChange={(e) => setNewStaffRestaurantCuisine(e.target.value)} className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900 sm:col-span-2" />
+                            </div>
+                          )}
+                          <p className="mt-1 text-[11px] text-orange-800">The account is linked to this restaurant only.</p>
                         </div>
                       )}
                       <div>
