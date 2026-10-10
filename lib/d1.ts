@@ -558,9 +558,14 @@ export class D1Client {
     return json.result[0];
   }
 
-  public async query<T = any>(sql: string, params: any[] = []): Promise<D1QueryResult<T>> {
+  public async query<T = any>(
+    sql: string,
+    params: any[] = [],
+    options: { cache?: boolean } = {}
+  ): Promise<D1QueryResult<T>> {
     const trimmedSql = sql.trim().toUpperCase();
     const isSelect = trimmedSql.startsWith('SELECT');
+    const useCache = options.cache !== false;
 
     if (!isSelect) {
       this.clearCache();
@@ -568,7 +573,7 @@ export class D1Client {
 
     const cacheKey = `${sql}:${JSON.stringify(params)}`;
 
-    if (isSelect) {
+    if (isSelect && useCache) {
       const cached = this.queryCache.get(cacheKey);
       const now = Date.now();
       if (cached && now - cached.timestamp < this.cacheTtlMs) {
@@ -601,7 +606,7 @@ export class D1Client {
         result = this.executeLocal<T>(sql, params);
       }
 
-      if (isSelect) {
+      if (isSelect && useCache) {
         this.queryCache.set(cacheKey, { timestamp: Date.now(), data: result });
         if (this.queryCache.size > 200) {
           const firstKey = this.queryCache.keys().next().value;
