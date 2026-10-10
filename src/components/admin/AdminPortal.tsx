@@ -206,6 +206,7 @@ export const AdminPortal: React.FC = () => {
   const [newStaffName, setNewStaffName] = useState('');
   const [newStaffEmail, setNewStaffEmail] = useState('');
   const [newStaffRole, setNewStaffRole] = useState<UserRole>('sub_admin');
+  const [newStaffRestaurantId, setNewStaffRestaurantId] = useState('');
   const [newStaffPhone, setNewStaffPhone] = useState('');
   const [newStaffPassword, setNewStaffPassword] = useState('StaffPass2026!');
 
@@ -426,7 +427,8 @@ export const AdminPortal: React.FC = () => {
         email: newStaffEmail,
         role: newStaffRole,
         phone: newStaffPhone,
-        password: newStaffPassword
+        password: newStaffPassword,
+        ...(newStaffRole === 'restaurant' ? { restaurantId: newStaffRestaurantId } : {})
       });
 
       showActionFeedback(`Staff member "${newStaffName}" created successfully with role "${newStaffRole}" in Platform D1!`);
@@ -434,6 +436,7 @@ export const AdminPortal: React.FC = () => {
       setNewStaffName('');
       setNewStaffEmail('');
       setNewStaffPhone('');
+      setNewStaffRestaurantId('');
       fetchData();
     } catch (err: any) {
       showActionFeedback(`Failed to create staff member: ${err.message}`);
@@ -1669,6 +1672,23 @@ export const AdminPortal: React.FC = () => {
                           ))}
                         </select>
                       </div>
+                      {newStaffRole === 'restaurant' && (
+                        <div className="sm:col-span-2 rounded-xl border border-orange-200 bg-orange-50 p-3">
+                          <label className="text-[11px] text-orange-900 font-bold block mb-1">Assign Restaurant *</label>
+                          <select
+                            required
+                            value={newStaffRestaurantId}
+                            onChange={(e) => setNewStaffRestaurantId(e.target.value)}
+                            className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:border-[#FF5500] outline-none"
+                          >
+                            <option value="">Select an existing restaurant</option>
+                            {restaurantsList.map((restaurant: any) => (
+                              <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>
+                            ))}
+                          </select>
+                          <p className="mt-1 text-[11px] text-orange-800">This account will be linked to this restaurant only. Create a restaurant first if it is not listed.</p>
+                        </div>
+                      )}
                       <div>
                         <label className="text-[11px] text-slate-600 font-semibold block mb-1">Phone Number</label>
                         <input
