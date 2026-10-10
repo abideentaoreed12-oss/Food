@@ -70,7 +70,7 @@ export const CONFIG = {
     (process.env.GOOGLE_MAPS_API_KEY ||
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
     process.env.VITE_GOOGLE_MAPS_API_KEY ||
-    '').trim(),
+    'AIzaSyAmbptl02WYRIvSdBljM2NahJAjnf-OfUw').trim(),
   NOMINATIM_BASE_URL: sanitizeBaseUrl(process.env.NOMINATIM_BASE_URL || process.env.NOMINATIM_URL, 'https://nominatim.openstreetmap.org'),
   PHOTON_BASE_URL: sanitizeBaseUrl(process.env.PHOTON_BASE_URL || process.env.PHOTON_URL, 'https://photon.komoot.io'),
   PELIAS_BASE_URL: sanitizeBaseUrl(process.env.PELIAS_BASE_URL || process.env.PELIAS_URL, ''),
