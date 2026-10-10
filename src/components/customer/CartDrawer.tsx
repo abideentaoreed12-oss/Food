@@ -170,7 +170,7 @@ export const CartDrawer: React.FC = () => {
   const [paymentMethod] = useState<string>('Debit Card');
   const [promoInput, setPromoInput] = useState<string>('');
   const [promoMessage, setPromoMessage] = useState<{ text: string; isError: boolean } | null>(null);
-  const [promoPlaceholder, setPromoPlaceholder] = useState<string>('Try WELCOME500 or LEKKI20');
+  const [promoPlaceholder, setPromoPlaceholder] = useState<string>('Enter a promo code');
 
   useEffect(() => {
     api.settings.getPromos().then((res: any) => {
