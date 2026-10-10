@@ -49,6 +49,10 @@ export const OrdersPage: React.FC = () => {
   const [cameraError, setCameraError] = useState<string>('');
   const [scanValue, setScanValue] = useState<string>('');
   const [cameraReady, setCameraReady] = useState(false);
+  const [handoverBusy, setHandoverBusy] = useState(false);
+  const [handoverUrl, setHandoverUrl] = useState('');
+  const [handoverNotice, setHandoverNotice] = useState('');
+
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
   const scanTimerRef = React.useRef<number | null>(null);
@@ -67,6 +71,18 @@ export const OrdersPage: React.FC = () => {
     setScanOrder(order);
     setCameraError('');
     setScanValue('');
+    setHandoverUrl('');
+    setHandoverNotice('');
+    setHandoverBusy(true);
+    try {
+      const issued: any = await (await import('../../services/api')).api.orders.issueHandoverQr(order.id);
+      const data = issued?.data || issued;
+      if (data?.url) setHandoverUrl(String(data.url));
+    } catch (error: any) {
+      setHandoverNotice(error?.message || 'Could not create a secure QR for this order. Try again later.');
+    } finally {
+      setHandoverBusy(false);
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraError('Camera access requires HTTPS and a supported browser. Open VeyraNG in Safari or Chrome over a secure connection.');
       return;
@@ -93,12 +109,26 @@ export const OrdersPage: React.FC = () => {
             try {
               const codes = await detector.detect(videoRef.current);
               if (codes?.[0]?.rawValue) {
-                setScanValue(String(codes[0].rawValue));
+                const raw = String(codes[0].rawValue);
+                let scannedToken = '';
+                try {
+                  const parsed = new URL(raw);
+                  const allowedHost = window.location.host;
+                  if (parsed.host === allowedHost && /^\/handover\/[A-Za-z0-9_-]{30,100}\/?$/.test(parsed.pathname)) {
+                    scannedToken = parsed.pathname.split('/').filter(Boolean)[1] || '';
+                  }
+                } catch { /* not a URL */ }
+                setScanValue(raw);
                 if (scanTimerRef.current !== null) window.clearInterval(scanTimerRef.current);
                 scanTimerRef.current = null;
                 streamRef.current?.getTracks().forEach((track) => track.stop());
                 streamRef.current = null;
                 setCameraReady(false);
+                if (scannedToken) {
+                  window.location.assign(`/handover/${encodeURIComponent(scannedToken)}`);
+                } else {
+                  setCameraError('This QR is not a valid VeyraNG handover link. Check that you are scanning the QR generated for this order.');
+                }
               }
             } catch {
               // A frame can fail detection while the camera is starting; continue scanning.
