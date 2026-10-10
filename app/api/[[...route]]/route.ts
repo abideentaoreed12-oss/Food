@@ -1355,6 +1355,54 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: { id: ticketId, status: 'open', createdAt: now } }, { status: 201 });
   }
 
+  // Authenticated courier profile and history endpoints.
+  if (pathname === '/courier/profile' || pathname === '/courier/history') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'courier') return NextResponse.json({ success: false, error: 'Courier account required' }, { status: 403 });
+    if (pathname === '/courier/profile') {
+      const profile = await d1.query('SELECT * FROM courier_profiles WHERE user_id = ? LIMIT 1', [user.id]);
+      if (!profile.success) return NextResponse.json({ success: false, error: 'Courier profile unavailable' }, { status: 503 });
+      const row = profile.results?.[0];
+      if (!row) return NextResponse.json({ success: true, data: { courierId: user.id, isOnline: false, verificationStatus: 'not_submitted', isVerified: false, kycSubmitted: false } });
+      return NextResponse.json({ success: true, data: { courierId: user.id, isOnline: Number(row.is_online) === 1, verificationStatus: row.verification_status || (Number(row.is_verified) === 1 ? 'verified' : 'not_submitted'), isVerified: Number(row.is_verified) === 1, kycSubmitted: Boolean(row.kyc_submitted_at || row.verification_status), vehicleType: row.vehicle_type || null, vehiclePlate: row.vehicle_plate || null, updatedAt: row.updated_at || null }});
+    }
+    const history = await d1.query("SELECT id, short_id, status, courier_payout, delivered_at, created_at FROM orders WHERE courier_id = ? AND status = 'delivered' ORDER BY delivered_at DESC, created_at DESC", [user.id]);
+    if (!history.success) return NextResponse.json({ success: false, error: 'Delivery history unavailable' }, { status: 503 });
+    const rows = history.results || [];
+    const earnings = rows.reduce((sum: number, row: any) => sum + Number(row.courier_payout || 0), 0);
+    return NextResponse.json({ success: true, data: { orders: rows, earnings } });
+  }
+
+  // Authenticated courier KYC submission; approval requires admin review.
+  if (pathname === '/courier/kyc') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'courier') return NextResponse.json({ success: false, error: 'Courier account required' }, { status: 403 });
+    const vehicleType = String(body.vehicleType || '').trim();
+    const vehiclePlate = String(body.vehiclePlate || '').trim();
+    const licenseNumber = String(body.licenseNumber || '').trim();
+    const documentUrl = String(body.documentUrl || '').trim();
+    if (!vehicleType || !vehiclePlate || !licenseNumber || !documentUrl) return NextResponse.json({ success: false, error: 'Vehicle type, plate, licence number and document URL are required' }, { status: 400 });
+    const now = new Date().toISOString();
+    const saved = await d1.query("INSERT INTO courier_profiles (user_id, vehicle_type, vehicle_plate, license_number, kyc_document_url, kyc_submitted_at, verification_status, is_verified, is_online, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, 0, ?) ON CONFLICT(user_id) DO UPDATE SET vehicle_type = excluded.vehicle_type, vehicle_plate = excluded.vehicle_plate, license_number = excluded.license_number, kyc_document_url = excluded.kyc_document_url, kyc_submitted_at = excluded.kyc_submitted_at, verification_status = 'pending', is_verified = 0, is_online = 0, updated_at = excluded.updated_at", [user.id, vehicleType, vehiclePlate, licenseNumber, documentUrl, now, now]);
+    if (!saved.success) return NextResponse.json({ success: false, error: 'KYC submission failed' }, { status: 503 });
+    return NextResponse.json({ success: true, data: { verificationStatus: 'pending', submittedAt: now } }, { status: 201 });
+  }
+
+  // Admin review of courier KYC.
+  if (pathname.startsWith('/admin/couriers/') && pathname.endsWith('/verification')) {
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 403 });
+    const courierId = decodeURIComponent(pathname.split('/')[3] || '');
+    const status = String(body.status || '').toLowerCase();
+    if (!courierId || !['verified', 'rejected', 'pending'].includes(status)) return NextResponse.json({ success: false, error: 'Valid courier ID and status are required' }, { status: 400 });
+    const now = new Date().toISOString();
+    const reviewed = await d1.query('UPDATE courier_profiles SET verification_status = ?, is_verified = ?, is_online = 0, updated_at = ? WHERE user_id = ?', [status, status === 'verified' ? 1 : 0, now, courierId]);
+    if (!reviewed.success) return NextResponse.json({ success: false, error: 'Courier verification review failed' }, { status: 503 });
+    return NextResponse.json({ success: true, data: { courierId, verificationStatus: status, reviewedAt: now } });
+  }
+
   // Courier availability is tied to the authenticated courier profile.
   if (pathname === '/courier/availability') {
     const user = await getUser(req);
