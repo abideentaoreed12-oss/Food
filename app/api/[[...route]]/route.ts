@@ -1363,16 +1363,30 @@ export async function POST(req: NextRequest) {
     const user = await getUser(req);
     if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     const { orderId, restaurantId, courierId, foodRating, deliveryRating, comment, photoR2Url } = body;
-    if (!restaurantId || !foodRating) {
-      return NextResponse.json({ success: false, error: 'restaurantId and foodRating required' }, { status: 400 });
+    const foodScore = Number(foodRating);
+    const deliveryScore = deliveryRating == null || deliveryRating === '' ? null : Number(deliveryRating);
+    if (!orderId || !restaurantId || !Number.isInteger(foodScore) || foodScore < 1 || foodScore > 5 ||
+        (deliveryScore !== null && (!Number.isInteger(deliveryScore) || deliveryScore < 1 || deliveryScore > 5))) {
+      return NextResponse.json({ success: false, error: 'A valid order, restaurant, and 1–5 star rating are required.' }, { status: 400 });
     }
-    const revId = `rev-${Date.now()}`;
+    if (user.role !== 'customer') return NextResponse.json({ success: false, error: 'Only customers can submit order reviews.' }, { status: 403 });
+    const orderRes = await d1.query('SELECT id, customer_id, restaurant_id, status, courier_id, restaurant_name FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [String(orderId), String(orderId)]);
+    const order = orderRes.results?.[0] as any;
+    if (!order) return NextResponse.json({ success: false, error: 'Order not found.' }, { status: 404 });
+    if (String(order.customer_id || '') !== String(user.id)) return NextResponse.json({ success: false, error: 'You can only review your own order.' }, { status: 403 });
+    if (order.status !== 'delivered') return NextResponse.json({ success: false, error: 'Reviews are available after delivery is confirmed.' }, { status: 409 });
+    if (String(order.restaurant_id || '') !== String(restaurantId)) return NextResponse.json({ success: false, error: 'Restaurant does not match this order.' }, { status: 400 });
+    if (courierId && String(order.courier_id || '') !== String(courierId)) return NextResponse.json({ success: false, error: 'Courier does not match this order.' }, { status: 400 });
+    const duplicate = await d1.query('SELECT id FROM reviews WHERE order_id = ? AND customer_id = ? LIMIT 1', [order.id, user.id]);
+    if ((duplicate.results || []).length) return NextResponse.json({ success: false, error: 'You have already reviewed this order.' }, { status: 409 });
+    const revId = `rev-${randomUUID()}`;
     const now = new Date().toISOString();
-    await d1.query(
+    const saved = await d1.query(
       `INSERT INTO reviews (id, order_id, restaurant_id, courier_id, customer_id, customer_name, food_rating, delivery_rating, comment, photo_r2_url, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [revId, orderId || null, restaurantId, courierId || null, user.id, user.name, Number(foodRating), deliveryRating ? Number(deliveryRating) : null, comment || '', photoR2Url || null, now]
+      [revId, order.id, order.restaurant_id, order.courier_id || null, user.id, user.name, foodScore, deliveryScore, String(comment || '').slice(0, 2000), photoR2Url || null, now]
     );
+    if (!saved.success) return NextResponse.json({ success: false, error: 'Review could not be saved.' }, { status: 503 });
     // Recalculate restaurant rating
     const avgRes = await d1.query('SELECT AVG(food_rating) as avg_rating, count(*) as cnt FROM reviews WHERE restaurant_id = ?', [restaurantId]);
     if (avgRes.results?.[0]) {
