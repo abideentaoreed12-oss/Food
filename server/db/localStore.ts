@@ -98,8 +98,8 @@ export function seedInitialData(): DatabaseSchema {
     }
   ];
 
-  // Seed restaurants from persistent last-known-good site data snapshot
-  const restaurants: Restaurant[] = [...(siteDataManager.getRestaurants() as any[])];
+  // Preserves verified restaurants without injecting demo seed data
+  const restaurants: Restaurant[] = [];
 
   const promoCodes: PromoCodeRecord[] = [
     {

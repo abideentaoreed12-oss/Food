@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { d1 } from '../../../lib/d1';
-import { siteDataManager } from '../../../lib/siteDataSnapshot';
 
 export const revalidate = 300;
 
@@ -69,26 +68,29 @@ async function getRestaurant(id: string): Promise<RestaurantData | null> {
       categories
     };
   } catch (err) {
-    console.warn('Failed to load restaurant from D1, trying snapshot:', err);
-    const snap = siteDataManager.getRestaurantById(id);
-    if (!snap) return null;
-    return {
-      id: snap.id,
-      name: snap.name,
-      description: snap.description || snap.tagline || '',
-      tagline: snap.tagline || '',
-      cuisine: snap.cuisine || '',
-      image: snap.imageUrl || snap.image || snap.bannerUrl,
-      logo: snap.logoUrl || snap.logo,
-      rating: snap.rating,
-      reviewCount: snap.reviewCount,
-      address: snap.address || '',
-      city: snap.city || '',
-      deliveryFee: snap.deliveryFee,
-      minimumOrder: snap.minOrder ?? snap.minimumOrder,
-      isOpen: snap.isOpen === true,
-      categories: snap.categories || []
-    };
+    console.warn('Failed to load restaurant from D1:', err);
+    try {
+      const { siteDataManager } = await import('../../../lib/siteDataSnapshot');
+      const snap = siteDataManager.getRestaurants().find((r: any) => r.id === id);
+      if (snap) {
+        return {
+          id: String(snap.id),
+          name: typeof snap.name === 'string' ? snap.name : 'Restaurant',
+          description: typeof snap.description === 'string' ? snap.description : '',
+          tagline: typeof snap.tagline === 'string' ? snap.tagline : '',
+          cuisine: typeof snap.cuisine === 'string' ? snap.cuisine : '',
+          image: snap.imageUrl || snap.bannerUrl || snap.image,
+          rating: snap.rating,
+          reviewCount: snap.reviewCount,
+          address: snap.address || '',
+          deliveryFee: snap.deliveryFee,
+          minimumOrder: snap.minOrder,
+          isOpen: snap.isOpen === true,
+          categories: snap.categories || []
+        };
+      }
+    } catch {}
+    return null;
   }
 }
 

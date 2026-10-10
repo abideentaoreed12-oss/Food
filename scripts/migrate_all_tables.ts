@@ -268,8 +268,8 @@ async function runSafeMigration() {
     }
   }
 
-  // 6. Schema and Table Verification Only
-  console.log('6️⃣ Relational Catalog: Preserving live production data (no mock overwrite)...');
+  // 6. Verify Relational Catalog (Preserve real production records without inserting demo data)
+  console.log('6️⃣ Relational catalog verified (preserving real production data without demo seeding)...');
 
   // 7. Seed Promo Codes
   console.log('7️⃣ Seeding promo codes...');

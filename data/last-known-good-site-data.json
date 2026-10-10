@@ -1,8 +1,10 @@
 {
   "schemaVersion": 1,
-  "version": 132,
-  "updatedAt": "2026-10-10T12:56:12.886Z",
+  "version": 194,
+  "updatedAt": "2026-10-10T12:58:43.229Z",
+  "lastAttemptedAt": "2026-10-10T12:58:43.229Z",
   "source": "cloudflare_d1",
+  "syncStatus": "synced",
   "restaurants": [
     {
       "id": "rest-1791113979297",
@@ -21,7 +23,7 @@
       "bannerUrl": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1000",
       "logoUrl": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200",
       "isOpen": true,
-      "isBusyPaused": true,
+      "isBusyPaused": false,
       "distanceKm": 2.5,
       "categories": [
         {
@@ -30,8 +32,7 @@
           "description": "Popular main meals",
           "items": []
         }
-      ],
-      "zone": "Lekki / Victoria Island"
+      ]
     },
     {
       "id": "rest-3",
@@ -212,7 +213,6 @@
           ]
         }
       ],
-      "slug": "rest-3",
       "isBusyPaused": false
     },
     {
@@ -306,7 +306,6 @@
           ]
         }
       ],
-      "slug": "rest-5",
       "isBusyPaused": false
     },
     {
@@ -336,7 +335,7 @@
       "accentColor": "#EA580C",
       "iconName": "Burger",
       "isOpen": true,
-      "zone": "LAGOS",
+      "zone": "NYC",
       "categories": [
         {
           "id": "cat-1-1",
@@ -537,8 +536,7 @@
       ],
       "isBusyPaused": false,
       "commissionPercent": 15,
-      "createdAt": "2026-10-06T07:44:34.016Z",
-      "slug": "rest-1"
+      "createdAt": "2026-10-06T07:44:34.016Z"
     },
     {
       "id": "rest-6",
@@ -629,7 +627,6 @@
           ]
         }
       ],
-      "slug": "rest-6",
       "isBusyPaused": false
     },
     {
@@ -771,7 +768,6 @@
           ]
         }
       ],
-      "slug": "rest-2",
       "isBusyPaused": false
     }
   ],
@@ -830,28 +826,43 @@
   ],
   "promoCodes": [
     {
+      "id": "prm-first50",
       "code": "FIRST50",
       "discount_type": "percentage",
       "value": 50,
       "min_order_amount": 2000,
       "max_discount_cap": null,
-      "is_active": 1
+      "usage_limit": 500,
+      "times_used": 0,
+      "is_active": 1,
+      "expires_at": null,
+      "created_at": "2026-10-08T09:07:41.106Z"
     },
     {
+      "id": "prm-welcome20",
       "code": "WELCOME20",
       "discount_type": "percentage",
       "value": 20,
       "min_order_amount": 1500,
       "max_discount_cap": null,
-      "is_active": 1
+      "usage_limit": 1000,
+      "times_used": 0,
+      "is_active": 1,
+      "expires_at": null,
+      "created_at": "2026-10-08T09:07:41.106Z"
     },
     {
+      "id": "prm-freedel",
       "code": "FREEDEL",
       "discount_type": "fixed",
       "value": 500,
       "min_order_amount": 3000,
       "max_discount_cap": null,
-      "is_active": 1
+      "usage_limit": 2000,
+      "times_used": 0,
+      "is_active": 1,
+      "expires_at": null,
+      "created_at": "2026-10-08T09:07:41.106Z"
     }
   ],
   "platformSettings": {
@@ -861,7 +872,6 @@
     "base_service_fee_usd": 1.99,
     "minimum_order_ngn": 2500,
     "minimum_order_usd": 10,
-    "dispatch_search_radius_km": 7.5,
     "support_phone": "+234 800 VEYRANG",
     "support_email": "support@veyrang.com",
     "maintenance_mode": false,
@@ -870,12 +880,12 @@
     "cms_hero_badge": "Global Express Food & Cloud Kitchen Network",
     "cms_announcement_banner": "🚀 Instant Delivery across Lagos & Abuja | ₦500 Flat Dispatch Fee on Orders Over ₦5,000!"
   },
-  "syncMetadata": {
-    "lastAttemptedAt": "2026-10-10T12:56:12.286Z",
-    "lastSuccessAt": "2026-10-10T12:56:12.886Z",
-    "itemCount": 6,
-    "persistedD1": true,
-    "persistedR2": true,
-    "persistedDisk": true
+  "metadata": {
+    "restaurantCount": 6,
+    "deliveryZoneCount": 3,
+    "promoCodeCount": 3,
+    "persistedToD1": true,
+    "persistedToR2": true,
+    "lastSuccessfulSync": "2026-10-10T12:58:43.409Z"
   }
 }

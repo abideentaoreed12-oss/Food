@@ -4,38 +4,35 @@ import os from 'os';
 import { d1 } from './d1';
 import { r2 } from './r2';
 
-export interface SiteDataSyncMetadata {
-  lastAttemptedAt: string;
-  lastSuccessAt: string;
-  itemCount: number;
-  durationMs?: number;
-  persistedD1?: boolean;
-  persistedR2?: boolean;
-  persistedDisk?: boolean;
-  failureCount?: number;
-  lastError?: string | null;
-}
-
 export interface SiteDataSnapshot {
   schemaVersion: number;
   version: number;
   updatedAt: string;
-  source: 'cloudflare_d1' | 'cloudflare_r2' | 'disk_cache' | 'in_memory';
+  lastAttemptedAt?: string;
+  source: 'cloudflare_d1' | 'cloudflare_r2' | 'disk_cache' | 'in_memory' | 'database_primary';
+  syncStatus?: 'synced' | 'fallback' | 'stale';
   restaurants: any[];
-  deliveryZones: any[];
-  promoCodes: any[];
-  platformSettings: Record<string, any>;
-  syncMetadata?: SiteDataSyncMetadata;
+  deliveryZones?: any[];
+  promoCodes?: any[];
+  platformSettings?: Record<string, any>;
+  metadata?: {
+    restaurantCount: number;
+    deliveryZoneCount: number;
+    promoCodeCount: number;
+    persistedToD1: boolean;
+    persistedToR2: boolean;
+    lastSuccessfulSync?: string;
+    consecutiveFailures?: number;
+    lastError?: string;
+  };
 }
 
-// Allowed public platform settings keys - strictly forbid any sensitive credentials or secret values
-export const SAFE_PUBLIC_SETTINGS_KEYS = new Set([
+export const PUBLIC_SETTINGS_WHITELIST = new Set([
   'currency_ngn_usd_rate',
   'base_service_fee_ngn',
   'base_service_fee_usd',
   'minimum_order_ngn',
   'minimum_order_usd',
-  'platform_commission_percent',
   'support_phone',
   'support_email',
   'maintenance_mode',
@@ -44,113 +41,76 @@ export const SAFE_PUBLIC_SETTINGS_KEYS = new Set([
   'cms_hero_subtitle',
   'cms_hero_badge',
   'cms_announcement_banner',
-  'dispatch_search_radius_km'
+  'platform_commission_percent'
 ]);
 
-const FORBIDDEN_SECRET_PATTERNS = [/secret/i, /token/i, /password/i, /key/i, /credential/i, /private/i, /hash/i];
-
-export function sanitizePlatformSettings(settings: Record<string, any>): Record<string, any> {
-  const safe: Record<string, any> = {};
-  if (!settings || typeof settings !== 'object') return safe;
-
-  for (const [key, value] of Object.entries(settings)) {
-    const isSafeKey = SAFE_PUBLIC_SETTINGS_KEYS.has(key);
-    const hasSecretPattern = FORBIDDEN_SECRET_PATTERNS.some((pat) => pat.test(key));
-
-    if (isSafeKey && !hasSecretPattern) {
-      safe[key] = value;
-    }
-  }
-  return safe;
-}
-
-export function isValidSiteData(candidate: any, allowEmptyRestaurants: boolean = false): candidate is SiteDataSnapshot {
+export function isValidSiteData(
+  candidate: any,
+  options?: { allowEmpty?: boolean }
+): candidate is SiteDataSnapshot {
   if (!candidate || typeof candidate !== 'object') return false;
+  if (typeof candidate.version !== 'number' || !Number.isFinite(candidate.version) || candidate.version < 1) return false;
+  if (typeof candidate.updatedAt !== 'string' || !candidate.updatedAt.trim()) return false;
+  if (!Array.isArray(candidate.restaurants)) return false;
 
-  // Schema version must be a positive integer
-  if (typeof candidate.schemaVersion !== 'number' || candidate.schemaVersion < 1) {
+  // Empty check: if not explicitly allowed (e.g. authorized admin clear), restaurants must be non-empty
+  if (!options?.allowEmpty && candidate.restaurants.length === 0) {
     return false;
   }
 
-  // Snapshot version must be a positive number
-  if (typeof candidate.version !== 'number' || candidate.version < 1) {
-    return false;
-  }
-
-  // Must have a valid updatedAt ISO timestamp
-  if (typeof candidate.updatedAt !== 'string' || isNaN(Date.parse(candidate.updatedAt))) {
-    return false;
-  }
-
-  // Restaurants must be an array
-  if (!Array.isArray(candidate.restaurants)) {
-    return false;
-  }
-
-  // If allowEmptyRestaurants is false, restaurants must not be empty
-  if (!allowEmptyRestaurants && candidate.restaurants.length === 0) {
-    return false;
-  }
-
-  // Every restaurant must have valid non-empty string id and name
+  // Ensure all restaurants are valid objects with non-empty string id and name
   for (const r of candidate.restaurants) {
     if (!r || typeof r !== 'object') return false;
     if (typeof r.id !== 'string' || !r.id.trim()) return false;
     if (typeof r.name !== 'string' || !r.name.trim()) return false;
+    // Reject fake or suspicious credentials if accidentally embedded
+    if (r.password || r.password_hash || r.token || r.secret) return false;
   }
 
-  // deliveryZones must be an array if provided
-  if (candidate.deliveryZones !== undefined && !Array.isArray(candidate.deliveryZones)) {
-    return false;
-  }
-
-  // promoCodes must be an array if provided
-  if (candidate.promoCodes !== undefined && !Array.isArray(candidate.promoCodes)) {
-    return false;
-  }
-
-  // platformSettings must be an object if provided, and must not leak secrets
-  if (candidate.platformSettings !== undefined) {
-    if (typeof candidate.platformSettings !== 'object' || candidate.platformSettings === null) {
-      return false;
-    }
-    for (const key of Object.keys(candidate.platformSettings)) {
-      if (FORBIDDEN_SECRET_PATTERNS.some((pat) => pat.test(key))) {
-        return false;
-      }
-    }
-  }
+  if (candidate.deliveryZones && !Array.isArray(candidate.deliveryZones)) return false;
+  if (candidate.promoCodes && !Array.isArray(candidate.promoCodes)) return false;
+  if (candidate.platformSettings && typeof candidate.platformSettings !== 'object') return false;
 
   return true;
 }
 
 export class SiteDataManager {
   private currentSnapshot: SiteDataSnapshot | null = null;
-  private lastAttemptTimestamp: number = 0;
-  private lastSuccessTimestamp: number = 0;
-  private failureCount: number = 0;
-  private lastError: string | null = null;
+  private lastSyncTimestamp: number = 0;
+  private lastAttemptedTimestamp: number = 0;
+  private consecutiveFailures: number = 0;
   private isSyncing: boolean = false;
+  private inFlightRefreshPromise: Promise<SiteDataSnapshot | null> | null = null;
   private timer: NodeJS.Timeout | null = null;
 
   private primaryDiskPath: string;
   private tmpDiskPath: string;
 
-  constructor() {
-    this.primaryDiskPath = path.resolve(process.cwd(), 'data', 'last-known-good-site-data.json');
-    this.tmpDiskPath = path.resolve(os.tmpdir(), 'last-known-good-site-data.json');
+  constructor(options?: { primaryDiskPath?: string; tmpDiskPath?: string; skipDiskLoad?: boolean }) {
+    this.primaryDiskPath = options?.primaryDiskPath || path.resolve(process.cwd(), 'data', 'last-known-good-site-data.json');
+    this.tmpDiskPath = options?.tmpDiskPath || path.resolve(os.tmpdir(), 'last-known-good-site-data.json');
 
-    // Attempt synchronous initialization from disk cache for instant warm start
-    this.loadFromDiskSync();
+    // Attempt synchronous initialization from local disk unless explicitly skipped
+    if (!options?.skipDiskLoad) {
+      this.loadFromDiskSync();
+    }
   }
 
   private loadFromDiskSync(): void {
+    // Only load from disk if memory is empty
+    if (this.currentSnapshot) return;
+
     try {
       if (fs.existsSync(this.primaryDiskPath)) {
         const raw = fs.readFileSync(this.primaryDiskPath, 'utf-8');
         const parsed = JSON.parse(raw);
         if (isValidSiteData(parsed)) {
-          this.currentSnapshot = { ...parsed, source: 'disk_cache' };
+          this.currentSnapshot = {
+            ...parsed,
+            schemaVersion: parsed.schemaVersion || 1,
+            source: 'disk_cache',
+            syncStatus: process.env.NODE_ENV === 'production' ? 'fallback' : 'synced'
+          };
           return;
         }
       }
@@ -161,7 +121,12 @@ export class SiteDataManager {
         const raw = fs.readFileSync(this.tmpDiskPath, 'utf-8');
         const parsed = JSON.parse(raw);
         if (isValidSiteData(parsed)) {
-          this.currentSnapshot = { ...parsed, source: 'disk_cache' };
+          this.currentSnapshot = {
+            ...parsed,
+            schemaVersion: parsed.schemaVersion || 1,
+            source: 'disk_cache',
+            syncStatus: process.env.NODE_ENV === 'production' ? 'fallback' : 'synced'
+          };
         }
       }
     } catch {}
@@ -179,27 +144,6 @@ export class SiteDataManager {
     return snap?.restaurants || [];
   }
 
-  public getRestaurantById(id: string): any | null {
-    if (!id) return null;
-    const restaurants = this.getRestaurants();
-    return restaurants.find((r) => r.id === id || r.slug === id) || null;
-  }
-
-  public getDeliveryZones(): any[] {
-    const snap = this.getLastKnownGood();
-    return snap?.deliveryZones || [];
-  }
-
-  public getPromoCodes(): any[] {
-    const snap = this.getLastKnownGood();
-    return snap?.promoCodes || [];
-  }
-
-  public getPlatformSettings(): Record<string, any> {
-    const snap = this.getLastKnownGood();
-    return snap?.platformSettings || {};
-  }
-
   public getUpdatedAt(): string | null {
     const snap = this.getLastKnownGood();
     return snap?.updatedAt || null;
@@ -210,25 +154,30 @@ export class SiteDataManager {
     return snap?.version || 0;
   }
 
-  public getSyncMetadata(): SiteDataSyncMetadata | null {
+  public getStatus() {
     const snap = this.getLastKnownGood();
-    return (
-      snap?.syncMetadata || {
-        lastAttemptedAt: this.lastAttemptTimestamp ? new Date(this.lastAttemptTimestamp).toISOString() : '',
-        lastSuccessAt: this.lastSuccessTimestamp ? new Date(this.lastSuccessTimestamp).toISOString() : '',
-        itemCount: snap?.restaurants?.length || 0,
-        failureCount: this.failureCount,
-        lastError: this.lastError
-      }
-    );
+    return {
+      version: snap?.version || 0,
+      schemaVersion: snap?.schemaVersion || 1,
+      updatedAt: snap?.updatedAt || null,
+      lastAttemptedAt: snap?.lastAttemptedAt || null,
+      source: snap?.source || 'none',
+      syncStatus: snap?.syncStatus || 'stale',
+      restaurantCount: snap?.restaurants?.length || 0,
+      deliveryZonesCount: snap?.deliveryZones?.length || 0,
+      promoCodesCount: snap?.promoCodes?.length || 0,
+      consecutiveFailures: this.consecutiveFailures,
+      persistedToD1: snap?.metadata?.persistedToD1 ?? false,
+      persistedToR2: snap?.metadata?.persistedToR2 ?? false
+    };
   }
 
   /**
-   * Loads the snapshot hierarchically across storage tiers:
-   * 1. Memory cache (if valid)
-   * 2. Cloudflare D1 platform_settings table (authoritative)
+   * Loads the snapshot with prioritized durability:
+   * 1. Memory cache
+   * 2. Authoritative Cloudflare D1 platform_settings table
    * 3. Cloudflare R2 bucket snapshot
-   * 4. Local disk cache (development convenience only)
+   * 4. Local disk cache (development / emergency fallback)
    */
   public async loadSnapshot(): Promise<SiteDataSnapshot | null> {
     if (this.currentSnapshot && isValidSiteData(this.currentSnapshot)) {
@@ -237,14 +186,20 @@ export class SiteDataManager {
 
     // 1. Authoritative Cloudflare D1 platform_settings table
     try {
-      const d1Res = await d1.query('SELECT value, updated_at FROM platform_settings WHERE key = ? LIMIT 1', [
-        'last_known_good_site_data'
-      ]);
+      const d1Res = await d1.query(
+        'SELECT value, updated_at FROM platform_settings WHERE key = ? LIMIT 1',
+        ['last_known_good_site_data']
+      );
       if (d1Res.results && d1Res.results.length > 0 && d1Res.results[0].value) {
         const parsed = JSON.parse(d1Res.results[0].value);
         if (isValidSiteData(parsed)) {
-          this.currentSnapshot = { ...parsed, source: 'cloudflare_d1' };
-          this.persistToDiskSafe(this.currentSnapshot);
+          this.currentSnapshot = {
+            ...parsed,
+            schemaVersion: parsed.schemaVersion || 1,
+            source: 'cloudflare_d1',
+            syncStatus: 'synced'
+          };
+          this.persistToDisk(this.currentSnapshot);
           return this.currentSnapshot;
         }
       }
@@ -252,13 +207,18 @@ export class SiteDataManager {
       console.warn('[SiteData] D1 snapshot read note:', e?.message || e);
     }
 
-    // 2. Cloudflare R2 storage
+    // 2. Cloudflare R2 bucket
     try {
       if (r2.isConfigured()) {
         const r2Snapshot = await r2.getJson<SiteDataSnapshot>('data/last-known-good-site-data.json');
         if (isValidSiteData(r2Snapshot)) {
-          this.currentSnapshot = { ...r2Snapshot, source: 'cloudflare_r2' };
-          this.persistToDiskSafe(this.currentSnapshot);
+          this.currentSnapshot = {
+            ...r2Snapshot,
+            schemaVersion: r2Snapshot.schemaVersion || 1,
+            source: 'cloudflare_r2',
+            syncStatus: 'synced'
+          };
+          this.persistToDisk(this.currentSnapshot);
           return this.currentSnapshot;
         }
       }
@@ -266,275 +226,304 @@ export class SiteDataManager {
       console.warn('[SiteData] R2 snapshot read note:', e?.message || e);
     }
 
-    // 3. Local disk cache fallback
+    // 3. Local disk snapshot fallback
     this.loadFromDiskSync();
     return this.currentSnapshot;
   }
 
-  private persistToDiskSafe(snapshot: SiteDataSnapshot): void {
+  /**
+   * Safely writes snapshot to local disk using atomic file rename
+   */
+  private persistToDisk(snapshot: SiteDataSnapshot): void {
     const jsonStr = JSON.stringify(snapshot, null, 2);
 
-    // Primary repo data/ directory
     try {
       const dataDir = path.dirname(this.primaryDiskPath);
       if (!fs.existsSync(dataDir)) {
         fs.mkdirSync(dataDir, { recursive: true });
       }
-      const tmpFile = `${this.primaryDiskPath}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 6)}`;
+      const tmpFile = `${this.primaryDiskPath}.tmp.${process.pid}.${Date.now()}`;
       fs.writeFileSync(tmpFile, jsonStr, 'utf-8');
       fs.renameSync(tmpFile, this.primaryDiskPath);
     } catch {}
 
-    // Temporary directory for serverless environments
     try {
-      const tmpFile = `${this.tmpDiskPath}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 6)}`;
+      const tmpFile = `${this.tmpDiskPath}.tmp.${process.pid}.${Date.now()}`;
       fs.writeFileSync(tmpFile, jsonStr, 'utf-8');
       fs.renameSync(tmpFile, this.tmpDiskPath);
     } catch {}
   }
 
   /**
-   * Persists a validated snapshot to Cloudflare D1, Cloudflare R2, and in-memory cache.
-   * Confirms durable storage write before reporting persistence success.
+   * Saves a validated snapshot to memory, disk, Cloudflare D1, and Cloudflare R2.
+   * Accurately tracks durable persistence and prevents version regressions.
    */
   public async saveSnapshot(
     snapshot: SiteDataSnapshot,
-    options: { allowEmpty?: boolean } = {}
-  ): Promise<{ success: boolean; persistedD1: boolean; persistedR2: boolean; version: number }> {
-    if (!isValidSiteData(snapshot, options.allowEmpty)) {
-      console.error('[SiteData] Attempted to save invalid site snapshot. Aborting.');
-      return { success: false, persistedD1: false, persistedR2: false, version: this.currentSnapshot?.version || 0 };
+    options?: { allowEmpty?: boolean; isAuthorizedAdmin?: boolean }
+  ): Promise<boolean> {
+    if (!isValidSiteData(snapshot, { allowEmpty: options?.allowEmpty && options?.isAuthorizedAdmin })) {
+      console.error('[SiteData] Attempted to save invalid or empty site snapshot. Aborting.');
+      return false;
     }
 
-    // Ensure monotonically increasing version
-    const newVersion = Math.max(snapshot.version, (this.currentSnapshot?.version || 0) + 1);
-    const finalizedSnapshot: SiteDataSnapshot = {
-      ...snapshot,
-      version: newVersion,
-      syncMetadata: {
-        lastAttemptedAt: snapshot.syncMetadata?.lastAttemptedAt || new Date().toISOString(),
-        lastSuccessAt: snapshot.updatedAt,
-        itemCount: snapshot.restaurants.length,
-        persistedD1: false,
-        persistedR2: false,
-        persistedDisk: false
-      }
-    };
+    // Monotonic versioning check: do not overwrite a newer snapshot with an older version
+    if (this.currentSnapshot && snapshot.version < this.currentSnapshot.version) {
+      console.warn(
+        `[SiteData] Rejected version regression from ${this.currentSnapshot.version} to ${snapshot.version}.`
+      );
+      return false;
+    }
 
-    let persistedD1 = false;
-    let persistedR2 = false;
+    let persistedToD1 = false;
+    let persistedToR2 = false;
 
-    // 1. Cloudflare D1 authoritative persistence
+    // 1. Persist to Cloudflare D1 platform_settings table
     try {
-      const jsonStr = JSON.stringify(finalizedSnapshot);
-      const d1Result = await d1.query(
+      const jsonStr = JSON.stringify(snapshot);
+      const d1Res = await d1.query(
         `INSERT INTO platform_settings (key, value, description, updated_at)
          VALUES ('last_known_good_site_data', ?, 'Persistent last-known-good site data snapshot', ?)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-        [jsonStr, finalizedSnapshot.updatedAt]
+        [jsonStr, snapshot.updatedAt]
       );
-      if (d1Result.success) {
-        persistedD1 = true;
+      if (d1Res && d1Res.success !== false) {
+        persistedToD1 = true;
       }
     } catch (err: any) {
       console.warn('[SiteData] D1 snapshot save note:', err?.message || err);
     }
 
-    // 2. Cloudflare R2 durable storage persistence
-    try {
-      if (r2.isConfigured()) {
-        const uploadRes = await r2.uploadJson('data/last-known-good-site-data.json', finalizedSnapshot);
-        if (uploadRes.success) {
-          persistedR2 = true;
+    // 2. Persist to Cloudflare R2 bucket
+    if (r2.isConfigured()) {
+      try {
+        const r2Res = await r2.uploadJson('data/last-known-good-site-data.json', snapshot);
+        if (r2Res.success) {
+          // Verify cloud persistence by reading the saved snapshot back and validating it
+          const readBack = await r2.getJson<SiteDataSnapshot>('data/last-known-good-site-data.json');
+          if (readBack && readBack.version === snapshot.version) {
+            persistedToR2 = true;
+          }
         }
+      } catch (err: any) {
+        console.warn('[SiteData] R2 snapshot save note:', err?.message || err);
       }
-    } catch (err: any) {
-      console.warn('[SiteData] R2 snapshot save note:', err?.message || err);
     }
 
-    // 3. Update memory snapshot and local disk cache
-    if (finalizedSnapshot.syncMetadata) {
-      finalizedSnapshot.syncMetadata.persistedD1 = persistedD1;
-      finalizedSnapshot.syncMetadata.persistedR2 = persistedR2;
-      finalizedSnapshot.syncMetadata.persistedDisk = true;
-    }
-    this.currentSnapshot = finalizedSnapshot;
-    this.lastSuccessTimestamp = Date.now();
-    this.persistToDiskSafe(finalizedSnapshot);
-
-    return {
-      success: true,
-      persistedD1,
-      persistedR2,
-      version: newVersion
+    // Update metadata with verified persistence report
+    snapshot.metadata = {
+      restaurantCount: snapshot.restaurants.length,
+      deliveryZoneCount: snapshot.deliveryZones?.length || 0,
+      promoCodeCount: snapshot.promoCodes?.length || 0,
+      persistedToD1,
+      persistedToR2,
+      lastSuccessfulSync: new Date().toISOString()
     };
+
+    this.currentSnapshot = snapshot;
+    this.lastSyncTimestamp = Date.now();
+
+    // 3. Persist atomically to local disk
+    this.persistToDisk(snapshot);
+
+    return true;
   }
 
-  private activeSyncPromise: Promise<SiteDataSnapshot | null> | null = null;
-
   /**
-   * Refreshes the site data snapshot from the authoritative production database (Cloudflare D1).
-   * Validates all records before replacement. Preserves the last-known-good snapshot if the refresh fails.
-   * Employs single-flight promise multiplexing so concurrent calls share a single query execution.
+   * Refreshes the site data snapshot from authoritative Cloudflare D1.
+   * Validates fresh data before updating.
+   * Preserves previous valid snapshot during failures or transient empty states.
+   * Protects against concurrent refreshes using a promise lock.
    */
-  public async refreshSnapshot(options: { allowEmpty?: boolean } = {}): Promise<SiteDataSnapshot | null> {
-    if (this.activeSyncPromise) {
-      return this.activeSyncPromise;
+  public async refreshSnapshot(
+    options?: { force?: boolean; allowEmpty?: boolean; isAuthorizedAdmin?: boolean }
+  ): Promise<SiteDataSnapshot | null> {
+    // If a refresh is already in-flight, return the existing promise to prevent duplicate requests
+    if (this.inFlightRefreshPromise) {
+      return this.inFlightRefreshPromise;
     }
 
-    this.activeSyncPromise = this.executeRefresh(options);
-    try {
-      return await this.activeSyncPromise;
-    } finally {
-      this.activeSyncPromise = null;
-    }
-  }
+    const now = Date.now();
+    this.lastAttemptedTimestamp = now;
 
-  private async executeRefresh(options: { allowEmpty?: boolean } = {}): Promise<SiteDataSnapshot | null> {
-    const startTime = Date.now();
-    this.lastAttemptTimestamp = startTime;
-
-    try {
-      // 1. Query live restaurants
-      const restRes = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC');
-      const rawRows = restRes.results || [];
-
-      // Outage or empty result protection:
-      // Never allow an empty query result to overwrite an existing populated snapshot unless explicitly authorized
-      if (!Array.isArray(rawRows) || rawRows.length === 0) {
-        if (!options.allowEmpty && this.currentSnapshot && this.currentSnapshot.restaurants.length > 0) {
-          console.warn('[SiteData] Primary query returned 0 restaurants; preserving populated last-known-good snapshot.');
-          return this.currentSnapshot;
-        }
-        if (!options.allowEmpty) {
-          // No current snapshot and 0 restaurants returned: do NOT invent mock data. Return empty state.
-          console.warn('[SiteData] Primary database has no restaurant records.');
-          return this.currentSnapshot;
-        }
+    // Exponential backoff check after repeated failures: 5s, 10s, 20s, max 60s
+    if (!options?.force && this.consecutiveFailures > 0) {
+      const backoffMs = Math.min(60000, 5000 * Math.pow(2, this.consecutiveFailures - 1));
+      if (now - this.lastSyncTimestamp < backoffMs) {
+        return this.getLastKnownGood();
       }
+    }
 
-      // Map rows cleanly from raw_json or relational columns
-      const restaurants = rawRows.map((r: any) => {
-        let base: any = {};
-        if (r.raw_json) {
-          try {
-            base = JSON.parse(r.raw_json);
-          } catch {
-            base = {};
+    this.isSyncing = true;
+    this.inFlightRefreshPromise = (async () => {
+      try {
+        const restRes = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC');
+        const rawRows = restRes.results || [];
+
+        // An empty restaurant list must not automatically overwrite a populated snapshot!
+        const existingPopulated = (this.currentSnapshot?.restaurants?.length || 0) > 0;
+        if (rawRows.length === 0 && existingPopulated && !(options?.allowEmpty && options?.isAuthorizedAdmin)) {
+          console.warn(
+            `[SiteData] Primary query returned 0 restaurants while snapshot has ${this.currentSnapshot?.restaurants.length}. Retaining last-known-good snapshot.`
+          );
+          return this.currentSnapshot;
+        }
+
+        const restaurants = rawRows.map((r: any) => {
+          if (r.raw_json) {
+            try {
+              const parsed = JSON.parse(r.raw_json);
+              return {
+                ...parsed,
+                id: r.id,
+                name: r.name || parsed.name,
+                cuisine: r.cuisine || parsed.cuisine,
+                rating: r.rating ?? parsed.rating,
+                reviewCount: r.review_count ?? parsed.reviewCount,
+                deliveryTimeMin: r.delivery_time_min ?? parsed.deliveryTimeMin,
+                deliveryTimeMax: r.delivery_time_max ?? parsed.deliveryTimeMax,
+                deliveryFee: r.delivery_fee ?? parsed.deliveryFee,
+                isOpen: r.is_open === 1,
+                isBusyPaused: r.is_busy_paused === 1
+              };
+            } catch {}
+          }
+          return {
+            ...r,
+            isOpen: r.is_open === 1,
+            isBusyPaused: r.is_busy_paused === 1
+          };
+        });
+
+        // Filter out any internal passwords or secret columns
+        for (const r of restaurants) {
+          delete r.password;
+          delete r.password_hash;
+          delete r.token;
+          delete r.secret;
+        }
+
+        const zonesRes = await d1.query('SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL').catch(() => ({ results: [] }));
+        const promoRes = await d1.query('SELECT * FROM promo_codes WHERE is_active = 1').catch(() => ({ results: [] }));
+        const settingsRes = await d1.query('SELECT key, value FROM platform_settings').catch(() => ({ results: [] }));
+
+        // Public settings allowlist: never leak private keys, secrets or credentials
+        const safeSettings: Record<string, any> = {};
+        for (const s of (settingsRes.results || [])) {
+          if (PUBLIC_SETTINGS_WHITELIST.has(s.key)) {
+            try {
+              safeSettings[s.key] = JSON.parse(s.value);
+            } catch {
+              safeSettings[s.key] = s.value;
+            }
           }
         }
-        return {
-          ...base,
-          id: r.id,
-          name: r.name || base.name || 'Restaurant',
-          slug: r.slug || base.slug || r.id,
-          cuisine: r.cuisine || base.cuisine || '',
-          rating: r.rating ?? base.rating ?? 5.0,
-          reviewCount: r.review_count ?? base.reviewCount ?? 0,
-          deliveryTimeMin: r.delivery_time_min ?? base.deliveryTimeMin ?? 25,
-          deliveryTimeMax: r.delivery_time_max ?? base.deliveryTimeMax ?? 35,
-          deliveryFee: r.delivery_fee ?? base.deliveryFee ?? 500,
-          minOrder: r.min_order ?? base.minOrder ?? 2500,
-          priceTier: r.price_tier || base.priceTier || '$$',
-          address: r.address || base.address || '',
-          distanceKm: r.distance_km ?? base.distanceKm ?? 2.0,
-          isOpen: r.is_open === 1,
-          isBusyPaused: r.is_busy_paused === 1,
-          zone: r.zone || base.zone || 'LAGOS',
-          categories: Array.isArray(base.categories) ? base.categories : []
+
+        const candidate: SiteDataSnapshot = {
+          schemaVersion: 1,
+          version: (this.currentSnapshot?.version || 0) + 1,
+          updatedAt: new Date().toISOString(),
+          lastAttemptedAt: new Date().toISOString(),
+          source: 'cloudflare_d1',
+          syncStatus: 'synced',
+          restaurants,
+          deliveryZones: zonesRes.results || [],
+          promoCodes: promoRes.results || [],
+          platformSettings: safeSettings,
+          metadata: {
+            restaurantCount: restaurants.length,
+            deliveryZoneCount: (zonesRes.results || []).length,
+            promoCodeCount: (promoRes.results || []).length,
+            persistedToD1: false,
+            persistedToR2: false,
+            lastSuccessfulSync: new Date().toISOString(),
+            consecutiveFailures: 0
+          }
         };
-      });
 
-      // 2. Query delivery zones
-      const zonesRes = await d1.query('SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL').catch(() => ({ results: [] }));
-
-      // 3. Query active promo codes
-      const promoRes = await d1.query('SELECT code, discount_type, value, min_order_amount, max_discount_cap, is_active FROM promo_codes WHERE is_active = 1').catch(() => ({ results: [] }));
-
-      // 4. Query public platform settings (strictly filter out sensitive keys)
-      const settingsRes = await d1.query('SELECT key, value FROM platform_settings').catch(() => ({ results: [] }));
-      const rawSettings: Record<string, any> = {};
-      for (const s of settingsRes.results || []) {
-        if (s.key !== 'last_known_good_site_data') {
-          try {
-            rawSettings[s.key] = JSON.parse(s.value);
-          } catch {
-            rawSettings[s.key] = s.value;
-          }
+        if (isValidSiteData(candidate, { allowEmpty: options?.allowEmpty && options?.isAuthorizedAdmin })) {
+          await this.saveSnapshot(candidate, options);
+          this.consecutiveFailures = 0;
+          return candidate;
+        } else {
+          this.consecutiveFailures++;
+          console.warn('[SiteData] Candidate snapshot failed validation. Preserving existing last-known-good.');
+          return this.currentSnapshot;
         }
-      }
-      const platformSettings = sanitizePlatformSettings(rawSettings);
-
-      const durationMs = Date.now() - startTime;
-      const candidate: SiteDataSnapshot = {
-        schemaVersion: 1,
-        version: (this.currentSnapshot?.version || 0) + 1,
-        updatedAt: new Date().toISOString(),
-        source: 'cloudflare_d1',
-        restaurants,
-        deliveryZones: zonesRes.results || [],
-        promoCodes: promoRes.results || [],
-        platformSettings,
-        syncMetadata: {
-          lastAttemptedAt: new Date(startTime).toISOString(),
-          lastSuccessAt: new Date().toISOString(),
-          itemCount: restaurants.length,
-          durationMs,
-          failureCount: 0,
-          lastError: null
-        }
-      };
-
-      if (isValidSiteData(candidate, options.allowEmpty)) {
-        await this.saveSnapshot(candidate, options);
-        this.failureCount = 0;
-        this.lastError = null;
-        return candidate;
-      } else {
-        console.warn('[SiteData] Candidate snapshot failed validation; preserving existing last-known-good.');
-        this.failureCount++;
+      } catch (err: any) {
+        this.consecutiveFailures++;
+        console.warn(
+          '[SiteData] Failed to refresh snapshot from primary source:',
+          err?.message || err,
+          'Serving last-known-good.'
+        );
         return this.currentSnapshot;
+      } finally {
+        this.isSyncing = false;
+        this.inFlightRefreshPromise = null;
       }
-    } catch (err: any) {
-      this.failureCount++;
-      this.lastError = err?.message || String(err);
-      console.warn('[SiteData] Refresh failure; preserving last-known-good:', this.lastError);
-      return this.currentSnapshot;
-    }
+    })();
+
+    return this.inFlightRefreshPromise;
   }
 
   /**
-   * Throttled synchronization for request handlers:
-   * Refreshes every 10 seconds (10,000ms), applying exponential backoff upon consecutive failures.
+   * Throttled sync: Runs at most once every 10 seconds (10,000 ms).
+   * Safe to call from serverless request handlers without introducing latency.
    */
   public async syncIfStale(force: boolean = false): Promise<SiteDataSnapshot | null> {
     const now = Date.now();
-    const baseIntervalMs = 10000;
-    // Exponential backoff if consecutive errors occur (10s, 15s, 22s, up to 60s max)
-    const effectiveIntervalMs =
-      this.failureCount > 0
-        ? Math.min(60000, Math.round(baseIntervalMs * Math.pow(1.5, Math.min(this.failureCount, 4))))
-        : baseIntervalMs;
+    const intervalMs = 10000; // 10 seconds refresh interval
 
-    if (!force && now - this.lastAttemptTimestamp < effectiveIntervalMs) {
+    if (!force && (now - this.lastSyncTimestamp < intervalMs)) {
       return this.getLastKnownGood();
     }
 
-    return this.refreshSnapshot();
+    // Trigger refresh in background if stale
+    return this.refreshSnapshot({ force });
   }
 
   /**
-   * Starts a single server-side background timer for continuous Node/Express runtimes.
+   * Authorized admin workflow to clear all restaurants if intentionally desired.
+   */
+  public async adminClearAllRestaurants(): Promise<boolean> {
+    const candidate: SiteDataSnapshot = {
+      schemaVersion: 1,
+      version: (this.currentSnapshot?.version || 0) + 1,
+      updatedAt: new Date().toISOString(),
+      lastAttemptedAt: new Date().toISOString(),
+      source: 'cloudflare_d1',
+      syncStatus: 'synced',
+      restaurants: [],
+      deliveryZones: this.currentSnapshot?.deliveryZones || [],
+      promoCodes: this.currentSnapshot?.promoCodes || [],
+      platformSettings: this.currentSnapshot?.platformSettings || {},
+      metadata: {
+        restaurantCount: 0,
+        deliveryZoneCount: this.currentSnapshot?.deliveryZones?.length || 0,
+        promoCodeCount: this.currentSnapshot?.promoCodes?.length || 0,
+        persistedToD1: false,
+        persistedToR2: false,
+        lastSuccessfulSync: new Date().toISOString(),
+        consecutiveFailures: 0
+      }
+    };
+
+    return this.saveSnapshot(candidate, { allowEmpty: true, isAuthorizedAdmin: true });
+  }
+
+  /**
+   * Starts a persistent server-side background timer for long-running Node/Express processes.
    */
   public startBackgroundSync(intervalMs: number = 10000): void {
     if (this.timer) return;
 
-    // Run initial sync non-blockingly
+    // Run initial sync
     this.refreshSnapshot().catch(() => {});
 
     this.timer = setInterval(() => {
       this.refreshSnapshot().catch((err) => {
-        console.warn('[SiteData Background Sync Note]', err?.message || err);
+        console.warn('[SiteData Background Sync Interval Warning]', err?.message || err);
       });
     }, intervalMs);
 
@@ -551,10 +540,4 @@ export class SiteDataManager {
   }
 }
 
-// Preserve single global instance across module reloads
-const globalKey = '__veyrang_site_data_manager__';
-if (!(globalThis as any)[globalKey]) {
-  (globalThis as any)[globalKey] = new SiteDataManager();
-}
-
-export const siteDataManager: SiteDataManager = (globalThis as any)[globalKey];
+export const siteDataManager = new SiteDataManager();

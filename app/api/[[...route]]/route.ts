@@ -222,17 +222,10 @@ export async function GET(req: NextRequest) {
 
   // 10b. Site Data Snapshot Status
   if (pathname === '/site-data/snapshot' || pathname === '/admin/site-data/status') {
-    const snap = siteDataManager.getLastKnownGood();
+    const status = siteDataManager.getStatus();
     return NextResponse.json({
       success: true,
-      data: {
-        version: snap?.version || 1,
-        updatedAt: snap?.updatedAt || null,
-        restaurantCount: snap?.restaurants?.length || 0,
-        source: snap?.source || 'disk_cache',
-        deliveryZonesCount: snap?.deliveryZones?.length || 0,
-        promoCodesCount: snap?.promoCodes?.length || 0
-      }
+      data: status
     });
   }
 
@@ -249,27 +242,25 @@ export async function GET(req: NextRequest) {
     siteDataManager.syncIfStale().catch(() => {});
 
     let list: any[] = [];
-    let d1QueryFailed = false;
+    let d1QuerySucceeded = false;
     try {
       const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC LIMIT 200');
-      if (d1Res && d1Res.success !== false && Array.isArray(d1Res.results)) {
-        list = d1Res.results.map((r: any) => {
+      if (d1Res && d1Res.success !== false) {
+        d1QuerySucceeded = true;
+        list = (d1Res.results || []).map((r: any) => {
           try {
             return r.raw_json ? { ...JSON.parse(r.raw_json), id: r.id, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 } : r;
           } catch {
             return r;
           }
         });
-      } else {
-        d1QueryFailed = true;
       }
     } catch (err: any) {
-      console.warn('[Restaurants Route] Primary D1 query warning, serving last-known-good snapshot:', err?.message || err);
-      d1QueryFailed = true;
+      console.warn('[Restaurants Route] Primary D1 fetch warning, serving last-known-good snapshot:', err?.message || err);
     }
 
-    // Only fallback to last-known-good snapshot if the primary database query failed
-    if (d1QueryFailed) {
+    // Only fall back to snapshot if primary database query failed; do NOT overwrite legitimate empty list
+    if (!d1QuerySucceeded) {
       list = siteDataManager.getRestaurants();
     }
 
@@ -296,22 +287,31 @@ export async function GET(req: NextRequest) {
     const parts = pathname.split('/').filter(Boolean);
     const id = parts[1];
     if (id && id !== 'calculate-distance') {
+      let foundInD1 = false;
       try {
         const d1Res = await d1.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id]);
-        if (d1Res.results?.[0]) {
-          const r = d1Res.results[0];
-          try {
-            const parsed = r.raw_json ? JSON.parse(r.raw_json) : r;
-            return NextResponse.json({ success: true, data: { ...parsed, id: r.id, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 } });
-          } catch {
-            return NextResponse.json({ success: true, data: r });
+        if (d1Res && d1Res.success !== false) {
+          foundInD1 = true;
+          if (d1Res.results?.[0]) {
+            const r = d1Res.results[0];
+            try {
+              const parsed = r.raw_json ? JSON.parse(r.raw_json) : r;
+              return NextResponse.json({ success: true, data: { ...parsed, id: r.id, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 } });
+            } catch {
+              return NextResponse.json({ success: true, data: r });
+            }
           }
         }
       } catch (err) {
         console.warn('[Single Restaurant] Primary query warning:', err);
       }
 
-      // Check persistent last-known-good snapshot
+      // If D1 was reached and definitively returned no record, return 404 (do not pull a phantom restaurant)
+      if (foundInD1) {
+        return NextResponse.json({ success: false, error: 'Restaurant not found' }, { status: 404 });
+      }
+
+      // If D1 query failed / threw an error, check persistent last-known-good snapshot
       const snapshotRest = siteDataManager.getRestaurants().find((r: any) => r.id === id);
       if (snapshotRest) {
         return NextResponse.json({ success: true, data: snapshotRest });

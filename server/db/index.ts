@@ -72,8 +72,8 @@ function seedInitialData(): DatabaseSchema {
     }
   ];
 
-  // Seed restaurants from persistent last-known-good site data snapshot
-  const restaurants: Restaurant[] = [...(siteDataManager.getRestaurants() as any[])];
+  // Preserves verified restaurants without injecting demo seed data
+  const restaurants: Restaurant[] = [];
 
   const initialOrders: Order[] = [];
   const transactions: Transaction[] = [];
@@ -108,8 +108,8 @@ function seedInitialData(): DatabaseSchema {
 
 export function loadDatabase(): DatabaseSchema {
   if (dbCache) {
-    if (!dbCache.restaurants || dbCache.restaurants.length === 0) {
-      dbCache.restaurants = [...(siteDataManager.getRestaurants() as any[])];
+    if (!dbCache.restaurants) {
+      dbCache.restaurants = [];
     }
     // Filter out demo/test users
     dbCache.users = (dbCache.users || []).filter((u) => {
@@ -137,8 +137,8 @@ export function loadDatabase(): DatabaseSchema {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.users)) {
         dbCache = parsed;
-        if (!dbCache!.restaurants || dbCache!.restaurants.length === 0) {
-          dbCache!.restaurants = [...(siteDataManager.getRestaurants() as any[])];
+        if (!dbCache!.restaurants) {
+          dbCache!.restaurants = [];
         }
         
         // Filter out demo/test users

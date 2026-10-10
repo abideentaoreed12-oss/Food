@@ -29,12 +29,13 @@ router.get('/', async (req: Request, res: Response) => {
     const userLng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
 
     let list: any[] = [];
-    let d1QueryFailed = false;
+    let d1QuerySucceeded = false;
     try {
       const listRaw = await cachedQuery(CacheKeys.restaurants('all'), async () => {
         const d1Res = await d1Client.query('SELECT * FROM restaurants ORDER BY rating DESC');
         return d1Res.results || [];
       });
+      d1QuerySucceeded = true;
       list = (listRaw || []).map((r: any) => {
         if (r.raw_json) {
           try {
@@ -58,14 +59,12 @@ router.get('/', async (req: Request, res: Response) => {
         }
         return r;
       });
-      d1QueryFailed = false;
     } catch (queryErr) {
       console.warn('[Restaurants Route] Primary D1 query warning, using last-known-good snapshot:', queryErr);
-      d1QueryFailed = true;
     }
 
-    // Only fallback to last-known-good snapshot if the primary database query failed
-    if (d1QueryFailed) {
+    // Only fall back to snapshot if primary D1 query threw an error; do not overwrite legitimate empty list
+    if (!d1QuerySucceeded) {
       list = siteDataManager.getRestaurants();
     }
 
@@ -237,14 +236,13 @@ router.get('/:id', async (req: Request, res: Response) => {
         }
         return null;
       });
-    } catch (e) {}
-
-    if (!restaurant) {
-      restaurant = await db.getRestaurantById(id);
+    } catch (e) {
+      // Primary D1 query threw error, check snapshot as fallback
+      restaurant = siteDataManager.getRestaurants().find((r: any) => r.id === id) || null;
     }
 
     if (!restaurant) {
-      restaurant = siteDataManager.getRestaurants().find((r: any) => r.id === id) || null;
+      restaurant = await db.getRestaurantById(id);
     }
 
     if (!restaurant) {

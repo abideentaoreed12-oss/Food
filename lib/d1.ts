@@ -398,13 +398,13 @@ export class D1Client {
 
       const now = new Date().toISOString();
 
-      // Provision initial administrator if not present in users table
-      const adminCount = this.executeLocal("SELECT count(*) as c FROM users WHERE role = 'admin'");
+      // Ensure Administrator Account Exists
+      const adminCount = this.executeLocal('SELECT count(*) as c FROM users WHERE role = ?', ['admin']);
       const hasAdmin = Number(adminCount.results?.[0]?.c || 0) > 0;
       if (!hasAdmin) {
         const adminEmail = (CONFIG.ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'admin@veyrang.com').toLowerCase().trim();
-        const adminPassword = CONFIG.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'Admin123!';
-        const passHash = bcrypt.hashSync(adminPassword, 10);
+        const adminPass = CONFIG.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'Admin123!';
+        const passHash = bcrypt.hashSync(adminPass, 10);
         this.executeLocal(
           `INSERT OR IGNORE INTO users (id, email, password_hash, name, role, phone, address, wallet_balance_usd, wallet_balance_ngn, saved_addresses, is_approved, created_at, updated_at)
            VALUES ('usr-admin-1', ?, ?, 'System Administrator', 'admin', '+234 801 234 5678', 'Lekki Phase 1, Lagos', 0, 0, '[]', 1, ?, ?)`,
@@ -412,9 +412,7 @@ export class D1Client {
         );
       }
 
-      // Initialize default Delivery Zones if table is empty
-      const zoneCount = this.executeLocal('SELECT count(*) as c FROM delivery_zones');
-      if (Number(zoneCount.results?.[0]?.c || 0) === 0) {
+        // Seed Delivery Zones
         const zones = [
           ['zone-1', 'Lekki Phase 1', 'LEKKI', 'NGN', 800, 200, 1],
           ['zone-2', 'Victoria Island', 'VI', 'NGN', 1000, 250, 1],
@@ -424,16 +422,13 @@ export class D1Client {
         ];
         for (const z of zones) {
           this.executeLocal(
-            `INSERT INTO delivery_zones (id, name, code, currency, base_delivery_fee, per_km_fee, is_active, created_at)
+            `INSERT OR IGNORE INTO delivery_zones (id, name, code, currency, base_delivery_fee, per_km_fee, is_active, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [...z, now]
           );
         }
-      }
 
-      // Initialize default Promo Codes if table is empty
-      const promoCount = this.executeLocal('SELECT count(*) as c FROM promo_codes');
-      if (Number(promoCount.results?.[0]?.c || 0) === 0) {
+        // Seed Promo Codes
         const promos = [
           ['promo-1', 'VEYRA10', 'percentage', 10, 3000, 2000, 1],
           ['promo-2', 'FREESHIP', 'fixed', 800, 5000, 800, 1],
@@ -442,16 +437,13 @@ export class D1Client {
         ];
         for (const p of promos) {
           this.executeLocal(
-            `INSERT INTO promo_codes (id, code, discount_type, value, min_order_amount, max_discount_cap, is_active, created_at)
+            `INSERT OR IGNORE INTO promo_codes (id, code, discount_type, value, min_order_amount, max_discount_cap, is_active, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [...p, now]
           );
         }
-      }
 
-      // Initialize baseline Platform Settings if table is empty
-      const settingsCount = this.executeLocal('SELECT count(*) as c FROM platform_settings');
-      if (Number(settingsCount.results?.[0]?.c || 0) === 0) {
+        // Seed Platform Settings
         const settings = [
           ['currency_ngn_usd_rate', '1400', 'Exchange Rate NGN to USD'],
           ['base_service_fee_ngn', '500', 'Base Service Fee in NGN'],
@@ -464,12 +456,11 @@ export class D1Client {
         ];
         for (const [k, v, desc] of settings) {
           this.executeLocal(
-            `INSERT INTO platform_settings (key, value, description, updated_at)
+            `INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at)
              VALUES (?, ?, ?, ?)`,
             [k, v, desc, now]
           );
         }
-      }
 
       this.isSchemaInitialized = true;
     } catch (e) {
@@ -531,12 +522,19 @@ export class D1Client {
     }
 
     if (!response || !response.ok) {
-      // Fallback to local SQLite if Cloudflare network/auth fails
+      if (process.env.NODE_ENV === 'production') {
+        const errorText = (await response?.text().catch(() => '')) || 'Network error';
+        throw new Error(`Cloudflare D1 query failed (HTTP ${response?.status || 'ERR'}): ${errorText}`);
+      }
       return this.executeLocal<T>(sql, params);
     }
 
     const json: D1ApiResponse<T> = await response.json().catch(() => null as any);
     if (!json?.success || !json.result || json.result.length === 0) {
+      if (process.env.NODE_ENV === 'production') {
+        const msg = json?.errors?.[0]?.message || 'Cloudflare D1 returned unsuccessful response';
+        throw new Error(`Cloudflare D1 error: ${msg}`);
+      }
       return this.executeLocal<T>(sql, params);
     }
     return json.result[0];
