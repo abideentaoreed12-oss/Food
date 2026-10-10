@@ -296,42 +296,8 @@ router.get('/menu', async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Also extract dishes embedded in restaurants.raw_json so no items are ever 404 or missing
-    const restRes = await d1Client.query('SELECT id, name, raw_json FROM restaurants');
-    if (restRes.results) {
-      for (const r of restRes.results) {
-        if (r.raw_json) {
-          try {
-            const parsed = JSON.parse(r.raw_json);
-            if (parsed.categories) {
-              for (const cat of parsed.categories) {
-                if (cat.items) {
-                  for (const it of cat.items) {
-                    if (!itemsMap.has(it.id)) {
-                      itemsMap.set(it.id, {
-                        id: it.id,
-                        restaurant_id: r.id,
-                        restaurant_name: r.name || parsed.name,
-                        category_id: it.category || cat.name || 'Main',
-                        category: it.category || cat.name || 'Main',
-                        name: it.name,
-                        description: it.description || '',
-                        price: Number(it.price || 0),
-                        is_available: it.isAvailable !== false ? 1 : 0,
-                        image_url: it.imageUrl || it.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
-                        image_r2_url: it.imageUrl || it.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
-                        prep_time_min: it.prepTimeMin || 20,
-                        calories: it.calories || 450
-                      });
-                    }
-                  }
-                }
-              }
-            }
-          } catch (e) {}
-        }
-      }
-    }
+    // menu_items is the sole source of truth for dishes.
+    // Never recreate deleted dishes from restaurants.raw_json or demo defaults.
 
     return res.json({ success: true, data: Array.from(itemsMap.values()) });
   } catch (error: any) {
