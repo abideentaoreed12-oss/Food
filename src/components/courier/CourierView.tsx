@@ -97,8 +97,8 @@ export const CourierView: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      courierRequest('/api/courier/history'),
-      courierRequest('/api/courier/profile')
+      courierRequest('/api/courier/history', {}),
+      courierRequest('/api/courier/profile', {})
     ]).then(([history, profile]) => {
       if (cancelled) return;
       setCourierHistory(Array.isArray(history?.orders) ? history.orders : Array.isArray(history) ? history : []);
