@@ -1835,15 +1835,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Order marked as refunded' });
   }
 
-  // 28. Order Handover Verify
+  // 28. Order Handover Verify — server-authoritative and customer-owned.
   const handoverMatch = pathname.match(/^\/orders\/([^/]+)\/verify-handover$/);
   if (handoverMatch) {
     const user = await getUser(req);
     if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'customer') return NextResponse.json({ success: false, error: 'Only the signed-in customer can confirm receipt.' }, { status: 403 });
     const orderId = decodeURIComponent(handoverMatch[1]);
+    const enteredPin = String(body?.enteredPin || '').trim();
+    if (!/^\d{4,8}$/.test(enteredPin)) return NextResponse.json({ success: false, error: 'Enter a valid handover code.' }, { status: 400 });
+    const result = await d1.query('SELECT id, short_id, customer_id, status, raw_json FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
+    const row = result.results?.[0] as any;
+    if (!row) return NextResponse.json({ success: false, error: 'Order not found.' }, { status: 404 });
+    if (String(row.customer_id || '') !== String(user.id)) return NextResponse.json({ success: false, error: 'You are not authorized to confirm this order.' }, { status: 403 });
+    if (row.status !== 'in_transit') return NextResponse.json({ success: false, error: 'Only an order that is on the way can be confirmed.' }, { status: 409 });
+    let orderData: any = {};
+    try { orderData = JSON.parse(row.raw_json || '{}'); } catch { return NextResponse.json({ success: false, error: 'Order data could not be verified.' }, { status: 500 }); }
+    const expectedPin = String(orderData.handoverPin || orderData.handover_pin || '').trim();
+    if (!expectedPin || enteredPin !== expectedPin) return NextResponse.json({ success: false, error: 'Invalid handover code.' }, { status: 400 });
     const now = new Date().toISOString();
-    await d1.query('UPDATE orders SET status = \'delivered\', updated_at = ? WHERE id = ? OR short_id = ?', [now, orderId, orderId]);
-    return NextResponse.json({ success: true, message: 'Handover verified and order completed' });
+    // Conditional update prevents two concurrent confirmations from both succeeding.
+    const updated = await d1.query("UPDATE orders SET status = 'delivered', updated_at = ? WHERE id = ? AND customer_id = ? AND status = 'in_transit'", [now, row.id, user.id]);
+    if (!updated.success || Number(updated.meta?.rows_written || 0) !== 1) {
+      return NextResponse.json({ success: false, error: 'This order has already changed state. Refresh and check its current status.' }, { status: 409 });
+    }
+    await d1.query('INSERT INTO audit_logs (id, user_id, user_email, user_role, action, resource, resource_id, ip, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [randomUUID(), user.id, user.email || '', user.role, 'order.handover.confirmed', 'order', row.id, req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '', now]).catch(() => {});
+    return NextResponse.json({ success: true, message: 'Handover verified and order completed', orderId: row.id, status: 'delivered' }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   // 29. Restaurant Distance Calculator
