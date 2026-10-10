@@ -1879,6 +1879,10 @@ export async function POST(req: NextRequest) {
     const result = await d1.query('SELECT t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.restaurant_name FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
     const row = result.results?.[0] as any;
     if (!row || row.consumed_at || new Date(row.expires_at).getTime() <= Date.now()) return NextResponse.json({ success: false, error: 'This handover link is invalid, expired, or already used.' }, { status: 410, headers: { 'Cache-Control': 'no-store' } });
+    const viewer = await getUser(req);
+    if (!viewer || viewer.role !== 'customer') return NextResponse.json({ success: false, error: 'Sign in to VeyraNG with your customer account to view this handover.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
+    const owner = await d1.query('SELECT customer_id FROM orders WHERE id = ? LIMIT 1', [row.order_id]);
+    if (String(owner.results?.[0]?.customer_id || '') !== String(viewer.id)) return NextResponse.json({ success: false, error: 'This handover belongs to a different customer account.' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
     return NextResponse.json({ success: true, data: { orderReference: row.short_id, restaurantName: row.restaurant_name, status: row.status, expiresAt: row.expires_at } }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
