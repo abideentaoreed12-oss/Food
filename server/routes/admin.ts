@@ -964,7 +964,7 @@ router.post('/staff', async (req: AuthRequest, res: Response) => {
     });
 
     // 2. Persistent insertion into live Cloudflare D1 edge database
-    await d1Client.query(
+    const d1Insert = await d1Client.query(
       'INSERT INTO users (id, email, password_hash, name, role, phone, restaurant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         userId,
