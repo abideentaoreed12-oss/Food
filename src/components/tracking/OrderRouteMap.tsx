@@ -191,56 +191,30 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
     return [kitchenCoord, customerCoord].map(({ lat, lng }) => ({ lat, lng }));
   }, [propRoutePoints, kitchenCoord, customerCoord]);
 
-  // 5. Compute Live Courier Position along Route
+  // 5. Use only a verified live courier fix. Never synthesize movement from order progress.
   const courierCoord = useMemo(() => {
     if (courierLocation && Number.isFinite(courierLocation.lat) && Number.isFinite(courierLocation.lng)) {
       return courierLocation;
     }
-    // Never infer a courier's position from order status or route progress.
     return { lat: Number.NaN, lng: Number.NaN, speed: 0, heading: 0 };
-    if (routeWaypoints.length >= 2) {
-      const totalSegs = routeWaypoints.length - 1;
-      const targetIdx = progressRatio * totalSegs;
-      const segIdx = Math.min(totalSegs - 1, Math.floor(targetIdx));
-      const segFrac = targetIdx - segIdx;
-      const pA = routeWaypoints[segIdx];
-      const pB = routeWaypoints[segIdx + 1];
-
-      const lat = pA.lat + (pB.lat - pA.lat) * segFrac;
-      const lng = pA.lng + (pB.lng - pA.lng) * segFrac;
-
-      const y = Math.sin((pB.lng - pA.lng) * Math.PI / 180) * Math.cos(pB.lat * Math.PI / 180);
-      const x = Math.cos(pA.lat * Math.PI / 180) * Math.sin(pB.lat * Math.PI / 180) -
-                Math.sin(pA.lat * Math.PI / 180) * Math.cos(pB.lat * Math.PI / 180) * Math.cos((pB.lng - pA.lng) * Math.PI / 180);
-      const heading = Math.round((Math.atan2(y, x) * 180 / Math.PI + 360) % 360);
-
-      return {
-        lat,
-        lng,
-        speed: order.status === 'in_transit' ? 28 : (order.status === 'preparing' ? 12 : 0),
-        heading
-      };
-    }
-
-    return {
-      lat: kitchenCoord.lat + (customerCoord.lat - kitchenCoord.lat) * progressRatio,
-      lng: kitchenCoord.lng + (customerCoord.lng - kitchenCoord.lng) * progressRatio,
-      speed: order.status === 'in_transit' ? 28 : 0,
-      heading: 45
-    };
   }, [courierLocation]);
 
   // Trip and remaining distances
   const totalTripKm = useMemo(() => {
-    if (propTotalKm && Number.isFinite(propTotalKm)) return propTotalKm;
-    return calculateDistanceKm(kitchenCoord.lat, kitchenCoord.lng, customerCoord.lat, customerCoord.lng) || 2.5;
+    if (Number.isFinite(propTotalKm)) return propTotalKm as number;
+    if (![kitchenCoord.lat, kitchenCoord.lng, customerCoord.lat, customerCoord.lng].every(Number.isFinite)) {
+      return Number.NaN;
+    }
+    return calculateDistanceKm(kitchenCoord.lat, kitchenCoord.lng, customerCoord.lat, customerCoord.lng);
   }, [propTotalKm, kitchenCoord, customerCoord]);
 
   const remainingDistanceKm = useMemo(() => {
     if (order.status === 'delivered') return 0;
-    if (propRemainingKm && Number.isFinite(propRemainingKm)) return propRemainingKm;
-    const dist = calculateDistanceKm(courierCoord.lat, courierCoord.lng, customerCoord.lat, customerCoord.lng);
-    return Math.max(0.2, dist);
+    if (Number.isFinite(propRemainingKm)) return propRemainingKm as number;
+    if (![courierCoord.lat, courierCoord.lng, customerCoord.lat, customerCoord.lng].every(Number.isFinite)) {
+      return Number.NaN;
+    }
+    return calculateDistanceKm(courierCoord.lat, courierCoord.lng, customerCoord.lat, customerCoord.lng);
   }, [order.status, propRemainingKm, courierCoord, customerCoord]);
 
   const centerCoord = useMemo(() => {
