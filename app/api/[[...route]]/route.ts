@@ -1876,7 +1876,8 @@ export async function POST(req: NextRequest) {
     const row = result.results?.[0] as any;
     if (!row || row.consumed_at || new Date(row.expires_at).getTime() <= Date.now()) return NextResponse.json({ success: false, error: 'This handover link is invalid, expired, or already used.' }, { status: 410 });
     const user = await getUser(req);
-    if (user && (user.role !== 'customer' || String(user.id) !== String(row.customer_id))) return NextResponse.json({ success: false, error: 'You are not authorized to confirm this order.' }, { status: 403 });
+    if (!user) return NextResponse.json({ success: false, error: 'Sign in to VeyraNG as the order customer to confirm receipt.' }, { status: 401 });
+    if (user.role !== 'customer' || String(user.id) !== String(row.customer_id)) return NextResponse.json({ success: false, error: 'Only the signed-in customer for this order can confirm receipt.' }, { status: 403 });
     const now = new Date().toISOString();
     // Conditional token consumption is the replay guard; order transition is also conditional.
     const consumed = await d1.query('UPDATE handover_qr_tokens SET consumed_at = ? WHERE id = ? AND consumed_at IS NULL AND expires_at > ?', [now, row.token_id, now]);
