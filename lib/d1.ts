@@ -45,7 +45,12 @@ export class D1Client {
     this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || CONFIG.CLOUDFLARE_ACCOUNT_ID || '';
     this.databaseId = process.env.CLOUDFLARE_DATABASE_ID || CONFIG.CLOUDFLARE_DATABASE_ID || '';
     this.apiToken = process.env.CLOUDFLARE_API_TOKEN || CONFIG.CLOUDFLARE_API_TOKEN || '';
-    this.authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || 'admin@veyrang.com';
+    this.authEmail =
+      process.env.CLOUDFLARE_AUTH_EMAIL ||
+      CONFIG.CLOUDFLARE_AUTH_EMAIL ||
+      process.env.ADMIN_EMAIL ||
+      CONFIG.ADMIN_EMAIL ||
+      'abideentaoreed12@gmail.com';
     this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || CONFIG.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, '');
   }
 
@@ -252,11 +257,18 @@ export class D1Client {
           user_id TEXT PRIMARY KEY,
           vehicle_type TEXT DEFAULT 'Motorcycle',
           vehicle_plate TEXT DEFAULT '',
+          plate_number TEXT DEFAULT '',
+          license_number TEXT DEFAULT '',
           is_verified INTEGER DEFAULT 1,
+          verification_status TEXT DEFAULT 'verified',
           is_online INTEGER DEFAULT 1,
           rating REAL DEFAULT 5.0,
+          trips_completed INTEGER DEFAULT 0,
+          total_deliveries INTEGER DEFAULT 0,
           kyc_doc_r2_url TEXT,
-          photo_r2_url TEXT
+          photo_r2_url TEXT,
+          created_at TEXT,
+          updated_at TEXT
         );`,
         `CREATE TABLE IF NOT EXISTS order_chats (
           id TEXT PRIMARY KEY,
