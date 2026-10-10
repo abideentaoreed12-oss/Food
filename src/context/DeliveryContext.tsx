@@ -469,66 +469,43 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
 
   const refreshData = useCallback(async () => {
     try {
-      const activeAddress = selectedAddress?.address || user?.address || '';
-
-      // 1. Primary Public Read Path: Shared Centralized Site Snapshot
-      // Serves cached, validated D1+R2 data to all public views in a single call with zero mock data.
-      let snapshotLoaded = false;
+      // All shared catalog/settings reads come from the last-known-good snapshot.
+      // A failed request preserves the last successful state; it never switches to mock/direct fallback data.
       try {
         const snapRes = await api.siteData.getPublicSnapshot();
         const snap = snapRes?.data || snapRes;
-        if (snap && Array.isArray(snap.restaurants) && snap.restaurants.length > 0) {
+        if (snap && Array.isArray(snap.restaurants)) {
           setRestaurants(snap.restaurants);
-          if (Array.isArray(snap.deliveryZones) && snap.deliveryZones.length > 0) {
-            setDeliveryZones(snap.deliveryZones);
-          }
+          if (Array.isArray(snap.deliveryZones)) setDeliveryZones(snap.deliveryZones);
           if (snap.platformSettings && typeof snap.platformSettings === 'object') {
             setPlatformSettings((prev) => ({ ...prev, ...snap.platformSettings }));
             setCmsContent((prev) => ({ ...prev, ...snap.platformSettings }));
           }
-          snapshotLoaded = true;
-        }
-      } catch (snapErr) {
-        console.warn('Snapshot fetch note, checking direct fallback:', snapErr);
-      }
 
-      // 2. Direct Query Fallback (only if snapshot is warming up or user provided location)
-      if (!snapshotLoaded || activeAddress) {
-        const [serverRestaurants, settingsRes, zonesRes] = await Promise.all([
-          api.restaurants.getAll(activeAddress ? { address: activeAddress } : undefined).catch((e) => {
-            console.warn('Notice fetching restaurants:', e?.message || e);
-            return null;
-          }),
-          !snapshotLoaded ? api.settings.get().catch(() => null) : Promise.resolve(null),
-          !snapshotLoaded ? api.settings.getZones().catch(() => null) : Promise.resolve(null)
-        ]);
-
-        if (serverRestaurants) {
-          const rests = Array.isArray(serverRestaurants)
-            ? serverRestaurants
-            : (serverRestaurants?.data && Array.isArray(serverRestaurants.data) ? serverRestaurants.data : []);
-          if (rests.length > 0) {
-            setRestaurants(rests);
+          // Notify other open tabs when the authoritative snapshot version changes.
+          if (typeof window !== 'undefined' && Number.isFinite(Number(snap.version))) {
+            const version = Number(snap.version);
+            const previousVersion = Number(sessionStorage.getItem('veyrang_site_data_version') || 0);
+            if (version > previousVersion) {
+              sessionStorage.setItem('veyrang_site_data_version', String(version));
+              try {
+                const channel = new BroadcastChannel('veyrang-site-data');
+                channel.postMessage({ type: 'snapshot-updated', version, updatedAt: snap.updatedAt });
+                channel.close();
+              } catch {}
+              window.dispatchEvent(new CustomEvent('veyrang-site-data-updated', {
+                detail: { version, updatedAt: snap.updatedAt }
+              }));
+            }
           }
+        } else {
+          // No real snapshot yet: don't substitute fabricated records.
+          setRestaurants([]);
+          setDeliveryZones([]);
         }
-
-        if (settingsRes) {
-          const liveSettings = settingsRes?.settings || settingsRes?.data?.settings || settingsRes;
-          if (liveSettings && typeof liveSettings === 'object') {
-            const extracted = liveSettings.settings || liveSettings;
-            setPlatformSettings((prev) => ({ ...prev, ...extracted }));
-            setCmsContent((prev) => ({ ...prev, ...extracted }));
-          }
-        }
-
-        if (zonesRes) {
-          const liveZones = Array.isArray(zonesRes)
-            ? zonesRes
-            : (zonesRes?.data && Array.isArray(zonesRes.data) ? zonesRes.data : null);
-          if (liveZones && liveZones.length > 0) {
-            setDeliveryZones(liveZones);
-          }
-        }
+      } catch (snapshotError) {
+        // Keep the last successfully loaded snapshot in memory; never fall back to mock data.
+        console.warn('Unable to refresh the shared site-data snapshot:', snapshotError);
       }
 
       // Validate cart against fresh restaurant data
