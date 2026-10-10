@@ -11,63 +11,118 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 20
 
-      - name: Restore api.ts and inject health methods
+      - name: Remove hardcoded admin passwords from login
         run: |
           set -euo pipefail
-          git show f2fe85d1acb27cc738af56d9faeef5385ee0974a:src/services/api.ts > src/services/api.ts
-
-          if grep -q 'health:' src/services/api.ts; then
-            echo 'health already present'
-          else
-            python3 -c "
-          from pathlib import Path
-          p = Path('src/services/api.ts')
-          text = p.read_text()
-          health = '''
-            health: {
-              check: async () => {
-                try {
-                  return await request('/api/health');
-                } catch (e) {
-                  return { status: 'healthy', timestamp: new Date().toISOString(), environment: 'production-client' };
-                }
-              },
-              checkDatabase: async () => {
-                return request('/api/health/d1');
-              },
-              pingDatabase: async () => {
-                return request('/api/health/d1/ping', { method: 'POST' });
-              }
-            }
-          '''
-          # dedent health to match 2-space indent of sibling keys
-          import textwrap
-          health = textwrap.dedent(health).rstrip() + '\n'
-          # ensure 2-space indent at start of health key
-          health = '  ' + health.lstrip()
-          idx = text.rfind('\n  }\n};')
-          if idx < 0:
-              raise SystemExit('insertion point not found')
-          new_text = text[:idx] + '\n  },\n' + health + '};\n'
-          p.write_text(new_text)
-          print('Injected health, size', len(new_text))
-          "
+          FILE='app/api/[[...route]]/route.ts'
+          SIZE=$(wc -c < "$FILE" || echo 0)
+          if [ "$SIZE" -lt 1000 ]; then
+            echo "Broken route detected (size=$SIZE) — restoring from 46acaa9"
+            git show 46acaa9:"$FILE" > "$FILE"
           fi
+          python3 << 'PY'
+          from pathlib import Path
+          path = Path('app/api/[[...route]]/route.ts')
+          text = path.read_text()
+          if 'isEnvAdmin' in text and 'Teeplus1029' not in text and "email === 'admin@veyrang.com'" not in text:
+              print('Already fixed — no login password hardcodes')
+              raise SystemExit(0)
+          old = """    const isMasterAdmin =
+      (ADMIN_EMAIL && ADMIN_PASSWORD && email === ADMIN_EMAIL && password === ADMIN_PASSWORD) ||
+      (email === 'admin@veyrang.com' && (password === 'Admin123!' || (ADMIN_PASSWORD && password === ADMIN_PASSWORD))) ||
+      (email === 'abideentaoreed12@gmail.com' && (password === 'Teeplus1029' || password === 'Admin123!')) ||
+      (email === 'abideentaoreed66@gmail.com' && (password === 'Admin123!' || password === 'Teeplus1029' || password === 'Password123!'));
 
-          grep -q 'health:' src/services/api.ts
-          grep -q 'checkDatabase' src/services/api.ts
-          grep -q 'safeGet' src/services/api.ts
-          test "$(wc -c < src/services/api.ts)" -gt 15000
-          echo "api.ts size: $(wc -c < src/services/api.ts)"
+    const d1Res = await d1.query('SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1', [email]);
+    let u = d1Res.results?.[0];
+
+    if (!u) {
+      if (isMasterAdmin) {
+        u = {
+          id: 'usr-admin-1',
+          email,
+          role: 'admin',
+          name: 'System Administrator',
+          phone: '+234 801 234 5678',
+          wallet_balance_ngn: 350000,
+          wallet_balance_usd: 250,
+          is_approved: 1
+        };
+      } else {
+        return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
+      }
+    } else if (!isMasterAdmin) {
+      if (!u?.password_hash) {
+        return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
+      }
+      const ok = await bcrypt.compare(password, u.password_hash);
+      if (!ok) {
+        return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
+      }
+    }"""
+          new = """    // Admin bootstrap only via env credentials — never hardcode passwords in source.
+    const isEnvAdmin =
+      Boolean(ADMIN_EMAIL) &&
+      Boolean(ADMIN_PASSWORD) &&
+      email === ADMIN_EMAIL &&
+      password === ADMIN_PASSWORD;
+
+    const d1Res = await d1.query('SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1', [email]);
+    let u = d1Res.results?.[0];
+
+    if (!u) {
+      if (isEnvAdmin) {
+        // Bootstrap admin shell from env only (no invented wallet balances).
+        u = {
+          id: 'usr-admin-1',
+          email,
+          role: 'admin',
+          name: 'System Administrator',
+          phone: '',
+          wallet_balance_ngn: 0,
+          wallet_balance_usd: 0,
+          is_approved: 1
+        };
+      } else {
+        return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
+      }
+    } else {
+      // Always verify password against stored hash for existing users.
+      if (!u?.password_hash) {
+        return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
+      }
+      const ok = await bcrypt.compare(password, u.password_hash);
+      if (!ok) {
+        // Env admin may still authenticate if credentials match env (password reset / recovery).
+        if (!(isEnvAdmin && email === ADMIN_EMAIL)) {
+          return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
+        }
+      }
+    }"""
+          if old not in text:
+              raise SystemExit('OLD login block not found — abort to avoid partial edit')
+          path.write_text(text.replace(old, new, 1))
+          out = path.read_text()
+          assert 'Teeplus1029' not in out
+          assert 'Admin123!' not in out
+          assert "email === 'admin@veyrang.com'" not in out
+          assert 'isEnvAdmin' in out
+          print('Fixed hardcoded admin passwords, size', len(out))
+          PY
+          grep -q isEnvAdmin "$FILE"
+          ! grep -q Teeplus1029 "$FILE"
+          ! grep -q 'Admin123!' "$FILE"
+          test "$(wc -c < "$FILE")" -gt 50000
+          echo "route size: $(wc -c < "$FILE")"
 
           git config user.name "veyrang-bot"
           git config user.email "bot@veyrang.com"
-          git add src/services/api.ts
+          git add "$FILE"
           if git diff --staged --quiet; then
             echo 'No changes'
             exit 0
           fi
-          git commit -m "fix(api): restore api client + add health.check/checkDatabase for AdminPortal"
+          git commit -m "fix(auth): remove hardcoded admin passwords from login"
           git push
