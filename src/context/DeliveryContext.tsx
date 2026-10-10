@@ -468,31 +468,66 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState<boolean>(false);
 
   const refreshData = useCallback(async () => {
-    console.log('Refreshing data...');
     try {
       const activeAddress = selectedAddress?.address || user?.address || '';
-      console.log('Active address for restaurants:', activeAddress);
-      const [serverRestaurants, settingsRes, zonesRes] = await Promise.all([
-        api.restaurants.getAll(activeAddress ? { address: activeAddress } : undefined).catch((e) => {
-          console.warn('Notice fetching restaurants:', e?.message || e);
-          return null;
-        }),
-        api.settings.get().catch((e) => {
-          console.warn('Notice fetching settings:', e?.message || e);
-          return null;
-        }),
-        api.settings.getZones().catch((e) => {
-          console.warn('Notice fetching zones:', e?.message || e);
-          return null;
-        })
-      ]);
 
-      if (serverRestaurants) {
-        const rests = Array.isArray(serverRestaurants)
-          ? serverRestaurants
-          : (serverRestaurants?.data && Array.isArray(serverRestaurants.data) ? serverRestaurants.data : []);
-        if (rests.length > 0) {
-          setRestaurants(rests);
+      // 1. Primary Public Read Path: Shared Centralized Site Snapshot
+      // Serves cached, validated D1+R2 data to all public views in a single call with zero mock data.
+      let snapshotLoaded = false;
+      try {
+        const snapRes = await api.siteData.getPublicSnapshot();
+        const snap = snapRes?.data || snapRes;
+        if (snap && Array.isArray(snap.restaurants) && snap.restaurants.length > 0) {
+          setRestaurants(snap.restaurants);
+          if (Array.isArray(snap.deliveryZones) && snap.deliveryZones.length > 0) {
+            setDeliveryZones(snap.deliveryZones);
+          }
+          if (snap.platformSettings && typeof snap.platformSettings === 'object') {
+            setPlatformSettings((prev) => ({ ...prev, ...snap.platformSettings }));
+            setCmsContent((prev) => ({ ...prev, ...snap.platformSettings }));
+          }
+          snapshotLoaded = true;
+        }
+      } catch (snapErr) {
+        console.warn('Snapshot fetch note, checking direct fallback:', snapErr);
+      }
+
+      // 2. Direct Query Fallback (only if snapshot is warming up or user provided location)
+      if (!snapshotLoaded || activeAddress) {
+        const [serverRestaurants, settingsRes, zonesRes] = await Promise.all([
+          api.restaurants.getAll(activeAddress ? { address: activeAddress } : undefined).catch((e) => {
+            console.warn('Notice fetching restaurants:', e?.message || e);
+            return null;
+          }),
+          !snapshotLoaded ? api.settings.get().catch(() => null) : Promise.resolve(null),
+          !snapshotLoaded ? api.settings.getZones().catch(() => null) : Promise.resolve(null)
+        ]);
+
+        if (serverRestaurants) {
+          const rests = Array.isArray(serverRestaurants)
+            ? serverRestaurants
+            : (serverRestaurants?.data && Array.isArray(serverRestaurants.data) ? serverRestaurants.data : []);
+          if (rests.length > 0) {
+            setRestaurants(rests);
+          }
+        }
+
+        if (settingsRes) {
+          const liveSettings = settingsRes?.settings || settingsRes?.data?.settings || settingsRes;
+          if (liveSettings && typeof liveSettings === 'object') {
+            const extracted = liveSettings.settings || liveSettings;
+            setPlatformSettings((prev) => ({ ...prev, ...extracted }));
+            setCmsContent((prev) => ({ ...prev, ...extracted }));
+          }
+        }
+
+        if (zonesRes) {
+          const liveZones = Array.isArray(zonesRes)
+            ? zonesRes
+            : (zonesRes?.data && Array.isArray(zonesRes.data) ? zonesRes.data : null);
+          if (liveZones && liveZones.length > 0) {
+            setDeliveryZones(liveZones);
+          }
         }
       }
 
@@ -519,25 +554,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         if (changed) setCartAlert('Some items in your cart have been updated due to price or availability changes.');
         return newCart;
       });
-
-      const liveSettings = settingsRes?.settings || settingsRes?.data?.settings || settingsRes;
-      if (liveSettings && typeof liveSettings === 'object') {
-        const extracted = liveSettings.settings || liveSettings;
-        setPlatformSettings((prev) => ({ ...prev, ...extracted }));
-        setCmsContent((prev) => ({ ...prev, ...extracted }));
-      }
-      const liveZones = Array.isArray(zonesRes)
-        ? zonesRes
-        : (zonesRes?.data && Array.isArray(zonesRes.data) ? zonesRes.data : null);
-      if (liveZones && liveZones.length > 0) {
-        setDeliveryZones(liveZones);
-      } else {
-        setDeliveryZones((prev) => (prev.length > 0 ? prev : [
-          { id: 'zone-ikoyi', name: 'Ikoyi', code: 'IKOYI', city: 'Lagos', country: 'Nigeria', base_delivery_fee: 1500, per_km_fee: 250, is_active: 1 },
-          { id: 'zone-yaba', name: 'Yaba District', code: 'YABA', city: 'Lagos', country: 'Nigeria', base_delivery_fee: 1200, per_km_fee: 200, is_active: 1 },
-          { id: 'zone-ikeja', name: 'Ikeja', code: 'IKEJA', city: 'Lagos', country: 'Nigeria', base_delivery_fee: 1800, per_km_fee: 250, is_active: 1 }
-        ]));
-      }
 
       if (user) {
         const [serverOrders, txRes, addressesRes, meRes] = await Promise.all([
@@ -697,7 +713,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     refreshDataRef.current();
     const interval = setInterval(() => {
       refreshDataRef.current();
-    }, 15000);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 

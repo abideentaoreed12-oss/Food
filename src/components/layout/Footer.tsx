@@ -22,7 +22,7 @@ import {
   Twitter,
   Linkedin
 } from 'lucide-react';
-import { VeyrangLogo } from '../common/VeyrangLogo.tsx';
+import { VeyrangLogo } from '../common/VeyrangLogo';
 
 export const Footer: React.FC = () => {
   const { setActiveRole, setActivePage, platformSettings, deliveryZones } = useDelivery();

@@ -29,6 +29,33 @@ type RestaurantData = {
 
 async function getRestaurant(id: string): Promise<RestaurantData | null> {
   if (!id || id.length > 160 || /[/?#]/.test(id)) return null;
+
+  // 1. Check centralized validated site snapshot first
+  try {
+    const { siteDataManager } = await import('../../../lib/siteDataSnapshot');
+    const snap = siteDataManager.getRestaurants().find((r: any) => r.id === id);
+    if (snap) {
+      return {
+        id: String(snap.id),
+        name: typeof snap.name === 'string' ? snap.name : 'Restaurant',
+        description: typeof snap.description === 'string' ? snap.description : '',
+        tagline: typeof snap.tagline === 'string' ? snap.tagline : '',
+        cuisine: typeof snap.cuisine === 'string' ? snap.cuisine : '',
+        image: snap.imageUrl || snap.bannerUrl || snap.image,
+        logo: snap.logoUrl || snap.logo_r2_url || snap.logo,
+        rating: snap.rating,
+        reviewCount: snap.reviewCount,
+        address: snap.address || '',
+        city: snap.city || '',
+        deliveryFee: snap.deliveryFee,
+        minimumOrder: snap.minOrder ?? snap.minimumOrder,
+        isOpen: snap.isOpen === true,
+        categories: snap.categories || []
+      };
+    }
+  } catch {}
+
+  // 2. Fallback to direct D1 query if not yet loaded in snapshot
   try {
     const result = await d1.query('SELECT id, raw_json FROM restaurants WHERE id = ? LIMIT 1', [id]);
     const row = result?.results?.[0];

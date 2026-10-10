@@ -248,12 +248,55 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: promos });
   }
 
-  // 10b. Site Data Snapshot Status
-  if (pathname === '/site-data/snapshot' || pathname === '/admin/site-data/status') {
-    const status = siteDataManager.getStatus();
+  // 10b. Centralized Public Site Data Snapshot & Status
+  if (pathname === '/site-data/public') {
+    // Background sync throttled at 10s if stale
+    siteDataManager.syncIfStale().catch(() => {});
+    const snapshot = siteDataManager.getLastKnownGood();
+    if (!snapshot) {
+      return NextResponse.json({
+        success: false,
+        error: 'Site data snapshot is warming up. Please retry shortly.',
+        data: null
+      }, { status: 503 });
+    }
     return NextResponse.json({
       success: true,
-      data: status
+      data: {
+        version: snapshot.version,
+        schemaVersion: snapshot.schemaVersion || 1,
+        updatedAt: snapshot.updatedAt,
+        source: snapshot.source,
+        syncStatus: snapshot.syncStatus || 'synced',
+        restaurants: snapshot.restaurants || [],
+        deliveryZones: snapshot.deliveryZones || [],
+        promoCodes: snapshot.promoCodes || [],
+        platformSettings: snapshot.platformSettings || {},
+        metadata: snapshot.metadata
+      }
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=5, stale-while-revalidate=10'
+      }
+    });
+  }
+
+  if (pathname === '/site-data/snapshot' || pathname === '/admin/site-data/status') {
+    const status = siteDataManager.getStatus();
+    const snapshot = siteDataManager.getLastKnownGood();
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...status,
+        snapshot: snapshot ? {
+          version: snapshot.version,
+          updatedAt: snapshot.updatedAt,
+          source: snapshot.source,
+          restaurantsCount: snapshot.restaurants?.length || 0,
+          deliveryZonesCount: snapshot.deliveryZones?.length || 0,
+          promoCodesCount: snapshot.promoCodes?.length || 0
+        } : null
+      }
     });
   }
 
@@ -1894,6 +1937,8 @@ export async function PATCH(req: NextRequest) {
     }
     const restId = decodeURIComponent(restToggleMatch[1]);
     await d1.query('UPDATE restaurants SET is_open = CASE WHEN is_open = 1 THEN 0 ELSE 1 END WHERE id = ?', [restId]);
+    // Immediate change-driven snapshot refresh
+    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
     return NextResponse.json({ success: true, message: 'Restaurant status toggled' });
   }
 
@@ -1904,6 +1949,8 @@ export async function PATCH(req: NextRequest) {
     const { isAvailable } = body;
     if (isAvailable !== undefined) {
       await d1.query('UPDATE menu_items SET is_available = ? WHERE id = ?', [isAvailable ? 1 : 0, itemId]);
+      // Immediate change-driven snapshot refresh
+      siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
     }
     return NextResponse.json({ success: true, message: 'Item updated' });
   }

@@ -352,6 +352,18 @@ export const api = {
     }
   },
 
+  siteData: {
+    getPublicSnapshot: async () => {
+      return request('/api/site-data/public');
+    },
+    getStatus: async () => {
+      return request('/api/site-data/snapshot');
+    },
+    refresh: async () => {
+      return request('/api/site-data/refresh', { method: 'POST' });
+    }
+  },
+
   orders: {
     create: async (orderPayload: any) => {
       return request('/api/orders', {

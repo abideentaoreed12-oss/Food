@@ -44,7 +44,7 @@ import {
   ArrowLeft,
   Utensils
 } from 'lucide-react';
-import { VeyrangLogo } from '../common/VeyrangLogo.tsx';
+import { VeyrangLogo } from '../common/VeyrangLogo';
 
 export const RightDrawer: React.FC = () => {
   const {

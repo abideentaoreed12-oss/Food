@@ -24,7 +24,7 @@ import {
   Navigation,
   Trash2
 } from 'lucide-react';
-import { VeyrangLogo } from '../common/VeyrangLogo.tsx';
+import { VeyrangLogo } from '../common/VeyrangLogo';
 import { AddressAutocompleteInput } from '../common/AddressAutocompleteInput';
 import { ProAddressForm } from '../common/ProAddressForm';
 
