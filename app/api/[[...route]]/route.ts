@@ -1367,10 +1367,15 @@ export async function POST(req: NextRequest) {
       if (!row) return NextResponse.json({ success: true, data: { courierId: user.id, isOnline: false, verificationStatus: 'not_submitted', isVerified: false, kycSubmitted: false } });
       return NextResponse.json({ success: true, data: { courierId: user.id, isOnline: Number(row.is_online) === 1, verificationStatus: row.verification_status || (Number(row.is_verified) === 1 ? 'verified' : 'not_submitted'), isVerified: Number(row.is_verified) === 1, kycSubmitted: Boolean(row.kyc_doc_r2_url || row.kyc_document_url || row.verification_status), vehicleType: row.vehicle_type || null, vehiclePlate: row.vehicle_plate || null, updatedAt: row.updated_at || null }});
     }
-    const history = await d1.query("SELECT id, short_id, status, courier_payout, updated_at, created_at FROM orders WHERE courier_id = ? AND status = 'delivered' ORDER BY updated_at DESC, created_at DESC", [user.id]);
+    const history = await d1.query("SELECT id, short_id, status, raw_json, updated_at, created_at FROM orders WHERE courier_id = ? AND status = 'delivered' ORDER BY updated_at DESC, created_at DESC", [user.id]);
     if (!history.success) return NextResponse.json({ success: false, error: 'Delivery history unavailable' }, { status: 503 });
-    const rows = history.results || [];
-    const earnings = rows.reduce((sum: number, row: any) => sum + Number(row.courier_payout || 0), 0);
+    const rows = (history.results || []).map((row: any) => {
+      let stored: any = {};
+      try { stored = typeof row.raw_json === 'string' ? JSON.parse(row.raw_json) : (row.raw_json || {}); } catch { stored = {}; }
+      const payout = Number(stored.courierPayout ?? stored.courier_payout ?? stored.riderPayout ?? 0);
+      return { id: row.id, shortId: row.short_id, status: row.status, updatedAt: row.updated_at, createdAt: row.created_at, courierPayout: Number.isFinite(payout) ? payout : 0 };
+    });
+    const earnings = rows.reduce((sum: number, row: any) => sum + row.courierPayout, 0);
     return NextResponse.json({ success: true, data: { orders: rows, earnings } });
   }
 
