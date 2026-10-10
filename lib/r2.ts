@@ -173,18 +173,28 @@ export class R2Client {
   }
 
   public async delete(key: string): Promise<{ success: boolean }> {
-    const cleanKey = key.replace(/^\//, '');
-    inMemoryStore.delete(cleanKey);
+    const cleanKey = key.replace(/^\\//, '');
+    if (!cleanKey || cleanKey.split('/').some((part) => part === '..' || part === '.')) {
+      return { success: false };
+    }
 
     if (this.workerUrl) {
       try {
-        await fetch(`${this.workerUrl}/storage/file/${encodeURIComponent(cleanKey)}`, {
+        const response = await fetch(`${this.workerUrl}/storage/file/${encodeURIComponent(cleanKey)}`, {
           method: 'DELETE',
           headers: this.apiToken ? { Authorization: `Bearer ${this.apiToken}` } : {},
           cache: 'no-store'
         });
+        if (response.ok || response.status === 404) {
+          inMemoryStore.delete(cleanKey);
+          return { success: true };
+        }
       } catch {}
     }
+
+    // Never report durable deletion when remote storage has not confirmed it.
+    if (process.env.NODE_ENV === 'production') return { success: false };
+    inMemoryStore.delete(cleanKey);
     return { success: true };
   }
 }
