@@ -2,8 +2,6 @@ name: restore-auth-route-fix
 
 on:
   workflow_dispatch:
-  repository_dispatch:
-    types: [restore-auth]
   push:
     paths:
       - 'scripts/trigger-restore-auth.txt'
@@ -17,102 +15,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 30
-      - name: Restore and fix login
+      - name: Run fix script
         run: |
           set -euo pipefail
-          FILE='app/api/[[...route]]/route.ts'
-          SIZE=$(wc -c < "$FILE" || echo 0)
-          echo "size=$SIZE"
-          if [ "$SIZE" -lt 1000 ]; then
-            git show 46acaa9:"$FILE" > "$FILE"
-            echo restored
-          fi
-          python3 -c "
-          from pathlib import Path
-          path = Path('app/api/[[...route]]/route.ts')
-          text = path.read_text()
-          if 'isEnvAdmin' in text and 'Teeplus1029' not in text:
-              print('already fixed')
-              raise SystemExit(0)
-          old = '''    const isMasterAdmin =
-      (ADMIN_EMAIL && ADMIN_PASSWORD && email === ADMIN_EMAIL && password === ADMIN_PASSWORD) ||
-      (email === \'admin@veyrang.com\' && (password === \'Admin123!\' || (ADMIN_PASSWORD && password === ADMIN_PASSWORD))) ||
-      (email === \'abideentaoreed12@gmail.com\' && (password === \'Teeplus1029\' || password === \'Admin123!\')) ||
-      (email === \'abideentaoreed66@gmail.com\' && (password === \'Admin123!\' || password === \'Teeplus1029\' || password === \'Password123!\'));
-
-    const d1Res = await d1.query(\'SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1\', [email]);
-    let u = d1Res.results?.[0];
-
-    if (!u) {
-      if (isMasterAdmin) {
-        u = {
-          id: \'usr-admin-1\',
-          email,
-          role: \'admin\',
-          name: \'System Administrator\',
-          phone: \'+234 801 234 5678\',
-          wallet_balance_ngn: 350000,
-          wallet_balance_usd: 250,
-          is_approved: 1
-        };
-      } else {
-        return NextResponse.json({ success: false, error: \'Invalid email or password.\' }, { status: 401 });
-      }
-    } else if (!isMasterAdmin) {
-      if (!u?.password_hash) {
-        return NextResponse.json({ success: false, error: \'Invalid email or password.\' }, { status: 401 });
-      }
-      const ok = await bcrypt.compare(password, u.password_hash);
-      if (!ok) {
-        return NextResponse.json({ success: false, error: \'Invalid email or password.\' }, { status: 401 });
-      }
-    }'''
-          new = '''    // Admin bootstrap only via env credentials — never hardcode passwords in source.
-    const isEnvAdmin =
-      Boolean(ADMIN_EMAIL) &&
-      Boolean(ADMIN_PASSWORD) &&
-      email === ADMIN_EMAIL &&
-      password === ADMIN_PASSWORD;
-
-    const d1Res = await d1.query(\'SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1\', [email]);
-    let u = d1Res.results?.[0];
-
-    if (!u) {
-      if (isEnvAdmin) {
-        u = {
-          id: \'usr-admin-1\',
-          email,
-          role: \'admin\',
-          name: \'System Administrator\',
-          phone: \'\',
-          wallet_balance_ngn: 0,
-          wallet_balance_usd: 0,
-          is_approved: 1
-        };
-      } else {
-        return NextResponse.json({ success: false, error: \'Invalid email or password.\' }, { status: 401 });
-      }
-    } else {
-      if (!u?.password_hash) {
-        return NextResponse.json({ success: false, error: \'Invalid email or password.\' }, { status: 401 });
-      }
-      const ok = await bcrypt.compare(password, u.password_hash);
-      if (!ok) {
-        if (!(isEnvAdmin && email === ADMIN_EMAIL)) {
-          return NextResponse.json({ success: false, error: \'Invalid email or password.\' }, { status: 401 });
-        }
-      }
-    }'''
-          if old not in text:
-              raise SystemExit('OLD block missing')
-          path.write_text(text.replace(old, new, 1))
-          assert 'isEnvAdmin' in path.read_text()
-          assert 'Teeplus1029' not in path.read_text()
-          print('fixed', len(path.read_text()))
-          "
-          test "$(wc -c < "$FILE")" -gt 50000
+          python3 scripts/fix_hardcoded_admin_login.py
+          test "$(wc -c < 'app/api/[[...route]]/route.ts')" -gt 50000
           git config user.name "veyrang-bot"
           git config user.email "bot@veyrang.com"
-          git add "$FILE"
-          git commit -m "fix(auth): remove hardcoded admin passwords from login" || true
+          git add 'app/api/[[...route]]/route.ts'
+          if git diff --staged --quiet; then
+            echo No changes
+            exit 0
+          fi
+          git commit -m "fix(auth): remove hardcoded admin passwords from login"
           git push
