@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     // Official Resend SDK verification (throws if invalid)
     // https://resend.com/docs/webhooks/verify-webhooks-requests
     const resend = new Resend(process.env.RESEND_API_KEY || 're_placeholder_for_verify_only');
-    event = resend.webhooks.verify({
+    const verified = resend.webhooks.verify({
       payload,
       headers: {
         id: svixId,
@@ -72,7 +72,8 @@ export async function POST(req: NextRequest) {
         signature: svixSignature,
       },
       webhookSecret: secret,
-    }) as ResendWebhookEvent;
+    });
+    event = verified as unknown as ResendWebhookEvent;
   } catch (err: any) {
     console.error('[Resend webhook] Signature verification failed:', err?.message || err);
     return NextResponse.json({ success: false, error: 'Invalid webhook signature' }, { status: 401 });
