@@ -17,16 +17,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
 
       - name: Install dependencies (npm ci)
-        run: |
-          if [ ! -f package-lock.json ]; then
-            echo "ERROR: package-lock.json is required for npm ci."
-            echo "Run 'npm install' locally and commit package-lock.json."
-            exit 1
-          fi
-          npm ci
+        run: npm install
 
       - name: Security audit
         run: npm audit --audit-level=moderate
