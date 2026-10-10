@@ -27,7 +27,7 @@ export interface SiteDataSnapshot {
   };
 }
 
-export const PUBLIC_SETTINGS_WHITELIST = new Set([
+// Legacy demo coupons were previously shipped in a checked-in snapshot. Never expose them as live offers.\nconst LEGACY_DEMO_PROMO_CODES = new Set(['FIRST50', 'WELCOME20', 'FREEDEL']);\n\nfunction sanitizePromoCodes(promos: any[] | undefined): any[] {\n  return (promos || []).filter((promo) => {\n    const code = String(promo?.code || '').trim().toUpperCase();\n    return code && !LEGACY_DEMO_PROMO_CODES.has(code);\n  });\n}\n\nexport const PUBLIC_SETTINGS_WHITELIST = new Set([
   'currency_ngn_usd_rate',
   'base_service_fee_ngn',
   'base_service_fee_usd',
@@ -432,7 +432,7 @@ export class SiteDataManager {
           syncStatus: 'synced',
           restaurants,
           deliveryZones: zonesRes.results || [],
-          promoCodes: promoRes.results || [],
+          promoCodes: sanitizePromoCodes(promoRes.results || []),
           platformSettings: safeSettings,
           metadata: {
             restaurantCount: restaurants.length,
@@ -500,7 +500,7 @@ export class SiteDataManager {
       syncStatus: 'synced',
       restaurants: [],
       deliveryZones: this.currentSnapshot?.deliveryZones || [],
-      promoCodes: this.currentSnapshot?.promoCodes || [],
+      promoCodes: sanitizePromoCodes(this.currentSnapshot?.promoCodes),
       platformSettings: this.currentSnapshot?.platformSettings || {},
       metadata: {
         restaurantCount: 0,
