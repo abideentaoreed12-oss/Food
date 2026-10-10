@@ -6,7 +6,7 @@ import { CONFIG } from '../config.ts';
 
 const router = Router();
 
-const WEBHOOK_SECRET = CONFIG.PAYMENT_WEBHOOK_SECRET;
+const WEBHOOK_SECRET = CONFIG.PAYSTACK_SECRET_KEY || '';
 
 // Idempotent webhook receiver
 router.post('/payment', async (req: Request, res: Response) => {
@@ -100,18 +100,13 @@ router.post('/payment', async (req: Request, res: Response) => {
 router.post('/paystack', async (req: Request, res: Response) => {
   try {
     const signature = (req.headers['x-paystack-signature'] as string) || '';
-    const secret =
-      process.env.PAYSTACK_SECRET_KEY ||
-      process.env.PAYSTACK_WEBHOOK_SECRET ||
-      process.env.PAYMENT_SECRET_KEY ||
-      process.env.PAYMENT_WEBHOOK_SECRET ||
-      '';
+    const secret = (process.env.PAYSTACK_SECRET_KEY || '').trim();
 
     if (!secret) {
-      console.error('[Paystack webhook] PAYSTACK_SECRET_KEY is not configured');
+      console.error('[Paystack webhook] PAYSTACK_SECRET_KEY is not configured on the server');
       return res.status(process.env.NODE_ENV === 'production' ? 503 : 401).json({
         success: false,
-        error: 'Webhook secret not configured'
+        error: 'PAYSTACK_SECRET_KEY not configured'
       });
     }
 

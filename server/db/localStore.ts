@@ -4,7 +4,7 @@ import os from 'os';
 import bcrypt from 'bcryptjs';
 import { User, Restaurant, Order, Transaction, AuditLog } from './schema';
 import { CONFIG } from '../config';
-import { INITIAL_RESTAURANTS } from '../../src/data/mockData';
+import { siteDataManager } from '../../lib/siteDataSnapshot';
 
 export interface PromoCodeRecord {
   id: string;
@@ -98,8 +98,8 @@ export function seedInitialData(): DatabaseSchema {
     }
   ];
 
-  // Seed restaurants from catalog data
-  const restaurants: Restaurant[] = [...(INITIAL_RESTAURANTS as any[])];
+  // Seed restaurants from persistent last-known-good site data snapshot
+  const restaurants: Restaurant[] = [...(siteDataManager.getRestaurants() as any[])];
 
   const promoCodes: PromoCodeRecord[] = [
     {

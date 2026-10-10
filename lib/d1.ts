@@ -4,7 +4,7 @@ import os from 'os';
 import { DatabaseSync } from 'node:sqlite';
 import bcrypt from 'bcryptjs';
 import { CONFIG } from '../server/config';
-import { INITIAL_RESTAURANTS } from '../src/data/mockData';
+import { siteDataManager } from './siteDataSnapshot';
 
 export interface D1QueryResult<T = any> {
   results: T[];
@@ -401,7 +401,8 @@ export class D1Client {
       const hasRestaurants = Number(restCount.results?.[0]?.c || 0) > 0;
       if (!hasRestaurants) {
         const now = new Date().toISOString();
-        for (const rest of INITIAL_RESTAURANTS) {
+        const initialList = siteDataManager.getRestaurants();
+        for (const rest of initialList) {
           this.executeLocal(
             `INSERT INTO restaurants (id, name, slug, cuisine, rating, review_count, delivery_time_min, delivery_time_max, delivery_fee, min_order, price_tier, address, distance_km, tags, badge, accent_color, is_open, is_busy_paused, commission_percent, zone, raw_json, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { d1 } from '../../../lib/d1';
 import { r2 } from '../../../lib/r2';
+import { siteDataManager } from '../../../lib/siteDataSnapshot';
 import { paymentGateway } from '../../../lib/payment';
 import {
   calculateRestaurantDistanceMetrics,
@@ -219,6 +220,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
+  // 10b. Site Data Snapshot Status
+  if (pathname === '/site-data/snapshot' || pathname === '/admin/site-data/status') {
+    const snap = siteDataManager.getLastKnownGood();
+    return NextResponse.json({
+      success: true,
+      data: {
+        version: snap?.version || 1,
+        updatedAt: snap?.updatedAt || null,
+        restaurantCount: snap?.restaurants?.length || 0,
+        source: snap?.source || 'disk_cache',
+        deliveryZonesCount: snap?.deliveryZones?.length || 0,
+        promoCodesCount: snap?.promoCodes?.length || 0
+      }
+    });
+  }
+
   // 11. Restaurants list
   if (pathname === '/restaurants' || pathname === '/admin/restaurants') {
     if (pathname === '/admin/restaurants') {
@@ -227,10 +244,24 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
       }
     }
-    const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC LIMIT 200');
-    let list = (d1Res.results || []).map((r: any) => {
-      try { return r.raw_json ? { ...JSON.parse(r.raw_json), id: r.id, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 } : r; } catch { return r; }
-    });
+
+    // Trigger non-blocking 10s background sync if stale
+    siteDataManager.syncIfStale().catch(() => {});
+
+    let list: any[] = [];
+    try {
+      const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC LIMIT 200');
+      list = (d1Res.results || []).map((r: any) => {
+        try { return r.raw_json ? { ...JSON.parse(r.raw_json), id: r.id, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 } : r; } catch { return r; }
+      });
+    } catch (err: any) {
+      console.warn('[Restaurants Route] Primary D1 fetch warning, serving last-known-good snapshot:', err?.message || err);
+    }
+
+    // Never fall back to demo data: use persistent last-known-good snapshot if query failed or was empty
+    if (!list || list.length === 0) {
+      list = siteDataManager.getRestaurants();
+    }
 
     const userAddr = req.nextUrl.searchParams.get('address');
     const userLatStr = req.nextUrl.searchParams.get('lat');
@@ -255,16 +286,27 @@ export async function GET(req: NextRequest) {
     const parts = pathname.split('/').filter(Boolean);
     const id = parts[1];
     if (id && id !== 'calculate-distance') {
-      const d1Res = await d1.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id]);
-      if (d1Res.results?.[0]) {
-        const r = d1Res.results[0];
-        try {
-          const parsed = r.raw_json ? JSON.parse(r.raw_json) : r;
-          return NextResponse.json({ success: true, data: { ...parsed, id: r.id, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 } });
-        } catch {
-          return NextResponse.json({ success: true, data: r });
+      try {
+        const d1Res = await d1.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id]);
+        if (d1Res.results?.[0]) {
+          const r = d1Res.results[0];
+          try {
+            const parsed = r.raw_json ? JSON.parse(r.raw_json) : r;
+            return NextResponse.json({ success: true, data: { ...parsed, id: r.id, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 } });
+          } catch {
+            return NextResponse.json({ success: true, data: r });
+          }
         }
+      } catch (err) {
+        console.warn('[Single Restaurant] Primary query warning:', err);
       }
+
+      // Check persistent last-known-good snapshot
+      const snapshotRest = siteDataManager.getRestaurants().find((r: any) => r.id === id);
+      if (snapshotRest) {
+        return NextResponse.json({ success: true, data: snapshotRest });
+      }
+
       return NextResponse.json({ success: false, error: 'Restaurant not found' }, { status: 404 });
     }
   }

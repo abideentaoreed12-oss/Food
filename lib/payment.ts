@@ -35,19 +35,11 @@ export class PaymentGatewayClient {
   private secretKey: string;
 
   constructor() {
-    this.secretKey =
-      process.env.PAYSTACK_SECRET_KEY ||
-      process.env.PAYMENT_SECRET_KEY ||
-      '';
+    this.secretKey = process.env.PAYSTACK_SECRET_KEY || '';
   }
 
   private getSecretKey(): string {
-    return (
-      process.env.PAYSTACK_SECRET_KEY ||
-      process.env.PAYMENT_SECRET_KEY ||
-      this.secretKey ||
-      ''
-    );
+    return process.env.PAYSTACK_SECRET_KEY || this.secretKey || '';
   }
 
   public async initializePayment(params: InitializePaymentParams): Promise<PaymentInitializationResult> {

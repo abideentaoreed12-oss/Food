@@ -1,0 +1,883 @@
+{
+  "version": 4,
+  "updatedAt": "2026-10-10T10:43:27.114Z",
+  "source": "cloudflare_d1",
+  "restaurants": [
+    {
+      "id": "rest-1791113979297",
+      "name": "Ibadan Gourmet Bistro",
+      "slug": "ibadan-gourmet-bistro",
+      "tagline": "Authentic dishes prepared fresh to order",
+      "cuisine": "Continental & Nigerian",
+      "address": "Ring Road, Ibadan",
+      "rating": 4.8,
+      "reviewCount": 1,
+      "deliveryTimeMin": 20,
+      "deliveryTimeMax": 40,
+      "deliveryFee": 500,
+      "minOrder": 1500,
+      "priceTier": "$$",
+      "bannerUrl": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1000",
+      "logoUrl": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200",
+      "isOpen": true,
+      "isBusyPaused": false,
+      "distanceKm": 2.5,
+      "categories": [
+        {
+          "id": "cat-1791113979297",
+          "name": "Main Dishes",
+          "description": "Popular main meals",
+          "items": []
+        }
+      ]
+    },
+    {
+      "id": "rest-3",
+      "name": "The Grill Spot",
+      "tagline": "Signature flame-grilled chicken, steamed rice platters & continental feasts",
+      "cuisine": "Grills · Continental",
+      "rating": 4.7,
+      "reviewCount": 384,
+      "deliveryTimeMin": 30,
+      "deliveryTimeMax": 40,
+      "deliveryFee": 500,
+      "minOrder": 3200,
+      "priceTier": "$$",
+      "address": "Plot 12 Bisola Durosinmi Etti Drive, Lekki Phase 1",
+      "lat": 6.4461,
+      "lng": 3.4712,
+      "distanceKm": 2.4,
+      "tags": [
+        "Grills",
+        "Continental",
+        "Chicken",
+        "Rice"
+      ],
+      "badge": "Top Rated",
+      "accentColor": "#16A34A",
+      "iconName": "Soup",
+      "isOpen": true,
+      "zone": "LAGOS",
+      "categories": [
+        {
+          "id": "cat-3-1",
+          "name": "Rice Delicacies",
+          "description": "Firewood smokey jollof and seasoned fried rice cooked to perfection",
+          "items": [
+            {
+              "id": "item-301",
+              "restaurantId": "rest-3",
+              "name": "Smokey Party Jollof & Asun",
+              "description": "Rich fire-cooked firewood jollof rice served with spicy peppered goat meat (Asun), fried sweet plantain (Dodo), and coleslaw",
+              "price": 4800,
+              "category": "Rice Delicacies",
+              "dietary": [
+                "Chef Special",
+                "Halal"
+              ],
+              "popular": true,
+              "calories": 850,
+              "prepTimeMin": 14,
+              "isAvailable": true,
+              "customizations": [
+                {
+                  "id": "grp-protein-jollof",
+                  "name": "Protein Choice",
+                  "required": true,
+                  "options": [
+                    {
+                      "id": "pr-asun",
+                      "name": "Spicy Goat Meat (Asun)",
+                      "price": 0
+                    },
+                    {
+                      "id": "pr-beef",
+                      "name": "Fried Assorted Beef",
+                      "price": 0
+                    },
+                    {
+                      "id": "pr-chicken",
+                      "name": "Crispy Grilled Quarter Chicken",
+                      "price": 400
+                    },
+                    {
+                      "id": "pr-fish",
+                      "name": "Fried Croaker Fish",
+                      "price": 1000
+                    }
+                  ]
+                },
+                {
+                  "id": "grp-extra-sides",
+                  "name": "Extra Sides",
+                  "required": false,
+                  "options": [
+                    {
+                      "id": "ex-dodo",
+                      "name": "Extra Portion Dodo (Plantain)",
+                      "price": 800
+                    },
+                    {
+                      "id": "ex-moimoi",
+                      "name": "Rich Fish Moi Moi",
+                      "price": 1200
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "item-302",
+              "restaurantId": "rest-3",
+              "name": "Special Fried Rice & Turkey",
+              "description": "Fragrant basmati rice tossed with sweet carrots, peas, sweet corn, and jumbo peppered fried turkey wing",
+              "price": 5200,
+              "category": "Rice Delicacies",
+              "dietary": [
+                "Halal"
+              ],
+              "popular": true,
+              "calories": 820,
+              "prepTimeMin": 14,
+              "isAvailable": true
+            }
+          ]
+        },
+        {
+          "id": "cat-3-2",
+          "name": "Soups & Traditional Swallow",
+          "description": "Authentic local pots prepared with pure stock fish, dried crayfish, and palm oil",
+          "items": [
+            {
+              "id": "item-303",
+              "restaurantId": "rest-3",
+              "name": "Egusi Soup with Pounded Yam",
+              "description": "Melon seed soup with bitterleaf and spinach, cooked with dried stockfish and cow leg, served with hot soft pounded yam",
+              "price": 5500,
+              "category": "Soups & Traditional Swallow",
+              "dietary": [
+                "Chef Special"
+              ],
+              "popular": true,
+              "calories": 980,
+              "prepTimeMin": 16,
+              "isAvailable": true,
+              "customizations": [
+                {
+                  "id": "grp-swallow",
+                  "name": "Select Swallow",
+                  "required": true,
+                  "options": [
+                    {
+                      "id": "sw-yam",
+                      "name": "Smooth Pounded Yam",
+                      "price": 0
+                    },
+                    {
+                      "id": "sw-eba",
+                      "name": "Yellow Garri Eba",
+                      "price": 0
+                    },
+                    {
+                      "id": "sw-semovita",
+                      "name": "Semovita",
+                      "price": 0
+                    },
+                    {
+                      "id": "sw-wheat",
+                      "name": "Whole Wheat",
+                      "price": 0
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "item-304",
+              "restaurantId": "rest-3",
+              "name": "Fresh Catfish Pepper Soup",
+              "description": "Hot aromatic broth brewed with alligator pepper, calabash nutmeg, and fresh point-and-kill catfish",
+              "price": 3800,
+              "category": "Soups & Traditional Swallow",
+              "dietary": [
+                "Chef Special"
+              ],
+              "popular": false,
+              "calories": 420,
+              "prepTimeMin": 18,
+              "isAvailable": true
+            }
+          ]
+        }
+      ],
+      "isBusyPaused": false
+    },
+    {
+      "id": "rest-5",
+      "name": "The Good Bowl (Healthy & Salads)",
+      "tagline": "Fresh crisp salads, detox bowls, and cold-pressed juices",
+      "cuisine": "Healthy & Vegan",
+      "rating": 4.7,
+      "reviewCount": 195,
+      "deliveryTimeMin": 20,
+      "deliveryTimeMax": 30,
+      "deliveryFee": 500,
+      "minOrder": 1500,
+      "priceTier": "$$",
+      "address": "22 Block 11 Omorinre Johnson St, Lekki Phase 1",
+      "lat": 6.4491,
+      "lng": 3.4698,
+      "distanceKm": 2.8,
+      "tags": [
+        "Healthy",
+        "Salads",
+        "Smoothies",
+        "Vegan",
+        "Bowls"
+      ],
+      "badge": "Healthy Choice",
+      "accentColor": "#059669",
+      "iconName": "Leaf",
+      "isOpen": true,
+      "zone": "LAGOS",
+      "categories": [
+        {
+          "id": "cat-5-1",
+          "name": "Wholesome Salad Bowls",
+          "description": "Nutrient-rich bowls assembled with organic locally sourced produce",
+          "items": [
+            {
+              "id": "item-501",
+              "restaurantId": "rest-5",
+              "name": "Grilled Chicken Caesar Salad",
+              "description": "Crisp romaine lettuce, herb-grilled chicken breast, shaved parmesan, garlic croutons, and creamy Caesar vinaigrette",
+              "price": 4200,
+              "category": "Wholesome Salad Bowls",
+              "dietary": [
+                "Halal"
+              ],
+              "popular": true,
+              "calories": 460,
+              "prepTimeMin": 10,
+              "isAvailable": true
+            },
+            {
+              "id": "item-502",
+              "restaurantId": "rest-5",
+              "name": "Quinoa & Avocado Glow Bowl",
+              "description": "Fluffy tri-color quinoa, ripe Hass avocado, cherry tomatoes, edamame, and toasted sunflower seeds in lime tahini dressing",
+              "price": 4800,
+              "category": "Wholesome Salad Bowls",
+              "dietary": [
+                "Vegan",
+                "Gluten-Free"
+              ],
+              "popular": true,
+              "calories": 410,
+              "prepTimeMin": 8,
+              "isAvailable": true
+            }
+          ]
+        },
+        {
+          "id": "cat-5-2",
+          "name": "Cold-Pressed Juices",
+          "description": "100% pure raw fruit and vegetable extracts with no added refined sugar",
+          "items": [
+            {
+              "id": "item-503",
+              "restaurantId": "rest-5",
+              "name": "Green Immunity Detox Juice",
+              "description": "Fresh spinach, green apple, cucumber, celery, ginger, and lemon zest (500ml)",
+              "price": 2000,
+              "category": "Cold-Pressed Juices",
+              "dietary": [
+                "Vegan",
+                "Gluten-Free"
+              ],
+              "popular": false,
+              "calories": 140,
+              "prepTimeMin": 5,
+              "isAvailable": true
+            }
+          ]
+        }
+      ],
+      "isBusyPaused": false
+    },
+    {
+      "id": "rest-1",
+      "name": "Burger House Lekki",
+      "tagline": "Gourmet smashed beef burgers & hand-cut golden fries",
+      "cuisine": "Burgers & Grills",
+      "rating": 4.6,
+      "reviewCount": 320,
+      "deliveryTimeMin": 25,
+      "deliveryTimeMax": 35,
+      "deliveryFee": 500,
+      "minOrder": 2800,
+      "priceTier": "$$",
+      "address": "14 Admiralty Way, Lekki Phase 1",
+      "lat": 6.4474,
+      "lng": 3.4723,
+      "distanceKm": 1.8,
+      "tags": [
+        "Burgers",
+        "Chicken",
+        "Fries",
+        "Fast Food",
+        "Wings"
+      ],
+      "badge": "Popular",
+      "accentColor": "#EA580C",
+      "iconName": "Burger",
+      "isOpen": true,
+      "zone": "NYC",
+      "categories": [
+        {
+          "id": "cat-1-1",
+          "name": "Gourmet Burgers",
+          "description": "100% prime beef patties smashed on cast iron with secret house sauce",
+          "items": [
+            {
+              "id": "item-101",
+              "restaurantId": "rest-1",
+              "name": "Classic Burger",
+              "description": "Prime beef patty, crisp lettuce, sliced tomato, pickles, and our signature burger relish on a toasted brioche bun",
+              "price": 3500,
+              "category": "Gourmet Burgers",
+              "dietary": [
+                "Chef Special"
+              ],
+              "popular": true,
+              "calories": 650,
+              "prepTimeMin": 12,
+              "isAvailable": true,
+              "customizations": [
+                {
+                  "id": "grp-doneness",
+                  "name": "Patty Doneness",
+                  "required": true,
+                  "options": [
+                    {
+                      "id": "done-well",
+                      "name": "Well Done (Standard)",
+                      "price": 0
+                    },
+                    {
+                      "id": "done-med",
+                      "name": "Medium Well",
+                      "price": 0
+                    }
+                  ]
+                },
+                {
+                  "id": "grp-extras",
+                  "name": "Add Extras",
+                  "required": false,
+                  "options": [
+                    {
+                      "id": "ex-cheese",
+                      "name": "Extra Cheddar Cheese Slice",
+                      "price": 500
+                    },
+                    {
+                      "id": "ex-bacon",
+                      "name": "Crispy Beef Bacon Strips",
+                      "price": 800
+                    },
+                    {
+                      "id": "ex-patty",
+                      "name": "Extra Beef Patty",
+                      "price": 1500
+                    },
+                    {
+                      "id": "ex-jalapeno",
+                      "name": "Spicy Pickled Jalapeños",
+                      "price": 300
+                    }
+                  ]
+                }
+              ],
+              "is_available": 1
+            },
+            {
+              "id": "item-102",
+              "restaurantId": "rest-1",
+              "name": "Cheese Burger",
+              "description": "Double melted Wisconsin cheddar, prime beef patty, caramelized onions, house truffle mayonnaise",
+              "price": 4200,
+              "category": "Gourmet Burgers",
+              "dietary": [
+                "Chef Special"
+              ],
+              "popular": true,
+              "calories": 780,
+              "prepTimeMin": 14,
+              "isAvailable": true,
+              "customizations": [
+                {
+                  "id": "grp-cheese-type",
+                  "name": "Cheese Variety",
+                  "required": false,
+                  "options": [
+                    {
+                      "id": "ch-cheddar",
+                      "name": "Sharp Cheddar",
+                      "price": 0
+                    },
+                    {
+                      "id": "ch-pepperjack",
+                      "name": "Pepper Jack (Spicy)",
+                      "price": 200
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "item-103",
+              "restaurantId": "rest-1",
+              "name": "Double Beef Gourmet",
+              "description": "Two quarter-pound beef patties, crispy onion strings, smoked barbecue glaze, and double American cheese",
+              "price": 5500,
+              "category": "Gourmet Burgers",
+              "dietary": [
+                "Chef Special"
+              ],
+              "popular": false,
+              "calories": 950,
+              "prepTimeMin": 15,
+              "isAvailable": true
+            }
+          ]
+        },
+        {
+          "id": "cat-1-2",
+          "name": "Sides & Finger Foods",
+          "description": "Crispy accompaniments made fresh to order",
+          "items": [
+            {
+              "id": "item-104",
+              "restaurantId": "rest-1",
+              "name": "Crispy French Fries",
+              "description": "Hand-cut Idaho potatoes tossed with rosemary sea salt and served with garlic aioli",
+              "price": 1500,
+              "category": "Sides & Finger Foods",
+              "dietary": [
+                "Vegetarian"
+              ],
+              "popular": true,
+              "calories": 380,
+              "prepTimeMin": 8,
+              "isAvailable": true,
+              "customizations": [
+                {
+                  "id": "grp-fries-size",
+                  "name": "Portion Size",
+                  "required": true,
+                  "options": [
+                    {
+                      "id": "sz-regular",
+                      "name": "Regular Size",
+                      "price": 0
+                    },
+                    {
+                      "id": "sz-large",
+                      "name": "Large Size (+ ₦500)",
+                      "price": 500
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "item-105",
+              "restaurantId": "rest-1",
+              "name": "Loaded BBQ Wings",
+              "description": "6 pieces of jumbo crispy chicken wings tossed in sticky smoky hickory BBQ sauce",
+              "price": 3200,
+              "category": "Sides & Finger Foods",
+              "dietary": [
+                "Halal"
+              ],
+              "popular": true,
+              "calories": 620,
+              "prepTimeMin": 14,
+              "isAvailable": true
+            }
+          ]
+        },
+        {
+          "id": "cat-1-3",
+          "name": "Thick Milkshakes",
+          "description": "Churned with rich premium dairy ice cream",
+          "items": [
+            {
+              "id": "item-106",
+              "restaurantId": "rest-1",
+              "name": "Oreo Crumb Milkshake",
+              "description": "Velvety vanilla bean ice cream blended with crushed Oreo cookies and whipped cream",
+              "price": 2200,
+              "category": "Thick Milkshakes",
+              "dietary": [
+                "Vegetarian"
+              ],
+              "popular": true,
+              "calories": 540,
+              "prepTimeMin": 5,
+              "isAvailable": true
+            }
+          ]
+        }
+      ],
+      "isBusyPaused": false,
+      "commissionPercent": 15,
+      "createdAt": "2026-10-06T07:44:34.016Z"
+    },
+    {
+      "id": "rest-6",
+      "name": "Tokyo Wok & Dim Sum",
+      "tagline": "Sizzling Asian stir-fries, handmade dumplings & noodles",
+      "cuisine": "Asian & Chinese",
+      "rating": 4.6,
+      "reviewCount": 380,
+      "deliveryTimeMin": 30,
+      "deliveryTimeMax": 40,
+      "deliveryFee": 700,
+      "minOrder": 2500,
+      "priceTier": "$$$",
+      "address": "Plot 1043 Adeola Odeku St, Victoria Island",
+      "lat": 6.4281,
+      "lng": 3.4219,
+      "distanceKm": 4.2,
+      "tags": [
+        "Asian",
+        "Dim Sum",
+        "Noodles",
+        "Fried Rice",
+        "Chinese"
+      ],
+      "badge": "Popular",
+      "accentColor": "#9333EA",
+      "iconName": "Soup",
+      "isOpen": true,
+      "zone": "LAGOS",
+      "categories": [
+        {
+          "id": "cat-6-1",
+          "name": "Wok Specialties",
+          "description": "High-heat wok cooking with traditional soy, garlic, and scallion oils",
+          "items": [
+            {
+              "id": "item-601",
+              "restaurantId": "rest-6",
+              "name": "Special House Fried Rice",
+              "description": "Wok-tossed jasmine rice with jumbo tiger prawns, beef strips, spring onions, and roasted sesame oil",
+              "price": 4500,
+              "category": "Wok Specialties",
+              "dietary": [
+                "Chef Special"
+              ],
+              "popular": true,
+              "calories": 740,
+              "prepTimeMin": 14,
+              "isAvailable": true
+            },
+            {
+              "id": "item-602",
+              "restaurantId": "rest-6",
+              "name": "Sweet & Sour Crispy Chicken",
+              "description": "Golden battered chicken pieces tossed with sweet bell peppers and pineapple in a tart glaze",
+              "price": 5200,
+              "category": "Wok Specialties",
+              "dietary": [
+                "Halal"
+              ],
+              "popular": true,
+              "calories": 690,
+              "prepTimeMin": 15,
+              "isAvailable": true
+            }
+          ]
+        },
+        {
+          "id": "cat-6-2",
+          "name": "Handcrafted Dim Sum",
+          "description": "Steamed in traditional bamboo baskets",
+          "items": [
+            {
+              "id": "item-603",
+              "restaurantId": "rest-6",
+              "name": "Steamed Prawn Dumplings (Har Gow)",
+              "description": "4 translucent crystal dumplings filled with seasoned whole prawns, served with chili dipping oil",
+              "price": 3800,
+              "category": "Handcrafted Dim Sum",
+              "dietary": [
+                "Chef Special"
+              ],
+              "popular": true,
+              "calories": 280,
+              "prepTimeMin": 12,
+              "isAvailable": true
+            }
+          ]
+        }
+      ],
+      "isBusyPaused": false
+    },
+    {
+      "id": "rest-2",
+      "name": "Pizza Palace",
+      "tagline": "Artisan hand-tossed pizzas, crispy crusts & rich toppings",
+      "cuisine": "Pizza · Italian · Fast Food",
+      "rating": 4.5,
+      "reviewCount": 428,
+      "deliveryTimeMin": 25,
+      "deliveryTimeMax": 35,
+      "deliveryFee": 500,
+      "minOrder": 2700,
+      "priceTier": "$$",
+      "address": "Plot 28 Victoria Arobieke St, Lekki Phase 1",
+      "lat": 6.4485,
+      "lng": 3.4751,
+      "distanceKm": 2.1,
+      "tags": [
+        "Pizza",
+        "Italian",
+        "Fast Food",
+        "Vegetarian"
+      ],
+      "badge": "Popular",
+      "accentColor": "#DC2626",
+      "iconName": "Pizza",
+      "isOpen": true,
+      "zone": "LAGOS",
+      "categories": [
+        {
+          "id": "cat-2-1",
+          "name": "Signature Pizzas",
+          "description": "72-hour slow fermented dough baked at 450°C in our volcanic stone oven",
+          "items": [
+            {
+              "id": "item-201",
+              "restaurantId": "rest-2",
+              "name": "Pepperoni Passion",
+              "description": "Loaded with beef pepperoni slices, rich San Marzano tomato reduction, and shredded creamy mozzarella",
+              "price": 6500,
+              "category": "Signature Pizzas",
+              "dietary": [
+                "Chef Special"
+              ],
+              "popular": true,
+              "calories": 880,
+              "prepTimeMin": 15,
+              "isAvailable": true,
+              "customizations": [
+                {
+                  "id": "grp-pizza-size",
+                  "name": "Crust Size",
+                  "required": true,
+                  "options": [
+                    {
+                      "id": "pz-med",
+                      "name": "Medium 12-inch",
+                      "price": 0
+                    },
+                    {
+                      "id": "pz-large",
+                      "name": "Large 14-inch (+ ₦1,500)",
+                      "price": 1500
+                    }
+                  ]
+                },
+                {
+                  "id": "grp-cheese-crust",
+                  "name": "Crust Style",
+                  "required": false,
+                  "options": [
+                    {
+                      "id": "cr-thin",
+                      "name": "Traditional Crispy Thin",
+                      "price": 0
+                    },
+                    {
+                      "id": "cr-stuffed",
+                      "name": "Cheese-Stuffed Crust (+ ₦1,000)",
+                      "price": 1000
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "item-202",
+              "restaurantId": "rest-2",
+              "name": "Margherita Classica",
+              "description": "San Marzano plum tomatoes, fresh buffalo mozzarella, aromatic sweet basil, extra virgin olive oil",
+              "price": 5200,
+              "category": "Signature Pizzas",
+              "dietary": [
+                "Vegetarian"
+              ],
+              "popular": true,
+              "calories": 720,
+              "prepTimeMin": 12,
+              "isAvailable": true
+            },
+            {
+              "id": "item-203",
+              "restaurantId": "rest-2",
+              "name": "BBQ Chicken Supreme",
+              "description": "Flame-grilled shredded chicken, sweet corn, bell peppers, red onions, tangy BBQ swirl",
+              "price": 7200,
+              "category": "Signature Pizzas",
+              "dietary": [
+                "Halal"
+              ],
+              "popular": false,
+              "calories": 890,
+              "prepTimeMin": 16,
+              "isAvailable": true
+            }
+          ]
+        },
+        {
+          "id": "cat-2-2",
+          "name": "Starters & Bread",
+          "description": "Oven-fresh garlic breads and sides",
+          "items": [
+            {
+              "id": "item-204",
+              "restaurantId": "rest-2",
+              "name": "Cheesy Garlic Breadsticks",
+              "description": "Fresh dough brushed with roasted garlic herb butter and covered in bubbling mozzarella",
+              "price": 2200,
+              "category": "Starters & Bread",
+              "dietary": [
+                "Vegetarian"
+              ],
+              "popular": true,
+              "calories": 450,
+              "prepTimeMin": 10,
+              "isAvailable": true
+            }
+          ]
+        }
+      ],
+      "isBusyPaused": false
+    }
+  ],
+  "deliveryZones": [
+    {
+      "id": "zone-ikoyi",
+      "name": "Ikoyi",
+      "code": "IKOYI",
+      "city": "Lagos",
+      "country": "Nigeria",
+      "currency": "NGN",
+      "center_lat": 6.4549,
+      "center_lng": 3.4411,
+      "radius_km": 15,
+      "base_delivery_fee": 1500,
+      "per_km_fee": 250,
+      "surge_multiplier": 1,
+      "is_active": 1,
+      "created_at": "2026-10-06T11:21:00.493Z",
+      "map_image_r2_url": null
+    },
+    {
+      "id": "zone-yaba",
+      "name": "Yaba District",
+      "code": "YABA",
+      "city": "Lagos",
+      "country": "Nigeria",
+      "currency": "NGN",
+      "center_lat": 6.5164,
+      "center_lng": 3.3858,
+      "radius_km": 15,
+      "base_delivery_fee": 1200,
+      "per_km_fee": 200,
+      "surge_multiplier": 1,
+      "is_active": 1,
+      "created_at": "2026-10-06T11:21:00.493Z",
+      "map_image_r2_url": null
+    },
+    {
+      "id": "zone-ikeja",
+      "name": "Ikeja",
+      "code": "IKEJA",
+      "city": "Lagos",
+      "country": "Nigeria",
+      "currency": "NGN",
+      "center_lat": 6.5921,
+      "center_lng": 3.3422,
+      "radius_km": 20,
+      "base_delivery_fee": 1800,
+      "per_km_fee": 250,
+      "surge_multiplier": 1,
+      "is_active": 1,
+      "created_at": "2026-10-06T11:21:00.258Z",
+      "map_image_r2_url": null
+    }
+  ],
+  "promoCodes": [
+    {
+      "id": "prm-first50",
+      "code": "FIRST50",
+      "discount_type": "percentage",
+      "value": 50,
+      "min_order_amount": 2000,
+      "max_discount_cap": null,
+      "usage_limit": 500,
+      "times_used": 0,
+      "is_active": 1,
+      "expires_at": null,
+      "created_at": "2026-10-08T09:07:41.106Z"
+    },
+    {
+      "id": "prm-welcome20",
+      "code": "WELCOME20",
+      "discount_type": "percentage",
+      "value": 20,
+      "min_order_amount": 1500,
+      "max_discount_cap": null,
+      "usage_limit": 1000,
+      "times_used": 0,
+      "is_active": 1,
+      "expires_at": null,
+      "created_at": "2026-10-08T09:07:41.106Z"
+    },
+    {
+      "id": "prm-freedel",
+      "code": "FREEDEL",
+      "discount_type": "fixed",
+      "value": 500,
+      "min_order_amount": 3000,
+      "max_discount_cap": null,
+      "usage_limit": 2000,
+      "times_used": 0,
+      "is_active": 1,
+      "expires_at": null,
+      "created_at": "2026-10-08T09:07:41.106Z"
+    }
+  ],
+  "platformSettings": {
+    "currency_ngn_usd_rate": "1400",
+    "platform_commission_percent": "15",
+    "base_service_fee_ngn": "500",
+    "base_service_fee_usd": "1.99",
+    "minimum_order_ngn": "2500",
+    "minimum_order_usd": "10.00",
+    "dispatch_search_radius_km": "7.5",
+    "support_phone": "+234 800 VEYRANG",
+    "support_email": "support@veyrang.com",
+    "maintenance_mode": "false",
+    "cms_hero_title": "Hot, Delicious Meals Delivered to Your Door in 25 Minutes.",
+    "cms_hero_subtitle": "Order authentic specialties, artisanal pizzas, gourmet burgers, and delicious dishes from top-rated restaurants across your city. Verified kitchen tracking, 4-digit handover PIN protection, and zero payment failures with your in-app Naira wallet.",
+    "cms_hero_badge": "Global Express Food & Cloud Kitchen Network",
+    "cms_announcement_banner": "🚀 Instant Delivery across Lagos & Abuja | ₦500 Flat Dispatch Fee on Orders Over ₦5,000!",
+    "seeded_delivery_zones": "true",
+    "seeded_promo_codes": "true"
+  }
+}

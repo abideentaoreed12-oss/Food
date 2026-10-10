@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { paymentGateway } from '../../../../lib/payment';
+import { paystackLiveGate } from '../../../../lib/paystackGate';
 import { d1Client } from '../../../../server/db/d1Client';
 import { d1 } from '../../../../lib/d1';
 
@@ -14,7 +14,9 @@ async function processVerification(reference: string) {
     );
   }
 
-  const result = await paymentGateway.verifyPayment(reference);
+  const result = await paystackLiveGate.verifyTransaction(reference, {
+    applyDatabaseUpdates: false,
+  });
 
   if (!result.success || !result.isPaid) {
     return NextResponse.json({
@@ -128,7 +130,7 @@ async function processVerification(reference: string) {
       amountNGN: amountPaid,
       currency,
       orderId: order?.id || orderId,
-      customerEmail: result.customerEmail
+      customerEmail: result.customer?.email || result.customerEmail
     }
   });
 }

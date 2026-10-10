@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import { User, Restaurant, Order, Transaction, AuditLog, OrderStatus } from './schema';
 import { d1Client } from './d1Client';
 import { CONFIG } from '../config';
-import { INITIAL_RESTAURANTS } from '../../src/data/mockData';
+import { siteDataManager } from '../../lib/siteDataSnapshot';
 interface OtpEntry {
   code: string;
   purpose: 'register' | 'forgot';
@@ -72,8 +72,8 @@ function seedInitialData(): DatabaseSchema {
     }
   ];
 
-  // Seed restaurants from catalog data
-  const restaurants: Restaurant[] = [...(INITIAL_RESTAURANTS as any[])];
+  // Seed restaurants from persistent last-known-good site data snapshot
+  const restaurants: Restaurant[] = [...(siteDataManager.getRestaurants() as any[])];
 
   const initialOrders: Order[] = [];
   const transactions: Transaction[] = [];
@@ -109,7 +109,7 @@ function seedInitialData(): DatabaseSchema {
 export function loadDatabase(): DatabaseSchema {
   if (dbCache) {
     if (!dbCache.restaurants || dbCache.restaurants.length === 0) {
-      dbCache.restaurants = [...(INITIAL_RESTAURANTS as any[])];
+      dbCache.restaurants = [...(siteDataManager.getRestaurants() as any[])];
     }
     // Filter out demo/test users
     dbCache.users = (dbCache.users || []).filter((u) => {
@@ -138,7 +138,7 @@ export function loadDatabase(): DatabaseSchema {
       if (parsed && Array.isArray(parsed.users)) {
         dbCache = parsed;
         if (!dbCache!.restaurants || dbCache!.restaurants.length === 0) {
-          dbCache!.restaurants = [...(INITIAL_RESTAURANTS as any[])];
+          dbCache!.restaurants = [...(siteDataManager.getRestaurants() as any[])];
         }
         
         // Filter out demo/test users

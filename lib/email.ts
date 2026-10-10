@@ -220,13 +220,15 @@ export async function sendVerificationEmail({
     }
   }
 
-  // Option 2: Try Nodemailer SMTP if SMTP_PASS / GMAIL_APP_PASSWORD is set
+  // Option 2: Try Nodemailer SMTP (Automatic Gmail SMTP Fallback)
   if (smtpPass && smtpPass.trim() !== '') {
     try {
+      const isSecure = smtpPort === 465 || smtpHost === 'smtp.gmail.com';
+      const senderName = process.env.EMAIL_SENDER_NAME || 'Veyrang Support';
       const transporter = nodemailer.createTransport({
         host: smtpHost,
         port: smtpPort,
-        secure: smtpPort === 465,
+        secure: isSecure,
         auth: {
           user: smtpUser,
           pass: smtpPass,
@@ -234,23 +236,23 @@ export async function sendVerificationEmail({
       });
 
       const info = await transporter.sendMail({
-        from: `"Veyrang Food Express" <${smtpUser}>`,
+        from: `"${senderName}" <${smtpUser}>`,
         to,
         subject,
         html,
       });
 
-      console.log(`[SMTP Email Success] Code ${code} sent to ${to} via SMTP. ID: ${info.messageId}`);
+      console.log(`[SMTP Email Success] Code ${code} sent to ${to} via Gmail/SMTP. ID: ${info.messageId}`);
       return { success: true, method: 'smtp', messageId: info.messageId };
     } catch (err: any) {
       console.error(`[SMTP Email Error] Failed to dispatch via SMTP to ${to}:`, err);
     }
   }
 
-  // Fallback: Notice if credentials need to be set in .env
-  console.warn(`[Email Dispatch Warning] Neither RESEND_API_KEY nor SMTP_PASS are set with valid production credentials in .env. Code ${code} for ${to} stored in Cloudflare D1.`);
+  // Fallback: Notice if credentials need to be set in environment secrets
+  console.warn(`[Email Dispatch Warning] Neither RESEND_API_KEY nor GMAIL_APP_PASSWORD (SMTP_PASS) are set in secrets. Code ${code} for ${to} stored in Cloudflare D1.`);
   return {
     success: false,
-    error: 'Email delivery service requires RESEND_API_KEY or SMTP_PASS (Gmail App Password) in environment variables.',
+    error: 'Email delivery service requires GMAIL_USER and GMAIL_APP_PASSWORD (or RESEND_API_KEY) in secrets.',
   };
 }

@@ -2,9 +2,13 @@ import path from 'path';
 import express from 'express';
 import { createServerApp } from './server/app.ts';
 import { CONFIG } from './server/config.ts';
+import { siteDataManager } from './lib/siteDataSnapshot.ts';
 
 const app = createServerApp();
 const PORT = CONFIG.PORT || 3000;
+
+// Start 10-second reliable background sync for site data snapshot
+siteDataManager.startBackgroundSync(10000);
 
 async function start() {
   if (process.env.NODE_ENV === 'production') {

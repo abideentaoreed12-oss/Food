@@ -53,8 +53,17 @@ export const CONFIG = {
   CLOUDFLARE_R2_BUCKET: process.env.CLOUDFLARE_R2_BUCKET || '',
   CLOUDFLARE_R2_PUBLIC_URL: (process.env.CLOUDFLARE_R2_PUBLIC_URL || '').replace(/\/$/, ''),
 
-  PAYMENT_WEBHOOK_SECRET: process.env.PAYMENT_WEBHOOK_SECRET || process.env.PAYSTACK_WEBHOOK_SECRET || '',
+  // Paystack Official Integration Configuration
+  PAYSTACK_SECRET_KEY: (process.env.PAYSTACK_SECRET_KEY || '').trim(),
+  NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: (process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_live_49b0196c7c50a9138e64d0a169ea5cced6ff14f0').trim(),
+  PAYSTACK_CALLBACK_URL: (process.env.PAYSTACK_CALLBACK_URL || 'https://www.veyrang.com/payment/callback').trim(),
+  PAYSTACK_WEBHOOK_URL: (process.env.PAYSTACK_WEBHOOK_URL || 'https://www.veyrang.com/api/webhooks/paystack').trim(),
 
+  // Email Configuration with Automatic Gmail SMTP Fallback
+  SMTP_HOST: (process.env.SMTP_HOST || 'smtp.gmail.com').trim(),
+  SMTP_PORT: parseInt(process.env.SMTP_PORT || '465', 10),
+  SMTP_SECURE: true,
+  EMAIL_SENDER_NAME: (process.env.EMAIL_SENDER_NAME || 'Veyrang Support').trim(),
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
 
   GOOGLE_MAPS_API_KEY:

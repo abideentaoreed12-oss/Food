@@ -11,12 +11,16 @@ import {
   geocodeAddress
 } from '../utils/distance.ts';
 import { cachedQuery, CacheKeys, cacheInvalidate } from '../../lib/queryCache.ts';
+import { siteDataManager } from '../../lib/siteDataSnapshot.ts';
 
 const router = Router();
 
 // Public: Get all restaurants with optional filtering and automatic distance calculation
 router.get('/', async (req: Request, res: Response) => {
   try {
+    // Background sync throttled at 10 seconds
+    siteDataManager.syncIfStale().catch(() => {});
+
     const cuisine = req.query.cuisine as string | undefined;
     const search = req.query.search as string | undefined;
     const dietary = req.query.dietary as string | undefined;
@@ -24,33 +28,43 @@ router.get('/', async (req: Request, res: Response) => {
     const userLat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
     const userLng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
 
-    const listRaw = await cachedQuery(CacheKeys.restaurants('all'), async () => {
-      const d1Res = await d1Client.query('SELECT * FROM restaurants ORDER BY rating DESC');
-      return d1Res.results || [];
-    });
-    let list: any[] = listRaw.map((r: any) => {
-      if (r.raw_json) {
-        try {
-          const parsed = JSON.parse(r.raw_json);
-          return {
-            ...parsed,
-            id: r.id,
-            name: r.name || parsed.name,
-            cuisine: r.cuisine || parsed.cuisine,
-            rating: r.rating ?? parsed.rating,
-            reviewCount: r.review_count ?? parsed.reviewCount,
-            deliveryTimeMin: r.delivery_time_min ?? parsed.deliveryTimeMin,
-            deliveryTimeMax: r.delivery_time_max ?? parsed.deliveryTimeMax,
-            deliveryFee: r.delivery_fee ?? parsed.deliveryFee,
-            isOpen: r.is_open === 1,
-            isBusyPaused: r.is_busy_paused === 1
-          };
-        } catch {
-          throw new Error('Restaurant record in D1 contains invalid raw_json');
+    let list: any[] = [];
+    try {
+      const listRaw = await cachedQuery(CacheKeys.restaurants('all'), async () => {
+        const d1Res = await d1Client.query('SELECT * FROM restaurants ORDER BY rating DESC');
+        return d1Res.results || [];
+      });
+      list = (listRaw || []).map((r: any) => {
+        if (r.raw_json) {
+          try {
+            const parsed = JSON.parse(r.raw_json);
+            return {
+              ...parsed,
+              id: r.id,
+              name: r.name || parsed.name,
+              cuisine: r.cuisine || parsed.cuisine,
+              rating: r.rating ?? parsed.rating,
+              reviewCount: r.review_count ?? parsed.reviewCount,
+              deliveryTimeMin: r.delivery_time_min ?? parsed.deliveryTimeMin,
+              deliveryTimeMax: r.delivery_time_max ?? parsed.deliveryTimeMax,
+              deliveryFee: r.delivery_fee ?? parsed.deliveryFee,
+              isOpen: r.is_open === 1,
+              isBusyPaused: r.is_busy_paused === 1
+            };
+          } catch {
+            return r;
+          }
         }
-      }
-      return r;
-    });
+        return r;
+      });
+    } catch (queryErr) {
+      console.warn('[Restaurants Route] Primary D1 query warning, using last-known-good snapshot:', queryErr);
+    }
+
+    // Never fall back to demo data: use persistent last-known-good snapshot
+    if (!list || list.length === 0) {
+      list = siteDataManager.getRestaurants();
+    }
 
     if (cuisine && cuisine !== 'All') {
       list = list.filter((r) => r.cuisine?.toLowerCase() === cuisine.toLowerCase());
@@ -224,6 +238,10 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     if (!restaurant) {
       restaurant = await db.getRestaurantById(id);
+    }
+
+    if (!restaurant) {
+      restaurant = siteDataManager.getRestaurants().find((r: any) => r.id === id) || null;
     }
 
     if (!restaurant) {

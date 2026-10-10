@@ -86,11 +86,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, data: existing });
     }
 
-    const secret =
-      process.env.PAYSTACK_SECRET_KEY || process.env.PAYMENT_SECRET_KEY || '';
+    const secret = (process.env.PAYSTACK_SECRET_KEY || '').trim();
     if (!secret) {
       return NextResponse.json(
-        { success: false, error: 'Payment gateway not configured' },
+        { success: false, error: 'PAYSTACK_SECRET_KEY is not configured on the server' },
         { status: 503 }
       );
     }

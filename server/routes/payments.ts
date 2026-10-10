@@ -208,12 +208,11 @@ router.get('/virtual-account', requireAuth, async (req: AuthRequest, res: Respon
 router.post('/virtual-account', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
-    const secret =
-      process.env.PAYSTACK_SECRET_KEY || process.env.PAYMENT_SECRET_KEY || '';
+    const secret = (process.env.PAYSTACK_SECRET_KEY || '').trim();
     if (!secret) {
       return res.status(503).json({
         success: false,
-        error: 'Payment gateway not configured'
+        error: 'PAYSTACK_SECRET_KEY is not configured on the server'
       });
     }
 

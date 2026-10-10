@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { db } from '../../../../server/db/index';
 import { d1Client } from '../../../../server/db/d1Client';
+import { paystackLiveGate } from '../../../../lib/paystackGate';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -10,26 +10,21 @@ export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
     const signature = req.headers.get('x-paystack-signature');
-    const webhookSecret =
-      process.env.PAYSTACK_SECRET_KEY ||
-      process.env.PAYSTACK_WEBHOOK_SECRET ||
-      process.env.PAYMENT_SECRET_KEY ||
-      process.env.PAYMENT_WEBHOOK_SECRET ||
-      '';
+    const secretKey = (process.env.PAYSTACK_SECRET_KEY || '').trim();
     const isProd = process.env.NODE_ENV === 'production';
 
-    if (!webhookSecret) {
-      console.error('[Paystack webhook] PAYSTACK_SECRET_KEY / PAYSTACK_WEBHOOK_SECRET is not set');
+    if (!secretKey) {
+      console.error('[Paystack webhook] PAYSTACK_SECRET_KEY is not set on the server');
       return NextResponse.json(
-        { success: false, error: 'Webhook secret not configured' },
+        { success: false, error: 'PAYSTACK_SECRET_KEY not configured' },
         { status: isProd ? 503 : 401 }
       );
     }
     if (!signature) {
       return NextResponse.json({ success: false, error: 'Missing x-paystack-signature header' }, { status: 401 });
     }
-    const hash = crypto.createHmac('sha512', webhookSecret).update(rawBody).digest('hex');
-    if (hash !== signature) {
+    const isValidSignature = paystackLiveGate.verifyWebhookSignature(rawBody, signature);
+    if (!isValidSignature) {
       return NextResponse.json({ success: false, error: 'Invalid webhook signature' }, { status: 401 });
     }
 

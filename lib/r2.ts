@@ -147,6 +147,22 @@ export class R2Client {
     }
   }
 
+  public async uploadJson(key: string, data: any): Promise<R2UploadResult> {
+    const jsonStr = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    const base64 = Buffer.from(jsonStr, 'utf-8').toString('base64');
+    return this.upload(key, base64, 'application/json');
+  }
+
+  public async getJson<T = any>(key: string): Promise<T | null> {
+    const obj = await this.getObject(key);
+    if (!obj || !obj.data) return null;
+    try {
+      return JSON.parse(obj.data.toString('utf-8')) as T;
+    } catch {
+      return null;
+    }
+  }
+
   public async delete(key: string): Promise<{ success: boolean }> {
     const cleanKey = key.replace(/^\//, '');
     if (this.accountId && this.apiToken && this.bucketName) {
