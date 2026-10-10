@@ -11,111 +11,50 @@ jobs:
         with:
           ref: main
           fetch-depth: 5
-      - name: Restore route and strip hardcoded admin passwords
+      - name: Apply normalized menu wiring
         run: |
           set -e
-          # Restore full route from pre-placeholder commit if file is broken
-          if [ "$(wc -c < 'app/api/[[...route]]/route.ts')" -lt 1000 ]; then
-            echo "Detected broken/placeholder route — restoring from 46acaa9"
-            git show 46acaa9:'app/api/[[...route]]/route.ts' > 'app/api/[[...route]]/route.ts'
-          fi
-          python3 << 'PY'
+          test -f lib/restaurantMenu.ts
+          python3 scripts/apply_normalized_menu.py
+          python3 scripts/apply_seo_menu.py
+          python3 - <<'PY'
           from pathlib import Path
-          path = Path('app/api/[[...route]]/route.ts')
-          text = path.read_text()
-          # Idempotent: if already fixed, exit cleanly
-          if 'isEnvAdmin' in text and 'Teeplus1029' not in text and 'Admin123!' not in text:
-              print('Already fixed')
-              raise SystemExit(0)
-          old = """    const isMasterAdmin =
-      (ADMIN_EMAIL && ADMIN_PASSWORD && email === ADMIN_EMAIL && password === ADMIN_PASSWORD) ||
-      (email === 'admin@veyrang.com' && (password === 'Admin123!' || (ADMIN_PASSWORD && password === ADMIN_PASSWORD))) ||
-      (email === 'abideentaoreed12@gmail.com' && (password === 'Teeplus1029' || password === 'Admin123!')) ||
-      (email === 'abideentaoreed66@gmail.com' && (password === 'Admin123!' || password === 'Teeplus1029' || password === 'Password123!'));
-
-    const d1Res = await d1.query('SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1', [email]);
-    let u = d1Res.results?.[0];
-
-    if (!u) {
-      if (isMasterAdmin) {
-        u = {
-          id: 'usr-admin-1',
-          email,
-          role: 'admin',
-          name: 'System Administrator',
-          phone: '+234 801 234 5678',
-          wallet_balance_ngn: 350000,
-          wallet_balance_usd: 250,
-          is_approved: 1
-        };
-      } else {
-        return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
-      }
-    } else if (!isMasterAdmin) {
-      if (!u?.password_hash) {
-        return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
-      }
-      const ok = await bcrypt.compare(password, u.password_hash);
-      if (!ok) {
-        return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
-      }
-    }"""
-          new = """    // Admin bootstrap only via env credentials — never hardcode passwords in source.
-    const isEnvAdmin =
-      Boolean(ADMIN_EMAIL) &&
-      Boolean(ADMIN_PASSWORD) &&
-      email === ADMIN_EMAIL &&
-      password === ADMIN_PASSWORD;
-
-    const d1Res = await d1.query('SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1', [email]);
-    let u = d1Res.results?.[0];
-
-    if (!u) {
-      if (isEnvAdmin) {
-        // Bootstrap admin shell from env only (no invented wallet balances).
-        u = {
-          id: 'usr-admin-1',
-          email,
-          role: 'admin',
-          name: 'System Administrator',
-          phone: '',
-          wallet_balance_ngn: 0,
-          wallet_balance_usd: 0,
-          is_approved: 1
-        };
-      } else {
-        return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
-      }
-    } else {
-      // Always verify password against stored hash for existing users.
-      if (!u?.password_hash) {
-        return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
-      }
-      const ok = await bcrypt.compare(password, u.password_hash);
-      if (!ok) {
-        // Env admin may still authenticate if credentials match env (password reset / recovery).
-        if (!(isEnvAdmin && email === ADMIN_EMAIL)) {
-          return NextResponse.json({ success: false, error: 'Invalid email or password.' }, { status: 401 });
-        }
-      }
-    }"""
-          if old not in text:
-              raise SystemExit('OLD login block not found after restore — abort')
-          path.write_text(text.replace(old, new, 1))
-          assert 'Teeplus1029' not in path.read_text()
-          assert 'Admin123!' not in path.read_text()
-          assert 'isEnvAdmin' in path.read_text()
-          print('Fixed hardcoded admin passwords')
+          p = Path("lib/siteDataSnapshot.ts")
+          t = p.read_text()
+          old = """        // Filter out any internal passwords or secret columns
+        for (const r of restaurants) {
+          delete r.password;
+          delete r.password_hash;
+          delete r.token;
+          delete r.secret;
+        }"""
+          new = """        // Filter secrets and never publish embedded menu blobs (menu_items is source of truth).
+        for (const r of restaurants) {
+          delete r.password;
+          delete r.password_hash;
+          delete r.token;
+          delete r.secret;
+          delete r.categories;
+          delete r.menuItems;
+          delete r.menu_items;
+        }"""
+          if old in t:
+            p.write_text(t.replace(old, new))
+            print("snapshot stripped")
+          elif "delete r.categories" in t:
+            print("snapshot already stripped")
+          else:
+            print("WARN snapshot pattern missing")
           PY
-      - name: Commit and push
+      - name: Commit and push on main
         run: |
           set -e
           git config user.name "abideentaoreed12-oss"
           git config user.email "abideentaoreed12@gmail.com"
-          git add 'app/api/[[...route]]/route.ts'
+          git add 'app/api/[[...route]]/route.ts' 'app/restaurants/[id]/page.tsx' lib/siteDataSnapshot.ts || true
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
           fi
-          git commit -m "fix(auth): remove hardcoded admin passwords from login"
+          git commit -m "feat(menu): public restaurants serve dishes only from menu_items on main"
           git push origin HEAD:main
