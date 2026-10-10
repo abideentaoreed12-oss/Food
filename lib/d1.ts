@@ -398,6 +398,38 @@ export class D1Client {
         this.executeLocal(sql);
       }
 
+      // QR handover and review migrations. CREATE TABLE IF NOT EXISTS does not evolve older schemas.
+      const handoverAndReviewStatements = [
+        `CREATE TABLE IF NOT EXISTS handover_qr_tokens (
+          id TEXT PRIMARY KEY,
+          order_id TEXT NOT NULL,
+          token_hash TEXT NOT NULL UNIQUE,
+          expires_at TEXT NOT NULL,
+          consumed_at TEXT,
+          created_by TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )`,
+        'CREATE INDEX IF NOT EXISTS idx_handover_qr_order ON handover_qr_tokens (order_id, consumed_at)',
+        'ALTER TABLE reviews ADD COLUMN order_id TEXT',
+        'ALTER TABLE reviews ADD COLUMN courier_id TEXT',
+        'ALTER TABLE reviews ADD COLUMN customer_name TEXT',
+        'ALTER TABLE reviews ADD COLUMN food_rating INTEGER',
+        'ALTER TABLE reviews ADD COLUMN delivery_rating INTEGER',
+        'ALTER TABLE reviews ADD COLUMN photo_r2_url TEXT',
+        'ALTER TABLE reviews ADD COLUMN restaurant_id TEXT',
+        'CREATE INDEX IF NOT EXISTS idx_reviews_order_customer ON reviews (order_id, customer_id)'
+      ];
+      for (const migration of handoverAndReviewStatements) {
+        if (this.isConfigured()) {
+          await this.queryDirect(migration, [], true).catch(() => {
+            // ALTER TABLE can fail when the column already exists; index/table creation is idempotent.
+          });
+        }
+        try { this.executeLocal(migration); } catch {
+          // Existing columns/tables are expected on later boots.
+        }
+      }
+
       // Migrate older promo_codes tables in both authoritative D1 and local development SQLite.
       // CREATE TABLE IF NOT EXISTS does not add columns to tables that already exist.
       const promoColumnMigrations = [
