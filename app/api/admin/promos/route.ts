@@ -75,15 +75,29 @@ export async function POST(req: NextRequest) {
   const expiresAt = body.expiresAt || body.expires_at || null;
   const description = String(body.description || '');
 
-  const inserted = await d1.query(
-    `INSERT INTO promo_codes (
-      id, code, discount_type, value, min_order_amount, max_discount_cap,
-      usage_limit, times_used, is_active, expires_at, description, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, ?, ?, ?)`,
-    [id, code, discountType, value, minOrder, maxCap, usageLimit, expiresAt, description, now]
-  );
+  try {
+    const inserted = await d1.query(
+      `INSERT INTO promo_codes (
+        id, code, discount_type, value, min_order_amount, max_discount_cap,
+        usage_limit, times_used, is_active, expires_at, description, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, ?, ?, ?)`,
+      [id, code, discountType, value, minOrder, maxCap, usageLimit, expiresAt, description, now]
+    );
 
-  if (!inserted.success) return NextResponse.json({ success: false, error: 'Promo could not be saved to the database' }, { status: 503 });
+    if (!inserted.success) {
+      return NextResponse.json({ success: false, error: 'Promo could not be saved. Check the database schema and connection, then try again.' }, { status: 503 });
+    }
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    console.error('[admin/promos] Failed to create promo:', message);
+    if (/unique constraint|already exists/i.test(message)) {
+      return NextResponse.json({ success: false, error: 'That promo code already exists. Choose a different code.' }, { status: 409 });
+    }
+    return NextResponse.json({
+      success: false,
+      error: 'Promo creation failed because the database rejected the request. The server error has been logged for diagnosis.'
+    }, { status: 503 });
+  }
 
   return NextResponse.json({
     success: true,
