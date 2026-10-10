@@ -481,10 +481,23 @@ export async function GET(req: NextRequest) {
     const isAdmin = user.role === 'admin' || user.role === 'sub_admin';
     const isCourier = user.role === 'courier';
     let d1Res;
+    if (pathname === '/admin/orders' && !isAdmin) {
+      return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 403 });
+    }
     if (isAdmin) {
       d1Res = await d1.query('SELECT * FROM orders ORDER BY created_at DESC');
     } else if (isCourier) {
-      d1Res = await d1.query('SELECT * FROM orders WHERE courier_id = ? OR status IN (\'ready\', \'in_transit\') ORDER BY created_at DESC', [user.id]);
+      // Couriers may see only their assigned orders and the unassigned ready-for-pickup queue.
+      d1Res = await d1.query(
+        "SELECT * FROM orders WHERE courier_id = ? OR (courier_id IS NULL AND status = 'ready_for_pickup') ORDER BY created_at DESC",
+        [user.id]
+      );
+    } else if (user.role === 'restaurant') {
+      const assigned = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id]);
+      if (!assigned.success) return NextResponse.json({ success: false, error: 'Restaurant assignment could not be verified' }, { status: 503 });
+      const restaurantId = assigned.results?.[0]?.restaurant_id;
+      if (!restaurantId) return NextResponse.json({ success: true, data: [] });
+      d1Res = await d1.query('SELECT * FROM orders WHERE restaurant_id = ? ORDER BY created_at DESC', [restaurantId]);
     } else {
       d1Res = await d1.query('SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC', [user.id]);
     }
@@ -1345,10 +1358,14 @@ export async function POST(req: NextRequest) {
   // 12. Courier Telemetry Location
   if (pathname === '/courier/location' || pathname === '/couriers/location' || pathname === '/drivers/location') {
     const user = await getUser(req);
-    const { lat, lng, heading, speed, orderId, courierId } = body;
-    const resolvedCourierId = user?.id || courierId;
-    if (!resolvedCourierId) {
-      return NextResponse.json({ success: false, error: 'Authentication or courier ID required' }, { status: 401 });
+    const { lat, lng, heading, speed, orderId } = body;
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'courier') return NextResponse.json({ success: false, error: 'Courier account required' }, { status: 403 });
+    const resolvedCourierId = user.id;
+    if (orderId) {
+      const assignedOrder = await d1.query('SELECT id FROM orders WHERE id = ? AND courier_id = ? LIMIT 1', [orderId, user.id]);
+      if (!assignedOrder.success) return NextResponse.json({ success: false, error: 'Delivery assignment could not be verified' }, { status: 503 });
+      if (!assignedOrder.results?.length) return NextResponse.json({ success: false, error: 'You are not assigned to this delivery' }, { status: 403 });
     }
     const cleanLat = Number(lat);
     const cleanLng = Number(lng);
