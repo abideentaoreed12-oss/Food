@@ -217,8 +217,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: settingsMap, settings: settingsMap });
   }
 
-  // 9. Delivery Zones
-  if (pathname === '/settings/zones' || pathname === '/admin/delivery-zones') {
+  // 9. Public delivery zones use the shared snapshot; admin management reads stay separate.
+  if (pathname === '/settings/zones') {
+    let snapshot = await siteDataManager.loadSnapshot();
+    if (!snapshot) snapshot = await siteDataManager.refreshSnapshot({ force: true });
+    else siteDataManager.syncIfStale().catch(() => {});
+    if (!snapshot) {
+      return NextResponse.json(
+        { success: false, error: 'Live delivery-zone data is temporarily unavailable.', data: null },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+    return NextResponse.json({ success: true, data: snapshot.deliveryZones || [] }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  if (pathname === '/admin/delivery-zones') {
+    const admin = await getUser(req);
+    if (!admin || (admin.role !== 'admin' && admin.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     let zones: any[] = [];
     try {
       const d1Res = await d1.query('SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL ORDER BY created_at DESC');
