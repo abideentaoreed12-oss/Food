@@ -29,6 +29,26 @@ async function syncMenuItemToRestaurantJson(
   deletedItemName?: string | null
 ) {
   const restaurantsRes = await d1.query('SELECT id, raw_json FROM restaurants');
+  if (!restaurantsRes || restaurantsRes.success === false || !Array.isArray(restaurantsRes.results)) {
+    throw new Error('Could not read restaurants while synchronizing the public menu.');
+  }
+
+  // Reconcile deletions against normalized menu_items, not just the deleted row's ID.
+  // This removes stale legacy/duplicate-ID entries that otherwise reappear publicly.
+  let liveMenuIds: Set<string> | null = null;
+  let liveMenuNames: Set<string> | null = null;
+  if (!item && targetRestaurantId) {
+    const liveMenuRes = await d1.query(
+      'SELECT id, name FROM menu_items WHERE restaurant_id = ?',
+      [targetRestaurantId]
+    );
+    if (!liveMenuRes || liveMenuRes.success === false || !Array.isArray(liveMenuRes.results)) {
+      throw new Error('Could not verify the restaurant menu after deletion.');
+    }
+    liveMenuIds = new Set(liveMenuRes.results.map((entry: any) => String(entry.id)));
+    liveMenuNames = new Set(liveMenuRes.results.map((entry: any) => String(entry.name || '').trim().toLocaleLowerCase()));
+  }
+
   for (const row of restaurantsRes.results || []) {
     let restaurantData: any = {};
     try { restaurantData = row.raw_json ? JSON.parse(row.raw_json) : {}; } catch { restaurantData = {}; }
@@ -38,14 +58,13 @@ async function syncMenuItemToRestaurantJson(
       if (!Array.isArray(category.items)) continue;
       const filtered = category.items.filter((entry: any) => {
         if (String(entry?.id) === String(itemId)) return false;
-        // Legacy restaurant JSON can use a different embedded ID for the same normalized menu row.
-        // Limit the name fallback to the restaurant that owns the deleted database row.
-        if (
-          !item &&
-          deletedItemName &&
-          String(row.id) === String(targetRestaurantId) &&
-          String(entry?.name || '').trim().toLocaleLowerCase() === deletedItemName.trim().toLocaleLowerCase()
-        ) return false;
+        if (!item && String(row.id) === String(targetRestaurantId) && liveMenuIds && liveMenuNames) {
+          const entryId = String(entry?.id || '');
+          const entryName = String(entry?.name || '').trim().toLocaleLowerCase();
+          return liveMenuIds.has(entryId) || liveMenuNames.has(entryName);
+        }
+        if (!item && deletedItemName && String(row.id) === String(targetRestaurantId) &&
+            String(entry?.name || '').trim().toLocaleLowerCase() === deletedItemName.trim().toLocaleLowerCase()) return false;
         return true;
       });
       if (filtered.length !== category.items.length) { category.items = filtered; changed = true; }
