@@ -17,6 +17,7 @@
     "routes:audit": "node scripts/audit-routes.mjs"
   },
   "dependencies": {
+    "@zxing/browser": "^0.1.5",
     "@google/genai": "^2.4.0",
     "@turf/turf": "^7.4.0",
     "@types/cookie-parser": "^1.4.10",
