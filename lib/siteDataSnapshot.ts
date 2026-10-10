@@ -63,10 +63,8 @@ export function isValidSiteData(
   if (typeof candidate.updatedAt !== 'string' || !candidate.updatedAt.trim()) return false;
   if (!Array.isArray(candidate.restaurants)) return false;
 
-  // Empty check: if not explicitly allowed (e.g. authorized admin clear), restaurants must be non-empty
-  if (!options?.allowEmpty && candidate.restaurants.length === 0) {
-    return false;
-  }
+  // An empty restaurant catalogue is valid live data. If the authoritative database
+  // has no restaurants, the public catalogue must be empty rather than resurrecting stale demo data.
 
   // Ensure all restaurants are valid objects with non-empty string id and name
   for (const r of candidate.restaurants) {
@@ -118,7 +116,7 @@ export class SiteDataManager {
       if (fs.existsSync(this.primaryDiskPath)) {
         const raw = fs.readFileSync(this.primaryDiskPath, 'utf-8');
         const parsed = JSON.parse(raw);
-        if (isValidSiteData(parsed)) {
+        if (isValidSiteData(parsed, { allowEmpty: true })) {
           this.currentSnapshot = {
             ...parsed,
             schemaVersion: parsed.schemaVersion || 1,
@@ -194,7 +192,7 @@ export class SiteDataManager {
    * 4. Local disk cache (development / emergency fallback)
    */
   public async loadSnapshot(): Promise<SiteDataSnapshot | null> {
-    if (this.currentSnapshot && isValidSiteData(this.currentSnapshot)) {
+    if (this.currentSnapshot && isValidSiteData(this.currentSnapshot, { allowEmpty: true })) {
       return this.currentSnapshot;
     }
 
@@ -225,7 +223,7 @@ export class SiteDataManager {
     try {
       if (r2.isConfigured()) {
         const r2Snapshot = await r2.getJson<SiteDataSnapshot>('data/last-known-good-site-data.json');
-        if (isValidSiteData(r2Snapshot)) {
+        if (isValidSiteData(r2Snapshot, { allowEmpty: true })) {
           this.currentSnapshot = {
             ...r2Snapshot,
             schemaVersion: r2Snapshot.schemaVersion || 1,
@@ -276,7 +274,7 @@ export class SiteDataManager {
     snapshot: SiteDataSnapshot,
     options?: { allowEmpty?: boolean; isAuthorizedAdmin?: boolean }
   ): Promise<boolean> {
-    if (!isValidSiteData(snapshot, { allowEmpty: options?.allowEmpty && options?.isAuthorizedAdmin })) {
+    if (!isValidSiteData(snapshot, { allowEmpty: true })) {
       console.error('[SiteData] Attempted to save invalid or empty site snapshot. Aborting.');
       return false;
     }
@@ -374,14 +372,8 @@ export class SiteDataManager {
         const restRes = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC');
         const rawRows = restRes.results || [];
 
-        // An empty restaurant list must not automatically overwrite a populated snapshot!
-        const existingPopulated = (this.currentSnapshot?.restaurants?.length || 0) > 0;
-        if (rawRows.length === 0 && existingPopulated && !(options?.allowEmpty && options?.isAuthorizedAdmin)) {
-          console.warn(
-            `[SiteData] Primary query returned 0 restaurants while snapshot has ${this.currentSnapshot?.restaurants.length}. Retaining last-known-good snapshot.`
-          );
-          return this.currentSnapshot;
-        }
+        // The D1 query succeeded, so its result is authoritative even when empty.
+        // Never keep a populated snapshot merely because all restaurants were intentionally deleted.
 
         const restaurants = rawRows.map((r: any) => {
           if (r.raw_json) {
@@ -455,8 +447,8 @@ export class SiteDataManager {
           }
         };
 
-        if (isValidSiteData(candidate, { allowEmpty: options?.allowEmpty && options?.isAuthorizedAdmin })) {
-          await this.saveSnapshot(candidate, options);
+        if (isValidSiteData(candidate, { allowEmpty: true })) {
+          await this.saveSnapshot(candidate, { allowEmpty: true, isAuthorizedAdmin: true });
           this.consecutiveFailures = 0;
           return candidate;
         } else {
