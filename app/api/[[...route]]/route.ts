@@ -1382,9 +1382,9 @@ export async function POST(req: NextRequest) {
     const revId = `rev-${randomUUID()}`;
     const now = new Date().toISOString();
     const saved = await d1.query(
-      `INSERT INTO reviews (id, order_id, restaurant_id, courier_id, customer_id, customer_name, food_rating, delivery_rating, comment, photo_r2_url, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [revId, order.id, order.restaurant_id, order.courier_id || null, user.id, user.name, foodScore, deliveryScore, String(comment || '').slice(0, 2000), photoR2Url || null, now]
+      `INSERT INTO reviews (id, order_id, restaurant_id, courier_id, customer_id, customer_name, food_rating, delivery_rating, rating, comment, photo_r2_url, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [revId, order.id, order.restaurant_id, order.courier_id || null, user.id, user.name, foodScore, deliveryScore, foodScore, String(comment || '').slice(0, 2000), photoR2Url || null, now]
     );
     if (!saved.success) return NextResponse.json({ success: false, error: 'Review could not be saved.' }, { status: 503 });
     // Recalculate restaurant rating
