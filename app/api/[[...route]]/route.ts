@@ -100,7 +100,7 @@ async function syncMenuItemToRestaurantJson(
       }
     }
   }
-  const refreshed = await siteDataManager.refreshSnapshot({ force: true });
+  const refreshed = await siteDataManager.refreshSnapshot({ force: true, requireFresh: true });
   if (!refreshed) {
     throw new Error('Menu changed in the database, but the public catalogue snapshot could not be refreshed.');
   }
@@ -375,15 +375,9 @@ export async function GET(req: NextRequest) {
 
   // 10b. Centralized Public Site Data Snapshot & Status
   if (pathname === '/site-data/public') {
-    // Load durable last-known-good data first. If no snapshot exists yet, attempt a real D1 refresh
-    // before returning unavailable; never manufacture sample data to make the endpoint look healthy.
-    let snapshot = await siteDataManager.loadSnapshot();
-    if (!snapshot) {
-      snapshot = await siteDataManager.refreshSnapshot({ force: true });
-    } else {
-      // Refresh in the background after returning the last successful snapshot.
-      siteDataManager.syncIfStale().catch(() => {});
-    }
+    // Catalogue reads must verify the current database state before responding. Last-known-good
+    // snapshots are recovery aids, not authority over a successful newer database result.
+    const snapshot = await siteDataManager.refreshSnapshot({ force: true, requireFresh: true });
 
     if (!snapshot) {
       return NextResponse.json({
@@ -434,12 +428,10 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 11. Public restaurant catalogue: consume the shared last-known-good snapshot.
-  // This prevents each public page from issuing its own catalog query against D1.
+  // 11. Public restaurant catalogue: verify the current authoritative D1 catalogue per request.
+  // Do not return a stale snapshot when the database cannot confirm the current restaurant list.
   if (pathname === '/restaurants') {
-    let snapshot = await siteDataManager.loadSnapshot();
-    if (!snapshot) snapshot = await siteDataManager.refreshSnapshot({ force: true });
-    else siteDataManager.syncIfStale().catch(() => {});
+    const snapshot = await siteDataManager.refreshSnapshot({ force: true, requireFresh: true });
 
     if (!snapshot) {
       return NextResponse.json(
@@ -2576,7 +2568,8 @@ export async function DELETE(req: NextRequest) {
     const targetId = decodeURIComponent(delMenuMatch[1]);
     const existingRes = await d1.query(
       'SELECT id, restaurant_id, name FROM menu_items WHERE id = ? LIMIT 1',
-      [targetId]
+      [targetId],
+      { cache: false }
     );
     const existingItem = existingRes.results?.[0];
     const deleteRes = await d1.query('DELETE FROM menu_items WHERE id = ?', [targetId]);
@@ -2612,7 +2605,7 @@ export async function DELETE(req: NextRequest) {
     }
     const targetId = decodeURIComponent(delRestMatch[1]);
     // Do not report success if dependent rows or the restaurant itself failed to delete.
-    const existingRes = await d1.query('SELECT id FROM restaurants WHERE id = ? LIMIT 1', [targetId]);
+    const existingRes = await d1.query('SELECT id FROM restaurants WHERE id = ? LIMIT 1', [targetId], { cache: false });
     if (!existingRes.results?.length) {
       return NextResponse.json({ success: false, error: 'Restaurant not found.' }, { status: 404 });
     }
@@ -2624,7 +2617,7 @@ export async function DELETE(req: NextRequest) {
     if (restaurantDeleteRes?.success === false) {
       return NextResponse.json({ success: false, error: 'Could not delete the restaurant.' }, { status: 500 });
     }
-    const refreshed = await siteDataManager.refreshSnapshot({ force: true });
+    const refreshed = await siteDataManager.refreshSnapshot({ force: true, requireFresh: true });
     if (!refreshed || refreshed.restaurants.some((restaurant: any) => String(restaurant.id) === String(targetId))) {
       return NextResponse.json({
         success: false,
