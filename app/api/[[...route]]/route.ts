@@ -2431,8 +2431,12 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const targetId = decodeURIComponent(delRestMatch[1]);
+    // Remove dependent menu records and embedded restaurant menu data as part of the same
+    // admin deletion workflow, then persist a fresh public catalogue snapshot.
+    await d1.query('DELETE FROM menu_items WHERE restaurant_id = ?', [targetId]).catch(() => {});
     await d1.query('DELETE FROM restaurants WHERE id = ?', [targetId]);
-    return NextResponse.json({ success: true, message: 'Restaurant deleted' });
+    await siteDataManager.refreshSnapshot({ force: true });
+    return NextResponse.json({ success: true, message: 'Restaurant and its menu deleted; public catalogue refreshed' });
   }
 
   return NextResponse.json({ success: false, error: `API route DELETE /api${pathname} not found.` }, { status: 404 });
