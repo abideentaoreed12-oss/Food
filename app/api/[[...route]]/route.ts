@@ -18,6 +18,49 @@ import { reverseGeocodeCoordinates } from '../../../server/routes/geocode';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/**
+ * Keep the restaurant document (the public storefront's canonical menu source)
+ * synchronized with the normalized menu_items table after every menu mutation.
+ */
+async function syncMenuItemToRestaurantJson(itemId: string, item: any | null, targetRestaurantId?: string | null) {
+  const restaurantsRes = await d1.query('SELECT id, raw_json FROM restaurants');
+  for (const row of restaurantsRes.results || []) {
+    let restaurantData: any = {};
+    try { restaurantData = row.raw_json ? JSON.parse(row.raw_json) : {}; } catch { restaurantData = {}; }
+    if (!Array.isArray(restaurantData.categories)) restaurantData.categories = [];
+    let changed = false;
+    for (const category of restaurantData.categories) {
+      if (!Array.isArray(category.items)) continue;
+      const filtered = category.items.filter((entry: any) => String(entry?.id) !== String(itemId));
+      if (filtered.length !== category.items.length) { category.items = filtered; changed = true; }
+    }
+    if (item && String(row.id) === String(targetRestaurantId || item.restaurant_id)) {
+      const categoryKey = String(item.category_id || 'Main Dishes');
+      let category = restaurantData.categories.find((entry: any) =>
+        String(entry?.id || '') === categoryKey || String(entry?.name || '').toLowerCase() === categoryKey.toLowerCase()
+      );
+      if (!category) {
+        category = { id: categoryKey.startsWith('cat-') ? categoryKey : `cat-${Date.now()}`, name: categoryKey, items: [] };
+        restaurantData.categories.push(category);
+      }
+      if (!Array.isArray(category.items)) category.items = [];
+      let dietaryTags: any[] = [];
+      try { dietaryTags = Array.isArray(item.dietary_tags) ? item.dietary_tags : JSON.parse(item.dietary_tags || '[]'); } catch {}
+      category.items.push({
+        id: item.id, name: item.name, description: item.description || '', price: Number(item.price || 0),
+        category: category.name || categoryKey, categoryId: category.id, restaurantId: row.id,
+        imageUrl: item.image_r2_url || item.image_url || '',
+        isAvailable: item.is_available === 1 || item.is_available === true,
+        popular: item.popular === 1 || item.popular === true, dietaryTags
+      });
+      changed = true;
+    }
+    if (changed) await d1.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(restaurantData), row.id]);
+  }
+  await siteDataManager.refreshSnapshot({ force: true });
+}
+
+
 const JWT_SECRET = (process.env.JWT_SECRET || '').trim();
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
 const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
@@ -319,7 +362,9 @@ export async function GET(req: NextRequest) {
       }
     }, {
       headers: {
-        'Cache-Control': 'public, max-age=5, stale-while-revalidate=10'
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'CDN-Cache-Control': 'no-store',
+        'Vercel-CDN-Cache-Control': 'no-store'
       }
     });
   }
@@ -1580,28 +1625,21 @@ export async function POST(req: NextRequest) {
     if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
-    const { name, price, categoryId, restaurantId, description, isAvailable, popular, imageR2Url } = body;
+    const { name, price, categoryId, category, restaurantId, description, isAvailable, popular, imageR2Url, imageUrl } = body;
     if (!name || price === undefined) {
       return NextResponse.json({ success: false, error: 'Name and price are required' }, { status: 400 });
     }
     const id = `item-${Date.now()}`;
     const now = new Date().toISOString();
+    const targetRestaurantId = restaurantId || 'rest-1';
     await d1.query(
       `INSERT INTO menu_items (id, restaurant_id, category_id, name, description, price, dietary_tags, popular, is_available, image_r2_url, created_at)
        VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?)`,
-      [
-        id,
-        restaurantId || 'rest-1',
-        categoryId || 'cat-1',
-        name,
-        description || '',
-        Number(price),
-        popular ? 1 : 0,
-        isAvailable === false ? 0 : 1,
-        imageR2Url || null,
-        now
-      ]
+      [id, targetRestaurantId, categoryId || category || 'Main Dishes', name, description || '', Number(price), popular ? 1 : 0, isAvailable === false ? 0 : 1, imageR2Url || imageUrl || null, now]
     );
+    const createdRes = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [id]);
+    if (createdRes.results?.[0]) await syncMenuItemToRestaurantJson(id, createdRes.results[0], targetRestaurantId);
+    else await siteDataManager.refreshSnapshot({ force: true });
     return NextResponse.json({ success: true, data: { id, name, price: Number(price) } }, { status: 201 });
   }
 
@@ -2042,6 +2080,9 @@ export async function PATCH(req: NextRequest) {
     }
     const itemId = decodeURIComponent(menuToggleMatch[1]);
     await d1.query('UPDATE menu_items SET is_available = CASE WHEN is_available = 1 THEN 0 ELSE 1 END WHERE id = ?', [itemId]);
+    const toggledRes = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [itemId]);
+    if (toggledRes.results?.[0]) await syncMenuItemToRestaurantJson(itemId, toggledRes.results[0], toggledRes.results[0].restaurant_id);
+    else await siteDataManager.refreshSnapshot({ force: true });
     return NextResponse.json({ success: true, message: 'Menu item availability toggled' });
   }
 
@@ -2107,20 +2148,24 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const itemId = decodeURIComponent(menuPatchMatch[1]);
-    const { name, price, categoryId, description, isAvailable, popular, imageR2Url } = body;
+    const { name, price, categoryId, category, restaurantId, description, isAvailable, popular, imageR2Url, imageUrl } = body;
     const updates: string[] = [];
     const values: any[] = [];
     if (name !== undefined) { updates.push('name = ?'); values.push(name); }
     if (price !== undefined) { updates.push('price = ?'); values.push(Number(price)); }
-    if (categoryId !== undefined) { updates.push('category_id = ?'); values.push(categoryId); }
+    if (categoryId !== undefined || category !== undefined) { updates.push('category_id = ?'); values.push(categoryId ?? category); }
+    if (restaurantId !== undefined) { updates.push('restaurant_id = ?'); values.push(restaurantId); }
     if (description !== undefined) { updates.push('description = ?'); values.push(description); }
     if (isAvailable !== undefined) { updates.push('is_available = ?'); values.push(isAvailable ? 1 : 0); }
     if (popular !== undefined) { updates.push('popular = ?'); values.push(popular ? 1 : 0); }
-    if (imageR2Url !== undefined) { updates.push('image_r2_url = ?'); values.push(imageR2Url); }
+    if (imageR2Url !== undefined || imageUrl !== undefined) { updates.push('image_r2_url = ?'); values.push(imageR2Url ?? imageUrl); }
     if (updates.length > 0) {
       values.push(itemId);
       await d1.query(`UPDATE menu_items SET ${updates.join(', ')} WHERE id = ?`, values);
     }
+    const updatedRes = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [itemId]);
+    if (updatedRes.results?.[0]) await syncMenuItemToRestaurantJson(itemId, updatedRes.results[0], updatedRes.results[0].restaurant_id);
+    else await siteDataManager.refreshSnapshot({ force: true });
     return NextResponse.json({ success: true, message: 'Menu item updated' });
   }
 
@@ -2363,6 +2408,7 @@ export async function DELETE(req: NextRequest) {
     }
     const targetId = decodeURIComponent(delMenuMatch[1]);
     await d1.query('DELETE FROM menu_items WHERE id = ?', [targetId]);
+    await syncMenuItemToRestaurantJson(targetId, null);
     return NextResponse.json({ success: true, message: 'Menu item deleted' });
   }
 
