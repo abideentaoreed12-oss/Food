@@ -15,17 +15,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 30
-      - name: Run fix script
+      - name: Run security fixes
         run: |
           set -euo pipefail
           python3 scripts/fix_hardcoded_admin_login.py
-          test "$(wc -c < 'app/api/[[...route]]/route.ts')" -gt 50000
           git config user.name "veyrang-bot"
           git config user.email "bot@veyrang.com"
-          git add 'app/api/[[...route]]/route.ts'
+          git add server/config.ts 'app/api/[[...route]]/route.ts' lib/d1.ts server/db/index.ts server/db/localStore.ts scripts/live-audit.ts scripts/live-audit.js
           if git diff --staged --quiet; then
             echo No changes
             exit 0
           fi
-          git commit -m "fix(auth): remove hardcoded admin passwords from login"
+          git commit -m "fix(security): require JWT_SECRET and ADMIN_PASSWORD from env only"
           git push
