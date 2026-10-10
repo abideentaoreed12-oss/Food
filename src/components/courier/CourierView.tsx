@@ -31,7 +31,13 @@ export const CourierView: React.FC = () => {
 
   const { user } = useAuth();
 
-  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [isOnline, setIsOnline] = useState<boolean>(false);
+  const [availabilityBusy, setAvailabilityBusy] = useState(false);
+  const [acceptingOrderId, setAcceptingOrderId] = useState<string | null>(null);
+  const [courierHistory, setCourierHistory] = useState<any[]>([]);
+  const [courierEarnings, setCourierEarnings] = useState<number>(0);
+  const [courierProfile, setCourierProfile] = useState<any>(null);
+  const [courierMessage, setCourierMessage] = useState<string | null>(null);
   const [enteredPin, setEnteredPin] = useState<string>('');
   const [pinError, setPinError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
@@ -47,7 +53,63 @@ export const CourierView: React.FC = () => {
     (o) => o.courier?.id === user?.id && (o.status === 'in_transit' || o.status === 'ready_for_pickup' || o.status === 'preparing')
   );
 
-  const readyForPickupOrders = orders.filter((o) => o.status === 'ready_for_pickup' && (!o.courier?.id || o.courier.id === user?.id));
+  const readyForPickupOrders = orders.filter((o) => o.status === 'ready_for_pickup' && !o.courier?.id);
+
+  const courierRequest = async (path: string, payload?: Record<string, unknown>) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('veyrang_jwt_token') : null;
+    const response = await fetch(path, {
+      method: payload ? 'POST' : 'GET',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      ...(payload ? { body: JSON.stringify(payload) } : {})
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.success === false) throw new Error(result.error || 'Courier request failed');
+    return result.data ?? result;
+  };
+
+  const setCourierAvailability = async (nextOnline: boolean) => {
+    setAvailabilityBusy(true);
+    setCourierMessage(null);
+    try {
+      await courierRequest('/api/courier/availability', { isOnline: nextOnline });
+      setIsOnline(nextOnline);
+    } catch (error: any) {
+      setCourierMessage(error.message || 'Could not update availability');
+    } finally {
+      setAvailabilityBusy(false);
+    }
+  };
+
+  const acceptDelivery = async (orderId: string) => {
+    setAcceptingOrderId(orderId);
+    setCourierMessage(null);
+    try {
+      await courierRequest('/api/courier/accept', { orderId });
+      setCourierMessage('Delivery accepted. Refreshing your assigned orders…');
+      window.location.reload();
+    } catch (error: any) {
+      setCourierMessage(error.message || 'Could not accept delivery');
+    } finally {
+      setAcceptingOrderId(null);
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      courierRequest('/api/courier/history'),
+      courierRequest('/api/courier/profile')
+    ]).then(([history, profile]) => {
+      if (cancelled) return;
+      setCourierHistory(Array.isArray(history?.orders) ? history.orders : Array.isArray(history) ? history : []);
+      setCourierEarnings(Number(history?.earnings || 0));
+      setCourierProfile(profile);
+      if (typeof profile?.isOnline === 'boolean') setIsOnline(profile.isOnline);
+    }).catch((error: any) => {
+      if (!cancelled) setCourierMessage(error.message || 'Courier profile/history unavailable');
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Real-Time HTML5 Driver Geolocation Watcher & Production Backend Broadcast
   useEffect(() => {
@@ -175,7 +237,7 @@ export const CourierView: React.FC = () => {
         {/* Online Toggle & Rider Shift Stats */}
         <div className="flex flex-wrap items-center gap-4">
           <button
-            onClick={() => setIsOnline(!isOnline)}
+            onClick={() => setCourierAvailability(!isOnline)}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
               isOnline
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -189,7 +251,7 @@ export const CourierView: React.FC = () => {
             <div>
               <div className="text-[11px] text-slate-400 font-medium">Shift Earnings</div>
               <div className="text-xl font-bold font-mono text-emerald-400 tabular-nums">
-                {formatCurrency(0, currency)}
+                {formatCurrency(courierEarnings, currency)}
               </div>
             </div>
             <div className="w-px h-8 bg-slate-700" />
@@ -201,6 +263,28 @@ export const CourierView: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {courierMessage && (
+        <div role="status" className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">{courierMessage}</div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h2 className="text-sm font-bold text-slate-900 mb-3">Delivery history</h2>
+          {courierHistory.length ? courierHistory.map((item: any) => (
+            <div key={item.id} className="flex items-center justify-between border-b border-slate-100 py-2 text-xs">
+              <span className="font-semibold text-slate-700">#{item.shortId || item.id} · {item.status}</span>
+              <span className="font-mono text-slate-900">{formatCurrency(Number(item.courierPayout ?? item.payout ?? 0), currency)}</span>
+            </div>
+          )) : <p className="text-xs text-slate-500">No completed deliveries recorded yet.</p>}
+        </section>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5">
+          <h2 className="text-sm font-bold text-slate-900 mb-3">Courier profile & verification</h2>
+          <p className="text-xs text-slate-600">Verification: <strong>{courierProfile?.verificationStatus || 'Not submitted'}</strong></p>
+          <p className="text-xs text-slate-600 mt-2">Vehicle: <strong>{courierProfile?.vehicleType || 'Not provided'}</strong></p>
+          <p className="text-xs text-slate-600 mt-2">KYC documents: <strong>{courierProfile?.kycSubmitted ? 'Submitted for review' : 'Not submitted'}</strong></p>
+        </section>
       </div>
 
       {/* Live GPS Telemetry Transmitter Indicator */}
@@ -377,10 +461,10 @@ export const CourierView: React.FC = () => {
                   <div className="text-xs text-slate-300 font-semibold">{order.restaurantName}</div>
                   <div className="text-[11px] text-slate-400 truncate">{order.customerAddress}</div>
                   <button
-                    onClick={() => advanceOrderStatus(order.id, 'in_transit')}
+                    onClick={() => acceptDelivery(order.id)}
                     className="w-full mt-1 py-1.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
                   >
-                    Accept Run & Pick Up
+                    {acceptingOrderId === order.id ? 'Accepting…' : 'Accept Run & Pick Up'}
                   </button>
                 </div>
               ))}
