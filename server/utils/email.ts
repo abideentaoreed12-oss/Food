@@ -8,67 +8,57 @@ interface SendEmailParams {
   hostHeader?: string;
 }
 
+/**
+ * Sends email via Resend. Never reports success when delivery was not accepted by Resend.
+ * Final delivery status (delivered / bounced / failed) is confirmed by
+ * POST /api/webhooks/resend (official Svix signature verification).
+ */
 export async function sendEmail({ to, subject, html, text, hostHeader }: SendEmailParams) {
-  const apiKey = CONFIG.RESEND_API_KEY;
+  const apiKey = (CONFIG.RESEND_API_KEY || process.env.RESEND_API_KEY || '').trim();
   if (!apiKey) {
-    console.warn(`[Email Mock Fallback] To: ${to} | Subject: ${subject}`);
-    console.warn(`Content: ${text || html}`);
-    return { success: true, mock: true };
+    console.error(`[Email] RESEND_API_KEY not configured — cannot send to ${to}`);
+    return {
+      success: false,
+      error: 'RESEND_API_KEY is not configured on the server',
+    };
   }
 
-  // Derive sender domain
-  let domain = 'veyrang.com';
-  if (hostHeader) {
-    try {
-      const cleanHost = hostHeader.split(':')[0];
-      if (cleanHost && cleanHost !== 'localhost' && !cleanHost.includes('127.0.0.1') && !cleanHost.includes('run.app')) {
-        domain = cleanHost;
-      }
-    } catch (e) {}
-  }
-
-  // Use verified custom domain
-  domain = 'veyrang.com';
+  const domain = 'veyrang.com';
   const senderEmail = `noreply@${domain}`;
-  const fromName = 'Veyrang';
+  const fromName = (CONFIG.EMAIL_SENDER_NAME || 'Veyrang').trim() || 'Veyrang';
 
-  // Always log code/email to console for debugging and testing convenience
-  console.log(`========================================`);
-  console.log(`[EMAIL DISPATCH] To: ${to}`);
-  console.log(`Subject: ${subject}`);
-  console.log(`Content / Code: ${text || html.replace(/<[^>]*>/g, '')}`);
-  console.log(`========================================`);
+  console.log(`[EMAIL DISPATCH] To: ${to} | Subject: ${subject}`);
 
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         from: `${fromName} <${senderEmail}>`,
         to: [to],
         subject,
         html,
-        text: text || html.replace(/<[^>]*>/g, '')
-      })
+        text: text || html.replace(/<[^>]*>/g, ''),
+      }),
     });
 
     if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      console.error('Resend API error response:', errBody);
-      // Fallback gracefully so registration/auth is never blocked even if Resend restricts recipient/domain
-      console.warn('Resend API restricted delivery, falling back to console-delivered mode.');
-      return { success: true, fallback: true, error: errBody.message };
+      const errBody = await res.json().catch(() => ({} as any));
+      const message = errBody?.message || errBody?.error || `Resend HTTP ${res.status}`;
+      console.error('[Email] Resend API error:', errBody);
+      return { success: false, error: message, status: res.status };
     }
 
     const data = await res.json();
-    console.log(`[Email Sent Successfully] To: ${to} via Resend. ID: ${data.id || 'unknown'}`);
-    return { success: true, id: data.id };
+    const id = data?.id || data?.data?.id;
+    console.log(`[Email] Accepted by Resend. To: ${to} ID: ${id || 'unknown'}`);
+    // Accepted by API only — delivery is confirmed asynchronously via /api/webhooks/resend
+    return { success: true, id, accepted: true };
   } catch (err: any) {
-    console.error(`[Email Failed] To: ${to} - Error: ${err.message}`);
-    // Fallback gracefully so auth flow is smooth
-    return { success: true, fallback: true, error: err.message };
+    console.error(`[Email] Failed To: ${to} — ${err?.message || err}`);
+    return { success: false, error: err?.message || 'Email dispatch failed' };
   }
 }
