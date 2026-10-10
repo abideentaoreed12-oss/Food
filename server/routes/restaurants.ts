@@ -18,9 +18,6 @@ const router = Router();
 // Public: Get all restaurants with optional filtering and automatic distance calculation
 router.get('/', async (req: Request, res: Response) => {
   try {
-    // Background sync throttled at 10 seconds
-    siteDataManager.syncIfStale().catch(() => {});
-
     const cuisine = req.query.cuisine as string | undefined;
     const search = req.query.search as string | undefined;
     const dietary = req.query.dietary as string | undefined;
@@ -31,10 +28,11 @@ router.get('/', async (req: Request, res: Response) => {
     let list: any[] = [];
     let d1QuerySucceeded = false;
     try {
-      const listRaw = await cachedQuery(CacheKeys.restaurants('all'), async () => {
-        const d1Res = await d1Client.query('SELECT * FROM restaurants ORDER BY rating DESC');
-        return d1Res.results || [];
-      });
+      const d1Res = await d1Client.query('SELECT * FROM restaurants ORDER BY rating DESC');
+      if (!d1Res || d1Res.success === false || !Array.isArray(d1Res.results)) {
+        throw new Error('D1 restaurant query failed');
+      }
+      const listRaw = d1Res.results;
       d1QuerySucceeded = true;
       list = (listRaw || []).map((r: any) => {
         if (r.raw_json) {
@@ -60,12 +58,8 @@ router.get('/', async (req: Request, res: Response) => {
         return r;
       });
     } catch (queryErr) {
-      console.warn('[Restaurants Route] Primary D1 query warning, using last-known-good snapshot:', queryErr);
-    }
-
-    // Only fall back to snapshot if primary D1 query threw an error; do not overwrite legitimate empty list
-    if (!d1QuerySucceeded) {
-      list = siteDataManager.getRestaurants();
+      console.error('[Restaurants Route] Authoritative D1 restaurant query failed:', queryErr);
+      return res.status(503).json({ success: false, error: 'Restaurant catalogue temporarily unavailable. Please retry.' });
     }
 
     if (cuisine && cuisine !== 'All') {
@@ -211,38 +205,35 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     let restaurant: any = null;
     try {
-      restaurant = await cachedQuery(CacheKeys.restaurant(id), async () => {
-        const d1Res = await d1Client.query('SELECT * FROM restaurants WHERE id = ?', [id]);
-        if (d1Res.results && d1Res.results.length > 0) {
-          const r: any = d1Res.results[0];
-          if (r.raw_json) {
-            try {
-              const parsed = JSON.parse(r.raw_json);
-              return {
-                ...parsed,
-                id: r.id,
-                name: r.name || parsed.name,
-                cuisine: r.cuisine || parsed.cuisine,
-                rating: r.rating ?? parsed.rating,
-                isOpen: r.is_open === 1,
-                isBusyPaused: r.is_busy_paused === 1,
-                deliveryFee: r.delivery_fee ?? parsed.deliveryFee
-              };
-            } catch {
-              return null;
-            }
+      const d1Res = await d1Client.query('SELECT * FROM restaurants WHERE id = ?', [id]);
+      if (!d1Res || d1Res.success === false || !Array.isArray(d1Res.results)) {
+        throw new Error('D1 restaurant query failed');
+      }
+      if (d1Res.results.length > 0) {
+        const r: any = d1Res.results[0];
+        if (r.raw_json) {
+          try {
+            const parsed = JSON.parse(r.raw_json);
+            restaurant = {
+              ...parsed,
+              id: r.id,
+              name: r.name || parsed.name,
+              cuisine: r.cuisine || parsed.cuisine,
+              rating: r.rating ?? parsed.rating,
+              isOpen: r.is_open === 1,
+              isBusyPaused: r.is_busy_paused === 1,
+              deliveryFee: r.delivery_fee ?? parsed.deliveryFee
+            };
+          } catch {
+            restaurant = r;
           }
-          return r;
+        } else {
+          restaurant = r;
         }
-        return null;
-      });
+      }
     } catch (e) {
-      // Primary D1 query threw error, check snapshot as fallback
-      restaurant = siteDataManager.getRestaurants().find((r: any) => r.id === id) || null;
-    }
-
-    if (!restaurant) {
-      restaurant = await db.getRestaurantById(id);
+      console.error('[Restaurants Route] Authoritative D1 single-restaurant query failed:', e);
+      return res.status(503).json({ success: false, error: 'Restaurant temporarily unavailable. Please retry.' });
     }
 
     if (!restaurant) {
