@@ -1673,14 +1673,27 @@ export async function POST(req: NextRequest) {
     const id = `item-${Date.now()}`;
     const now = new Date().toISOString();
     const targetRestaurantId = restaurantId || 'rest-1';
-    await d1.query(
+    const insertRes = await d1.query(
       `INSERT INTO menu_items (id, restaurant_id, category_id, name, description, price, dietary_tags, popular, is_available, image_r2_url, created_at)
        VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?)`,
       [id, targetRestaurantId, categoryId || category || 'Main Dishes', name, description || '', Number(price), popular ? 1 : 0, isAvailable === false ? 0 : 1, imageR2Url || imageUrl || null, now]
     );
+    if (insertRes?.success === false) {
+      return NextResponse.json({ success: false, error: 'Menu item could not be saved to the database.' }, { status: 500 });
+    }
     const createdRes = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [id]);
-    if (createdRes.results?.[0]) await syncMenuItemToRestaurantJson(id, createdRes.results[0], targetRestaurantId);
-    else await siteDataManager.refreshSnapshot({ force: true });
+    if (!createdRes.results?.[0]) {
+      return NextResponse.json({ success: false, error: 'Menu item was not found after creation; catalogue was not updated.' }, { status: 503 });
+    }
+    try {
+      await syncMenuItemToRestaurantJson(id, createdRes.results[0], targetRestaurantId);
+    } catch (syncError: any) {
+      return NextResponse.json({
+        success: false,
+        error: 'Menu item was saved, but the public catalogue synchronization failed. Retry after checking site-data status.',
+        details: syncError?.message || 'Catalogue synchronization failed'
+      }, { status: 503 });
+    }
     return NextResponse.json({ success: true, data: { id, name, price: Number(price) } }, { status: 201 });
   }
 
@@ -2283,12 +2296,25 @@ export async function PATCH(req: NextRequest) {
     if (imageR2Url !== undefined || imageUrl !== undefined) { updates.push('image_r2_url = ?'); values.push(imageR2Url ?? imageUrl); }
     if (updates.length > 0) {
       values.push(itemId);
-      await d1.query(`UPDATE menu_items SET ${updates.join(', ')} WHERE id = ?`, values);
+      const updateRes = await d1.query(`UPDATE menu_items SET ${updates.join(', ')} WHERE id = ?`, values);
+      if (updateRes?.success === false) {
+        return NextResponse.json({ success: false, error: 'Menu item update failed in the database.' }, { status: 500 });
+      }
     }
     const updatedRes = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [itemId]);
-    if (updatedRes.results?.[0]) await syncMenuItemToRestaurantJson(itemId, updatedRes.results[0], updatedRes.results[0].restaurant_id);
-    else await siteDataManager.refreshSnapshot({ force: true });
-    return NextResponse.json({ success: true, message: 'Menu item updated' });
+    if (!updatedRes.results?.[0]) {
+      return NextResponse.json({ success: false, error: 'Menu item not found after update.' }, { status: 404 });
+    }
+    try {
+      await syncMenuItemToRestaurantJson(itemId, updatedRes.results[0], updatedRes.results[0].restaurant_id);
+    } catch (syncError: any) {
+      return NextResponse.json({
+        success: false,
+        error: 'Menu item was updated, but the public catalogue synchronization failed.',
+        details: syncError?.message || 'Catalogue synchronization failed'
+      }, { status: 503 });
+    }
+    return NextResponse.json({ success: true, message: 'Menu item updated and public catalogue refreshed' });
   }
 
   // 11. Addon Update
