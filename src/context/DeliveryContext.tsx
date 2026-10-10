@@ -1258,15 +1258,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
       }
       return false;
     } catch (error) {
-      console.warn('Backend PIN validation failed, using live fallback:', error);
-      const target = orders.find((o) => o.id === orderId);
-      if (!target) return false;
-
-      const isMatch = Boolean(target.handoverPin && target.handoverPin.trim() === enteredPin.trim());
-      if (isMatch) {
-        await advanceOrderStatus(orderId, 'delivered');
-        return true;
-      }
+      // Never confirm a handover from client-side state when the server is unavailable.
+      // The backend is authoritative for order ownership, status, and one-time confirmation.
+      console.error('Server-side handover verification failed; refusing client-side fallback.', error);
       return false;
     }
   };

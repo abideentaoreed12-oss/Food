@@ -392,11 +392,46 @@ export class D1Client {
       ];
 
       for (const sql of statements) {
-        if (this.isConfigured()) {
-          await this.queryDirect(sql, [], true).catch(() => {});
-        }
+        // Required schema creation must fail visibly; never mark a partially migrated DB healthy.
+        if (this.isConfigured()) await this.queryDirect(sql, [], true);
         this.executeLocal(sql);
       }
+
+      // Backward-compatible handover/review migrations. Inspect columns before ALTER TABLE:
+      // older SQLite/D1 engines don't support ADD COLUMN IF NOT EXISTS consistently.
+      const ensureColumn = async (table: string, column: string, definition: string) => {
+        const sql = `PRAGMA table_info(${table})`;
+        if (this.isConfigured()) {
+          const remote = await this.queryDirect(sql, [], true);
+          const cols = (remote.results || []).map((row: any) => String(row.name));
+          if (!cols.includes(column)) await this.queryDirect(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`, [], true);
+        }
+        const local = this.executeLocal(sql, []);
+        const cols = (local.results || []).map((row: any) => String(row.name));
+        if (!cols.includes(column)) this.executeLocal(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`, []);
+      };
+      const handoverTable = `CREATE TABLE IF NOT EXISTS handover_qr_tokens (
+        id TEXT PRIMARY KEY,
+        order_id TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at TEXT NOT NULL,
+        consumed_at TEXT,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )`;
+      if (this.isConfigured()) await this.queryDirect(handoverTable, [], true);
+      this.executeLocal(handoverTable);
+      if (this.isConfigured()) await this.queryDirect('CREATE INDEX IF NOT EXISTS idx_handover_qr_order ON handover_qr_tokens (order_id, consumed_at)', [], true);
+      this.executeLocal('CREATE INDEX IF NOT EXISTS idx_handover_qr_order ON handover_qr_tokens (order_id, consumed_at)');
+      for (const [column, definition] of [
+        ['order_id', 'TEXT'], ['courier_id', 'TEXT'], ['customer_name', 'TEXT'],
+        ['food_rating', 'INTEGER'], ['delivery_rating', 'INTEGER'], ['photo_r2_url', 'TEXT']
+      ] as const) await ensureColumn('reviews', column, definition);
+      // Enforce one review per order/customer at the database layer, including concurrent requests.
+      // If legacy duplicate data exists, fail migration visibly so it can be reconciled before rollout.
+      const reviewUniqueIndex = 'CREATE UNIQUE INDEX IF NOT EXISTS uq_reviews_order_customer ON reviews (order_id, customer_id)';
+      if (this.isConfigured()) await this.queryDirect(reviewUniqueIndex, [], true);
+      this.executeLocal(reviewUniqueIndex);
 
       // Migrate older promo_codes tables in both authoritative D1 and local development SQLite.
       // CREATE TABLE IF NOT EXISTS does not add columns to tables that already exist.
@@ -406,16 +441,18 @@ export class D1Client {
         "ALTER TABLE promo_codes ADD COLUMN description TEXT DEFAULT ''"
       ];
       for (const migration of promoColumnMigrations) {
-        if (this.isConfigured()) {
-          await this.queryDirect(migration, [], true).catch(() => {
-            // An existing column is expected on subsequent cold starts; other failures surface on insert.
-          });
-        }
-        try {
-          this.executeLocal(migration);
-        } catch {
-          // Ignore duplicate-column errors in the local development database.
-        }
+        const column = migration.match(/ADD COLUMN\s+([a-z_]+)/i)?.[1];
+        if (!column) throw new Error(`Invalid promo-code migration: ${migration}`);
+        const ensurePromoColumn = async (remote: boolean) => {
+          const pragma = 'PRAGMA table_info(promo_codes)';
+          const result = remote ? await this.queryDirect(pragma, [], true) : this.executeLocal(pragma, []);
+          const exists = (result.results || []).some((row: any) => String(row.name) === column);
+          if (exists) return;
+          if (remote) await this.queryDirect(migration, [], true);
+          else this.executeLocal(migration, []);
+        };
+        if (this.isConfigured()) await ensurePromoColumn(true);
+        await ensurePromoColumn(false);
       }
 
       const now = new Date().toISOString();
@@ -442,7 +479,10 @@ export class D1Client {
 
       this.isSchemaInitialized = true;
     } catch (e) {
-      console.warn('D1 schema init notice:', e);
+      // Keep initialization retryable and surface the failure to the request/CI caller.
+      this.isSchemaInitialized = false;
+      console.error('D1 schema initialization failed:', e);
+      throw e;
     }
   }
 
