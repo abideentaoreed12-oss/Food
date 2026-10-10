@@ -104,11 +104,12 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
         address: order.restaurantAddress || 'Kitchen Address'
       };
     }
+    // Do not invent a restaurant location when stored coordinates are missing.
     return {
-      lat: 6.4474,
-      lng: 3.4723,
+      lat: Number.NaN,
+      lng: Number.NaN,
       name: order.restaurantName || 'Kitchen Hub',
-      address: order.restaurantAddress || '14 Admiralty Way, Lekki'
+      address: order.restaurantAddress || ''
     };
   }, [propKitchenLoc, order.restaurantId, order.restaurantLat, order.restaurantLng, order.restaurantName, order.restaurantAddress, restaurants]);
 
@@ -158,17 +159,10 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
         address: order.customerAddress || 'Delivery Address'
       };
     }
-    // Dynamic offset based on city hash to give stable, distinct realistic coordinates
-    let hash = 0;
-    for (let i = 0; i < (order.customerAddress || '').length; i++) {
-      hash = (hash << 5) - hash + order.customerAddress!.charCodeAt(i);
-      hash |= 0;
-    }
-    const deltaLat = 0.008 + (Math.abs(hash % 100) / 100) * 0.02;
-    const deltaLng = 0.008 + (Math.abs((hash >> 4) % 100) / 100) * 0.02;
+    // Never substitute fabricated coordinates when address geocoding fails.
     return {
-      lat: kitchenCoord.lat + deltaLat,
-      lng: kitchenCoord.lng + deltaLng,
+      lat: Number.NaN,
+      lng: Number.NaN,
       address: order.customerAddress || 'Delivery Address'
     };
   }, [propCustomerLoc, order.customerLat, order.customerLng, order.customerAddress, geocodedCustomer, kitchenCoord]);
@@ -192,18 +186,9 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
     if (propRoutePoints && propRoutePoints.length >= 2) {
       return propRoutePoints;
     }
-    // Generate curved road waypoints along the geographic arc
-    const points: { lat: number; lng: number }[] = [];
-    const steps = 8;
-    for (let i = 0; i <= steps; i++) {
-      const frac = i / steps;
-      const curve = Math.sin(frac * Math.PI) * 0.0025;
-      points.push({
-        lat: kitchenCoord.lat + (customerCoord.lat - kitchenCoord.lat) * frac + curve,
-        lng: kitchenCoord.lng + (customerCoord.lng - kitchenCoord.lng) * frac - curve * 0.7
-      });
-    }
-    return points;
+    // Without a routing-provider response, use only known endpoints, not a fabricated road.
+    if (![kitchenCoord.lat, kitchenCoord.lng, customerCoord.lat, customerCoord.lng].every(Number.isFinite)) return [];
+    return [kitchenCoord, customerCoord].map(({ lat, lng }) => ({ lat, lng }));
   }, [propRoutePoints, kitchenCoord, customerCoord]);
 
   // 5. Compute Live Courier Position along Route
@@ -217,7 +202,9 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
     if (progressRatio <= 0.05) {
       return { lat: kitchenCoord.lat, lng: kitchenCoord.lng, speed: 0, heading: 0 };
     }
-    // Interpolate along actual route road waypoints
+    // Do not simulate courier GPS from status/progress.
+    return { lat: Number.NaN, lng: Number.NaN, speed: 0, heading: 0 };
+    /* Disabled synthetic movement:
     if (routeWaypoints.length >= 2) {
       const totalSegs = routeWaypoints.length - 1;
       const targetIdx = progressRatio * totalSegs;
@@ -248,6 +235,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
       speed: order.status === 'in_transit' ? 28 : 0,
       heading: 45
     };
+    */
   }, [courierLocation, progressRatio, customerCoord, kitchenCoord, routeWaypoints, order.status]);
 
   // Trip and remaining distances
@@ -319,6 +307,15 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
       riderY: pRider.y
     };
   }, [routeWaypoints, courierCoord, kitchenCoord, customerCoord]);
+
+  if (![kitchenCoord.lat, kitchenCoord.lng, customerCoord.lat, customerCoord.lng].every(Number.isFinite)) {
+    return (
+      <div className={`w-full rounded-2xl border border-slate-200 bg-white p-5 text-slate-700 ${className}`}>
+        <p className="font-semibold">Live map location unavailable</p>
+        <p className="mt-1 text-sm text-slate-500">Verified restaurant and delivery coordinates are required to draw this route. The map will update when valid locations are available.</p>
+      </div>
+    );
+  }
 
   return (
     <div className={`relative w-full rounded-2xl overflow-hidden border border-slate-200/90 shadow-sm bg-slate-900 text-white ${className}`}>
