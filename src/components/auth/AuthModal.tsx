@@ -778,65 +778,6 @@ export const AuthModal: React.FC = () => {
               )}
             </button>
 
-            {/* Quick Demo Credentials for Fast Testing */}
-            {tab === 'login' && (
-              <div className="pt-2 border-t border-slate-100">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 text-center">
-                  Quick Fill Test Accounts
-                </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail('customer@veyrang.com');
-                      setPassword('Customer123!');
-                      setError(null);
-                    }}
-                    className="p-1.5 px-2 bg-slate-50 hover:bg-orange-50 hover:border-orange-200 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-700 hover:text-[#FF5500] transition-all text-left flex items-center justify-between cursor-pointer"
-                  >
-                    <span>👤 Customer</span>
-                    <span className="font-mono text-[9px] text-slate-400">customer@</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail('admin@veyrang.com');
-                      setPassword('Admin123!');
-                      setError(null);
-                    }}
-                    className="p-1.5 px-2 bg-slate-50 hover:bg-rose-50 hover:border-rose-200 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-700 hover:text-rose-600 transition-all text-left flex items-center justify-between cursor-pointer"
-                  >
-                    <span>🛡️ Super Admin</span>
-                    <span className="font-mono text-[9px] text-slate-400">admin@</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail('restaurant@veyrang.com');
-                      setPassword('Merchant123!');
-                      setError(null);
-                    }}
-                    className="p-1.5 px-2 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-200 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-700 hover:text-emerald-700 transition-all text-left flex items-center justify-between cursor-pointer"
-                  >
-                    <span>🍳 Merchant</span>
-                    <span className="font-mono text-[9px] text-slate-400">restaurant@</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail('courier@veyrang.com');
-                      setPassword('Courier123!');
-                      setError(null);
-                    }}
-                    className="p-1.5 px-2 bg-slate-50 hover:bg-sky-50 hover:border-sky-200 border border-slate-200 rounded-xl text-[11px] font-bold text-slate-700 hover:text-sky-700 transition-all text-left flex items-center justify-between cursor-pointer"
-                  >
-                    <span>🛵 Courier</span>
-                    <span className="font-mono text-[9px] text-slate-400">courier@</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Quick Staff / Admin Switcher */}
             {tab === 'login' && intendedPortal !== 'admin' && (
               <div className="pt-1 text-center">

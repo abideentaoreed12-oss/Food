@@ -98,22 +98,6 @@ export function seedInitialData(): DatabaseSchema {
     }
   ];
 
-  if (adminEmail !== 'admin@veyrang.com') {
-    users.push({
-      id: 'usr-admin-default',
-      email: 'admin@veyrang.com',
-      passwordHash: bcrypt.hashSync('Admin123!', salt),
-      name: 'System Administrator (Default)',
-      role: 'admin',
-      phone: '+234 801 234 5678',
-      walletBalanceUSD: 0,
-      walletBalanceNGN: 0,
-      savedAddresses: [],
-      createdAt: now,
-      updatedAt: now
-    });
-  }
-
   // Seed restaurants from catalog data
   const restaurants: Restaurant[] = [...(INITIAL_RESTAURANTS as any[])];
 
