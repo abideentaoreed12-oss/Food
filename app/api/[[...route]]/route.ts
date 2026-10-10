@@ -71,9 +71,20 @@ async function syncMenuItemToRestaurantJson(
       });
       changed = true;
     }
-    if (changed) await d1.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(restaurantData), row.id]);
+    if (changed) {
+      const updateRes = await d1.query(
+        'UPDATE restaurants SET raw_json = ? WHERE id = ?',
+        [JSON.stringify(restaurantData), row.id]
+      );
+      if (updateRes?.success === false) {
+        throw new Error(`Failed to synchronize restaurant menu JSON for restaurant ${row.id}`);
+      }
+    }
   }
-  await siteDataManager.refreshSnapshot({ force: true });
+  const refreshed = await siteDataManager.refreshSnapshot({ force: true });
+  if (!refreshed) {
+    throw new Error('Menu changed in the database, but the public catalogue snapshot could not be refreshed.');
+  }
 }
 
 
@@ -2555,12 +2566,27 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const targetId = decodeURIComponent(delRestMatch[1]);
-    // Remove dependent menu records and embedded restaurant menu data as part of the same
-    // admin deletion workflow, then persist a fresh public catalogue snapshot.
-    await d1.query('DELETE FROM menu_items WHERE restaurant_id = ?', [targetId]).catch(() => {});
-    await d1.query('DELETE FROM restaurants WHERE id = ?', [targetId]);
-    await siteDataManager.refreshSnapshot({ force: true });
-    return NextResponse.json({ success: true, message: 'Restaurant and its menu deleted; public catalogue refreshed' });
+    // Do not report success if dependent rows or the restaurant itself failed to delete.
+    const existingRes = await d1.query('SELECT id FROM restaurants WHERE id = ? LIMIT 1', [targetId]);
+    if (!existingRes.results?.length) {
+      return NextResponse.json({ success: false, error: 'Restaurant not found.' }, { status: 404 });
+    }
+    const menuDeleteRes = await d1.query('DELETE FROM menu_items WHERE restaurant_id = ?', [targetId]);
+    if (menuDeleteRes?.success === false) {
+      return NextResponse.json({ success: false, error: 'Could not delete the restaurant menu items.' }, { status: 500 });
+    }
+    const restaurantDeleteRes = await d1.query('DELETE FROM restaurants WHERE id = ?', [targetId]);
+    if (restaurantDeleteRes?.success === false) {
+      return NextResponse.json({ success: false, error: 'Could not delete the restaurant.' }, { status: 500 });
+    }
+    const refreshed = await siteDataManager.refreshSnapshot({ force: true });
+    if (!refreshed || refreshed.restaurants.some((restaurant: any) => String(restaurant.id) === String(targetId))) {
+      return NextResponse.json({
+        success: false,
+        error: 'Restaurant was deleted from the database, but the public catalogue refresh could not be verified.'
+      }, { status: 503 });
+    }
+    return NextResponse.json({ success: true, message: 'Restaurant and its menu deleted; public catalogue refresh verified' });
   }
 
   return NextResponse.json({ success: false, error: `API route DELETE /api${pathname} not found.` }, { status: 404 });
