@@ -1860,6 +1860,7 @@ export async function POST(req: NextRequest) {
     const order = orderRes.results?.[0] as any;
     if (!order) return NextResponse.json({ success: false, error: 'Order not found.' }, { status: 404 });
     if (String(order.customer_id || '') !== String(user.id)) return NextResponse.json({ success: false, error: 'You cannot issue a QR for this order.' }, { status: 403 });
+    if (String(order.payment_status || '').toLowerCase() !== 'paid') return NextResponse.json({ success: false, error: 'Payment must be confirmed before issuing a handover QR.' }, { status: 409 });
     if (String(order.status) !== 'in_transit') return NextResponse.json({ success: false, error: 'A handover QR is available only while the order is in transit.' }, { status: 409 });
     await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
     const token = randomBytes(32).toString('base64url');
@@ -1876,9 +1877,10 @@ export async function POST(req: NextRequest) {
   if (qrDetailsMatch && req.method === 'GET') {
     const tokenHash = createHash('sha256').update(qrDetailsMatch[1]).digest('hex');
     await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
-    const result = await d1.query('SELECT t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.restaurant_name FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
+    const result = await d1.query('SELECT t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.payment_status, o.restaurant_name FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
     const row = result.results?.[0] as any;
     if (!row || row.consumed_at || new Date(row.expires_at).getTime() <= Date.now()) return NextResponse.json({ success: false, error: 'This handover link is invalid, expired, or already used.' }, { status: 410, headers: { 'Cache-Control': 'no-store' } });
+    if (String(row.payment_status || '').toLowerCase() !== 'paid') return NextResponse.json({ success: false, error: 'Payment is not confirmed. This handover QR is locked.' }, { status: 409, headers: { 'Cache-Control': 'no-store' } });
     const viewer = await getUser(req);
     if (!viewer || viewer.role !== 'customer') return NextResponse.json({ success: false, error: 'Sign in to VeyraNG with your customer account to view this handover.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
     const owner = await d1.query('SELECT customer_id FROM orders WHERE id = ? LIMIT 1', [row.order_id]);
@@ -1890,9 +1892,10 @@ export async function POST(req: NextRequest) {
   if (qrConfirmMatch && req.method === 'POST') {
     const tokenHash = createHash('sha256').update(qrConfirmMatch[1]).digest('hex');
     await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
-    const result = await d1.query('SELECT t.id AS token_id, t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.customer_id FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
+    const result = await d1.query('SELECT t.id AS token_id, t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.payment_status, o.customer_id FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
     const row = result.results?.[0] as any;
     if (!row || row.consumed_at || new Date(row.expires_at).getTime() <= Date.now()) return NextResponse.json({ success: false, error: 'This handover link is invalid, expired, or already used.' }, { status: 410 });
+    if (String(row.payment_status || '').toLowerCase() !== 'paid') return NextResponse.json({ success: false, error: 'Payment must be confirmed before completing handover.' }, { status: 409 });
     const user = await getUser(req);
     if (!user) return NextResponse.json({ success: false, error: 'Sign in to VeyraNG as the order customer to confirm receipt.' }, { status: 401 });
     if (user.role !== 'customer' || String(user.id) !== String(row.customer_id)) return NextResponse.json({ success: false, error: 'Only the signed-in customer for this order can confirm receipt.' }, { status: 403 });
@@ -1918,10 +1921,11 @@ export async function POST(req: NextRequest) {
     const orderId = decodeURIComponent(handoverMatch[1]);
     const enteredPin = String(body?.enteredPin || '').trim();
     if (!/^\d{4,8}$/.test(enteredPin)) return NextResponse.json({ success: false, error: 'Enter a valid handover code.' }, { status: 400 });
-    const result = await d1.query('SELECT id, short_id, customer_id, status, raw_json FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
+    const result = await d1.query('SELECT id, short_id, customer_id, status, payment_status, raw_json FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
     const row = result.results?.[0] as any;
     if (!row) return NextResponse.json({ success: false, error: 'Order not found.' }, { status: 404 });
     if (String(row.customer_id || '') !== String(user.id)) return NextResponse.json({ success: false, error: 'You are not authorized to confirm this order.' }, { status: 403 });
+    if (String(row.payment_status || '').toLowerCase() !== 'paid') return NextResponse.json({ success: false, error: 'Payment must be confirmed before verifying handover.' }, { status: 409 });
     if (row.status !== 'in_transit') return NextResponse.json({ success: false, error: 'Only an order that is on the way can be confirmed.' }, { status: 409 });
     let orderData: any = {};
     try { orderData = JSON.parse(row.raw_json || '{}'); } catch { return NextResponse.json({ success: false, error: 'Order data could not be verified.' }, { status: 500 }); }
