@@ -60,7 +60,7 @@ export const RestaurantPortal: React.FC = () => {
   );
 
   const totalKitchenRevenueUSD = restaurantOrders.reduce((sum, o) => sum + o.subtotal, 0);
-  const commissionRate = currentRestaurant.commissionPercent || 15;
+  const commissionRate = currentRestaurant?.commissionPercent || 15;
   const platformFeeUSD = Math.round(totalKitchenRevenueUSD * (commissionRate / 100) * 100) / 100;
   const netPayoutUSD = Math.round((totalKitchenRevenueUSD - platformFeeUSD) * 100) / 100;
 
