@@ -132,7 +132,7 @@ export class SiteDataManager {
       if (fs.existsSync(this.tmpDiskPath)) {
         const raw = fs.readFileSync(this.tmpDiskPath, 'utf-8');
         const parsed = JSON.parse(raw);
-        if (isValidSiteData(parsed)) {
+        if (isValidSiteData(parsed, { allowEmpty: true })) {
           this.currentSnapshot = {
             ...parsed,
             schemaVersion: parsed.schemaVersion || 1,
@@ -204,7 +204,7 @@ export class SiteDataManager {
       );
       if (d1Res.results && d1Res.results.length > 0 && d1Res.results[0].value) {
         const parsed = JSON.parse(d1Res.results[0].value);
-        if (isValidSiteData(parsed)) {
+        if (isValidSiteData(parsed, { allowEmpty: true })) {
           this.currentSnapshot = {
             ...parsed,
             schemaVersion: parsed.schemaVersion || 1,
