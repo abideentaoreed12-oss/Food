@@ -121,7 +121,7 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
     const serviceFee = currency === 'USD' ? Math.round(verifiedSubtotal * 0.08 * 100) / 100 : 200;
     let discountAmount = 0;
     if (promoCode) {
-      const codeUpper = String(promoCode).trim().toUpperCase();
+      const codeUpper = String(promoCode).trim().toUpperCase();\n      if (['FIRST50', 'WELCOME20', 'FREEDEL'].includes(codeUpper)) {\n        return res.status(400).json({ success: false, error: 'This legacy demo promo code is no longer available' });\n      }
       let d1Promo;
       try {
         d1Promo = await d1Client.query('SELECT * FROM promo_codes WHERE UPPER(code) = ? AND is_active = 1 LIMIT 1', [codeUpper]);
