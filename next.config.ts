@@ -11,11 +11,12 @@ const securityHeaders = [
       "base-uri 'self'",
       "object-src 'none'",
       "form-action 'self' https://checkout.paystack.com https://*.paystack.com",
-      "img-src 'self' data: blob: https: https://*.r2.dev https://*.r2.cloudflarestorage.com",
+      "img-src 'self' data: blob: https: https://*.r2.dev https://*.r2.cloudflarestorage.com https://*.googleapis.com https://*.gstatic.com",
       "font-src 'self' data: https://fonts.gstatic.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.paystack.co https://checkout.paystack.com https://*.googleapis.com",
-      "connect-src 'self' https: wss: https://api.paystack.co https://*.googleapis.com https://*.google-analytics.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.googleapis.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.paystack.co https://checkout.paystack.com https://*.googleapis.com https://*.gstatic.com",
+      "worker-src 'self' blob:",
+      "connect-src 'self' https: wss: https://api.paystack.co https://*.googleapis.com https://*.gstatic.com https://*.google-analytics.com",
       "frame-src 'self' https://checkout.paystack.com https://*.paystack.com https://www.google.com https://maps.google.com"
     ].join('; ')
   }
