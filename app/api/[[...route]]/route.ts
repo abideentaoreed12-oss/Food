@@ -373,17 +373,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: promos });
   }
 
-  // 10b. Centralized Public Site Data Snapshot & Status
+  // 10b. Public site data: refresh from D1 before every response; snapshots never override D1.
   if (pathname === '/site-data/public') {
-    // Load durable last-known-good data first. If no snapshot exists yet, attempt a real D1 refresh
-    // before returning unavailable; never manufacture sample data to make the endpoint look healthy.
-    let snapshot = await siteDataManager.loadSnapshot();
-    if (!snapshot) {
-      snapshot = await siteDataManager.refreshSnapshot({ force: true });
-    } else {
-      // Refresh in the background after returning the last successful snapshot.
-      siteDataManager.syncIfStale().catch(() => {});
-    }
+    const snapshot = await siteDataManager.refreshSnapshot({ force: true });
+
 
     if (!snapshot) {
       return NextResponse.json({
