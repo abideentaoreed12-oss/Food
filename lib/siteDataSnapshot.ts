@@ -369,7 +369,7 @@ export class SiteDataManager {
     this.isSyncing = true;
     this.inFlightRefreshPromise = (async () => {
       try {
-        const restRes = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC');
+        const restRes = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC', [], { cache: false });
         // A successful query with zero rows means the catalogue is genuinely empty.
         // A failed/malformed query must never be mistaken for an intentional deletion.
         if (!restRes || restRes.success === false || !Array.isArray(restRes.results)) {
