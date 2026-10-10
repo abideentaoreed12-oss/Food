@@ -400,6 +400,13 @@ export const api = {
       });
     },
 
+    issueHandoverQr: async (orderId: string) =>
+      request(`/api/orders/${encodeURIComponent(orderId)}/handover-qr`, { method: 'POST', body: JSON.stringify({}) }),
+    getHandoverDetails: async (token: string) =>
+      request(`/api/handover/${encodeURIComponent(token)}`),
+    confirmQrHandover: async (token: string) =>
+      request(`/api/handover/${encodeURIComponent(token)}/confirm`, { method: 'POST', body: JSON.stringify({}) }),
+
     verifyHandover: async (orderId: string, enteredPin: string) => {
       return request(`/api/orders/${orderId}/verify-handover`, {
         method: 'POST',
