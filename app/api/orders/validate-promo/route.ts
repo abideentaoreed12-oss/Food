@@ -30,7 +30,10 @@ export async function POST(req: NextRequest) {
   if (!Number.isFinite(cleanSubtotal) || cleanSubtotal < 0) {
     return NextResponse.json({ success: false, valid: false, error: 'A valid order subtotal is required' }, { status: 400 });
   }
-  if (['FIRST50', 'WELCOME20', 'FREEDEL'].includes(codeUpper)) {\n    return NextResponse.json({ success: false, valid: false, error: 'This legacy demo promo code is no longer available' }, { status: 404 });\n  }\n  if (!codeUpper) {
+  if (['FIRST50', 'WELCOME20', 'FREEDEL'].includes(codeUpper)) {
+    return NextResponse.json({ success: false, valid: false, error: 'This legacy demo promo code is no longer available' }, { status: 404 });
+  }
+  if (!codeUpper) {
     return NextResponse.json({ success: false, error: 'Promo code required' }, { status: 400 });
   }
 
