@@ -173,7 +173,7 @@ export class R2Client {
   }
 
   public async delete(key: string): Promise<{ success: boolean }> {
-    const cleanKey = key.replace(/^\\//, '');
+    const cleanKey = key.replace(/^\//, '');
     if (!cleanKey || cleanKey.split('/').some((part) => part === '..' || part === '.')) {
       return { success: false };
     }
