@@ -97,6 +97,10 @@ export class SiteDataManager {
   }
 
   private loadFromDiskSync(): void {
+    // Vercel serverless filesystems are ephemeral and must not be treated as durable
+    // production truth. Production recovery is from Cloudflare D1/R2 only.
+    if (process.env.NODE_ENV === 'production') return;
+
     // Only load from disk if memory is empty
     if (this.currentSnapshot) return;
 
