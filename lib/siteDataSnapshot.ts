@@ -322,6 +322,13 @@ export class SiteDataManager {
       }
     }
 
+    // In production, D1 is the durable source of truth and loadSnapshot prioritizes it over R2.
+    // Never claim a snapshot is published if its authoritative D1 write failed.
+    if (process.env.NODE_ENV === 'production' && !persistedToD1) {
+      console.error('[SiteData] Refusing to publish a snapshot because authoritative D1 persistence failed.');
+      return false;
+    }
+
     // Update metadata with verified persistence report
     snapshot.metadata = {
       restaurantCount: snapshot.restaurants.length,
@@ -348,11 +355,14 @@ export class SiteDataManager {
    * Protects against concurrent refreshes using a promise lock.
    */
   public async refreshSnapshot(
-    options?: { force?: boolean; allowEmpty?: boolean; isAuthorizedAdmin?: boolean }
+    options?: { force?: boolean; allowEmpty?: boolean; isAuthorizedAdmin?: boolean; requireFresh?: boolean }
   ): Promise<SiteDataSnapshot | null> {
-    // If a refresh is already in-flight, return the existing promise to prevent duplicate requests
-    if (this.inFlightRefreshPromise) {
-      return this.inFlightRefreshPromise;
+    // A forced refresh must run after any older refresh already in progress. Otherwise a
+    // deletion can receive the pre-deletion snapshot from that older request.
+    while (this.inFlightRefreshPromise) {
+      const pendingRefresh = this.inFlightRefreshPromise;
+      if (!options?.force) return pendingRefresh;
+      await pendingRefresh;
     }
 
     const now = Date.now();
@@ -369,7 +379,7 @@ export class SiteDataManager {
     this.isSyncing = true;
     this.inFlightRefreshPromise = (async () => {
       try {
-        const restRes = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC');
+        const restRes = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC', [], { cache: false });
         // A successful query with zero rows means the catalogue is genuinely empty.
         // A failed/malformed query must never be mistaken for an intentional deletion.
         if (!restRes || restRes.success === false || !Array.isArray(restRes.results)) {
@@ -414,9 +424,9 @@ export class SiteDataManager {
           delete r.secret;
         }
 
-        const zonesRes = await d1.query('SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL').catch(() => ({ results: [] }));
-        const promoRes = await d1.query('SELECT * FROM promo_codes WHERE is_active = 1').catch(() => ({ results: [] }));
-        const settingsRes = await d1.query('SELECT key, value FROM platform_settings').catch(() => ({ results: [] }));
+        const zonesRes = await d1.query('SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL', [], { cache: false }).catch(() => ({ results: [] }));
+        const promoRes = await d1.query('SELECT * FROM promo_codes WHERE is_active = 1', [], { cache: false }).catch(() => ({ results: [] }));
+        const settingsRes = await d1.query('SELECT key, value FROM platform_settings', [], { cache: false }).catch(() => ({ results: [] }));
 
         // Public settings allowlist: never leak private keys, secrets or credentials
         const safeSettings: Record<string, any> = {};
@@ -457,14 +467,14 @@ export class SiteDataManager {
           if (!saved) {
             this.consecutiveFailures++;
             console.warn('[SiteData] Snapshot persistence failed; preserving the previous verified snapshot.');
-            return this.currentSnapshot;
+            return options?.requireFresh ? null : this.currentSnapshot;
           }
           this.consecutiveFailures = 0;
           return this.currentSnapshot || candidate;
         } else {
           this.consecutiveFailures++;
           console.warn('[SiteData] Candidate snapshot failed validation. Preserving existing last-known-good.');
-          return this.currentSnapshot;
+          return options?.requireFresh ? null : this.currentSnapshot;
         }
       } catch (err: any) {
         this.consecutiveFailures++;
@@ -473,7 +483,7 @@ export class SiteDataManager {
           err?.message || err,
           'Serving last-known-good.'
         );
-        return this.currentSnapshot;
+        return options?.requireFresh ? null : this.currentSnapshot;
       } finally {
         this.isSyncing = false;
         this.inFlightRefreshPromise = null;
