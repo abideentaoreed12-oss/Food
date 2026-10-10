@@ -153,6 +153,7 @@ export const AdminPortal: React.FC = () => {
   const [newRestTagline, setNewRestTagline] = useState('Authentic dishes prepared fresh to order');
   const [newRestBannerUrl, setNewRestBannerUrl] = useState('');
   const [newRestZone, setNewRestZone] = useState('Lekki / Victoria Island');
+  const [newRestOwnerUserId, setNewRestOwnerUserId] = useState('');
 
   // Edit Restaurant Branch State
   const [isEditRestaurantModalOpen, setIsEditRestaurantModalOpen] = useState<boolean>(false);
@@ -206,6 +207,11 @@ export const AdminPortal: React.FC = () => {
   const [newStaffName, setNewStaffName] = useState('');
   const [newStaffEmail, setNewStaffEmail] = useState('');
   const [newStaffRole, setNewStaffRole] = useState<UserRole>('sub_admin');
+  const [newStaffRestaurantId, setNewStaffRestaurantId] = useState('');
+  const [createRestaurantForStaff, setCreateRestaurantForStaff] = useState(false);
+  const [newStaffRestaurantName, setNewStaffRestaurantName] = useState('');
+  const [newStaffRestaurantAddress, setNewStaffRestaurantAddress] = useState('');
+  const [newStaffRestaurantCuisine, setNewStaffRestaurantCuisine] = useState('');
   const [newStaffPhone, setNewStaffPhone] = useState('');
   const [newStaffPassword, setNewStaffPassword] = useState('StaffPass2026!');
 
@@ -421,12 +427,31 @@ export const AdminPortal: React.FC = () => {
     if (!newStaffName || !newStaffEmail) return;
 
     try {
+      let restaurantId = newStaffRestaurantId;
+      if (newStaffRole === 'restaurant' && createRestaurantForStaff) {
+        if (!newStaffRestaurantName.trim() || !newStaffRestaurantAddress.trim()) {
+          showActionFeedback('Enter the new restaurant name and address first.');
+          return;
+        }
+        const restaurantResult = await api.admin.createRestaurant({
+          name: newStaffRestaurantName.trim(),
+          address: newStaffRestaurantAddress.trim(),
+          cuisine: newStaffRestaurantCuisine.trim()
+        });
+        if (!restaurantResult?.data?.id) throw new Error(restaurantResult?.error || 'Restaurant creation failed');
+        restaurantId = restaurantResult.data.id;
+      }
+      if (newStaffRole === 'restaurant' && !restaurantId) {
+        showActionFeedback('Select an existing restaurant or choose Create new restaurant.');
+        return;
+      }
       await api.admin.createStaff({
         name: newStaffName,
         email: newStaffEmail,
         role: newStaffRole,
         phone: newStaffPhone,
-        password: newStaffPassword
+        password: newStaffPassword,
+        ...(newStaffRole === 'restaurant' ? { restaurantId } : {})
       });
 
       showActionFeedback(`Staff member "${newStaffName}" created successfully with role "${newStaffRole}" in Platform D1!`);
@@ -434,6 +459,11 @@ export const AdminPortal: React.FC = () => {
       setNewStaffName('');
       setNewStaffEmail('');
       setNewStaffPhone('');
+      setNewStaffRestaurantId('');
+      setCreateRestaurantForStaff(false);
+      setNewStaffRestaurantName('');
+      setNewStaffRestaurantAddress('');
+      setNewStaffRestaurantCuisine('');
       fetchData();
     } catch (err: any) {
       showActionFeedback(`Failed to create staff member: ${err.message}`);
@@ -864,10 +894,10 @@ export const AdminPortal: React.FC = () => {
   // Restaurant Branch Handlers
   const handleCreateRestaurant = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRestName || !newRestAddress) return;
+    if (!newRestName.trim() || !newRestAddress.trim()) return;
     try {
       await api.admin.createRestaurant({
-        name: newRestName,
+        name: newRestName.trim(),
         address: newRestAddress,
         cuisine: newRestCuisine,
         deliveryFee: Number(newRestDeliveryFee || 1000),
@@ -876,15 +906,29 @@ export const AdminPortal: React.FC = () => {
         rating: Number(newRestRating || 4.8),
         tagline: newRestTagline,
         bannerUrl: newRestBannerUrl || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1000',
-        zone: newRestZone
+        zone: newRestZone,
+        ...(newRestOwnerUserId ? { ownerUserId: newRestOwnerUserId } : {})
       });
-      showActionFeedback(`Restaurant branch "${newRestName}" saved to D1!`);
+      showActionFeedback(`Restaurant branch "${newRestName}" ${newRestOwnerUserId ? 'created and assigned to the selected merchant' : 'saved to D1'}!`);
       setIsAddRestaurantModalOpen(false);
       setNewRestName('');
       setNewRestAddress('');
+      setNewRestOwnerUserId('');
       fetchData();
     } catch (err: any) {
       showActionFeedback(`Branch creation failed: ${err.message}`);
+    }
+  };
+
+  const handleAssignRestaurant = async (restaurantId: string, ownerUserId: string | null) => {
+    if (isSubAdmin) { showActionFeedback('Only Super Admins can assign restaurants to merchant accounts.'); return; }
+    try {
+      await api.admin.assignRestaurant(restaurantId, ownerUserId || null);
+      showActionFeedback(ownerUserId ? 'Restaurant assignment saved. Merchant access is now linked to this restaurant.' : 'Restaurant unassigned successfully.');
+      await fetchData();
+    } catch (err: any) {
+      showActionFeedback(`Restaurant assignment failed: ${err.message}`);
+      await fetchData();
     }
   };
 
@@ -1669,6 +1713,35 @@ export const AdminPortal: React.FC = () => {
                           ))}
                         </select>
                       </div>
+                      {newStaffRole === 'restaurant' && (
+                        <div className="sm:col-span-2 rounded-xl border border-orange-200 bg-orange-50 p-3">
+                          <label className="text-[11px] text-orange-900 font-bold block mb-1">Restaurant setup *</label>
+                          <div className="flex flex-wrap gap-4 mb-3 text-xs font-semibold text-slate-700">
+                            <label className="flex items-center gap-2"><input type="radio" checked={!createRestaurantForStaff} onChange={() => setCreateRestaurantForStaff(false)} /> Link existing</label>
+                            <label className="flex items-center gap-2"><input type="radio" checked={createRestaurantForStaff} onChange={() => setCreateRestaurantForStaff(true)} /> Create new restaurant</label>
+                          </div>
+                          {!createRestaurantForStaff ? (
+                            <select
+                              required={!createRestaurantForStaff}
+                              value={newStaffRestaurantId}
+                              onChange={(e) => setNewStaffRestaurantId(e.target.value)}
+                              className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:border-[#FF5500] outline-none"
+                            >
+                              <option value="">Select an existing restaurant</option>
+                              {restaurantsList.map((restaurant: any) => (
+                                <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <input required placeholder="Restaurant name" value={newStaffRestaurantName} onChange={(e) => setNewStaffRestaurantName(e.target.value)} className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900" />
+                              <input required placeholder="Restaurant address" value={newStaffRestaurantAddress} onChange={(e) => setNewStaffRestaurantAddress(e.target.value)} className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900" />
+                              <input placeholder="Cuisine (optional)" value={newStaffRestaurantCuisine} onChange={(e) => setNewStaffRestaurantCuisine(e.target.value)} className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900 sm:col-span-2" />
+                            </div>
+                          )}
+                          <p className="mt-1 text-[11px] text-orange-800">The account is linked to this restaurant only.</p>
+                        </div>
+                      )}
                       <div>
                         <label className="text-[11px] text-slate-600 font-semibold block mb-1">Phone Number</label>
                         <input
@@ -1717,6 +1790,7 @@ export const AdminPortal: React.FC = () => {
                       <th className="p-3">Email Address</th>
                       <th className="p-3">Assigned Role</th>
                       <th className="p-3">Role Access Level</th>
+                      <th className="p-3">Restaurant Assignment</th>
                       {!isSubAdmin && <th className="p-3">Manage</th>}
                     </tr>
                   </thead>
@@ -1762,6 +1836,16 @@ export const AdminPortal: React.FC = () => {
                           ) : (
                             <span className="text-slate-500 font-medium">Standard Permissions</span>
                           )}
+                        </td>
+                        <td className="p-3 min-w-[220px]">
+                          {u.role === 'restaurant' && !isSubAdmin ? (
+                            <select value={u.restaurantId || ''} onChange={(e) => e.target.value && handleAssignRestaurant(e.target.value, u.id)} className="w-full min-w-[190px] bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-[#FF5500] outline-none" aria-label={`Assign restaurant to ${u.name}`}>
+                              <option value="">Select restaurant…</option>
+                              {restaurantsList.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
+                            </select>
+                          ) : u.role === 'restaurant' ? (
+                            <span className="text-slate-500">{restaurantsList.find((r: any) => r.id === u.restaurantId)?.name || 'Not assigned'}</span>
+                          ) : <span className="text-slate-400">Not applicable</span>}
                         </td>
                         {!isSubAdmin && (
                           <td className="p-3">
@@ -3368,6 +3452,14 @@ export const AdminPortal: React.FC = () => {
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
                       />
                     </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Assign Merchant (optional)</label>
+                      <select value={newRestOwnerUserId} onChange={(e) => setNewRestOwnerUserId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none">
+                        <option value="">Leave unassigned</option>
+                        {usersList.filter((u: any) => u.role === 'restaurant').map((merchant: any) => <option key={merchant.id} value={merchant.id}>{merchant.name} ({merchant.email})</option>)}
+                      </select>
+                      <p className="mt-1 text-[11px] text-slate-500">You can assign or change ownership later from the restaurant list.</p>
+                    </div>
                     <div>
                       <label className="text-[11px] font-semibold text-slate-600 block mb-1">Delivery Fee (NGN)</label>
                       <input
@@ -3526,6 +3618,7 @@ export const AdminPortal: React.FC = () => {
                       <th className="p-3">Cuisine</th>
                       <th className="p-3">Rating</th>
                       <th className="p-3">Delivery Fee</th>
+                      <th className="p-3">Assigned Merchant</th>
                       <th className="p-3">Status</th>
                       <th className="p-3">Actions</th>
                     </tr>
@@ -3549,6 +3642,12 @@ export const AdminPortal: React.FC = () => {
                         <td className="p-3 text-slate-600">{rest.cuisine || 'Continental'}</td>
                         <td className="p-3 font-bold text-amber-600">⭐ {Number(rest.rating || 4.8).toFixed(1)}</td>
                         <td className="p-3 font-mono font-bold text-slate-900">₦{Number(rest.deliveryFee || rest.delivery_fee || 1000).toLocaleString('en-NG')}</td>
+                        <td className="p-3 min-w-[220px]">
+                          <select value={usersList.find((u: any) => u.role === 'restaurant' && u.restaurantId === rest.id)?.id || rest.ownerId || ''} onChange={(e) => handleAssignRestaurant(rest.id, e.target.value || null)} className="w-full min-w-[190px] bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-[#FF5500] outline-none" aria-label={`Assign merchant to ${rest.name}`} disabled={isSubAdmin}>
+                            <option value="">Unassigned</option>
+                            {usersList.filter((u: any) => u.role === 'restaurant').map((merchant: any) => <option key={merchant.id} value={merchant.id}>{merchant.name}</option>)}
+                          </select>
+                        </td>
                         <td className="p-3">
                           <button
                             onClick={() => handleToggleBranchStatus(rest.id)}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
+import { useAuth } from '../../context/AuthContext';
 import { Order, OrderStatus } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import {
@@ -23,10 +24,9 @@ import {
 import { SpecialActionButton } from '../shared/SpecialActionButton';
 
 export const RestaurantPortal: React.FC = () => {
+  const { user } = useAuth();
   const {
     restaurants,
-    selectedRestaurantForPortal,
-    setSelectedRestaurantForPortal,
     orders,
     advanceOrderStatus,
     adjustOrderPrepTime,
@@ -39,10 +39,16 @@ export const RestaurantPortal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'tickets' | 'menu' | 'finance'>('tickets');
   const [ticketPrinted, setTicketPrinted] = useState<string | null>(null);
 
-  const currentRestaurant =
-    restaurants.find((r) => r.id === selectedRestaurantForPortal) || restaurants[0] || { id: 'temp-portal', name: 'Merchant Kitchen', commissionPercent: 15 };
+  // Restaurant accounts are scoped to the restaurant assigned by an administrator.
+  // Never default to restaurants[0] or allow a merchant to switch into another business.
+  const assignedRestaurantId = user?.restaurantId;
+  const currentRestaurant = assignedRestaurantId
+    ? restaurants.find((r) => r.id === assignedRestaurantId)
+    : undefined;
 
-  const restaurantOrders = orders.filter((o) => o.restaurantId === currentRestaurant.id);
+  const restaurantOrders = currentRestaurant
+    ? orders.filter((o) => o.restaurantId === currentRestaurant.id)
+    : [];
 
   const newTickets = restaurantOrders.filter((o) => o.status === 'placed');
   const preparingTickets = restaurantOrders.filter(
@@ -54,7 +60,7 @@ export const RestaurantPortal: React.FC = () => {
   );
 
   const totalKitchenRevenueUSD = restaurantOrders.reduce((sum, o) => sum + o.subtotal, 0);
-  const commissionRate = currentRestaurant.commissionPercent || 15;
+  const commissionRate = currentRestaurant?.commissionPercent || 15;
   const platformFeeUSD = Math.round(totalKitchenRevenueUSD * (commissionRate / 100) * 100) / 100;
   const netPayoutUSD = Math.round((totalKitchenRevenueUSD - platformFeeUSD) * 100) / 100;
 
@@ -63,14 +69,28 @@ export const RestaurantPortal: React.FC = () => {
     setTimeout(() => setTicketPrinted(null), 3000);
   };
 
+  if (!assignedRestaurantId || !currentRestaurant) {
+    return (
+      <div className="min-h-[60vh] rounded-3xl border border-orange-100 bg-white p-8 shadow-sm flex flex-col items-center justify-center text-center">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50 text-[#F26322]">
+          <ChefHat className="h-8 w-8" />
+        </div>
+        <h1 className="text-2xl font-bold text-slate-900">Your restaurant workspace is being set up</h1>
+        <p className="mt-2 max-w-lg text-sm leading-6 text-slate-600">
+          Your account is not linked to a restaurant yet. Please ask the Veyrang administrator to assign an existing restaurant or create one for your account. No other restaurant data is available to this account.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 pb-16">
+    <div className="space-y-6 pb-16 text-slate-900">
       <SpecialActionButton />
       {/* Portal Top Bar */}
 
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white border border-orange-100 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-orange-600/20 border border-orange-500/40 text-orange-400 flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 text-[#F26322] flex items-center justify-center shrink-0">
             <ChefHat className="w-6 h-6" />
           </div>
           <div>
@@ -83,7 +103,7 @@ export const RestaurantPortal: React.FC = () => {
                 <span className="text-emerald-400 font-bold">Accepting Orders</span>
               )}
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
               <span>{currentRestaurant.name}</span>
             </h1>
           </div>
@@ -103,20 +123,13 @@ export const RestaurantPortal: React.FC = () => {
             {currentRestaurant.isBusyPaused ? '🔴 Busy (Paused)' : '🟢 Pause Orders (Busy Mode)'}
           </button>
 
-          <select
-            value={currentRestaurant.id}
-            onChange={(e) => setSelectedRestaurantForPortal(e.target.value)}
-            className="bg-slate-850 border border-slate-750 rounded-xl px-3 py-1.5 text-xs font-semibold text-white focus:outline-none focus:border-orange-500"
-          >
-            {restaurants.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+          <span className="inline-flex items-center gap-2 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-xs font-bold text-orange-800">
+            <ShieldCheck className="h-4 w-4" />
+            Assigned restaurant only
+          </span>
 
           {/* Sub-view toggle */}
-          <div className="flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button
               onClick={() => setActiveTab('tickets')}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
@@ -154,8 +167,8 @@ export const RestaurantPortal: React.FC = () => {
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
-          <div className="text-xs text-slate-400 font-medium">Sales Volume</div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+          <div className="text-xs text-slate-500 font-medium">Sales Volume</div>
           <div className="text-2xl font-bold text-emerald-400 font-mono mt-1 tabular-nums">
             {formatCurrency(totalKitchenRevenueUSD, currency)}
           </div>
@@ -188,7 +201,7 @@ export const RestaurantPortal: React.FC = () => {
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-ping" />
-                <h3 className="text-sm font-bold text-white">New Tickets</h3>
+                <h3 className="text-sm font-bold text-slate-900">New Tickets</h3>
               </div>
               <span className="text-xs font-mono font-bold bg-orange-950 text-orange-400 px-2 py-0.5 rounded-full border border-orange-800">
                 {newTickets.length}

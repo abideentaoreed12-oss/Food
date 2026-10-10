@@ -602,17 +602,24 @@ router.patch('/menu/:id/toggle', async (req: AuthRequest, res: Response) => {
 // ==========================================
 router.post('/restaurants', async (req: AuthRequest, res: Response) => {
   try {
-    const { name, address, cuisine, deliveryTimeMin, deliveryTimeMax, deliveryFee, rating, bannerUrl, tagline, zone } = req.body;
+    const { name, address, cuisine, deliveryTimeMin, deliveryTimeMax, deliveryFee, rating, bannerUrl, tagline, zone, ownerUserId } = req.body;
     if (!name || !address) {
       return res.status(400).json({ success: false, error: 'Restaurant name and address are required' });
     }
 
+    if (ownerUserId) {
+      const ownerCheck = await d1Client.query('SELECT id, role FROM users WHERE id = ? LIMIT 1', [ownerUserId]);
+      if (!ownerCheck.success) return res.status(503).json({ success: false, error: 'User database is unavailable' });
+      if (!ownerCheck.results?.length) return res.status(404).json({ success: false, error: 'Selected merchant account was not found' });
+      if (ownerCheck.results[0].role !== 'restaurant') return res.status(400).json({ success: false, error: 'Only accounts with the Restaurant Merchant role can own a restaurant' });
+    }
     const restId = `rest-${Date.now()}`;
     const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
     const now = new Date().toISOString();
 
     const initialData = {
       id: restId,
+      ownerId: ownerUserId || null,
       name,
       slug,
       tagline: tagline || 'Authentic dishes prepared fresh to order',
@@ -660,6 +667,10 @@ router.post('/restaurants', async (req: AuthRequest, res: Response) => {
       ]
     );
 
+    if (ownerUserId) {
+      const ownerUpdate = await d1Client.query('UPDATE users SET restaurant_id = ?, updated_at = ? WHERE id = ?', [restId, now, ownerUserId]);
+      if (!ownerUpdate.success) return res.status(503).json({ success: false, error: 'Restaurant was created but merchant assignment failed. Please assign it from the restaurant list.' });
+    }
     await db.logAudit({
       userId: req.user!.id,
       userEmail: req.user!.email,
@@ -667,7 +678,7 @@ router.post('/restaurants', async (req: AuthRequest, res: Response) => {
       action: 'ADMIN_RESTAURANT_CREATED',
       resource: 'RESTAURANT',
       resourceId: restId,
-      details: { name, cuisine, address },
+      details: { name, cuisine, address, ownerUserId: ownerUserId || null },
       ip: req.ip
     });
 
@@ -675,6 +686,47 @@ router.post('/restaurants', async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }
+});
+
+router.patch('/restaurants/:id/assign', async (req: AuthRequest, res: Response) => {
+  if (req.user!.role === 'sub_admin') return res.status(403).json({ success: false, error: 'Only Super Admins can assign restaurants to merchants.' });
+  try {
+    const restaurantId = decodeURIComponent(req.params.id || '').trim();
+    const ownerUserId = typeof req.body?.ownerUserId === 'string' && req.body.ownerUserId.trim() ? req.body.ownerUserId.trim() : null;
+    const restaurantRes = await d1Client.query('SELECT id, name, raw_json FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+    if (!restaurantRes.success) return res.status(503).json({ success: false, error: 'Restaurant database is unavailable' });
+    if (!restaurantRes.results?.length) return res.status(404).json({ success: false, error: 'Restaurant not found' });
+    let owner: any = null;
+    if (ownerUserId) {
+      const ownerRes = await d1Client.query('SELECT id, name, email, role, restaurant_id FROM users WHERE id = ? LIMIT 1', [ownerUserId]);
+      if (!ownerRes.success) return res.status(503).json({ success: false, error: 'User database is unavailable' });
+      owner = ownerRes.results?.[0];
+      if (!owner) return res.status(404).json({ success: false, error: 'Merchant account not found' });
+      if (owner.role !== 'restaurant') return res.status(400).json({ success: false, error: 'Selected user must have the Restaurant Merchant role first' });
+    }
+    const now = new Date().toISOString(), restaurant = restaurantRes.results[0];
+    let rawJson: any = {};
+    try { rawJson = restaurant.raw_json ? JSON.parse(restaurant.raw_json) : {}; } catch { rawJson = {}; }
+    rawJson.ownerId = ownerUserId;
+    await d1Client.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(rawJson), restaurantId]);
+    if (!ownerUserId) {
+      await d1Client.query('UPDATE users SET restaurant_id = NULL, updated_at = ? WHERE role = ? AND restaurant_id = ?', [now, 'restaurant', restaurantId]);
+    } else {
+      if (owner.restaurant_id && owner.restaurant_id !== restaurantId) {
+        const previous = await d1Client.query('SELECT raw_json FROM restaurants WHERE id = ? LIMIT 1', [owner.restaurant_id]);
+        if (previous.results?.[0]) {
+          let previousJson: any = {};
+          try { previousJson = previous.results[0].raw_json ? JSON.parse(previous.results[0].raw_json) : {}; } catch { previousJson = {}; }
+          previousJson.ownerId = null;
+          await d1Client.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(previousJson), owner.restaurant_id]);
+        }
+      }
+      await d1Client.query('UPDATE users SET restaurant_id = ?, updated_at = ? WHERE id = ?', [restaurantId, now, ownerUserId]);
+      await d1Client.query('UPDATE users SET restaurant_id = NULL, updated_at = ? WHERE role = ? AND restaurant_id = ? AND id <> ?', [now, 'restaurant', restaurantId, ownerUserId]);
+    }
+    await db.logAudit({ userId: req.user!.id, userEmail: req.user!.email, userRole: req.user!.role, action: ownerUserId ? 'ADMIN_RESTAURANT_ASSIGNED' : 'ADMIN_RESTAURANT_UNASSIGNED', resource: 'RESTAURANT', resourceId: restaurantId, details: { restaurantName: restaurant.name, ownerUserId }, ip: req.ip });
+    return res.json({ success: true, data: { restaurantId, ownerUserId }, message: ownerUserId ? 'Restaurant assigned to merchant' : 'Restaurant unassigned' });
+  } catch (error: any) { return res.status(500).json({ success: false, error: error.message }); }
 });
 
 router.delete('/restaurants/:id', async (req: AuthRequest, res: Response) => {
@@ -926,9 +978,20 @@ router.post('/staff', async (req: AuthRequest, res: Response) => {
     return res.status(403).json({ success: false, error: 'Sub Admins are not permitted to add or create staff members.' });
   }
   try {
-    const { name, email, role, phone, password } = req.body;
+    const { name, email, role, phone, password, restaurantId } = req.body;
     if (!name || !email || !role) {
       return res.status(400).json({ success: false, error: 'Name, email, and role are required' });
+    }
+    if (!['admin', 'restaurant', 'courier', 'sub_admin'].includes(role)) {
+      return res.status(400).json({ success: false, error: 'Unsupported staff role' });
+    }
+    if (role === 'restaurant' && !restaurantId) {
+      return res.status(400).json({ success: false, error: 'Select an existing restaurant or create the restaurant before assigning its account' });
+    }
+    if (role === 'restaurant') {
+      const restaurantCheck = await d1Client.query('SELECT id FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+      if (!restaurantCheck.success) return res.status(503).json({ success: false, error: 'Restaurant database is unavailable' });
+      if (!restaurantCheck.results?.length) return res.status(404).json({ success: false, error: 'Selected restaurant does not exist' });
     }
 
     const userId = `usr-staff-${Date.now()}`;
@@ -947,24 +1010,29 @@ router.post('/staff', async (req: AuthRequest, res: Response) => {
       walletBalanceUSD: 0,
       walletBalanceNGN: 0,
       savedAddresses: [],
+      restaurantId: role === 'restaurant' ? restaurantId : undefined,
       createdAt: now,
       updatedAt: now
     });
 
     // 2. Persistent insertion into live Cloudflare D1 edge database
-    await d1Client.query(
-      'INSERT INTO users (id, email, password_hash, name, role, phone, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    const d1Insert = await d1Client.query(
+      'INSERT INTO users (id, email, password_hash, name, role, phone, restaurant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         userId,
         email.toLowerCase().trim(),
         passwordHash,
         name,
         role,
-        phone || '+234 800 000 0000',
+        phone || null,
+        role === 'restaurant' ? restaurantId : null,
         now,
         now
       ]
-    ).catch((err) => console.warn('D1 insert warning:', err.message));
+    );
+    if (!d1Insert.success) {
+      return res.status(503).json({ success: false, error: 'Staff account could not be saved to the authoritative database' });
+    }
 
     await db.logAudit({
       userId: req.user!.id,

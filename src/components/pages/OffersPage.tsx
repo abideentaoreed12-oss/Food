@@ -86,7 +86,7 @@ export const OffersPage: React.FC = () => {
                 {platformSettings?.cms_offers_member_title || 'Sign in to unlock exclusive member cashback'}
               </div>
               <div className="text-[11px] text-slate-500">
-                {platformSettings?.cms_offers_member_desc || 'Save your favourite codes and enjoy automated ₦500 welcome discounts.'}
+                {platformSettings?.cms_offers_member_desc || 'Sign in to manage your account and view offers available to you.'}
               </div>
             </div>
           </div>

@@ -122,7 +122,7 @@ export const RightDrawer: React.FC = () => {
     { id: 'home', label: 'Home Feed', icon: Home },
     { id: 'restaurants', label: 'Restaurants', icon: Store },
     { id: 'search', label: 'Search Dishes & Spots', icon: Search },
-    { id: 'offers', label: 'Offers & Promos', icon: Tag, badge: '4 Active', badgeColor: 'bg-orange-100 text-[#FF5500]' },
+    { id: 'offers', label: 'Offers & Promos', icon: Tag },
     { id: 'help', label: 'Help & FAQ', icon: HelpCircle }
   ];
 

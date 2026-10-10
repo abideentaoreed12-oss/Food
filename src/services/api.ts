@@ -511,6 +511,8 @@ export const api = {
       request(`/api/admin/menu/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     createRestaurant: async (data: any) =>
       request('/api/admin/restaurants', { method: 'POST', body: JSON.stringify(data) }),
+    assignRestaurant: async (restaurantId: string, ownerUserId: string | null) =>
+      request(`/api/admin/restaurants/${encodeURIComponent(restaurantId)}/assign`, { method: 'PATCH', body: JSON.stringify({ ownerUserId }) }),
     deleteRestaurant: async (id: string) =>
       request(`/api/admin/restaurants/${id}`, { method: 'DELETE' }),
     createDeliveryZone: async (data: any) =>

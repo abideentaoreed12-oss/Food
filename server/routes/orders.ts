@@ -122,6 +122,9 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
     let discountAmount = 0;
     if (promoCode) {
       const codeUpper = String(promoCode).trim().toUpperCase();
+      if (['FIRST50', 'WELCOME20', 'FREEDEL'].includes(codeUpper)) {
+        return res.status(400).json({ success: false, error: 'This legacy demo promo code is no longer available' });
+      }
       let d1Promo;
       try {
         d1Promo = await d1Client.query('SELECT * FROM promo_codes WHERE UPPER(code) = ? AND is_active = 1 LIMIT 1', [codeUpper]);
@@ -257,6 +260,8 @@ router.get('/', async (req: AuthRequest, res: Response) => {
             ...(parsed || {}),
             id: o.id,
             customerId: o.customer_id || parsed?.customerId,
+            restaurantId: o.restaurant_id || parsed?.restaurantId,
+            courierId: o.courier_id || parsed?.courierId || parsed?.courier?.id,
             total: o.total ?? parsed?.total,
             paymentStatus: o.payment_status || parsed?.paymentStatus,
             status: o.status || parsed?.status,
@@ -269,10 +274,31 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     }
     const role = req.user?.role;
     const userId = req.user?.id;
+
+    // Enforce data isolation on the server; UI filtering is not an authorization boundary.
     if (role === 'admin' || role === 'sub_admin') {
       if (req.query.scope === 'all') return res.json({ success: true, data: allOrders });
       return res.json({ success: true, data: allOrders.filter((o) => o.customerId === userId) });
     }
+
+    if (role === 'restaurant') {
+      const userRes = await d1Client.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [userId]);
+      const restaurantId = userRes.results?.[0]?.restaurant_id;
+      if (!userRes.success) return res.status(503).json({ success: false, error: 'Restaurant assignment could not be verified' });
+      if (!restaurantId) return res.json({ success: true, data: [] });
+      return res.json({
+        success: true,
+        data: allOrders.filter((o) => String(o.restaurantId || o.restaurant_id || '') === String(restaurantId))
+      });
+    }
+
+    if (role === 'courier') {
+      return res.json({
+        success: true,
+        data: allOrders.filter((o) => String(o.courierId || o.courier_id || o.courier?.id || '') === String(userId))
+      });
+    }
+
     return res.json({ success: true, data: allOrders.filter((o) => o.customerId === userId) });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });

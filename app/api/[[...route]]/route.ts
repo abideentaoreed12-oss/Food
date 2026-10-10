@@ -18,6 +18,49 @@ import { reverseGeocodeCoordinates } from '../../../server/routes/geocode';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/**
+ * Keep the restaurant document (the public storefront's canonical menu source)
+ * synchronized with the normalized menu_items table after every menu mutation.
+ */
+async function syncMenuItemToRestaurantJson(itemId: string, item: any | null, targetRestaurantId?: string | null) {
+  const restaurantsRes = await d1.query('SELECT id, raw_json FROM restaurants');
+  for (const row of restaurantsRes.results || []) {
+    let restaurantData: any = {};
+    try { restaurantData = row.raw_json ? JSON.parse(row.raw_json) : {}; } catch { restaurantData = {}; }
+    if (!Array.isArray(restaurantData.categories)) restaurantData.categories = [];
+    let changed = false;
+    for (const category of restaurantData.categories) {
+      if (!Array.isArray(category.items)) continue;
+      const filtered = category.items.filter((entry: any) => String(entry?.id) !== String(itemId));
+      if (filtered.length !== category.items.length) { category.items = filtered; changed = true; }
+    }
+    if (item && String(row.id) === String(targetRestaurantId || item.restaurant_id)) {
+      const categoryKey = String(item.category_id || 'Main Dishes');
+      let category = restaurantData.categories.find((entry: any) =>
+        String(entry?.id || '') === categoryKey || String(entry?.name || '').toLowerCase() === categoryKey.toLowerCase()
+      );
+      if (!category) {
+        category = { id: categoryKey.startsWith('cat-') ? categoryKey : `cat-${Date.now()}`, name: categoryKey, items: [] };
+        restaurantData.categories.push(category);
+      }
+      if (!Array.isArray(category.items)) category.items = [];
+      let dietaryTags: any[] = [];
+      try { dietaryTags = Array.isArray(item.dietary_tags) ? item.dietary_tags : JSON.parse(item.dietary_tags || '[]'); } catch {}
+      category.items.push({
+        id: item.id, name: item.name, description: item.description || '', price: Number(item.price || 0),
+        category: category.name || categoryKey, categoryId: category.id, restaurantId: row.id,
+        imageUrl: item.image_r2_url || item.image_url || '',
+        isAvailable: item.is_available === 1 || item.is_available === true,
+        popular: item.popular === 1 || item.popular === true, dietaryTags
+      });
+      changed = true;
+    }
+    if (changed) await d1.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(restaurantData), row.id]);
+  }
+  await siteDataManager.refreshSnapshot({ force: true });
+}
+
+
 const JWT_SECRET = (process.env.JWT_SECRET || '').trim();
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
 const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
@@ -217,8 +260,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: settingsMap, settings: settingsMap });
   }
 
-  // 9. Delivery Zones
-  if (pathname === '/settings/zones' || pathname === '/admin/delivery-zones') {
+  // 9. Public delivery zones use the shared snapshot; admin management reads stay separate.
+  if (pathname === '/settings/zones') {
+    let snapshot = await siteDataManager.loadSnapshot();
+    if (!snapshot) snapshot = await siteDataManager.refreshSnapshot({ force: true });
+    else siteDataManager.syncIfStale().catch(() => {});
+    if (!snapshot) {
+      return NextResponse.json(
+        { success: false, error: 'Live delivery-zone data is temporarily unavailable.', data: null },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+    return NextResponse.json({ success: true, data: snapshot.deliveryZones || [] }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  if (pathname === '/admin/delivery-zones') {
+    const admin = await getUser(req);
+    if (!admin || (admin.role !== 'admin' && admin.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     let zones: any[] = [];
     try {
       const d1Res = await d1.query('SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL ORDER BY created_at DESC');
@@ -233,8 +293,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: zones });
   }
 
-  // 10. Promo Codes
-  if (pathname === '/settings/promos' || pathname === '/admin/promos') {
+  // 10. Public promo catalogue is served from the shared snapshot.
+  if (pathname === '/settings/promos') {
+    let snapshot = await siteDataManager.loadSnapshot();
+    if (!snapshot) snapshot = await siteDataManager.refreshSnapshot({ force: true });
+    else siteDataManager.syncIfStale().catch(() => {});
+    if (!snapshot) {
+      return NextResponse.json(
+        { success: false, error: 'Live offers are temporarily unavailable.', data: null },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+    return NextResponse.json({ success: true, data: snapshot.promoCodes || [] }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  // Admin promo management query.
+  if (pathname === '/admin/promos') {
+    const admin = await getUser(req);
+    if (!admin || (admin.role !== 'admin' && admin.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     let promos: any[] = [];
     try {
       const d1Res = await d1.query('SELECT * FROM promo_codes WHERE is_active = 1 ORDER BY created_at DESC');
@@ -251,15 +329,22 @@ export async function GET(req: NextRequest) {
 
   // 10b. Centralized Public Site Data Snapshot & Status
   if (pathname === '/site-data/public') {
-    // Background sync throttled at 10s if stale
-    siteDataManager.syncIfStale().catch(() => {});
-    const snapshot = siteDataManager.getLastKnownGood();
+    // Load durable last-known-good data first. If no snapshot exists yet, attempt a real D1 refresh
+    // before returning unavailable; never manufacture sample data to make the endpoint look healthy.
+    let snapshot = await siteDataManager.loadSnapshot();
+    if (!snapshot) {
+      snapshot = await siteDataManager.refreshSnapshot({ force: true });
+    } else {
+      // Refresh in the background after returning the last successful snapshot.
+      siteDataManager.syncIfStale().catch(() => {});
+    }
+
     if (!snapshot) {
       return NextResponse.json({
         success: false,
-        error: 'Site data snapshot is warming up. Please retry shortly.',
+        error: 'No verified live site-data snapshot is available yet. Check the authoritative database.',
         data: null
-      }, { status: 503 });
+      }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
     return NextResponse.json({
       success: true,
@@ -277,7 +362,9 @@ export async function GET(req: NextRequest) {
       }
     }, {
       headers: {
-        'Cache-Control': 'public, max-age=5, stale-while-revalidate=10'
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'CDN-Cache-Control': 'no-store',
+        'Vercel-CDN-Cache-Control': 'no-store'
       }
     });
   }
@@ -301,8 +388,47 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 11. Restaurants list
-  if (pathname === '/restaurants' || pathname === '/admin/restaurants') {
+  // 11. Public restaurant catalogue: consume the shared last-known-good snapshot.
+  // This prevents each public page from issuing its own catalog query against D1.
+  if (pathname === '/restaurants') {
+    let snapshot = await siteDataManager.loadSnapshot();
+    if (!snapshot) snapshot = await siteDataManager.refreshSnapshot({ force: true });
+    else siteDataManager.syncIfStale().catch(() => {});
+
+    if (!snapshot) {
+      return NextResponse.json(
+        { success: false, error: 'Live restaurant data is temporarily unavailable.', data: null },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    let list = snapshot.restaurants.slice();
+    const search = (req.nextUrl.searchParams.get('search') || '').trim().toLowerCase();
+    if (search) {
+      list = list.filter((restaurant: any) =>
+        [restaurant.name, restaurant.cuisine, restaurant.description, ...(Array.isArray(restaurant.tags) ? restaurant.tags : [])]
+          .some((value: any) => String(value || '').toLowerCase().includes(search))
+      );
+    }
+
+    const userAddr = req.nextUrl.searchParams.get('address');
+    const userLatStr = req.nextUrl.searchParams.get('lat');
+    const userLngStr = req.nextUrl.searchParams.get('lng');
+    const uLat = userLatStr ? parseFloat(userLatStr) : NaN;
+    const uLng = userLngStr ? parseFloat(userLngStr) : NaN;
+    const userLoc = (!isNaN(uLat) && !isNaN(uLng)) ? { lat: uLat, lng: uLng } : (userAddr?.trim() || null);
+    if (userLoc && list.length > 0) {
+      try {
+        list = await calculateBatchRestaurantDistanceMetrics(list, userLoc);
+      } catch (err: any) {
+        console.warn('[Restaurants] Live distance calculation failed:', err?.message || String(err));
+      }
+    }
+    return NextResponse.json({ success: true, data: list }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  // Admin restaurant catalogue remains a protected management query.
+  if (pathname === '/admin/restaurants') {
     if (pathname === '/admin/restaurants') {
       const admin = await getUser(req);
       if (!admin || (admin.role !== 'admin' && admin.role !== 'sub_admin')) {
@@ -400,10 +526,23 @@ export async function GET(req: NextRequest) {
     const isAdmin = user.role === 'admin' || user.role === 'sub_admin';
     const isCourier = user.role === 'courier';
     let d1Res;
+    if (pathname === '/admin/orders' && !isAdmin) {
+      return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 403 });
+    }
     if (isAdmin) {
       d1Res = await d1.query('SELECT * FROM orders ORDER BY created_at DESC');
     } else if (isCourier) {
-      d1Res = await d1.query('SELECT * FROM orders WHERE courier_id = ? OR status IN (\'ready\', \'in_transit\') ORDER BY created_at DESC', [user.id]);
+      // Couriers may see only their assigned orders and the unassigned ready-for-pickup queue.
+      d1Res = await d1.query(
+        "SELECT * FROM orders WHERE courier_id = ? OR (courier_id IS NULL AND status = 'ready_for_pickup') ORDER BY created_at DESC",
+        [user.id]
+      );
+    } else if (user.role === 'restaurant') {
+      const assigned = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id]);
+      if (!assigned.success) return NextResponse.json({ success: false, error: 'Restaurant assignment could not be verified' }, { status: 503 });
+      const restaurantId = assigned.results?.[0]?.restaurant_id;
+      if (!restaurantId) return NextResponse.json({ success: true, data: [] });
+      d1Res = await d1.query('SELECT * FROM orders WHERE restaurant_id = ? ORDER BY created_at DESC', [restaurantId]);
     } else {
       d1Res = await d1.query('SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC', [user.id]);
     }
@@ -1261,13 +1400,113 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: { id: ticketId, status: 'open', createdAt: now } }, { status: 201 });
   }
 
+  // Authenticated courier profile and history endpoints.
+  if (pathname === '/courier/profile' || pathname === '/courier/history') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'courier') return NextResponse.json({ success: false, error: 'Courier account required' }, { status: 403 });
+    if (pathname === '/courier/profile') {
+      const profile = await d1.query('SELECT * FROM courier_profiles WHERE user_id = ? LIMIT 1', [user.id]);
+      if (!profile.success) return NextResponse.json({ success: false, error: 'Courier profile unavailable' }, { status: 503 });
+      const row = profile.results?.[0];
+      if (!row) return NextResponse.json({ success: true, data: { courierId: user.id, isOnline: false, verificationStatus: 'not_submitted', isVerified: false, kycSubmitted: false } });
+      return NextResponse.json({ success: true, data: { courierId: user.id, isOnline: Number(row.is_online) === 1, verificationStatus: row.verification_status || (Number(row.is_verified) === 1 ? 'verified' : 'not_submitted'), isVerified: Number(row.is_verified) === 1, kycSubmitted: Boolean(row.kyc_doc_r2_url || row.kyc_document_url || row.verification_status), vehicleType: row.vehicle_type || null, vehiclePlate: row.vehicle_plate || null, updatedAt: row.updated_at || null }});
+    }
+    const history = await d1.query("SELECT id, short_id, status, raw_json, updated_at, created_at FROM orders WHERE courier_id = ? AND status = 'delivered' ORDER BY updated_at DESC, created_at DESC", [user.id]);
+    if (!history.success) return NextResponse.json({ success: false, error: 'Delivery history unavailable' }, { status: 503 });
+    const rows = (history.results || []).map((row: any) => {
+      let stored: any = {};
+      try { stored = typeof row.raw_json === 'string' ? JSON.parse(row.raw_json) : (row.raw_json || {}); } catch { stored = {}; }
+      const payout = Number(stored.courierPayout ?? stored.courier_payout ?? stored.riderPayout ?? 0);
+      return { id: row.id, shortId: row.short_id, status: row.status, updatedAt: row.updated_at, createdAt: row.created_at, courierPayout: Number.isFinite(payout) ? payout : 0 };
+    });
+    const earnings = rows.reduce((sum: number, row: any) => sum + row.courierPayout, 0);
+    return NextResponse.json({ success: true, data: { orders: rows, earnings } });
+  }
+
+  // Authenticated courier KYC submission; approval requires admin review.
+  if (pathname === '/courier/kyc') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'courier') return NextResponse.json({ success: false, error: 'Courier account required' }, { status: 403 });
+    const vehicleType = String(body.vehicleType || '').trim();
+    const vehiclePlate = String(body.vehiclePlate || '').trim();
+    const licenseNumber = String(body.licenseNumber || '').trim();
+    const documentUrl = String(body.documentUrl || '').trim();
+    if (!vehicleType || !vehiclePlate || !licenseNumber || !documentUrl) return NextResponse.json({ success: false, error: 'Vehicle type, plate, licence number and document URL are required' }, { status: 400 });
+    const now = new Date().toISOString();
+    const saved = await d1.query("INSERT INTO courier_profiles (user_id, vehicle_type, vehicle_plate, license_number, kyc_doc_r2_url, verification_status, is_verified, is_online, updated_at) VALUES (?, ?, ?, ?, ?, 'pending', 0, 0, ?) ON CONFLICT(user_id) DO UPDATE SET vehicle_type = excluded.vehicle_type, vehicle_plate = excluded.vehicle_plate, license_number = excluded.license_number, kyc_doc_r2_url = excluded.kyc_doc_r2_url, verification_status = 'pending', is_verified = 0, is_online = 0, updated_at = excluded.updated_at", [user.id, vehicleType, vehiclePlate, licenseNumber, documentUrl, now]);
+    if (!saved.success) return NextResponse.json({ success: false, error: 'KYC submission failed' }, { status: 503 });
+    return NextResponse.json({ success: true, data: { verificationStatus: 'pending', submittedAt: now } }, { status: 201 });
+  }
+
+  // Admin review of courier KYC.
+  if (pathname.startsWith('/admin/couriers/') && pathname.endsWith('/verification')) {
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 403 });
+    const courierId = decodeURIComponent(pathname.split('/')[3] || '');
+    const status = String(body.status || '').toLowerCase();
+    if (!courierId || !['verified', 'rejected', 'pending'].includes(status)) return NextResponse.json({ success: false, error: 'Valid courier ID and status are required' }, { status: 400 });
+    const now = new Date().toISOString();
+    const reviewed = await d1.query('UPDATE courier_profiles SET verification_status = ?, is_verified = ?, is_online = 0, updated_at = ? WHERE user_id = ?', [status, status === 'verified' ? 1 : 0, now, courierId]);
+    if (!reviewed.success) return NextResponse.json({ success: false, error: 'Courier verification review failed' }, { status: 503 });
+    return NextResponse.json({ success: true, data: { courierId, verificationStatus: status, reviewedAt: now } });
+  }
+
+  // Courier availability is tied to the authenticated courier profile.
+  if (pathname === '/courier/availability') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'courier') return NextResponse.json({ success: false, error: 'Courier account required' }, { status: 403 });
+    const online = body.isOnline;
+    if (typeof online !== 'boolean') return NextResponse.json({ success: false, error: 'isOnline must be a boolean' }, { status: 400 });
+    const now = new Date().toISOString();
+    const result = await d1.query(
+      'UPDATE courier_profiles SET is_online = ?, updated_at = ? WHERE user_id = ?',
+      [online ? 1 : 0, now, user.id]
+    );
+    if (!result.success) return NextResponse.json({ success: false, error: 'Could not update courier availability' }, { status: 503 });
+    return NextResponse.json({ success: true, data: { courierId: user.id, isOnline: online, updatedAt: now } });
+  }
+
+  // Courier acceptance is conditional so two couriers cannot claim the same delivery.
+  if (pathname === '/courier/accept') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'courier') return NextResponse.json({ success: false, error: 'Courier account required' }, { status: 403 });
+    const orderId = String(body.orderId || '').trim();
+    if (!orderId) return NextResponse.json({ success: false, error: 'orderId is required' }, { status: 400 });
+    const profile = await d1.query('SELECT is_online, is_verified, verification_status FROM courier_profiles WHERE user_id = ? LIMIT 1', [user.id]);
+    if (!profile.success) return NextResponse.json({ success: false, error: 'Courier profile could not be verified' }, { status: 503 });
+    if (!profile.results?.length || Number(profile.results[0].is_online) !== 1) return NextResponse.json({ success: false, error: 'Go online before accepting a delivery' }, { status: 403 });
+    if (Number(profile.results[0].is_verified) !== 1 || profile.results[0].verification_status === 'pending' || profile.results[0].verification_status === 'rejected') {
+      return NextResponse.json({ success: false, error: 'Courier verification is required before accepting deliveries' }, { status: 403 });
+    }
+    const now = new Date().toISOString();
+    const accepted = await d1.query(
+      "UPDATE orders SET courier_id = ?, status = 'in_transit', updated_at = ? WHERE id = ? AND courier_id IS NULL AND status = 'ready_for_pickup'",
+      [user.id, now, orderId]
+    );
+    if (!accepted.success) return NextResponse.json({ success: false, error: 'Delivery could not be accepted' }, { status: 503 });
+    const verify = await d1.query('SELECT id, courier_id, status FROM orders WHERE id = ? LIMIT 1', [orderId]);
+    const row = verify.results?.[0];
+    if (!row || String(row.courier_id || '') !== String(user.id)) {
+      return NextResponse.json({ success: false, error: 'Delivery is no longer available to claim' }, { status: 409 });
+    }
+    return NextResponse.json({ success: true, data: { orderId: row.id, courierId: user.id, status: row.status, acceptedAt: now } });
+  }
+
   // 12. Courier Telemetry Location
   if (pathname === '/courier/location' || pathname === '/couriers/location' || pathname === '/drivers/location') {
     const user = await getUser(req);
-    const { lat, lng, heading, speed, orderId, courierId } = body;
-    const resolvedCourierId = user?.id || courierId;
-    if (!resolvedCourierId) {
-      return NextResponse.json({ success: false, error: 'Authentication or courier ID required' }, { status: 401 });
+    const { lat, lng, heading, speed, orderId } = body;
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'courier') return NextResponse.json({ success: false, error: 'Courier account required' }, { status: 403 });
+    const resolvedCourierId = user.id;
+    if (orderId) {
+      const assignedOrder = await d1.query('SELECT id FROM orders WHERE id = ? AND courier_id = ? LIMIT 1', [orderId, user.id]);
+      if (!assignedOrder.success) return NextResponse.json({ success: false, error: 'Delivery assignment could not be verified' }, { status: 503 });
+      if (!assignedOrder.results?.length) return NextResponse.json({ success: false, error: 'You are not assigned to this delivery' }, { status: 403 });
     }
     const cleanLat = Number(lat);
     const cleanLng = Number(lng);
@@ -1333,6 +1572,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Settings updated' });
   }
 
+  // Create a restaurant record for admin-managed restaurant account onboarding.
+  if (pathname === '/admin/restaurants/create') {
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 403 });
+    }
+    const name = String(body.name || '').trim();
+    if (!name) return NextResponse.json({ success: false, error: 'Restaurant name is required' }, { status: 400 });
+    const id = `rest-${randomUUID()}`;
+    const now = new Date().toISOString();
+    const restaurant = {
+      id,
+      name,
+      slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+      cuisine: String(body.cuisine || '').trim(),
+      address: String(body.address || '').trim(),
+      isOpen: false,
+      isBusyPaused: false,
+      commissionPercent: 15
+    };
+    const saved = await d1.query(
+      `INSERT INTO restaurants (id, name, slug, cuisine, rating, review_count, delivery_time_min, delivery_time_max, delivery_fee, min_order, price_tier, address, distance_km, tags, badge, accent_color, is_open, is_busy_paused, commission_percent, zone, raw_json, created_at)
+       VALUES (?, ?, ?, ?, 0, 0, 25, 35, 500, 0, '$', ?, 0, '[]', NULL, '#FF5500', 0, 0, 15, 'LAGOS', ?, ?)`,
+      [id, name, restaurant.slug, restaurant.cuisine, restaurant.address, JSON.stringify(restaurant), now]
+    );
+    if (!saved.success) return NextResponse.json({ success: false, error: 'Restaurant could not be saved' }, { status: 503 });
+    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+    return NextResponse.json({ success: true, data: restaurant }, { status: 201 });
+  }
+
   // 16. Admin Categories
   if (pathname === '/admin/categories') {
     const user = await getUser(req);
@@ -1356,28 +1625,21 @@ export async function POST(req: NextRequest) {
     if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
-    const { name, price, categoryId, restaurantId, description, isAvailable, popular, imageR2Url } = body;
+    const { name, price, categoryId, category, restaurantId, description, isAvailable, popular, imageR2Url, imageUrl } = body;
     if (!name || price === undefined) {
       return NextResponse.json({ success: false, error: 'Name and price are required' }, { status: 400 });
     }
     const id = `item-${Date.now()}`;
     const now = new Date().toISOString();
+    const targetRestaurantId = restaurantId || 'rest-1';
     await d1.query(
       `INSERT INTO menu_items (id, restaurant_id, category_id, name, description, price, dietary_tags, popular, is_available, image_r2_url, created_at)
        VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?)`,
-      [
-        id,
-        restaurantId || 'rest-1',
-        categoryId || 'cat-1',
-        name,
-        description || '',
-        Number(price),
-        popular ? 1 : 0,
-        isAvailable === false ? 0 : 1,
-        imageR2Url || null,
-        now
-      ]
+      [id, targetRestaurantId, categoryId || category || 'Main Dishes', name, description || '', Number(price), popular ? 1 : 0, isAvailable === false ? 0 : 1, imageR2Url || imageUrl || null, now]
     );
+    const createdRes = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [id]);
+    if (createdRes.results?.[0]) await syncMenuItemToRestaurantJson(id, createdRes.results[0], targetRestaurantId);
+    else await siteDataManager.refreshSnapshot({ force: true });
     return NextResponse.json({ success: true, data: { id, name, price: Number(price) } }, { status: 201 });
   }
 
@@ -1742,8 +2004,29 @@ export async function PATCH(req: NextRequest) {
     const orderId = decodeURIComponent(orderStatusMatch[1]);
     const { status, note } = body;
     if (!status) return NextResponse.json({ success: false, error: 'status required' }, { status: 400 });
+    const isAdmin = user.role === 'admin' || user.role === 'sub_admin';
+    const orderRes = await d1.query('SELECT id, restaurant_id, courier_id, status FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
+    if (!orderRes.success) return NextResponse.json({ success: false, error: 'Order authorization could not be verified' }, { status: 503 });
+    const order = orderRes.results?.[0];
+    if (!order) return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    if (!isAdmin) {
+      if (user.role === 'restaurant') {
+        const assigned = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id]);
+        if (!assigned.success) return NextResponse.json({ success: false, error: 'Restaurant assignment could not be verified' }, { status: 503 });
+        if (!assigned.results?.[0]?.restaurant_id || String(assigned.results[0].restaurant_id) !== String(order.restaurant_id)) {
+          return NextResponse.json({ success: false, error: 'You cannot update another restaurant’s order' }, { status: 403 });
+        }
+        if (!['preparing', 'ready_for_pickup', 'cancelled'].includes(status)) return NextResponse.json({ success: false, error: 'Restaurant cannot set this delivery status' }, { status: 403 });
+      } else if (user.role === 'courier') {
+        if (String(order.courier_id || '') !== String(user.id)) return NextResponse.json({ success: false, error: 'You are not assigned to this delivery' }, { status: 403 });
+        if (!['in_transit', 'delivered', 'cancelled'].includes(status)) return NextResponse.json({ success: false, error: 'Courier cannot set this delivery status' }, { status: 403 });
+      } else {
+        return NextResponse.json({ success: false, error: 'Not authorized to update order status' }, { status: 403 });
+      }
+    }
     const now = new Date().toISOString();
-    await d1.query('UPDATE orders SET status = ?, updated_at = ? WHERE id = ? OR short_id = ?', [status, now, orderId, orderId]);
+    const updateRes = await d1.query('UPDATE orders SET status = ?, updated_at = ? WHERE id = ?', [status, now, order.id]);
+    if (!updateRes.success) return NextResponse.json({ success: false, error: 'Order status update failed' }, { status: 503 });
     await d1.query(
       'INSERT INTO order_status_history (id, order_id, status, note, created_at) VALUES (?, ?, ?, ?, ?)',
       [`hist-${Date.now()}`, orderId, status, note || `Status changed to ${status}`, now]
@@ -1797,6 +2080,9 @@ export async function PATCH(req: NextRequest) {
     }
     const itemId = decodeURIComponent(menuToggleMatch[1]);
     await d1.query('UPDATE menu_items SET is_available = CASE WHEN is_available = 1 THEN 0 ELSE 1 END WHERE id = ?', [itemId]);
+    const toggledRes = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [itemId]);
+    if (toggledRes.results?.[0]) await syncMenuItemToRestaurantJson(itemId, toggledRes.results[0], toggledRes.results[0].restaurant_id);
+    else await siteDataManager.refreshSnapshot({ force: true });
     return NextResponse.json({ success: true, message: 'Menu item availability toggled' });
   }
 
@@ -1862,20 +2148,24 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const itemId = decodeURIComponent(menuPatchMatch[1]);
-    const { name, price, categoryId, description, isAvailable, popular, imageR2Url } = body;
+    const { name, price, categoryId, category, restaurantId, description, isAvailable, popular, imageR2Url, imageUrl } = body;
     const updates: string[] = [];
     const values: any[] = [];
     if (name !== undefined) { updates.push('name = ?'); values.push(name); }
     if (price !== undefined) { updates.push('price = ?'); values.push(Number(price)); }
-    if (categoryId !== undefined) { updates.push('category_id = ?'); values.push(categoryId); }
+    if (categoryId !== undefined || category !== undefined) { updates.push('category_id = ?'); values.push(categoryId ?? category); }
+    if (restaurantId !== undefined) { updates.push('restaurant_id = ?'); values.push(restaurantId); }
     if (description !== undefined) { updates.push('description = ?'); values.push(description); }
     if (isAvailable !== undefined) { updates.push('is_available = ?'); values.push(isAvailable ? 1 : 0); }
     if (popular !== undefined) { updates.push('popular = ?'); values.push(popular ? 1 : 0); }
-    if (imageR2Url !== undefined) { updates.push('image_r2_url = ?'); values.push(imageR2Url); }
+    if (imageR2Url !== undefined || imageUrl !== undefined) { updates.push('image_r2_url = ?'); values.push(imageR2Url ?? imageUrl); }
     if (updates.length > 0) {
       values.push(itemId);
       await d1.query(`UPDATE menu_items SET ${updates.join(', ')} WHERE id = ?`, values);
     }
+    const updatedRes = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [itemId]);
+    if (updatedRes.results?.[0]) await syncMenuItemToRestaurantJson(itemId, updatedRes.results[0], updatedRes.results[0].restaurant_id);
+    else await siteDataManager.refreshSnapshot({ force: true });
     return NextResponse.json({ success: true, message: 'Menu item updated' });
   }
 
@@ -1976,13 +2266,22 @@ export async function PATCH(req: NextRequest) {
   // 17. Restaurant Item Update
   const restItemMatch = pathname.match(/^\/restaurants\/([^/]+)\/items\/([^/]+)$/);
   if (restItemMatch) {
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    const restaurantId = decodeURIComponent(restItemMatch[1]);
     const itemId = decodeURIComponent(restItemMatch[2]);
     const { isAvailable } = body;
-    if (isAvailable !== undefined) {
-      await d1.query('UPDATE menu_items SET is_available = ? WHERE id = ?', [isAvailable ? 1 : 0, itemId]);
-      // Immediate change-driven snapshot refresh
-      siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+    if (user.role !== 'admin' && user.role !== 'sub_admin') {
+      if (user.role !== 'restaurant') return NextResponse.json({ success: false, error: 'Not authorized' }, { status: 403 });
+      const assigned = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id]);
+      if (!assigned.success) return NextResponse.json({ success: false, error: 'Restaurant assignment could not be verified' }, { status: 503 });
+      if (!assigned.results?.[0]?.restaurant_id || String(assigned.results[0].restaurant_id) !== String(restaurantId)) {
+        return NextResponse.json({ success: false, error: 'You cannot manage another restaurant’s menu' }, { status: 403 });
+      }
     }
+    if (isAvailable === undefined) return NextResponse.json({ success: false, error: 'isAvailable is required' }, { status: 400 });
+    const itemRes = await d1.query('UPDATE menu_items SET is_available = ? WHERE id = ? AND restaurant_id = ?', [isAvailable ? 1 : 0, itemId, restaurantId]);
+    if (!itemRes.success) return NextResponse.json({ success: false, error: 'Menu item update failed' }, { status: 503 });
+    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
     return NextResponse.json({ success: true, message: 'Item updated' });
   }
 
@@ -2109,6 +2408,7 @@ export async function DELETE(req: NextRequest) {
     }
     const targetId = decodeURIComponent(delMenuMatch[1]);
     await d1.query('DELETE FROM menu_items WHERE id = ?', [targetId]);
+    await syncMenuItemToRestaurantJson(targetId, null);
     return NextResponse.json({ success: true, message: 'Menu item deleted' });
   }
 
@@ -2131,8 +2431,12 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const targetId = decodeURIComponent(delRestMatch[1]);
+    // Remove dependent menu records and embedded restaurant menu data as part of the same
+    // admin deletion workflow, then persist a fresh public catalogue snapshot.
+    await d1.query('DELETE FROM menu_items WHERE restaurant_id = ?', [targetId]).catch(() => {});
     await d1.query('DELETE FROM restaurants WHERE id = ?', [targetId]);
-    return NextResponse.json({ success: true, message: 'Restaurant deleted' });
+    await siteDataManager.refreshSnapshot({ force: true });
+    return NextResponse.json({ success: true, message: 'Restaurant and its menu deleted; public catalogue refreshed' });
   }
 
   return NextResponse.json({ success: false, error: `API route DELETE /api${pathname} not found.` }, { status: 404 });
