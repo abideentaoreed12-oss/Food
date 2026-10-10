@@ -1,0 +1,27 @@
+name: apply-jwt-admin-env-only
+
+on:
+  push:
+    paths:
+      - 'scripts/trigger-jwt-admin-fix.txt'
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch JWT fallback and Admin123 defaults
+        run: |
+          set -euo pipefail
+          python3 scripts/patch_jwt_admin_env_only.py
+          git config user.name "veyrang-bot"
+          git config user.email "bot@veyrang.com"
+          git add server/config.ts 'app/api/[[...route]]/route.ts' lib/d1.ts server/db/index.ts server/db/localStore.ts scripts/live-audit.ts scripts/live-audit.js
+          if git diff --staged --quiet; then
+            echo No changes
+            exit 0
+          fi
+          git commit -m "fix(security): require JWT_SECRET and ADMIN_PASSWORD from env only"
+          git push
