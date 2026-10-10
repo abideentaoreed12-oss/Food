@@ -1474,6 +1474,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Settings updated' });
   }
 
+  // Create a restaurant record for admin-managed restaurant account onboarding.
+  if (pathname === '/admin/restaurants/create') {
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 403 });
+    }
+    const name = String(body.name || '').trim();
+    if (!name) return NextResponse.json({ success: false, error: 'Restaurant name is required' }, { status: 400 });
+    const id = `rest-${randomUUID()}`;
+    const now = new Date().toISOString();
+    const restaurant = {
+      id,
+      name,
+      slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+      cuisine: String(body.cuisine || '').trim(),
+      address: String(body.address || '').trim(),
+      isOpen: false,
+      isBusyPaused: false,
+      commissionPercent: 15
+    };
+    const saved = await d1.query(
+      `INSERT INTO restaurants (id, name, slug, cuisine, rating, review_count, delivery_time_min, delivery_time_max, delivery_fee, min_order, price_tier, address, distance_km, tags, badge, accent_color, is_open, is_busy_paused, commission_percent, zone, raw_json, created_at)
+       VALUES (?, ?, ?, ?, 0, 0, 25, 35, 500, 0, '$', ?, 0, '[]', NULL, '#FF5500', 0, 0, 15, 'LAGOS', ?, ?)`,
+      [id, name, restaurant.slug, restaurant.cuisine, restaurant.address, JSON.stringify(restaurant), now]
+    );
+    if (!saved.success) return NextResponse.json({ success: false, error: 'Restaurant could not be saved' }, { status: 503 });
+    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+    return NextResponse.json({ success: true, data: restaurant }, { status: 201 });
+  }
+
   // 16. Admin Categories
   if (pathname === '/admin/categories') {
     const user = await getUser(req);
