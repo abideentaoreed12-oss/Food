@@ -9,35 +9,54 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      - name: Restore known-good files from history
+          ref: main
+          fetch-depth: 5
+      - name: Apply normalized menu wiring on main
+        run: |
+          set -e
+          test -f lib/restaurantMenu.ts
+          test -f scripts/apply_normalized_menu.py
+          test -f scripts/apply_seo_menu.py
+          python3 scripts/apply_normalized_menu.py
+          python3 scripts/apply_seo_menu.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("lib/siteDataSnapshot.ts")
+          t = p.read_text()
+          old = """        // Filter out any internal passwords or secret columns
+        for (const r of restaurants) {
+          delete r.password;
+          delete r.password_hash;
+          delete r.token;
+          delete r.secret;
+        }"""
+          new = """        // Filter secrets and never publish embedded menu blobs (menu_items is source of truth).
+        for (const r of restaurants) {
+          delete r.password;
+          delete r.password_hash;
+          delete r.token;
+          delete r.secret;
+          delete r.categories;
+          delete r.menuItems;
+          delete r.menu_items;
+        }"""
+          if old in t:
+            p.write_text(t.replace(old, new))
+            print("snapshot stripped")
+          elif "delete r.categories" in t:
+            print("snapshot already stripped")
+          else:
+            print("WARN snapshot pattern missing")
+          PY
+      - name: Commit on main
         run: |
           set -e
           git config user.name "veyrang-bot"
           git config user.email "bot@veyrang.com"
-
-          # settings (full cachedQuery version)
-          git show 1598deaa02fefee9e66de67ae20764f00e1ac432:server/routes/settings.ts > server/routes/settings.ts
-          echo "settings: $(wc -c < server/routes/settings.ts) bytes"
-
-          # restaurants (full cachedQuery version)
-          git show 03b1ed9ef04091f43c7c743aab616043a9a4c2e1:server/routes/restaurants.ts > server/routes/restaurants.ts
-          echo "restaurants: $(wc -c < server/routes/restaurants.ts) bytes"
-
-          # AuthContext (shell / no wallet cache)
-          git show 2cc03572da8328b24fda6166f51b6e52498d4224:src/context/AuthContext.tsx > src/context/AuthContext.tsx
-          echo "AuthContext: $(wc -c < src/context/AuthContext.tsx) bytes"
-
-          # api safe storage
-          git show f2fe85d1acb27cc738af56d9faeef5385ee0974a:src/services/api.ts > src/services/api.ts
-          echo "api: $(wc -c < src/services/api.ts) bytes"
-
-          # DeliveryContext — last full non-placeholder (pre structural-cart wipe)
-          git show f2fe85d1acb27cc738af56d9faeef5385ee0974a:src/context/DeliveryContext.tsx > src/context/DeliveryContext.tsx
-          echo "DeliveryContext: $(wc -c < src/context/DeliveryContext.tsx) bytes"
-
-          git add server/routes/settings.ts server/routes/restaurants.ts src/context/AuthContext.tsx src/services/api.ts src/context/DeliveryContext.tsx
-          git status
-          git diff --staged --quiet && echo 'No changes' && exit 0
-          git commit -m "fix: restore settings, restaurants, AuthContext, api, DeliveryContext from last good commits"
-          git push
+          git add 'app/api/[[...route]]/route.ts' 'app/restaurants/[id]/page.tsx' lib/siteDataSnapshot.ts || true
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "feat(menu): public restaurants serve dishes only from menu_items on main"
+          git push origin HEAD:main
