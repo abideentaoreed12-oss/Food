@@ -362,7 +362,7 @@ export class SiteDataManager {
     if (!options?.force && this.consecutiveFailures > 0) {
       const backoffMs = Math.min(60000, 5000 * Math.pow(2, this.consecutiveFailures - 1));
       if (now - this.lastSyncTimestamp < backoffMs) {
-        return this.getLastKnownGood();
+        return null;
       }
     }
 
@@ -456,24 +456,24 @@ export class SiteDataManager {
           const saved = await this.saveSnapshot(candidate, { allowEmpty: true, isAuthorizedAdmin: true });
           if (!saved) {
             this.consecutiveFailures++;
-            console.warn('[SiteData] Snapshot persistence failed; preserving the previous verified snapshot.');
-            return this.currentSnapshot;
+            console.warn('[SiteData] Snapshot persistence failed; the authoritative D1 result was not published as a durable snapshot.');
+            return null;
           }
           this.consecutiveFailures = 0;
           return this.currentSnapshot || candidate;
         } else {
           this.consecutiveFailures++;
-          console.warn('[SiteData] Candidate snapshot failed validation. Preserving existing last-known-good.');
-          return this.currentSnapshot;
+          console.warn('[SiteData] Candidate snapshot failed validation.');
+          return null;
         }
       } catch (err: any) {
         this.consecutiveFailures++;
         console.warn(
           '[SiteData] Failed to refresh snapshot from primary source:',
           err?.message || err,
-          'Serving last-known-good.'
+          'Not serving a stale catalogue after a failed D1 refresh.'
         );
-        return this.currentSnapshot;
+        return null;
       } finally {
         this.isSyncing = false;
         this.inFlightRefreshPromise = null;
