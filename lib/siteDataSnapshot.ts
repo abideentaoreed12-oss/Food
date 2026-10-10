@@ -370,7 +370,12 @@ export class SiteDataManager {
     this.inFlightRefreshPromise = (async () => {
       try {
         const restRes = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC');
-        const rawRows = restRes.results || [];
+        // A successful query with zero rows means the catalogue is genuinely empty.
+        // A failed/malformed query must never be mistaken for an intentional deletion.
+        if (!restRes || restRes.success === false || !Array.isArray(restRes.results)) {
+          throw new Error('Authoritative restaurant query failed; refusing to publish an empty catalogue.');
+        }
+        const rawRows = restRes.results;
 
         // The D1 query succeeded, so its result is authoritative even when empty.
         // Never keep a populated snapshot merely because all restaurants were intentionally deleted.
@@ -448,9 +453,14 @@ export class SiteDataManager {
         };
 
         if (isValidSiteData(candidate, { allowEmpty: true })) {
-          await this.saveSnapshot(candidate, { allowEmpty: true, isAuthorizedAdmin: true });
+          const saved = await this.saveSnapshot(candidate, { allowEmpty: true, isAuthorizedAdmin: true });
+          if (!saved) {
+            this.consecutiveFailures++;
+            console.warn('[SiteData] Snapshot persistence failed; preserving the previous verified snapshot.');
+            return this.currentSnapshot;
+          }
           this.consecutiveFailures = 0;
-          return candidate;
+          return this.currentSnapshot || candidate;
         } else {
           this.consecutiveFailures++;
           console.warn('[SiteData] Candidate snapshot failed validation. Preserving existing last-known-good.');
