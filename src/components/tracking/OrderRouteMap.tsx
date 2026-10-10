@@ -196,15 +196,8 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
     if (courierLocation && Number.isFinite(courierLocation.lat) && Number.isFinite(courierLocation.lng)) {
       return courierLocation;
     }
-    if (progressRatio >= 1) {
-      return { lat: customerCoord.lat, lng: customerCoord.lng, speed: 0, heading: 0 };
-    }
-    if (progressRatio <= 0.05) {
-      return { lat: kitchenCoord.lat, lng: kitchenCoord.lng, speed: 0, heading: 0 };
-    }
-    // Do not simulate courier GPS from status/progress.
+    // Never infer a courier's position from order status or route progress.
     return { lat: Number.NaN, lng: Number.NaN, speed: 0, heading: 0 };
-    /* Disabled synthetic movement:
     if (routeWaypoints.length >= 2) {
       const totalSegs = routeWaypoints.length - 1;
       const targetIdx = progressRatio * totalSegs;
@@ -235,8 +228,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
       speed: order.status === 'in_transit' ? 28 : 0,
       heading: 45
     };
-    */
-  }, [courierLocation, progressRatio, customerCoord, kitchenCoord, routeWaypoints, order.status]);
+  }, [courierLocation]);
 
   // Trip and remaining distances
   const totalTripKm = useMemo(() => {
@@ -308,7 +300,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
     };
   }, [routeWaypoints, courierCoord, kitchenCoord, customerCoord]);
 
-  if (![kitchenCoord.lat, kitchenCoord.lng, customerCoord.lat, customerCoord.lng].every(Number.isFinite)) {
+  if (![kitchenCoord.lat, kitchenCoord.lng, customerCoord.lat, customerCoord.lng, courierCoord.lat, courierCoord.lng].every(Number.isFinite)) {
     return (
       <div className={`w-full rounded-2xl border border-slate-200 bg-white p-5 text-slate-700 ${className}`}>
         <p className="font-semibold">Live map location unavailable</p>
