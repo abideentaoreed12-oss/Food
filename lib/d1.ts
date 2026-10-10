@@ -398,37 +398,39 @@ export class D1Client {
         this.executeLocal(sql);
       }
 
-      // QR handover and review migrations. CREATE TABLE IF NOT EXISTS does not evolve older schemas.
-      const handoverAndReviewStatements = [
-        `CREATE TABLE IF NOT EXISTS handover_qr_tokens (
-          id TEXT PRIMARY KEY,
-          order_id TEXT NOT NULL,
-          token_hash TEXT NOT NULL UNIQUE,
-          expires_at TEXT NOT NULL,
-          consumed_at TEXT,
-          created_by TEXT NOT NULL,
-          created_at TEXT NOT NULL
-        )`,
-        'CREATE INDEX IF NOT EXISTS idx_handover_qr_order ON handover_qr_tokens (order_id, consumed_at)',
-        'ALTER TABLE reviews ADD COLUMN order_id TEXT',
-        'ALTER TABLE reviews ADD COLUMN courier_id TEXT',
-        'ALTER TABLE reviews ADD COLUMN customer_name TEXT',
-        'ALTER TABLE reviews ADD COLUMN food_rating INTEGER',
-        'ALTER TABLE reviews ADD COLUMN delivery_rating INTEGER',
-        'ALTER TABLE reviews ADD COLUMN photo_r2_url TEXT',
-        'ALTER TABLE reviews ADD COLUMN restaurant_id TEXT',
-        'CREATE INDEX IF NOT EXISTS idx_reviews_order_customer ON reviews (order_id, customer_id)'
-      ];
-      for (const migration of handoverAndReviewStatements) {
+      // Backward-compatible handover/review migrations. Inspect columns before ALTER TABLE:
+      // older SQLite/D1 engines don't support ADD COLUMN IF NOT EXISTS consistently.
+      const ensureColumn = async (table: string, column: string, definition: string) => {
+        const sql = `PRAGMA table_info(${table})`;
         if (this.isConfigured()) {
-          await this.queryDirect(migration, [], true).catch(() => {
-            // ALTER TABLE can fail when the column already exists; index/table creation is idempotent.
-          });
+          const remote = await this.queryDirect(sql, [], true);
+          const cols = (remote.results || []).map((row: any) => String(row.name));
+          if (!cols.includes(column)) await this.queryDirect(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`, [], true);
         }
-        try { this.executeLocal(migration); } catch {
-          // Existing columns/tables are expected on later boots.
-        }
-      }
+        const local = this.executeLocal(sql, []);
+        const cols = (local.results || []).map((row: any) => String(row.name));
+        if (!cols.includes(column)) this.executeLocal(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`, []);
+      };
+      const handoverTable = `CREATE TABLE IF NOT EXISTS handover_qr_tokens (
+        id TEXT PRIMARY KEY,
+        order_id TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at TEXT NOT NULL,
+        consumed_at TEXT,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )`;
+      if (this.isConfigured()) await this.queryDirect(handoverTable, [], true);
+      this.executeLocal(handoverTable);
+      if (this.isConfigured()) await this.queryDirect('CREATE INDEX IF NOT EXISTS idx_handover_qr_order ON handover_qr_tokens (order_id, consumed_at)', [], true);
+      this.executeLocal('CREATE INDEX IF NOT EXISTS idx_handover_qr_order ON handover_qr_tokens (order_id, consumed_at)');
+      for (const [column, definition] of [
+        ['order_id', 'TEXT'], ['courier_id', 'TEXT'], ['customer_name', 'TEXT'],
+        ['food_rating', 'INTEGER'], ['delivery_rating', 'INTEGER'], ['photo_r2_url', 'TEXT']
+      ] as const) await ensureColumn('reviews', column, definition);
+      // Do not re-add restaurant_id or rating: both are part of the legacy schema and remain authoritative.
+      if (this.isConfigured()) await this.queryDirect('CREATE INDEX IF NOT EXISTS idx_reviews_order_customer ON reviews (order_id, customer_id)', [], true);
+      this.executeLocal('CREATE INDEX IF NOT EXISTS idx_reviews_order_customer ON reviews (order_id, customer_id)');
 
       // Migrate older promo_codes tables in both authoritative D1 and local development SQLite.
       // CREATE TABLE IF NOT EXISTS does not add columns to tables that already exist.
