@@ -1,12 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { createRequire } from 'node:module';
+import { DatabaseSync } from 'node:sqlite';
 import bcrypt from 'bcryptjs';
 import { CONFIG } from '../server/config';
 import { INITIAL_RESTAURANTS } from '../src/data/mockData';
-
-const esmRequire = typeof createRequire === 'function' ? createRequire(import.meta.url) : null;
 
 export interface D1QueryResult<T = any> {
   results: T[];
@@ -30,22 +28,6 @@ export interface D1ApiResponse<T = any> {
 interface CacheItem {
   timestamp: number;
   data: D1QueryResult<any>;
-}
-
-function getSqliteModule(): any {
-  try {
-    const dynamicRequire = new Function('mod', 'return require(mod);');
-    return dynamicRequire('node:sqlite');
-  } catch {
-    try {
-      if (typeof createRequire === 'function') {
-        const req = createRequire(process.cwd() + '/package.json');
-        return req('node:sqlite');
-      }
-    } catch {
-      return null;
-    }
-  }
 }
 
 export class D1Client {
@@ -89,30 +71,16 @@ export class D1Client {
     this.queryCache.clear();
   }
 
-
   private getLocalSqlite(): any {
     if (this.localDbInstance) return this.localDbInstance;
     try {
-      const sqlite = getSqliteModule();
-      if (!sqlite || typeof sqlite.DatabaseSync !== 'function') {
-        throw new Error('node:sqlite DatabaseSync not found');
-      }
-      const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-      const dataDir = isServerless
-        ? path.resolve(os.tmpdir(), 'veyrang_data')
-        : path.resolve(process.cwd(), '.data');
-      if (!fs.existsSync(dataDir)) {
-        try { fs.mkdirSync(dataDir, { recursive: true }); } catch {}
-      }
-      const dbPath = path.resolve(dataDir, 'veyrang_d1.sqlite');
-      this.localDbInstance = new sqlite.DatabaseSync(dbPath);
+      const dbPath = path.resolve(os.tmpdir(), 'veyrang_d1.sqlite');
+      this.localDbInstance = new DatabaseSync(dbPath);
     } catch {
       try {
-        const sqlite = getSqliteModule();
-        if (sqlite && typeof sqlite.DatabaseSync === 'function') {
-          this.localDbInstance = new sqlite.DatabaseSync(':memory:');
-        }
-      } catch {
+        this.localDbInstance = new DatabaseSync(':memory:');
+      } catch (err: any) {
+        console.error('DatabaseSync initialization error:', err?.message);
         this.localDbInstance = null;
       }
     }
