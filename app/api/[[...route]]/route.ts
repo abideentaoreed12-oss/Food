@@ -373,39 +373,72 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: promos });
   }
 
-  // 10b. Public site data: refresh from D1 before every response; snapshots never override D1.
+  // 10b. Public site data: publish the current D1 catalogue, never a saved catalogue snapshot.
   if (pathname === '/site-data/public') {
-    const snapshot = await siteDataManager.refreshSnapshot({ force: true });
-
-
-    if (!snapshot) {
+    try {
+      const restaurantsRes = await d1.query(
+        'SELECT * FROM restaurants ORDER BY rating DESC',
+        [],
+        { cache: false }
+      );
+      if (!restaurantsRes || restaurantsRes.success === false || !Array.isArray(restaurantsRes.results)) {
+        throw new Error('Authoritative D1 restaurant query failed');
+      }
+      const restaurants = restaurantsRes.results.map((row: any) => {
+        let parsed: any = {};
+        try { parsed = row.raw_json ? JSON.parse(row.raw_json) : {}; } catch { parsed = {}; }
+        return {
+          ...parsed,
+          id: row.id,
+          name: row.name || parsed.name,
+          cuisine: row.cuisine || parsed.cuisine,
+          rating: row.rating ?? parsed.rating,
+          isOpen: row.is_open === 1 || row.is_open === true,
+          isBusyPaused: row.is_busy_paused === 1 || row.is_busy_paused === true,
+          categories: Array.isArray(parsed.categories) ? parsed.categories : []
+        };
+      });
+      const settingsRes = await d1.query(
+        "SELECT key, value FROM platform_settings WHERE key IN ('delivery_zones', 'promo_codes')",
+        [],
+        { cache: false }
+      );
+      if (!settingsRes || settingsRes.success === false || !Array.isArray(settingsRes.results)) {
+        throw new Error('Authoritative D1 settings query failed');
+      }
+      const settings: Record<string, any> = {};
+      for (const row of settingsRes.results) {
+        try { settings[row.key] = JSON.parse(row.value); } catch { settings[row.key] = row.value; }
+      }
+      return NextResponse.json({
+        success: true,
+        data: {
+          version: Date.now(),
+          schemaVersion: 1,
+          updatedAt: new Date().toISOString(),
+          source: 'cloudflare_d1',
+          syncStatus: 'synced',
+          restaurants,
+          deliveryZones: Array.isArray(settings.delivery_zones) ? settings.delivery_zones : [],
+          promoCodes: Array.isArray(settings.promo_codes) ? settings.promo_codes : [],
+          platformSettings: {},
+          metadata: { restaurantCount: restaurants.length }
+        }
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          'CDN-Cache-Control': 'no-store',
+          'Vercel-CDN-Cache-Control': 'no-store'
+        }
+      });
+    } catch (err: any) {
+      console.error('[Public site data] Authoritative D1 read failed:', err?.message || err);
       return NextResponse.json({
         success: false,
-        error: 'No verified live site-data snapshot is available yet. Check the authoritative database.',
+        error: 'Live catalogue is temporarily unavailable. Please retry.',
         data: null
       }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
-    return NextResponse.json({
-      success: true,
-      data: {
-        version: snapshot.version,
-        schemaVersion: snapshot.schemaVersion || 1,
-        updatedAt: snapshot.updatedAt,
-        source: snapshot.source,
-        syncStatus: snapshot.syncStatus || 'synced',
-        restaurants: snapshot.restaurants || [],
-        deliveryZones: snapshot.deliveryZones || [],
-        promoCodes: snapshot.promoCodes || [],
-        platformSettings: snapshot.platformSettings || {},
-        metadata: snapshot.metadata
-      }
-    }, {
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-        'CDN-Cache-Control': 'no-store',
-        'Vercel-CDN-Cache-Control': 'no-store'
-      }
-    });
   }
 
   if (pathname === '/site-data/snapshot' || pathname === '/admin/site-data/status') {
