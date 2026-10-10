@@ -73,13 +73,14 @@ export const OrdersPage: React.FC = () => {
     setScanValue('');
     setHandoverUrl('');
     setHandoverNotice('');
-    const paymentPending = order.status === 'awaiting_payment' || order.paymentStatus === 'pending';
-    if (paymentPending) {
-      setHandoverNotice('This order is awaiting payment. You can open the scanner, but secure handover verification becomes available after payment is confirmed.');
+    const paymentConfirmed = String(order.paymentStatus || '').toLowerCase() === 'paid';
+    if (!paymentConfirmed) {
+      setHandoverNotice('QR handover is locked until payment is confirmed by the server.');
+      setHandoverBusy(false);
+      return;
     }
-    setHandoverBusy(!paymentPending);
+    setHandoverBusy(true);
     try {
-      if (paymentPending) return;
       const issued: any = await (await import('../../services/api')).api.orders.issueHandoverQr(order.id);
       const data = issued?.data || issued;
       if (data?.url) setHandoverUrl(String(data.url));
@@ -436,6 +437,8 @@ export const OrdersPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => void openScanner(order)}
+                    disabled={String(order.paymentStatus || '').toLowerCase() !== 'paid'}
+                    title={String(order.paymentStatus || '').toLowerCase() !== 'paid' ? 'QR handover is available only after payment is confirmed' : 'Scan QR code for this order'}
                     className="py-2.5 px-3 rounded-xl border border-orange-200 bg-orange-50 text-[#FF5500] text-xs font-bold hover:bg-orange-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label={`Scan QR code for order ${order.shortId}`}
                   >
