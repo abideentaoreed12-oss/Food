@@ -18,14 +18,19 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install dependencies (npm ci)
-        run: npm ci
+      # This repository currently has no committed npm lockfile, so npm ci cannot run.
+      # Use npm install until a reviewed package-lock.json is committed.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
 
       - name: Security audit
         run: npm audit --audit-level=moderate
 
       - name: Typecheck
         run: npm run lint
+
+      - name: Tests
+        run: npm test -- --passWithNoTests
 
       - name: Build
         run: npm run build
