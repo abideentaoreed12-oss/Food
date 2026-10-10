@@ -433,14 +433,12 @@ export const AdminPortal: React.FC = () => {
           showActionFeedback('Enter the new restaurant name and address first.');
           return;
         }
-        const token = typeof window !== 'undefined' ? localStorage.getItem('veyrang_jwt_token') : null;
-        const restaurantResponse = await fetch('/api/admin/restaurants/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-          body: JSON.stringify({ name: newStaffRestaurantName.trim(), address: newStaffRestaurantAddress.trim(), cuisine: newStaffRestaurantCuisine.trim() })
+        const restaurantResult = await api.admin.createRestaurant({
+          name: newStaffRestaurantName.trim(),
+          address: newStaffRestaurantAddress.trim(),
+          cuisine: newStaffRestaurantCuisine.trim()
         });
-        const restaurantResult = await restaurantResponse.json();
-        if (!restaurantResponse.ok || !restaurantResult?.data?.id) throw new Error(restaurantResult?.error || 'Restaurant creation failed');
+        if (!restaurantResult?.data?.id) throw new Error(restaurantResult?.error || 'Restaurant creation failed');
         restaurantId = restaurantResult.data.id;
       }
       if (newStaffRole === 'restaurant' && !restaurantId) {
