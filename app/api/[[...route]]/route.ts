@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { randomUUID, randomInt } from 'crypto';
+import { randomUUID, randomInt, randomBytes, createHash } from 'crypto';
 import { sendVerificationEmail } from '../../../lib/email';
 import { d1 } from '../../../lib/d1';
 import { r2 } from '../../../lib/r2';
@@ -1833,6 +1833,61 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString();
     await d1.query('UPDATE orders SET status = \'refunded\', payment_status = \'refunded\', updated_at = ? WHERE id = ? OR short_id = ?', [now, orderId, orderId]);
     return NextResponse.json({ success: true, message: 'Order marked as refunded' });
+  }
+
+  // QR Delivery Handover & Review: secure, expiring, hashed bearer tokens.
+  const qrIssueMatch = pathname.match(/^\/orders\/([^/]+)\/handover-qr$/);
+  if (qrIssueMatch && req.method === 'POST') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'customer') return NextResponse.json({ success: false, error: 'Only the order customer can issue a recipient QR.' }, { status: 403 });
+    const orderId = decodeURIComponent(qrIssueMatch[1]);
+    const orderRes = await d1.query('SELECT id, short_id, customer_id, status, payment_status, restaurant_name FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
+    const order = orderRes.results?.[0] as any;
+    if (!order) return NextResponse.json({ success: false, error: 'Order not found.' }, { status: 404 });
+    if (String(order.customer_id || '') !== String(user.id)) return NextResponse.json({ success: false, error: 'You cannot issue a QR for this order.' }, { status: 403 });
+    if (!['ready_for_pickup', 'picked_up', 'in_transit'].includes(String(order.status))) return NextResponse.json({ success: false, error: 'A handover QR is only available for an active delivery.' }, { status: 409 });
+    await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
+    const token = randomBytes(32).toString('base64url');
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
+    await d1.query('UPDATE handover_qr_tokens SET consumed_at = ? WHERE order_id = ? AND consumed_at IS NULL', [now.toISOString(), order.id]);
+    const insert = await d1.query('INSERT INTO handover_qr_tokens (id, order_id, token_hash, expires_at, consumed_at, created_by, created_at) VALUES (?, ?, ?, ?, NULL, ?, ?)', [randomUUID(), order.id, createHash('sha256').update(token).digest('hex'), expiresAt, user.id, now.toISOString()]);
+    if (!insert.success) return NextResponse.json({ success: false, error: 'Could not create a secure handover QR.' }, { status: 503 });
+    const origin = req.nextUrl.origin;
+    return NextResponse.json({ success: true, data: { url: `${origin}/handover/${token}`, expiresAt, orderReference: order.short_id } }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  const qrDetailsMatch = pathname.match(/^\/handover\/([A-Za-z0-9_-]{30,100})$/);
+  if (qrDetailsMatch && req.method === 'GET') {
+    const tokenHash = createHash('sha256').update(qrDetailsMatch[1]).digest('hex');
+    await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
+    const result = await d1.query('SELECT t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.restaurant_name FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
+    const row = result.results?.[0] as any;
+    if (!row || row.consumed_at || new Date(row.expires_at).getTime() <= Date.now()) return NextResponse.json({ success: false, error: 'This handover link is invalid, expired, or already used.' }, { status: 410, headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ success: true, data: { orderReference: row.short_id, restaurantName: row.restaurant_name, status: row.status, expiresAt: row.expires_at } }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  const qrConfirmMatch = pathname.match(/^\/handover\/([A-Za-z0-9_-]{30,100})\/confirm$/);
+  if (qrConfirmMatch && req.method === 'POST') {
+    const tokenHash = createHash('sha256').update(qrConfirmMatch[1]).digest('hex');
+    await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
+    const result = await d1.query('SELECT t.id AS token_id, t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.customer_id FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
+    const row = result.results?.[0] as any;
+    if (!row || row.consumed_at || new Date(row.expires_at).getTime() <= Date.now()) return NextResponse.json({ success: false, error: 'This handover link is invalid, expired, or already used.' }, { status: 410 });
+    const user = await getUser(req);
+    if (user && (user.role !== 'customer' || String(user.id) !== String(row.customer_id))) return NextResponse.json({ success: false, error: 'You are not authorized to confirm this order.' }, { status: 403 });
+    const now = new Date().toISOString();
+    // Conditional token consumption is the replay guard; order transition is also conditional.
+    const consumed = await d1.query('UPDATE handover_qr_tokens SET consumed_at = ? WHERE id = ? AND consumed_at IS NULL AND expires_at > ?', [now, row.token_id, now]);
+    if (!consumed.success || Number(consumed.meta?.rows_written ?? consumed.meta?.changes ?? 0) !== 1) return NextResponse.json({ success: false, error: 'This QR has already been used.' }, { status: 409 });
+    const delivered = await d1.query("UPDATE orders SET status = 'delivered', updated_at = ? WHERE id = ? AND status IN ('in_transit', 'picked_up')", [now, row.order_id]);
+    if (!delivered.success || Number(delivered.meta?.rows_written ?? delivered.meta?.changes ?? 0) !== 1) {
+      await d1.query('UPDATE handover_qr_tokens SET consumed_at = NULL WHERE id = ? AND consumed_at = ?', [row.token_id, now]);
+      return NextResponse.json({ success: false, error: 'This order is not eligible for delivery confirmation.' }, { status: 409 });
+    }
+    if (user) await d1.query('INSERT INTO audit_logs (id, user_id, user_email, user_role, action, resource, resource_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [randomUUID(), user.id, user.email || '', user.role, 'order.qr_handover.confirmed', 'order', row.order_id, now]).catch(() => {});
+    return NextResponse.json({ success: true, data: { orderReference: row.short_id, status: 'delivered', confirmedAt: now, canReview: true } }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   // 28. Order Handover Verify — server-authoritative and customer-owned.
