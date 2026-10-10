@@ -22,7 +22,12 @@ export const dynamic = 'force-dynamic';
  * Keep the restaurant document (the public storefront's canonical menu source)
  * synchronized with the normalized menu_items table after every menu mutation.
  */
-async function syncMenuItemToRestaurantJson(itemId: string, item: any | null, targetRestaurantId?: string | null) {
+async function syncMenuItemToRestaurantJson(
+  itemId: string,
+  item: any | null,
+  targetRestaurantId?: string | null,
+  deletedItemName?: string | null
+) {
   const restaurantsRes = await d1.query('SELECT id, raw_json FROM restaurants');
   for (const row of restaurantsRes.results || []) {
     let restaurantData: any = {};
@@ -31,7 +36,18 @@ async function syncMenuItemToRestaurantJson(itemId: string, item: any | null, ta
     let changed = false;
     for (const category of restaurantData.categories) {
       if (!Array.isArray(category.items)) continue;
-      const filtered = category.items.filter((entry: any) => String(entry?.id) !== String(itemId));
+      const filtered = category.items.filter((entry: any) => {
+        if (String(entry?.id) === String(itemId)) return false;
+        // Legacy restaurant JSON can use a different embedded ID for the same normalized menu row.
+        // Limit the name fallback to the restaurant that owns the deleted database row.
+        if (
+          !item &&
+          deletedItemName &&
+          String(row.id) === String(targetRestaurantId) &&
+          String(entry?.name || '').trim().toLocaleLowerCase() === deletedItemName.trim().toLocaleLowerCase()
+        ) return false;
+        return true;
+      });
       if (filtered.length !== category.items.length) { category.items = filtered; changed = true; }
     }
     if (item && String(row.id) === String(targetRestaurantId || item.restaurant_id)) {
@@ -2502,9 +2518,22 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const targetId = decodeURIComponent(delMenuMatch[1]);
-    await d1.query('DELETE FROM menu_items WHERE id = ?', [targetId]);
-    await syncMenuItemToRestaurantJson(targetId, null);
-    return NextResponse.json({ success: true, message: 'Menu item deleted' });
+    const existingRes = await d1.query(
+      'SELECT id, restaurant_id, name FROM menu_items WHERE id = ? LIMIT 1',
+      [targetId]
+    );
+    const existingItem = existingRes.results?.[0];
+    const deleteRes = await d1.query('DELETE FROM menu_items WHERE id = ?', [targetId]);
+    if (deleteRes.success === false) {
+      return NextResponse.json({ success: false, error: 'Menu item could not be deleted from the database.' }, { status: 500 });
+    }
+    await syncMenuItemToRestaurantJson(
+      targetId,
+      null,
+      existingItem?.restaurant_id || null,
+      existingItem?.name || null
+    );
+    return NextResponse.json({ success: true, message: 'Menu item deleted and public catalogue refreshed' });
   }
 
   // 9. Admin Delete Addon
