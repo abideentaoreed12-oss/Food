@@ -11,10 +11,10 @@ try {
   // Silent fallback
 }
 
-// All secrets and admin credentials come from environment with safe production defaults.
-const jwtSecret = process.env.JWT_SECRET || 'veyrang-jwt-secret-secure-key-2025';
-const adminEmail = (process.env.ADMIN_EMAIL || 'admin@veyrang.com').toLowerCase().trim();
-const adminPassword = (process.env.ADMIN_PASSWORD || 'Admin123!').trim();
+// Secrets and admin credentials come from environment only — no hardcoded defaults.
+const jwtSecret = (process.env.JWT_SECRET || '').trim();
+const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
+const adminPassword = (process.env.ADMIN_PASSWORD || '').trim();
 
 function sanitizeBaseUrl(url: string | undefined, defaultUrl: string): string {
   if (!url || typeof url !== 'string') return defaultUrl;

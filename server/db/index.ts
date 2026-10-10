@@ -53,24 +53,26 @@ function seedInitialData(): DatabaseSchema {
   const salt = bcrypt.genSaltSync(10);
   const now = new Date().toISOString();
 
-  const adminEmail = CONFIG.ADMIN_EMAIL;
-  const adminPassword = CONFIG.ADMIN_PASSWORD;
+  const adminEmail = (CONFIG.ADMIN_EMAIL || '').toLowerCase().trim();
+  const adminPassword = (CONFIG.ADMIN_PASSWORD || '').trim();
 
-  const users: User[] = [
-    {
+  // Seed admin only when env credentials are present — never invent passwords.
+  const users: User[] = [];
+  if (adminEmail && adminPassword) {
+    users.push({
       id: 'usr-admin-1',
       email: adminEmail,
       passwordHash: bcrypt.hashSync(adminPassword, salt),
       name: 'System Administrator',
       role: 'admin',
-      phone: '+1 (555) 900-0001',
+      phone: '',
       walletBalanceUSD: 0,
       walletBalanceNGN: 0,
       savedAddresses: [],
       createdAt: now,
       updatedAt: now
-    }
-  ];
+    });
+  }
 
   // Preserves verified restaurants without injecting demo seed data
   const restaurants: Restaurant[] = [];
@@ -118,11 +120,12 @@ export function loadDatabase(): DatabaseSchema {
     });
 
     // Dynamic Admin Environment synchronization on every single access, even if cached in serverless memory!
-    const salt = bcrypt.genSaltSync(10);
-    const adminEmail = CONFIG.ADMIN_EMAIL;
-    const adminPassword = CONFIG.ADMIN_PASSWORD;
+    const adminEmail = (CONFIG.ADMIN_EMAIL || '').toLowerCase().trim();
+    const adminPassword = (CONFIG.ADMIN_PASSWORD || '').trim();
     const adminUser = dbCache.users.find((u) => u.role === 'admin' || u.id === 'usr-admin-1');
-    if (adminUser) {
+    // Only update admin credentials when both env values are set — never overwrite with empty/default secrets.
+    if (adminUser && adminEmail && adminPassword) {
+      const salt = bcrypt.genSaltSync(10);
       adminUser.email = adminEmail;
       adminUser.passwordHash = bcrypt.hashSync(adminPassword, salt);
       console.log("Database hot-sync loaded. Active Admin email is set to: " + adminEmail);
@@ -170,11 +173,11 @@ export function loadDatabase(): DatabaseSchema {
           return u;
         });
 
-        // Dynamic Admin Environment synchronization on every DB boot
-        const adminEmail = CONFIG.ADMIN_EMAIL;
-        const adminPassword = CONFIG.ADMIN_PASSWORD;
+        // Dynamic Admin Environment synchronization on every DB boot (env only — no default passwords)
+        const adminEmail = (CONFIG.ADMIN_EMAIL || '').toLowerCase().trim();
+        const adminPassword = (CONFIG.ADMIN_PASSWORD || '').trim();
         const adminUser = dbCache!.users.find((u) => u.role === 'admin' || u.id === 'usr-admin-1');
-        if (adminUser) {
+        if (adminUser && adminEmail && adminPassword) {
           adminUser.email = adminEmail;
           adminUser.passwordHash = bcrypt.hashSync(adminPassword, salt);
           console.log("Database cold-boot loaded. Active Admin email is set to: " + adminEmail);

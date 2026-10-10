@@ -71,32 +71,26 @@ export function seedInitialData(): DatabaseSchema {
   const salt = bcrypt.genSaltSync(10);
   const now = new Date().toISOString();
 
-  const adminEmail = (CONFIG.ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'admin@veyrang.com').toLowerCase().trim();
-  const adminPassword = CONFIG.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'Admin123!';
+  const adminEmail = (CONFIG.ADMIN_EMAIL || process.env.ADMIN_EMAIL || '').toLowerCase().trim();
+  const adminPassword = (CONFIG.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || '').trim();
 
-  const users: User[] = [
-    {
+  // Seed admin only when both email and password are provided via environment — never invent credentials.
+  const users: User[] = [];
+  if (adminEmail && adminPassword) {
+    users.push({
       id: 'usr-admin-1',
       email: adminEmail,
       passwordHash: bcrypt.hashSync(adminPassword, salt),
       name: 'System Administrator',
       role: 'admin',
-      phone: '+234 801 234 5678',
-      walletBalanceUSD: 250.0,
-      walletBalanceNGN: 350000,
-      savedAddresses: [
-        {
-          id: 'addr-admin-1',
-          label: 'Work',
-          address: 'Admiralty Way, Lekki Phase 1',
-          city: 'Lagos',
-          isDefault: true
-        }
-      ],
+      phone: '',
+      walletBalanceUSD: 0,
+      walletBalanceNGN: 0,
+      savedAddresses: [],
       createdAt: now,
       updatedAt: now
-    }
-  ];
+    });
+  }
 
   // Preserves verified restaurants without injecting demo seed data
   const restaurants: Restaurant[] = [];

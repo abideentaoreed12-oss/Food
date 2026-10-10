@@ -402,14 +402,17 @@ export class D1Client {
       const adminCount = this.executeLocal('SELECT count(*) as c FROM users WHERE role = ?', ['admin']);
       const hasAdmin = Number(adminCount.results?.[0]?.c || 0) > 0;
       if (!hasAdmin) {
-        const adminEmail = (CONFIG.ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'admin@veyrang.com').toLowerCase().trim();
-        const adminPass = CONFIG.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'Admin123!';
-        const passHash = bcrypt.hashSync(adminPass, 10);
-        this.executeLocal(
-          `INSERT OR IGNORE INTO users (id, email, password_hash, name, role, phone, address, wallet_balance_usd, wallet_balance_ngn, saved_addresses, is_approved, created_at, updated_at)
-           VALUES ('usr-admin-1', ?, ?, 'System Administrator', 'admin', '+234 801 234 5678', 'Lekki Phase 1, Lagos', 0, 0, '[]', 1, ?, ?)`,
-          [adminEmail, passHash, now, now]
-        );
+        const adminEmail = (CONFIG.ADMIN_EMAIL || process.env.ADMIN_EMAIL || '').toLowerCase().trim();
+        const adminPass = (CONFIG.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || '').trim();
+        // Seed admin only when env credentials are present — never invent Admin123! or similar.
+        if (adminEmail && adminPass) {
+          const passHash = bcrypt.hashSync(adminPass, 10);
+          this.executeLocal(
+            `INSERT OR IGNORE INTO users (id, email, password_hash, name, role, phone, address, wallet_balance_usd, wallet_balance_ngn, saved_addresses, is_approved, created_at, updated_at)
+             VALUES ('usr-admin-1', ?, ?, 'System Administrator', 'admin', '', '', 0, 0, '[]', 1, ?, ?)`,
+            [adminEmail, passHash, now, now]
+          );
+        }
       }
 
         // Populate delivery_zones, promo_codes, and platform_settings from last-known-good site data snapshot if empty

@@ -1,7 +1,11 @@
 import http from 'http';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'veyrang-jwt-secret-key-production-2026';
+const JWT_SECRET = (process.env.JWT_SECRET || '').trim();
+if (!JWT_SECRET) {
+  console.error('JWT_SECRET is required');
+  process.exit(1);
+}
 
 interface RouteTest {
   method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';

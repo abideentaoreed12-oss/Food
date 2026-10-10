@@ -17,7 +17,7 @@ import { reverseGeocodeCoordinates } from '../../../server/routes/geocode';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'veyrang-jwt-secret-secure-key-2025';
+const JWT_SECRET = (process.env.JWT_SECRET || '').trim();
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
 const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
 
