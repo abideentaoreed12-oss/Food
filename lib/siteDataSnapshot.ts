@@ -27,7 +27,17 @@ export interface SiteDataSnapshot {
   };
 }
 
-// Legacy demo coupons were previously shipped in a checked-in snapshot. Never expose them as live offers.\nconst LEGACY_DEMO_PROMO_CODES = new Set(['FIRST50', 'WELCOME20', 'FREEDEL']);\n\nfunction sanitizePromoCodes(promos: any[] | undefined): any[] {\n  return (promos || []).filter((promo) => {\n    const code = String(promo?.code || '').trim().toUpperCase();\n    return code && !LEGACY_DEMO_PROMO_CODES.has(code);\n  });\n}\n\nexport const PUBLIC_SETTINGS_WHITELIST = new Set([
+// Legacy demo coupons were previously shipped in a checked-in snapshot. Never expose them as live offers.
+const LEGACY_DEMO_PROMO_CODES = new Set(['FIRST50', 'WELCOME20', 'FREEDEL']);
+
+function sanitizePromoCodes(promos: any[] | undefined): any[] {
+  return (promos || []).filter((promo) => {
+    const code = String(promo?.code || '').trim().toUpperCase();
+    return code && !LEGACY_DEMO_PROMO_CODES.has(code);
+  });
+}
+
+export const PUBLIC_SETTINGS_WHITELIST = new Set([
   'currency_ngn_usd_rate',
   'base_service_fee_ngn',
   'base_service_fee_usd',
