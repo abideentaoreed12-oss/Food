@@ -39,9 +39,8 @@ export async function POST(req: NextRequest) {
     if (email !== String(account.email || '').trim().toLowerCase()) {
       return NextResponse.json({ success: false, error: 'Payment email must match the signed-in account' }, { status: 403 });
     }
-    const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
-    if (!appUrl) return NextResponse.json({ success: false, error: 'APP_URL is not configured for payment callbacks' }, { status: 503 });
-    const callbackUrl = `${appUrl.replace(/\/+$/, '')}/payment/callback`;
+    const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://www.veyrang.com';
+    const callbackUrl = process.env.PAYSTACK_CALLBACK_URL || `${appUrl.replace(/\/+$/, '')}/payment/callback`;
     const metadata =
       body.metadata && typeof body.metadata === 'object' ? body.metadata : {};
 
