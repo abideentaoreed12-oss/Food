@@ -4,8 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { CheckCircle2, ShieldCheck, Clock3, AlertTriangle, LoaderCircle, Star, ArrowLeft } from 'lucide-react';
 import { api } from '../../services/api';
-import { OrderReviewModal } from '../reviews/OrderReviewModal';
-import { Order } from '../../types';
 
 type HandoverDetails = { orderReference: string; restaurantName?: string; status: string; expiresAt: string };
 export default function HandoverPage() {
@@ -16,8 +14,6 @@ export default function HandoverPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -37,11 +33,10 @@ export default function HandoverPage() {
     try {
       const result: any = await api.orders.confirmQrHandover(token);
       const data = result?.data || result;
+      // Only show success after the server explicitly confirms the state transition.
+      if (data?.status !== 'delivered') throw new Error('The server did not confirm delivery.');
       setConfirmed(true);
       setDetails((previous) => previous ? { ...previous, status: 'delivered' } : previous);
-      // The API deliberately returns minimal data. Ask the customer to open their order history
-      // to select the exact delivered order for review; never fabricate an Order client-side.
-      if (data?.status !== 'delivered') throw new Error('The server did not confirm delivery.');
     } catch (e: any) {
       setError(e?.message || 'Delivery could not be confirmed. Please retry or contact support.');
     } finally { setBusy(false); }
