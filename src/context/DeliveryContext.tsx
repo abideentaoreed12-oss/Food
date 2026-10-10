@@ -200,15 +200,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     try {
       const savedPage = localStorage.getItem('veyrang_active_page');
       if (savedPage) setActivePageState(savedPage as ActivePage);
-      
-      const savedCurrency = localStorage.getItem('veyrang_currency');
-      if (savedCurrency) setCurrency(savedCurrency as Currency);
-      
-      const savedZone = localStorage.getItem('veyrang_selected_zone');
-      if (savedZone) setSelectedZone(savedZone as DeliveryZone);
-      
-      const savedFulfillment = localStorage.getItem('veyrang_fulfillment_type');
-      if (savedFulfillment) setFulfillmentType(savedFulfillment as FulfillmentType);
     } catch {}
   }, []);
 
@@ -221,6 +212,17 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const [currency, setCurrency] = useState<Currency>('NGN');
   const [selectedZone, setSelectedZone] = useState<DeliveryZone>('LEKKI');
   const [fulfillmentType, setFulfillmentType] = useState<FulfillmentType>('delivery');
+
+  useEffect(() => {
+    try {
+      const savedCurrency = localStorage.getItem('veyrang_currency');
+      if (savedCurrency) setCurrency(savedCurrency as Currency);
+      const savedZone = localStorage.getItem('veyrang_selected_zone');
+      if (savedZone) setSelectedZone(savedZone as DeliveryZone);
+      const savedFulfillment = localStorage.getItem('veyrang_fulfillment_type');
+      if (savedFulfillment) setFulfillmentType(savedFulfillment as FulfillmentType);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     try { localStorage.setItem('veyrang_currency', currency); } catch {}
@@ -466,25 +468,41 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const [isTrackingModalOpen, setIsTrackingModalOpen] = useState<boolean>(false);
 
   const refreshData = useCallback(async () => {
+    console.log('Refreshing data...');
     try {
       const activeAddress = selectedAddress?.address || user?.address || '';
+      console.log('Active address for restaurants:', activeAddress);
       const [serverRestaurants, settingsRes, zonesRes] = await Promise.all([
-        api.restaurants.getAll(activeAddress ? { address: activeAddress } : undefined).catch(() => null),
-        api.settings.get().catch(() => null),
-        api.settings.getZones().catch(() => null)
+        api.restaurants.getAll(activeAddress ? { address: activeAddress } : undefined).catch((e) => {
+          console.warn('Notice fetching restaurants:', e?.message || e);
+          return null;
+        }),
+        api.settings.get().catch((e) => {
+          console.warn('Notice fetching settings:', e?.message || e);
+          return null;
+        }),
+        api.settings.getZones().catch((e) => {
+          console.warn('Notice fetching zones:', e?.message || e);
+          return null;
+        })
       ]);
 
-      const rests = Array.isArray(serverRestaurants)
-        ? serverRestaurants
-        : (serverRestaurants?.data && Array.isArray(serverRestaurants.data) ? serverRestaurants.data : []);
-      setRestaurants(rests);
+      if (serverRestaurants) {
+        const rests = Array.isArray(serverRestaurants)
+          ? serverRestaurants
+          : (serverRestaurants?.data && Array.isArray(serverRestaurants.data) ? serverRestaurants.data : []);
+        if (rests.length > 0) {
+          setRestaurants(rests);
+        }
+      }
 
       // Validate cart against fresh restaurant data
       setCart(prevCart => {
         let changed = false;
         const newCart = prevCart.map(item => {
-          const rest = rests.find(r => r.id === item.menuItem.restaurantId);
-          const menuItem = rest?.menuItems?.find(mi => mi.id === item.menuItem.id);
+          const rest = restaurants.find(r => r.id === item.menuItem.restaurantId);
+          const allItems = (rest as any)?.menuItems || rest?.categories?.flatMap((c) => c.items || []) || [];
+          const menuItem = allItems.find((mi: any) => mi.id === item.menuItem.id);
           
           if (menuItem && (menuItem.price !== item.menuItem.price || menuItem.isAvailable !== item.menuItem.isAvailable)) {
             changed = true;
@@ -508,8 +526,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         setPlatformSettings((prev) => ({ ...prev, ...extracted }));
         setCmsContent((prev) => ({ ...prev, ...extracted }));
       }
-      const liveZones = Array.isArray(zonesRes) ? zonesRes : (zonesRes?.data || []);
-      setDeliveryZones(liveZones);
+      const liveZones = Array.isArray(zonesRes)
+        ? zonesRes
+        : (zonesRes?.data && Array.isArray(zonesRes.data) ? zonesRes.data : null);
+      if (liveZones && liveZones.length > 0) {
+        setDeliveryZones(liveZones);
+      } else {
+        setDeliveryZones((prev) => (prev.length > 0 ? prev : [
+          { id: 'zone-ikoyi', name: 'Ikoyi', code: 'IKOYI', city: 'Lagos', country: 'Nigeria', base_delivery_fee: 1500, per_km_fee: 250, is_active: 1 },
+          { id: 'zone-yaba', name: 'Yaba District', code: 'YABA', city: 'Lagos', country: 'Nigeria', base_delivery_fee: 1200, per_km_fee: 200, is_active: 1 },
+          { id: 'zone-ikeja', name: 'Ikeja', code: 'IKEJA', city: 'Lagos', country: 'Nigeria', base_delivery_fee: 1800, per_km_fee: 250, is_active: 1 }
+        ]));
+      }
 
       if (user) {
         const [serverOrders, txRes, addressesRes, meRes] = await Promise.all([

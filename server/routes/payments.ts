@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { d1Client } from '../db/d1Client.ts';
 import { validateBody } from '../middleware/validate.ts';
@@ -101,6 +101,91 @@ router.post(
     }
   }
 );
+
+/** Verification handler logic for Paystack transactions */
+async function handleVerify(reference: string, res: Response) {
+  if (!reference) {
+    return res.status(400).json({ success: false, error: 'Payment reference required' });
+  }
+
+  const result = await paymentGateway.verifyPayment(reference);
+  if (!result.success || !result.isPaid) {
+    return res.status(200).json({
+      success: false,
+      isPaid: false,
+      status: result.status || 'failed',
+      error: result.error || result.gatewayResponse || 'Payment verification failed'
+    });
+  }
+
+  const nowIso = new Date().toISOString();
+  const amountPaid = result.amountNGN;
+  const currency = String(result.currency || 'NGN').toUpperCase();
+  const metadata = result.metadata || {};
+  const orderId = metadata.orderId || null;
+
+  // Validate amount and currency against order if present
+  if (orderId) {
+    const orderRes = await d1Client.query(
+      'SELECT id, payment_status, total, currency FROM orders WHERE id = ? OR short_id = ? LIMIT 1',
+      [orderId, orderId]
+    ).catch(() => ({ results: [] as any[] }));
+    const order = orderRes.results?.[0];
+    if (order) {
+      const expectedAmount = Number(order.total);
+      const expectedCurrency = String(order.currency || 'NGN').toUpperCase();
+      if (Math.abs(expectedAmount - amountPaid) > 0.05) {
+        return res.status(400).json({ success: false, error: 'Payment amount mismatch against order' });
+      }
+      if (currency !== expectedCurrency) {
+        return res.status(400).json({ success: false, error: 'Payment currency mismatch against order' });
+      }
+
+      await d1Client.query(
+        'UPDATE orders SET payment_status = ?, updated_at = ? WHERE id = ? OR short_id = ?',
+        ['paid', nowIso, order.id, order.id]
+      ).catch((e) => console.error('[Payments verify] Order update error:', e));
+    }
+  }
+
+  // Update transaction status
+  await d1Client.query(
+    'UPDATE transactions SET status = ?, amount = ?, currency = ? WHERE reference = ?',
+    ['completed', amountPaid, currency, reference]
+  ).catch(async () => {
+    // If not existing, insert
+    const txId = `txn-paystack-${Date.now()}`;
+    await d1Client.query(
+      'INSERT INTO transactions (id, order_id, reference, amount, currency, status, payment_method, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [txId, orderId, reference, amountPaid, currency, 'completed', 'Paystack Online', nowIso]
+    ).catch((e) => console.error('[Payments verify] Tx insert error:', e));
+  });
+
+  return res.json({
+    success: true,
+    isPaid: true,
+    status: 'success',
+    data: {
+      reference,
+      amountNGN: amountPaid,
+      currency,
+      orderId,
+      customerEmail: result.customerEmail
+    }
+  });
+}
+
+/** GET /api/payments/verify or /api/payment/verify */
+router.get('/verify', async (req: Request, res: Response) => {
+  const reference = String(req.query.reference || req.query.trxref || '').trim();
+  return handleVerify(reference, res);
+});
+
+/** POST /api/payments/verify or /api/payment/verify */
+router.post('/verify', async (req: Request, res: Response) => {
+  const reference = String(req.body?.reference || req.body?.trxref || req.query?.reference || '').trim();
+  return handleVerify(reference, res);
+});
 
 /** GET — live D1 only; never invent account numbers */
 router.get('/virtual-account', requireAuth, async (req: AuthRequest, res: Response) => {

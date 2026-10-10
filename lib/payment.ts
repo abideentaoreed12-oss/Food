@@ -23,6 +23,9 @@ export interface PaymentVerificationResult {
   status: string;
   amountNGN: number;
   reference: string;
+  currency?: string;
+  metadata?: Record<string, any>;
+  gatewayResponse?: string;
   customerEmail?: string;
   raw?: any;
   error?: string;
@@ -33,12 +36,29 @@ export class PaymentGatewayClient {
 
   constructor() {
     this.secretKey =
-      process.env.PAYMENT_SECRET_KEY ||
       process.env.PAYSTACK_SECRET_KEY ||
+      process.env.PAYMENT_SECRET_KEY ||
       '';
   }
 
+  private getSecretKey(): string {
+    return (
+      process.env.PAYSTACK_SECRET_KEY ||
+      process.env.PAYMENT_SECRET_KEY ||
+      this.secretKey ||
+      ''
+    );
+  }
+
   public async initializePayment(params: InitializePaymentParams): Promise<PaymentInitializationResult> {
+    const key = this.getSecretKey();
+    if (!key) {
+      return {
+        success: false,
+        reference: params.reference || '',
+        error: 'PAYSTACK_SECRET_KEY is not configured on the server.'
+      };
+    }
     const ref = params.reference || `ref-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const amountKobo = Math.round(params.amountNGN * 100);
 
@@ -46,7 +66,7 @@ export class PaymentGatewayClient {
       const response = await fetch('https://api.paystack.co/transaction/initialize', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.secretKey}`,
+          'Authorization': `Bearer ${key}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -85,11 +105,22 @@ export class PaymentGatewayClient {
   }
 
   public async verifyPayment(reference: string): Promise<PaymentVerificationResult> {
+    const key = this.getSecretKey();
+    if (!key) {
+      return {
+        success: false,
+        isPaid: false,
+        status: 'error',
+        amountNGN: 0,
+        reference,
+        error: 'PAYSTACK_SECRET_KEY is not configured on the server.'
+      };
+    }
     try {
       const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${this.secretKey}`
+          'Authorization': `Bearer ${key}`
         },
         cache: 'no-store'
       });
@@ -103,6 +134,9 @@ export class PaymentGatewayClient {
           isPaid,
           status: json.data.status,
           amountNGN,
+          currency: json.data.currency || 'NGN',
+          metadata: json.data.metadata || {},
+          gatewayResponse: json.data.gateway_response,
           reference: json.data.reference || reference,
           customerEmail: json.data.customer?.email,
           raw: json.data

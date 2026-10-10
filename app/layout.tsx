@@ -38,6 +38,18 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('error', (event) => {
+                if (event.message && event.message.includes('ChunkLoadError')) {
+                  console.log('Detected ChunkLoadError, reloading page...');
+                  window.location.reload(true);
+                }
+              }, true);
+            `,
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

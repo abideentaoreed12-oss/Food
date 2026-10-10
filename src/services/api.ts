@@ -9,6 +9,7 @@ const BASE_URL =
 async function request(url: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? safeGet(STORAGE_KEYS.JWT) : null;
   const headers: Record<string, string> = {
+    'Accept': 'application/json',
     'Content-Type': 'application/json',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
     'Pragma': 'no-cache',
@@ -16,21 +17,63 @@ async function request(url: string, options: RequestInit = {}) {
     ...(options.headers as any || {})
   };
 
-  if (token && !headers['Authorization']) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (token && typeof token === 'string' && !headers['Authorization']) {
+    const cleanToken = token.trim().replace(/[\r\n\t]/g, '');
+    if (cleanToken && cleanToken !== 'undefined' && cleanToken !== 'null') {
+      headers['Authorization'] = `Bearer ${cleanToken}`;
+    }
   }
 
-  const response = await fetch(`${BASE_URL}${url}`, { ...options, headers, credentials: 'include', cache: 'no-store' });
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const err: any = new Error(errorData.error || `Server Request Failed (${response.status})`);
-    err.status = response.status;
-    err.data = errorData;
-    throw err;
-  }
+  try {
+    const fullUrl = `${BASE_URL}${url}`;
+    const response = await fetch(fullUrl, { ...options, headers, credentials: 'include', cache: 'no-store' });
+    const contentType = response.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
 
-  const json = await response.json();
-  return json.data !== undefined ? json.data : json;
+    if (!response.ok) {
+      let errorMsg = `Server Request Failed (${response.status})`;
+      let errorData: any = {};
+      if (isJson) {
+        try {
+          errorData = await response.json();
+          if (errorData?.error) errorMsg = errorData.error;
+        } catch {
+          // ignore parsing error
+        }
+      } else {
+        try {
+          const rawText = await response.text();
+          if (rawText && !rawText.includes('<html') && rawText.length < 300) {
+            errorMsg = rawText.trim();
+          } else if (response.status === 502 || response.status === 503 || response.status === 504) {
+            errorMsg = 'Service is temporarily warming up. Please retry in a few moments.';
+          }
+        } catch {
+          // ignore
+        }
+      }
+      const err: any = new Error(errorMsg);
+      err.status = response.status;
+      err.data = errorData;
+      throw err;
+    }
+
+    if (!isJson) {
+      const rawText = await response.text();
+      try {
+        const parsed = JSON.parse(rawText);
+        return parsed.data !== undefined ? parsed.data : parsed;
+      } catch {
+        throw new Error(`Unexpected non-JSON response from server for ${url}.`);
+      }
+    }
+
+    const json = await response.json();
+    return json.data !== undefined ? json.data : json;
+  } catch (error) {
+    console.error('API Request failed:', url, error);
+    throw error;
+  }
 }
 
 export const api = {

@@ -29,6 +29,14 @@ const nextConfig: NextConfig = {
       process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '',
     NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL:
       process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || process.env.CLOUDFLARE_R2_PUBLIC_URL || 'https://cdn.veyrang.com',
+    NEXT_PUBLIC_PAYMENT_PUBLIC_KEY:
+      process.env.NEXT_PUBLIC_PAYMENT_PUBLIC_KEY || process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_live_49b0196c7c50a9138e64d0a169ea5cced6ff14f0',
+    NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY:
+      process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || process.env.NEXT_PUBLIC_PAYMENT_PUBLIC_KEY || 'pk_live_49b0196c7c50a9138e64d0a169ea5cced6ff14f0',
+    APP_URL:
+      process.env.APP_URL || 'https://www.veyrang.com',
+    PAYSTACK_CALLBACK_URL:
+      process.env.PAYSTACK_CALLBACK_URL || 'https://www.veyrang.com/payment/callback',
   },
   // Only explicitly approved image origins may be fetched by the public optimizer.
   images: {

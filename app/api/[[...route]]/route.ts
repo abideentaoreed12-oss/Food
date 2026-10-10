@@ -242,8 +242,8 @@ export async function GET(req: NextRequest) {
     if (userLoc && list.length > 0) {
       try {
         list = await calculateBatchRestaurantDistanceMetrics(list, userLoc);
-      } catch (err) {
-        console.warn('Batch distance calculation notice:', err);
+      } catch (err: any) {
+        console.warn('[Restaurants] Notice calculating distance metrics:', err?.message || String(err));
       }
     }
 
@@ -665,6 +665,23 @@ export async function GET(req: NextRequest) {
       console.warn('[API /geocode/distance] Error:', err?.message || String(err));
       return NextResponse.json({ success: false, error: err?.message || 'Failed to calculate distance' }, { status: 500 });
     }
+  }
+
+  // Payment Verify (GET)
+  if (pathname === '/payment/verify' || pathname === '/payments/verify') {
+    const reference = (
+      req.nextUrl.searchParams.get('reference') ||
+      req.nextUrl.searchParams.get('trxref') ||
+      ''
+    ).trim();
+    if (!reference) return NextResponse.json({ success: false, error: 'Reference required' }, { status: 400 });
+    const result = await paymentGateway.verifyPayment(reference);
+    if (result.success && result.isPaid) {
+      await d1.query('UPDATE transactions SET status = \'completed\' WHERE reference = ?', [reference]).catch(() => {});
+      await d1.query('UPDATE orders SET payment_status = \'paid\' WHERE transaction_ref = ?', [reference]).catch(() => {});
+      d1.clearCache();
+    }
+    return NextResponse.json({ success: result.success && result.isPaid, isPaid: result.isPaid, data: result });
   }
 
   return NextResponse.json({ success: false, error: `API route GET /api${pathname} not found.` }, { status: 404 });
@@ -1133,17 +1150,22 @@ export async function POST(req: NextRequest) {
   }
 
   // 13. Payment Verify
-  if (pathname === '/payment/verify') {
-    const user = await getUser(req);
-    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
-    const reference = String(body.reference || '');
+  if (pathname === '/payment/verify' || pathname === '/payments/verify') {
+    const reference = String(
+      body.reference ||
+      body.trxref ||
+      req.nextUrl.searchParams.get('reference') ||
+      req.nextUrl.searchParams.get('trxref') ||
+      ''
+    ).trim();
     if (!reference) return NextResponse.json({ success: false, error: 'Reference required' }, { status: 400 });
     const result = await paymentGateway.verifyPayment(reference);
-    if (result.success) {
+    if (result.success && result.isPaid) {
       await d1.query('UPDATE transactions SET status = \'completed\' WHERE reference = ?', [reference]).catch(() => {});
       await d1.query('UPDATE orders SET payment_status = \'paid\' WHERE transaction_ref = ?', [reference]).catch(() => {});
+      d1.clearCache();
     }
-    return NextResponse.json({ success: result.success, data: result });
+    return NextResponse.json({ success: result.success && result.isPaid, isPaid: result.isPaid, data: result });
   }
 
   // 14. Admin Developer Direct Query
