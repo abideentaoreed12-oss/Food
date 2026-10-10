@@ -434,21 +434,29 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 11. Public restaurant catalogue: consume the shared last-known-good snapshot.
-  // This prevents each public page from issuing its own catalog query against D1.
+  // 11. Public restaurant catalogue: every response is read directly from D1.
+  // A successful empty result is authoritative; never substitute a snapshot or cache.
   if (pathname === '/restaurants') {
-    let snapshot = await siteDataManager.loadSnapshot();
-    if (!snapshot) snapshot = await siteDataManager.refreshSnapshot({ force: true });
-    else siteDataManager.syncIfStale().catch(() => {});
-
-    if (!snapshot) {
+    let list: any[] = [];
+    try {
+      const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC');
+      if (!d1Res || d1Res.success === false || !Array.isArray(d1Res.results)) {
+        throw new Error('D1 restaurant query failed');
+      }
+      list = d1Res.results.map((r: any) => {
+        try {
+          const parsed = r.raw_json ? JSON.parse(r.raw_json) : r;
+          return { ...parsed, id: r.id, name: r.name || parsed.name, cuisine: r.cuisine || parsed.cuisine,
+            rating: r.rating ?? parsed.rating, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 };
+        } catch { return r; }
+      });
+    } catch (err: any) {
+      console.error('[Restaurants] Authoritative D1 query failed:', err?.message || err);
       return NextResponse.json(
-        { success: false, error: 'Live restaurant data is temporarily unavailable.', data: null },
+        { success: false, error: 'Live restaurant data is temporarily unavailable. Please retry.' },
         { status: 503, headers: { 'Cache-Control': 'no-store' } }
       );
     }
-
-    let list = snapshot.restaurants.slice();
     const search = (req.nextUrl.searchParams.get('search') || '').trim().toLowerCase();
     if (search) {
       list = list.filter((restaurant: any) =>
@@ -482,30 +490,21 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Trigger non-blocking 10s background sync if stale
-    siteDataManager.syncIfStale().catch(() => {});
-
     let list: any[] = [];
-    let d1QuerySucceeded = false;
     try {
       const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC LIMIT 200');
-      if (d1Res && d1Res.success !== false) {
-        d1QuerySucceeded = true;
-        list = (d1Res.results || []).map((r: any) => {
-          try {
-            return r.raw_json ? { ...JSON.parse(r.raw_json), id: r.id, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 } : r;
-          } catch {
-            return r;
-          }
-        });
+      if (!d1Res || d1Res.success === false || !Array.isArray(d1Res.results)) {
+        throw new Error('D1 restaurant query failed');
       }
+      list = d1Res.results.map((r: any) => {
+        try {
+          return r.raw_json ? { ...JSON.parse(r.raw_json), id: r.id, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 } : r;
+        } catch { return r; }
+      });
     } catch (err: any) {
-      console.warn('[Restaurants Route] Primary D1 fetch warning, serving last-known-good snapshot:', err?.message || err);
-    }
-
-    // Only fall back to snapshot if primary database query failed; do NOT overwrite legitimate empty list
-    if (!d1QuerySucceeded) {
-      list = siteDataManager.getRestaurants();
+      console.error('[Admin restaurants] Authoritative D1 query failed:', err?.message || err);
+      return NextResponse.json({ success: false, error: 'Restaurant catalogue temporarily unavailable. Please retry.' },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
 
     const userAddr = req.nextUrl.searchParams.get('address');
@@ -555,13 +554,9 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Restaurant not found' }, { status: 404 });
       }
 
-      // If D1 query failed / threw an error, check persistent last-known-good snapshot
-      const snapshotRest = siteDataManager.getRestaurants().find((r: any) => r.id === id);
-      if (snapshotRest) {
-        return NextResponse.json({ success: true, data: snapshotRest });
-      }
-
-      return NextResponse.json({ success: false, error: 'Restaurant not found' }, { status: 404 });
+      // A D1 outage is not a not-found response and must never resurrect a stale restaurant.
+      return NextResponse.json({ success: false, error: 'Restaurant data temporarily unavailable. Please retry.' },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
   }
 
