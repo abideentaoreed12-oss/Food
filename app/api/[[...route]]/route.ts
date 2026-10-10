@@ -1840,8 +1840,29 @@ export async function PATCH(req: NextRequest) {
     const orderId = decodeURIComponent(orderStatusMatch[1]);
     const { status, note } = body;
     if (!status) return NextResponse.json({ success: false, error: 'status required' }, { status: 400 });
+    const isAdmin = user.role === 'admin' || user.role === 'sub_admin';
+    const orderRes = await d1.query('SELECT id, restaurant_id, courier_id, status FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
+    if (!orderRes.success) return NextResponse.json({ success: false, error: 'Order authorization could not be verified' }, { status: 503 });
+    const order = orderRes.results?.[0];
+    if (!order) return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    if (!isAdmin) {
+      if (user.role === 'restaurant') {
+        const assigned = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id]);
+        if (!assigned.success) return NextResponse.json({ success: false, error: 'Restaurant assignment could not be verified' }, { status: 503 });
+        if (!assigned.results?.[0]?.restaurant_id || String(assigned.results[0].restaurant_id) !== String(order.restaurant_id)) {
+          return NextResponse.json({ success: false, error: 'You cannot update another restaurant’s order' }, { status: 403 });
+        }
+        if (!['preparing', 'ready_for_pickup', 'cancelled'].includes(status)) return NextResponse.json({ success: false, error: 'Restaurant cannot set this delivery status' }, { status: 403 });
+      } else if (user.role === 'courier') {
+        if (String(order.courier_id || '') !== String(user.id)) return NextResponse.json({ success: false, error: 'You are not assigned to this delivery' }, { status: 403 });
+        if (!['in_transit', 'delivered', 'cancelled'].includes(status)) return NextResponse.json({ success: false, error: 'Courier cannot set this delivery status' }, { status: 403 });
+      } else {
+        return NextResponse.json({ success: false, error: 'Not authorized to update order status' }, { status: 403 });
+      }
+    }
     const now = new Date().toISOString();
-    await d1.query('UPDATE orders SET status = ?, updated_at = ? WHERE id = ? OR short_id = ?', [status, now, orderId, orderId]);
+    const updateRes = await d1.query('UPDATE orders SET status = ?, updated_at = ? WHERE id = ?', [status, now, order.id]);
+    if (!updateRes.success) return NextResponse.json({ success: false, error: 'Order status update failed' }, { status: 503 });
     await d1.query(
       'INSERT INTO order_status_history (id, order_id, status, note, created_at) VALUES (?, ?, ?, ?, ?)',
       [`hist-${Date.now()}`, orderId, status, note || `Status changed to ${status}`, now]
@@ -2074,13 +2095,22 @@ export async function PATCH(req: NextRequest) {
   // 17. Restaurant Item Update
   const restItemMatch = pathname.match(/^\/restaurants\/([^/]+)\/items\/([^/]+)$/);
   if (restItemMatch) {
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    const restaurantId = decodeURIComponent(restItemMatch[1]);
     const itemId = decodeURIComponent(restItemMatch[2]);
     const { isAvailable } = body;
-    if (isAvailable !== undefined) {
-      await d1.query('UPDATE menu_items SET is_available = ? WHERE id = ?', [isAvailable ? 1 : 0, itemId]);
-      // Immediate change-driven snapshot refresh
-      siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+    if (user.role !== 'admin' && user.role !== 'sub_admin') {
+      if (user.role !== 'restaurant') return NextResponse.json({ success: false, error: 'Not authorized' }, { status: 403 });
+      const assigned = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id]);
+      if (!assigned.success) return NextResponse.json({ success: false, error: 'Restaurant assignment could not be verified' }, { status: 503 });
+      if (!assigned.results?.[0]?.restaurant_id || String(assigned.results[0].restaurant_id) !== String(restaurantId)) {
+        return NextResponse.json({ success: false, error: 'You cannot manage another restaurant’s menu' }, { status: 403 });
+      }
     }
+    if (isAvailable === undefined) return NextResponse.json({ success: false, error: 'isAvailable is required' }, { status: 400 });
+    const itemRes = await d1.query('UPDATE menu_items SET is_available = ? WHERE id = ? AND restaurant_id = ?', [isAvailable ? 1 : 0, itemId, restaurantId]);
+    if (!itemRes.success) return NextResponse.json({ success: false, error: 'Menu item update failed' }, { status: 503 });
+    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
     return NextResponse.json({ success: true, message: 'Item updated' });
   }
 
