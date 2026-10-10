@@ -99,7 +99,7 @@ export const VeyrangLogo: React.FC<VeyrangLogoProps> = ({
             </span>
           </div>
           {/* Subtle micro-sublabel */}
-          <span className={`text-[9px] font-mono tracking-widest uppercase font-bold text-left ml-0.5 mt-0.5 ${lightMode ? 'text-orange-200' : 'text-slate-400'}`}>
+          <span className={`text-[9px] font-mono tracking-widest uppercase font-bold text-left ml-0.5 mt-0.5 ${lightMode ? 'text-orange-800' : 'text-slate-600'}`}>
             Delivery pro
           </span>
         </div>
