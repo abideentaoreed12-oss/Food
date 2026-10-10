@@ -1,0 +1,60 @@
+name: Apply normalized menu wiring
+on:
+  workflow_dispatch:
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Ensure restaurantMenu helper exists
+        run: test -f lib/restaurantMenu.ts
+      - name: Apply route + SEO page wiring
+        run: |
+          python3 scripts/apply_normalized_menu.py
+          python3 scripts/apply_seo_menu.py
+      - name: Strip embedded categories from siteDataSnapshot
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("lib/siteDataSnapshot.ts")
+          t = p.read_text()
+          old = """        // Filter out any internal passwords or secret columns
+        for (const r of restaurants) {
+          delete r.password;
+          delete r.password_hash;
+          delete r.token;
+          delete r.secret;
+        }"""
+          new = """        // Filter secrets and never publish embedded menu blobs (menu_items is source of truth).
+        for (const r of restaurants) {
+          delete r.password;
+          delete r.password_hash;
+          delete r.token;
+          delete r.secret;
+          delete r.categories;
+          delete r.menuItems;
+          delete r.menu_items;
+        }"""
+          if old in t:
+            p.write_text(t.replace(old, new))
+            print("snapshot stripped")
+          elif "delete r.categories" in t:
+            print("snapshot already stripped")
+          else:
+            print("WARN snapshot pattern missing")
+          PY
+      - name: Commit on main if changed
+        run: |
+          git config user.name "veyrang-bot"
+          git config user.email "bot@veyrang.com"
+          git add "app/api/[[...route]]/route.ts" "app/restaurants/[id]/page.tsx" lib/siteDataSnapshot.ts || true
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "feat(menu): public restaurants serve dishes only from menu_items on main"
+            git push origin HEAD:main
+          fi
