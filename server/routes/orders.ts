@@ -272,10 +272,31 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     }
     const role = req.user?.role;
     const userId = req.user?.id;
+
+    // Enforce data isolation on the server; UI filtering is not an authorization boundary.
     if (role === 'admin' || role === 'sub_admin') {
       if (req.query.scope === 'all') return res.json({ success: true, data: allOrders });
       return res.json({ success: true, data: allOrders.filter((o) => o.customerId === userId) });
     }
+
+    if (role === 'restaurant') {
+      const userRes = await d1Client.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [userId]);
+      const restaurantId = userRes.results?.[0]?.restaurant_id;
+      if (!userRes.success) return res.status(503).json({ success: false, error: 'Restaurant assignment could not be verified' });
+      if (!restaurantId) return res.json({ success: true, data: [] });
+      return res.json({
+        success: true,
+        data: allOrders.filter((o) => String(o.restaurantId || o.restaurant_id || '') === String(restaurantId))
+      });
+    }
+
+    if (role === 'courier') {
+      return res.json({
+        success: true,
+        data: allOrders.filter((o) => String(o.courierId || o.courier_id || o.courier?.id || '') === String(userId))
+      });
+    }
+
     return res.json({ success: true, data: allOrders.filter((o) => o.customerId === userId) });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
