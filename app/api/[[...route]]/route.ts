@@ -1860,7 +1860,7 @@ export async function POST(req: NextRequest) {
     const order = orderRes.results?.[0] as any;
     if (!order) return NextResponse.json({ success: false, error: 'Order not found.' }, { status: 404 });
     if (String(order.customer_id || '') !== String(user.id)) return NextResponse.json({ success: false, error: 'You cannot issue a QR for this order.' }, { status: 403 });
-    if (!['ready_for_pickup', 'picked_up', 'in_transit'].includes(String(order.status))) return NextResponse.json({ success: false, error: 'A handover QR is only available for an active delivery.' }, { status: 409 });
+    if (String(order.status) !== 'in_transit') return NextResponse.json({ success: false, error: 'A handover QR is available only while the order is in transit.' }, { status: 409 });
     await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
     const token = randomBytes(32).toString('base64url');
     const now = new Date();
@@ -1900,7 +1900,7 @@ export async function POST(req: NextRequest) {
     // Conditional token consumption is the replay guard; order transition is also conditional.
     const consumed = await d1.query('UPDATE handover_qr_tokens SET consumed_at = ? WHERE id = ? AND consumed_at IS NULL AND expires_at > ?', [now, row.token_id, now]);
     if (!consumed.success || Number(consumed.meta?.rows_written ?? consumed.meta?.changes ?? 0) !== 1) return NextResponse.json({ success: false, error: 'This QR has already been used.' }, { status: 409 });
-    const delivered = await d1.query("UPDATE orders SET status = 'delivered', updated_at = ? WHERE id = ? AND status IN ('in_transit', 'picked_up')", [now, row.order_id]);
+    const delivered = await d1.query("UPDATE orders SET status = 'delivered', updated_at = ? WHERE id = ? AND status = 'in_transit'", [now, row.order_id]);
     if (!delivered.success || Number(delivered.meta?.rows_written ?? delivered.meta?.changes ?? 0) !== 1) {
       await d1.query('UPDATE handover_qr_tokens SET consumed_at = NULL WHERE id = ? AND consumed_at = ?', [row.token_id, now]);
       return NextResponse.json({ success: false, error: 'This order is not eligible for delivery confirmation.' }, { status: 409 });
