@@ -687,11 +687,31 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   }, [refreshData]);
 
   useEffect(() => {
+    // Initial pull plus 10-second polling; this requests the shared last-known-good endpoint only.
     refreshDataRef.current();
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       refreshDataRef.current();
     }, 10000);
-    return () => clearInterval(interval);
+
+    // Fan out snapshot-change notifications to every open tab on this origin.
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('veyrang-site-data');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'snapshot-updated') {
+          refreshDataRef.current();
+        }
+      };
+    } catch {}
+
+    const handleSnapshotUpdated = () => refreshDataRef.current();
+    window.addEventListener('veyrang-site-data-updated', handleSnapshotUpdated);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('veyrang-site-data-updated', handleSnapshotUpdated);
+      channel?.close();
+    };
   }, []);
 
   useEffect(() => {
