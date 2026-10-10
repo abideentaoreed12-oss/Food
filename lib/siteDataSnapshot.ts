@@ -113,7 +113,7 @@ export class SiteDataManager {
             ...parsed,
             schemaVersion: parsed.schemaVersion || 1,
             source: 'disk_cache',
-            syncStatus: process.env.NODE_ENV === 'production' ? 'fallback' : 'synced'
+            syncStatus: 'fallback'
           };
           return;
         }
@@ -129,7 +129,7 @@ export class SiteDataManager {
             ...parsed,
             schemaVersion: parsed.schemaVersion || 1,
             source: 'disk_cache',
-            syncStatus: process.env.NODE_ENV === 'production' ? 'fallback' : 'synced'
+            syncStatus: 'fallback'
           };
         }
       }
