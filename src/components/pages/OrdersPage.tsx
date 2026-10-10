@@ -73,8 +73,13 @@ export const OrdersPage: React.FC = () => {
     setScanValue('');
     setHandoverUrl('');
     setHandoverNotice('');
-    setHandoverBusy(true);
+    const paymentPending = order.status === 'awaiting_payment' || order.paymentStatus === 'pending';
+    if (paymentPending) {
+      setHandoverNotice('This order is awaiting payment. You can open the scanner, but secure handover verification becomes available after payment is confirmed.');
+    }
+    setHandoverBusy(!paymentPending);
     try {
+      if (paymentPending) return;
       const issued: any = await (await import('../../services/api')).api.orders.issueHandoverQr(order.id);
       const data = issued?.data || issued;
       if (data?.url) setHandoverUrl(String(data.url));
@@ -88,11 +93,6 @@ export const OrdersPage: React.FC = () => {
       return;
     }
     try {
-      const BarcodeDetectorCtor = (window as any).BarcodeDetector;
-      if (!BarcodeDetectorCtor) {
-        setCameraError('This browser does not support built-in QR detection. Please use a recent supported browser; order verification is not performed by reading an untrusted QR alone.');
-        return;
-      }
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: { facingMode: { ideal: 'environment' } }
@@ -101,39 +101,39 @@ export const OrdersPage: React.FC = () => {
       window.requestAnimationFrame(() => {
         if (!videoRef.current || !streamRef.current) return;
         videoRef.current.srcObject = streamRef.current;
-        void videoRef.current.play().then(() => {
+        void videoRef.current.play().then(async () => {
           setCameraReady(true);
-          const detector = new BarcodeDetectorCtor({ formats: ['qr_code'] });
+          // ZXing supports iOS Safari and browsers without BarcodeDetector.
+          const { BrowserMultiFormatReader } = await import('@zxing/browser');
+          const reader = new BrowserMultiFormatReader();
           scanTimerRef.current = window.setInterval(async () => {
-            if (!videoRef.current || videoRef.current.readyState < 2) return;
+            if (!videoRef.current || videoRef.current.readyState < 2 || !streamRef.current) return;
             try {
-              const codes = await detector.detect(videoRef.current);
-              if (codes?.[0]?.rawValue) {
-                const raw = String(codes[0].rawValue);
-                let scannedToken = '';
-                try {
-                  const parsed = new URL(raw);
-                  const allowedHost = window.location.host;
-                  if (parsed.host === allowedHost && /^\/handover\/[A-Za-z0-9_-]{30,100}\/?$/.test(parsed.pathname)) {
-                    scannedToken = parsed.pathname.split('/').filter(Boolean)[1] || '';
-                  }
-                } catch { /* not a URL */ }
-                setScanValue(raw);
-                if (scanTimerRef.current !== null) window.clearInterval(scanTimerRef.current);
-                scanTimerRef.current = null;
-                streamRef.current?.getTracks().forEach((track) => track.stop());
-                streamRef.current = null;
-                setCameraReady(false);
-                if (scannedToken) {
-                  window.location.assign(`/handover/${encodeURIComponent(scannedToken)}`);
-                } else {
-                  setCameraError('This QR is not a valid VeyraNG handover link. Check that you are scanning the QR generated for this order.');
+              const result = await reader.decodeOnceFromVideoElement(videoRef.current);
+              const raw = String(result.getText() || '');
+              if (!raw) return;
+              let scannedToken = '';
+              try {
+                const parsed = new URL(raw);
+                if (parsed.host === window.location.host && /^\\/handover\\/[A-Za-z0-9_-]{30,100}\\/?$/.test(parsed.pathname)) {
+                  scannedToken = parsed.pathname.split('/').filter(Boolean)[1] || '';
                 }
+              } catch { /* not a URL */ }
+              setScanValue(raw);
+              if (scanTimerRef.current !== null) window.clearInterval(scanTimerRef.current);
+              scanTimerRef.current = null;
+              streamRef.current?.getTracks().forEach((track) => track.stop());
+              streamRef.current = null;
+              setCameraReady(false);
+              if (scannedToken) {
+                window.location.assign(`/handover/${encodeURIComponent(scannedToken)}`);
+              } else {
+                setCameraError('This QR is not a valid VeyraNG handover link. Check that you are scanning the QR generated for this order.');
               }
             } catch {
-              // A frame can fail detection while the camera is starting; continue scanning.
+              // No QR in this frame yet; keep scanning.
             }
-          }, 350);
+          }, 500);
         }).catch(() => setCameraError('Could not start the camera preview. Check camera permission and try again.'));
       });
     } catch (error) {
@@ -436,7 +436,6 @@ export const OrdersPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => void openScanner(order)}
-                    disabled={order.status === 'awaiting_payment' || order.paymentStatus === 'pending'}
                     className="py-2.5 px-3 rounded-xl border border-orange-200 bg-orange-50 text-[#FF5500] text-xs font-bold hover:bg-orange-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label={`Scan QR code for order ${order.shortId}`}
                   >
