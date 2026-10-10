@@ -233,8 +233,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: zones });
   }
 
-  // 10. Promo Codes
-  if (pathname === '/settings/promos' || pathname === '/admin/promos') {
+  // 10. Public promo catalogue is served from the shared snapshot.
+  if (pathname === '/settings/promos') {
+    let snapshot = await siteDataManager.loadSnapshot();
+    if (!snapshot) snapshot = await siteDataManager.refreshSnapshot({ force: true });
+    else siteDataManager.syncIfStale().catch(() => {});
+    if (!snapshot) {
+      return NextResponse.json(
+        { success: false, error: 'Live offers are temporarily unavailable.', data: null },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+    return NextResponse.json({ success: true, data: snapshot.promoCodes || [] }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  // Admin promo management query.
+  if (pathname === '/admin/promos') {
+    const admin = await getUser(req);
+    if (!admin || (admin.role !== 'admin' && admin.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     let promos: any[] = [];
     try {
       const d1Res = await d1.query('SELECT * FROM promo_codes WHERE is_active = 1 ORDER BY created_at DESC');
@@ -308,8 +326,47 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 11. Restaurants list
-  if (pathname === '/restaurants' || pathname === '/admin/restaurants') {
+  // 11. Public restaurant catalogue: consume the shared last-known-good snapshot.
+  // This prevents each public page from issuing its own catalog query against D1.
+  if (pathname === '/restaurants') {
+    let snapshot = await siteDataManager.loadSnapshot();
+    if (!snapshot) snapshot = await siteDataManager.refreshSnapshot({ force: true });
+    else siteDataManager.syncIfStale().catch(() => {});
+
+    if (!snapshot) {
+      return NextResponse.json(
+        { success: false, error: 'Live restaurant data is temporarily unavailable.', data: null },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    let list = snapshot.restaurants.slice();
+    const search = (req.nextUrl.searchParams.get('search') || '').trim().toLowerCase();
+    if (search) {
+      list = list.filter((restaurant: any) =>
+        [restaurant.name, restaurant.cuisine, restaurant.description, ...(Array.isArray(restaurant.tags) ? restaurant.tags : [])]
+          .some((value: any) => String(value || '').toLowerCase().includes(search))
+      );
+    }
+
+    const userAddr = req.nextUrl.searchParams.get('address');
+    const userLatStr = req.nextUrl.searchParams.get('lat');
+    const userLngStr = req.nextUrl.searchParams.get('lng');
+    const uLat = userLatStr ? parseFloat(userLatStr) : NaN;
+    const uLng = userLngStr ? parseFloat(userLngStr) : NaN;
+    const userLoc = (!isNaN(uLat) && !isNaN(uLng)) ? { lat: uLat, lng: uLng } : (userAddr?.trim() || null);
+    if (userLoc && list.length > 0) {
+      try {
+        list = await calculateBatchRestaurantDistanceMetrics(list, userLoc);
+      } catch (err: any) {
+        console.warn('[Restaurants] Live distance calculation failed:', err?.message || String(err));
+      }
+    }
+    return NextResponse.json({ success: true, data: list }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  // Admin restaurant catalogue remains a protected management query.
+  if (pathname === '/admin/restaurants') {
     if (pathname === '/admin/restaurants') {
       const admin = await getUser(req);
       if (!admin || (admin.role !== 'admin' && admin.role !== 'sub_admin')) {
