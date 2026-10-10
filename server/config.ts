@@ -65,12 +65,13 @@ export const CONFIG = {
   SMTP_SECURE: true,
   EMAIL_SENDER_NAME: (process.env.EMAIL_SENDER_NAME || 'Veyrang Support').trim(),
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
+  RESEND_WEBHOOK_SECRET: (process.env.RESEND_WEBHOOK_SECRET || process.env.RESEND_WEBHOOK_SIGNING_SECRET || '').trim(),
 
   GOOGLE_MAPS_API_KEY:
     (process.env.GOOGLE_MAPS_API_KEY ||
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
     process.env.VITE_GOOGLE_MAPS_API_KEY ||
-    'AIzaSyAmbptl02WYRIvSdBljM2NahJAjnf-OfUw').trim(),
+    '').trim(),
   NOMINATIM_BASE_URL: sanitizeBaseUrl(process.env.NOMINATIM_BASE_URL || process.env.NOMINATIM_URL, 'https://nominatim.openstreetmap.org'),
   PHOTON_BASE_URL: sanitizeBaseUrl(process.env.PHOTON_BASE_URL || process.env.PHOTON_URL, 'https://photon.komoot.io'),
   PELIAS_BASE_URL: sanitizeBaseUrl(process.env.PELIAS_BASE_URL || process.env.PELIAS_URL, ''),
