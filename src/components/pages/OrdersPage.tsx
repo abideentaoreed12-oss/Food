@@ -116,7 +116,7 @@ export const OrdersPage: React.FC = () => {
               let scannedToken = '';
               try {
                 const parsed = new URL(raw);
-                if (parsed.host === window.location.host && /^\\/handover\\/[A-Za-z0-9_-]{30,100}\\/?$/.test(parsed.pathname)) {
+                if (parsed.host === window.location.host && /^\/handover\/[A-Za-z0-9_-]{30,100}\\/?$/.test(parsed.pathname)) {
                   scannedToken = parsed.pathname.split('/').filter(Boolean)[1] || '';
                 }
               } catch { /* not a URL */ }
