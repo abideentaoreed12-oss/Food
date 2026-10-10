@@ -926,9 +926,20 @@ router.post('/staff', async (req: AuthRequest, res: Response) => {
     return res.status(403).json({ success: false, error: 'Sub Admins are not permitted to add or create staff members.' });
   }
   try {
-    const { name, email, role, phone, password } = req.body;
+    const { name, email, role, phone, password, restaurantId } = req.body;
     if (!name || !email || !role) {
       return res.status(400).json({ success: false, error: 'Name, email, and role are required' });
+    }
+    if (!['admin', 'restaurant', 'courier', 'sub_admin'].includes(role)) {
+      return res.status(400).json({ success: false, error: 'Unsupported staff role' });
+    }
+    if (role === 'restaurant' && !restaurantId) {
+      return res.status(400).json({ success: false, error: 'Select an existing restaurant or create the restaurant before assigning its account' });
+    }
+    if (role === 'restaurant') {
+      const restaurantCheck = await d1Client.query('SELECT id FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+      if (!restaurantCheck.success) return res.status(503).json({ success: false, error: 'Restaurant database is unavailable' });
+      if (!restaurantCheck.results?.length) return res.status(404).json({ success: false, error: 'Selected restaurant does not exist' });
     }
 
     const userId = `usr-staff-${Date.now()}`;
@@ -947,24 +958,29 @@ router.post('/staff', async (req: AuthRequest, res: Response) => {
       walletBalanceUSD: 0,
       walletBalanceNGN: 0,
       savedAddresses: [],
+      restaurantId: role === 'restaurant' ? restaurantId : undefined,
       createdAt: now,
       updatedAt: now
     });
 
     // 2. Persistent insertion into live Cloudflare D1 edge database
     await d1Client.query(
-      'INSERT INTO users (id, email, password_hash, name, role, phone, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO users (id, email, password_hash, name, role, phone, restaurant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         userId,
         email.toLowerCase().trim(),
         passwordHash,
         name,
         role,
-        phone || '+234 800 000 0000',
+        phone || null,
+        role === 'restaurant' ? restaurantId : null,
         now,
         now
       ]
-    ).catch((err) => console.warn('D1 insert warning:', err.message));
+    );
+    if (!d1Insert.success) {
+      return res.status(503).json({ success: false, error: 'Staff account could not be saved to the authoritative database' });
+    }
 
     await db.logAudit({
       userId: req.user!.id,
