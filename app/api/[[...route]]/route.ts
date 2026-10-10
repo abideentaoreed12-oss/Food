@@ -1355,6 +1355,49 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: { id: ticketId, status: 'open', createdAt: now } }, { status: 201 });
   }
 
+  // Courier availability is tied to the authenticated courier profile.
+  if (pathname === '/courier/availability') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'courier') return NextResponse.json({ success: false, error: 'Courier account required' }, { status: 403 });
+    const online = body.isOnline;
+    if (typeof online !== 'boolean') return NextResponse.json({ success: false, error: 'isOnline must be a boolean' }, { status: 400 });
+    const now = new Date().toISOString();
+    const result = await d1.query(
+      'UPDATE courier_profiles SET is_online = ?, updated_at = ? WHERE user_id = ?',
+      [online ? 1 : 0, now, user.id]
+    );
+    if (!result.success) return NextResponse.json({ success: false, error: 'Could not update courier availability' }, { status: 503 });
+    return NextResponse.json({ success: true, data: { courierId: user.id, isOnline: online, updatedAt: now } });
+  }
+
+  // Courier acceptance is conditional so two couriers cannot claim the same delivery.
+  if (pathname === '/courier/accept') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'courier') return NextResponse.json({ success: false, error: 'Courier account required' }, { status: 403 });
+    const orderId = String(body.orderId || '').trim();
+    if (!orderId) return NextResponse.json({ success: false, error: 'orderId is required' }, { status: 400 });
+    const profile = await d1.query('SELECT is_online, is_verified, verification_status FROM courier_profiles WHERE user_id = ? LIMIT 1', [user.id]);
+    if (!profile.success) return NextResponse.json({ success: false, error: 'Courier profile could not be verified' }, { status: 503 });
+    if (!profile.results?.length || Number(profile.results[0].is_online) !== 1) return NextResponse.json({ success: false, error: 'Go online before accepting a delivery' }, { status: 403 });
+    if (Number(profile.results[0].is_verified) !== 1 || profile.results[0].verification_status === 'pending' || profile.results[0].verification_status === 'rejected') {
+      return NextResponse.json({ success: false, error: 'Courier verification is required before accepting deliveries' }, { status: 403 });
+    }
+    const now = new Date().toISOString();
+    const accepted = await d1.query(
+      "UPDATE orders SET courier_id = ?, status = 'in_transit', updated_at = ? WHERE id = ? AND courier_id IS NULL AND status = 'ready_for_pickup'",
+      [user.id, now, orderId]
+    );
+    if (!accepted.success) return NextResponse.json({ success: false, error: 'Delivery could not be accepted' }, { status: 503 });
+    const verify = await d1.query('SELECT id, courier_id, status FROM orders WHERE id = ? LIMIT 1', [orderId]);
+    const row = verify.results?.[0];
+    if (!row || String(row.courier_id || '') !== String(user.id)) {
+      return NextResponse.json({ success: false, error: 'Delivery is no longer available to claim' }, { status: 409 });
+    }
+    return NextResponse.json({ success: true, data: { orderId: row.id, courierId: user.id, status: row.status, acceptedAt: now } });
+  }
+
   // 12. Courier Telemetry Location
   if (pathname === '/courier/location' || pathname === '/couriers/location' || pathname === '/drivers/location') {
     const user = await getUser(req);
