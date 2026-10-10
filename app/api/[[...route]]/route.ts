@@ -28,7 +28,7 @@ async function syncMenuItemToRestaurantJson(
   targetRestaurantId?: string | null,
   deletedItemName?: string | null
 ) {
-  const restaurantsRes = await d1.query('SELECT id, raw_json FROM restaurants');
+  const restaurantsRes = await d1.query('SELECT id, raw_json FROM restaurants', [], { cache: false });
   if (!restaurantsRes || restaurantsRes.success === false || !Array.isArray(restaurantsRes.results)) {
     throw new Error('Could not read restaurants while synchronizing the public menu.');
   }
@@ -432,7 +432,7 @@ export async function GET(req: NextRequest) {
   if (pathname === '/restaurants') {
     let list: any[] = [];
     try {
-      const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC');
+      const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC', [], { cache: false });
       if (!d1Res || d1Res.success === false || !Array.isArray(d1Res.results)) {
         throw new Error('D1 restaurant query failed');
       }
@@ -485,7 +485,7 @@ export async function GET(req: NextRequest) {
 
     let list: any[] = [];
     try {
-      const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC LIMIT 200');
+      const d1Res = await d1.query('SELECT * FROM restaurants ORDER BY rating DESC LIMIT 200', [], { cache: false });
       if (!d1Res || d1Res.success === false || !Array.isArray(d1Res.results)) {
         throw new Error('D1 restaurant query failed');
       }
@@ -525,7 +525,7 @@ export async function GET(req: NextRequest) {
     if (id && id !== 'calculate-distance') {
       let foundInD1 = false;
       try {
-        const d1Res = await d1.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id]);
+        const d1Res = await d1.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id], { cache: false });
         if (d1Res && d1Res.success !== false) {
           foundInD1 = true;
           if (d1Res.results?.[0]) {
