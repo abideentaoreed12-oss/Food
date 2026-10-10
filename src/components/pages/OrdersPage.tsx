@@ -28,7 +28,11 @@ import {
   Filter,
   DollarSign,
   Utensils,
-  Star
+  Star,
+  ScanLine,
+  Camera,
+  X,
+  QrCode
 } from 'lucide-react';
 import { OrderReviewModal } from '../reviews/OrderReviewModal';
 
@@ -41,6 +45,80 @@ export const OrdersPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'delivered' | 'cancelled'>('all');
   const [selectedReviewOrder, setSelectedReviewOrder] = useState<Order | null>(null);
   const [clockNow, setClockNow] = useState<number>(0);
+  const [scanOrder, setScanOrder] = useState<Order | null>(null);
+  const [cameraError, setCameraError] = useState<string>('');
+  const [scanValue, setScanValue] = useState<string>('');
+  const [cameraReady, setCameraReady] = useState(false);
+  const videoRef = React.useRef<HTMLVideoElement | null>(null);
+  const streamRef = React.useRef<MediaStream | null>(null);
+  const scanTimerRef = React.useRef<number | null>(null);
+
+  const stopScanner = () => {
+    if (scanTimerRef.current !== null) {
+      window.clearInterval(scanTimerRef.current);
+      scanTimerRef.current = null;
+    }
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setCameraReady(false);
+  };
+
+  const openScanner = async (order: Order) => {
+    setScanOrder(order);
+    setCameraError('');
+    setScanValue('');
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Camera access requires HTTPS and a supported browser. Open VeyraNG in Safari or Chrome over a secure connection.');
+      return;
+    }
+    try {
+      const BarcodeDetectorCtor = (window as any).BarcodeDetector;
+      if (!BarcodeDetectorCtor) {
+        setCameraError('This browser does not support built-in QR detection. Please use a recent supported browser; order verification is not performed by reading an untrusted QR alone.');
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: 'environment' } }
+      });
+      streamRef.current = stream;
+      window.requestAnimationFrame(() => {
+        if (!videoRef.current || !streamRef.current) return;
+        videoRef.current.srcObject = streamRef.current;
+        void videoRef.current.play().then(() => {
+          setCameraReady(true);
+          const detector = new BarcodeDetectorCtor({ formats: ['qr_code'] });
+          scanTimerRef.current = window.setInterval(async () => {
+            if (!videoRef.current || videoRef.current.readyState < 2) return;
+            try {
+              const codes = await detector.detect(videoRef.current);
+              if (codes?.[0]?.rawValue) {
+                setScanValue(String(codes[0].rawValue));
+                if (scanTimerRef.current !== null) window.clearInterval(scanTimerRef.current);
+                scanTimerRef.current = null;
+                streamRef.current?.getTracks().forEach((track) => track.stop());
+                streamRef.current = null;
+                setCameraReady(false);
+              }
+            } catch {
+              // A frame can fail detection while the camera is starting; continue scanning.
+            }
+          }, 350);
+        }).catch(() => setCameraError('Could not start the camera preview. Check camera permission and try again.'));
+      });
+    } catch (error) {
+      const name = (error as { name?: string })?.name;
+      setCameraError(name === 'NotAllowedError'
+        ? 'Camera permission was denied. Allow camera access in your browser settings and try again.'
+        : 'Unable to access the camera. Check that no other app is using it, then try again.');
+      stopScanner();
+    }
+  };
+
+  useEffect(() => () => {
+    if (scanTimerRef.current !== null) window.clearInterval(scanTimerRef.current);
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   // Receipt/order ETA is a countdown from the server-created order timestamp,
   // not a static hardcoded display value.
@@ -308,10 +386,10 @@ export const OrdersPage: React.FC = () => {
                 </div>
 
                 {/* CTA Action Buttons */}
-                <div className="flex items-center gap-2 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-[1.35fr_0.7fr_1fr] items-stretch gap-2 pt-1">
                   <button
                     onClick={() => openTracking(order.id)}
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-[#FF5500] text-white text-xs font-bold hover:bg-[#EA4C00] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    className="min-w-0 py-2.5 px-3 rounded-xl bg-[#FF5500] text-white text-xs font-bold hover:bg-[#EA4C00] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
                     <span>View Tracking Cockpit</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -319,10 +397,21 @@ export const OrdersPage: React.FC = () => {
 
                   <button
                     onClick={() => setActivePage('help')}
-                    className="py-2.5 px-3.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                    className="py-2.5 px-3 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
                     <span>Help</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void openScanner(order)}
+                    disabled={order.status === 'awaiting_payment' || order.paymentStatus === 'pending'}
+                    className="py-2.5 px-3 rounded-xl border border-orange-200 bg-orange-50 text-[#FF5500] text-xs font-bold hover:bg-orange-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label={`Scan QR code for order ${order.shortId}`}
+                  >
+                    <ScanLine className="w-3.5 h-3.5 shrink-0" />
+                    <span>Scan Your Food</span>
                   </button>
                 </div>
               </div>
@@ -664,6 +753,42 @@ export const OrdersPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {scanOrder && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="food-qr-title">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-orange-50/70 px-5 py-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#FF5500] text-white"><QrCode className="h-5 w-5" /></div>
+                <div>
+                  <h2 id="food-qr-title" className="font-extrabold text-slate-900">Scan Your Food</h2>
+                  <p className="text-xs text-slate-500">Order {scanOrder.shortId}</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => { stopScanner(); setScanOrder(null); }} className="rounded-xl p-2 text-slate-500 hover:bg-white" aria-label="Close scanner"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4 p-5">
+              <div className="relative aspect-square overflow-hidden rounded-2xl bg-slate-950">
+                <video ref={videoRef} className="h-full w-full object-cover" playsInline muted aria-label="Camera QR scanner" />
+                {!cameraReady && !cameraError && !scanValue && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white">
+                    <Camera className="h-10 w-10 text-orange-300" />
+                    <p className="text-sm font-semibold">Starting camera…</p>
+                  </div>
+                )}
+                {cameraReady && <div className="pointer-events-none absolute inset-8 rounded-2xl border-2 border-[#FF5500] shadow-[0_0_0_999px_rgba(0,0,0,0.15)]"><span className="absolute -top-1 -left-1 h-5 w-5 border-l-4 border-t-4 border-orange-400" /><span className="absolute -top-1 -right-1 h-5 w-5 border-r-4 border-t-4 border-orange-400" /><span className="absolute -bottom-1 -left-1 h-5 w-5 border-b-4 border-l-4 border-orange-400" /><span className="absolute -bottom-1 -right-1 h-5 w-5 border-b-4 border-r-4 border-orange-400" /></div>}
+              </div>
+              {cameraError && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{cameraError}</div>}
+              {scanValue && <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3"><p className="text-sm font-bold text-emerald-800">QR code detected</p><p className="break-all text-xs text-slate-700">{scanValue}</p><p className="text-xs text-amber-800">Scanned content is not yet verified against the order server. Do not treat this scan as proof of pickup or delivery.</p></div>}
+              <p className="text-xs leading-relaxed text-slate-500">Allow camera access and place the QR code inside the frame. This reads QR content only; secure order verification must be performed by the server.</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => { stopScanner(); setScanOrder(null); }} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">Close</button>
+                <button type="button" onClick={() => void openScanner(scanOrder)} className="rounded-xl bg-[#FF5500] px-4 py-3 text-sm font-bold text-white hover:bg-[#EA4C00]"><Camera className="mr-1.5 inline h-4 w-4" />Scan again</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Live Platform D1 Review Submission Modal */}
       {selectedReviewOrder && (
