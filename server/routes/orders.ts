@@ -32,6 +32,8 @@ const CreateOrderSchema = z.object({
   customerName: z.string().min(2),
   customerPhone: z.string().min(6),
   customerAddress: z.string().min(5),
+  customerLat: z.number().finite().min(-90).max(90).optional(),
+  customerLng: z.number().finite().min(-180).max(180).optional(),
   customerApartment: z.string().optional(),
   deliveryNotes: z.string().optional(),
   tip: z.number().nonnegative().default(5.0),
@@ -48,7 +50,7 @@ const CreateOrderSchema = z.object({
 router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: Response) => {
   try {
     const {
-      restaurantId, items: rawItems, customerName, customerPhone, customerAddress,
+      restaurantId, items: rawItems, customerName, customerPhone, customerAddress, customerLat, customerLng,
       customerApartment, deliveryNotes, tip, paymentMethod, currency, fulfillmentType,
       scheduledSlot, isContactless, promoCode, walletDeduction, idempotencyKey
     } = req.body;
@@ -115,6 +117,8 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
         return res.status(503).json({ success: false, error: 'Restaurant preparation time is not configured.' });
       }
       try {
+        if ((customerLat === undefined) !== (customerLng === undefined)) return res.status(400).json({ success: false, error: 'Customer latitude and longitude must be provided together.' });
+        // Re-geocode the entered address on the server for authoritative pricing; never trust client fee or coordinates.
         distanceMetrics = await calculateRestaurantDistanceMetrics(restaurant, customerAddress);
         if (!distanceMetrics.inDeliveryRadius) return res.status(400).json({ success: false, error: 'This address is outside the configured delivery radius for this restaurant.' });
         deliveryFee = distanceMetrics.estimatedDeliveryFee;
@@ -191,6 +195,8 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
       customerPhone,
       customerAddress,
       customerApartment,
+      customerLat: distanceMetrics?.userLocation?.lat ?? null,
+      customerLng: distanceMetrics?.userLocation?.lng ?? null,
       deliveryNotes,
       restaurantId: restaurant.id,
       restaurantName: restaurant.name,
