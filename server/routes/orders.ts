@@ -400,7 +400,7 @@ router.patch('/:id/courier', requireAuth, async (req: AuthRequest, res: Response
     }
     
     await d1Client.query('UPDATE orders SET courier_id = ?, updated_at = ? WHERE id = ?', [courierId, new Date().toISOString(), id]);
-    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+
     return res.json({ success: true, message: 'Courier assigned' });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
