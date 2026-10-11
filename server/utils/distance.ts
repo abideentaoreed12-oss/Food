@@ -264,7 +264,7 @@ export async function calculateDistanceAndDuration(
       if (osrmData.code === 'Ok' && osrmData.routes && osrmData.routes.length > 0) {
         const route = osrmData.routes[0];
         const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
-        const durationMinutes = Math.max(1, Math.round(route.duration / 60));
+        const durationMinutes = Math.round(route.duration / 60);
         const rawCoords = route.geometry?.coordinates || [];
         const points = rawCoords.map((coord: [number, number]) => ({ lat: coord[1], lng: coord[0] }));
         if (distanceKm <= 0 || durationMinutes <= 0 || points.length < 2) throw new Error('OSRM returned an incomplete route geometry.');
@@ -315,7 +315,7 @@ export async function calculateDistanceAndDuration(
       const summary = vData.trip?.summary;
       if (summary && Number.isFinite(summary.length) && Number.isFinite(summary.time)) {
         const distanceKm = Math.round(summary.length * 10) / 10;
-        const durationMinutes = Math.max(1, Math.round(summary.time / 60));
+        const durationMinutes = Math.round(summary.time / 60);
         let points: { lat: number; lng: number }[] = [];
         const legs = vData.trip?.legs;
         if (Array.isArray(legs) && legs[0]?.shape) {
