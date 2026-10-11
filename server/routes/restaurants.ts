@@ -85,17 +85,17 @@ router.get('/', async (req: Request, res: Response) => {
       );
     }
 
-    const userLocation =
-      userLat !== undefined && userLng !== undefined && !isNaN(userLat) && !isNaN(userLng)
-        ? { lat: userLat, lng: userLng }
-        : userAddress && userAddress.trim()
-        ? userAddress.trim()
-        : { lat: 6.4474, lng: 3.4735 };
-
-    try {
-      list = await calculateBatchRestaurantDistanceMetrics(list, userLocation);
-    } catch (metricErr: any) {
-      console.warn('[Restaurants Route] Distance metrics notice:', metricErr?.message || String(metricErr));
+    const hasValidCoordinatePair = userLat !== undefined && userLng !== undefined &&
+      Number.isFinite(userLat) && Number.isFinite(userLng) &&
+      userLat >= -90 && userLat <= 90 && userLng >= -180 && userLng <= 180;
+    const userLocation = hasValidCoordinatePair ? { lat: userLat!, lng: userLng! } : userAddress?.trim() || undefined;
+    // Never substitute a fixed customer location. Calculate live metrics only with an actual origin.
+    if (userLocation) {
+      try {
+        list = await calculateBatchRestaurantDistanceMetrics(list, userLocation);
+      } catch (metricErr: any) {
+        console.warn('[Restaurants Route] Live distance metrics unavailable:', metricErr?.message || String(metricErr));
+      }
     }
 
     const publicList = list.map((r) => {
