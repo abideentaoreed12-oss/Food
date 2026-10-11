@@ -22,20 +22,20 @@ async function runSafeMigration() {
   await addColumnIfNotExists('restaurants', 'owner_id', 'TEXT');
   await addColumnIfNotExists('restaurants', 'slug', 'TEXT');
   await addColumnIfNotExists('restaurants', 'review_count', 'INTEGER DEFAULT 0');
-  await addColumnIfNotExists('restaurants', 'delivery_time_min', 'INTEGER DEFAULT 20');
-  await addColumnIfNotExists('restaurants', 'delivery_time_max', 'INTEGER DEFAULT 35');
-  await addColumnIfNotExists('restaurants', 'delivery_fee', 'REAL DEFAULT 3.99');
+  await addColumnIfNotExists('restaurants', 'delivery_time_min', 'INTEGER');
+  await addColumnIfNotExists('restaurants', 'delivery_time_max', 'INTEGER');
+  await addColumnIfNotExists('restaurants', 'delivery_fee', 'REAL');
   await addColumnIfNotExists('restaurants', 'min_order', 'REAL DEFAULT 15.0');
   await addColumnIfNotExists('restaurants', 'price_tier', 'TEXT DEFAULT "$$"');
   await addColumnIfNotExists('restaurants', 'address', 'TEXT DEFAULT ""');
-  await addColumnIfNotExists('restaurants', 'distance_km', 'REAL DEFAULT 2.5');
+  await addColumnIfNotExists('restaurants', 'distance_km', 'REAL');
   await addColumnIfNotExists('restaurants', 'tags', 'TEXT DEFAULT "[]"');
   await addColumnIfNotExists('restaurants', 'badge', 'TEXT');
   await addColumnIfNotExists('restaurants', 'accent_color', 'TEXT DEFAULT "#10b981"');
   await addColumnIfNotExists('restaurants', 'is_open', 'INTEGER DEFAULT 1');
   await addColumnIfNotExists('restaurants', 'is_busy_paused', 'INTEGER DEFAULT 0');
   await addColumnIfNotExists('restaurants', 'commission_percent', 'REAL DEFAULT 15.0');
-  await addColumnIfNotExists('restaurants', 'zone', 'TEXT DEFAULT "NYC"');
+  await addColumnIfNotExists('restaurants', 'zone', 'TEXT');
   await addColumnIfNotExists('restaurants', 'banner_r2_url', 'TEXT');
 
   // 2. Upgrade existing orders table
@@ -60,7 +60,7 @@ async function runSafeMigration() {
   await addColumnIfNotExists('orders', 'prep_time_adjustment_min', 'INTEGER DEFAULT 0');
   await addColumnIfNotExists('orders', 'transaction_ref', 'TEXT DEFAULT ""');
   await addColumnIfNotExists('orders', 'route_progress', 'INTEGER DEFAULT 0');
-  await addColumnIfNotExists('orders', 'estimated_arrival_minutes', 'INTEGER DEFAULT 25');
+  await addColumnIfNotExists('orders', 'estimated_arrival_minutes', 'INTEGER');
 
   // 3. Upgrade existing transactions & audit_logs
   console.log('3️⃣ Upgrading transactions & audit_logs columns...');
