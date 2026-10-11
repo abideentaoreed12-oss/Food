@@ -11,21 +11,16 @@ jobs:
         with:
           ref: main
           fetch-depth: 5
-      - name: Remove hardcoded samples on main
+      - name: Apply LKG public serve on main
         run: |
           set -e
-          python3 scripts/apply_remove_hardcoded_samples.py
-          python3 scripts/apply_menu_auth_and_cleanup.py || true
-          python3 scripts/apply_lkg_policy.py || true
+          python3 scripts/apply_lkg_serve_public.py
       - name: Commit on main
         run: |
           set -e
           git config user.name "veyrang-bot"
           git config user.email "bot@veyrang.com"
           git add -A
-          if git diff --cached --quiet; then
-            echo "No changes"
-            exit 0
-          fi
-          git commit -m "chore: remove hardcoded product samples; popular zones from D1; fees from platform_settings only"
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "feat(lkg): public catalogue served from last-known-good; D1 refresh every 10s"
           git push origin HEAD:main
