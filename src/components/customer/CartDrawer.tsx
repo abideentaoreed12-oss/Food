@@ -67,6 +67,7 @@ export const CartDrawer: React.FC = () => {
     durationText: string;
     durationMinutes: number;
     estimatedDeliveryFee: number;
+    inDeliveryRadius: boolean;
     userLocation?: { lat: number; lng: number; formattedAddress?: string };
     restaurantLocation?: { lat: number; lng: number; formattedAddress?: string };
     isCalculating?: boolean;
@@ -130,6 +131,7 @@ export const CartDrawer: React.FC = () => {
         if (!res || !Number.isFinite(Number(res.distanceKm)) ||
             !Number.isFinite(Number(res.durationMinutes)) || Number(res.durationMinutes) <= 0 ||
             !Number.isFinite(Number(res.estimatedDeliveryFee)) ||
+            typeof res.inDeliveryRadius !== 'boolean' ||
             !res.distanceText || !res.durationText) {
           throw new Error('The routing service did not return a valid distance quote. Please retry.');
         }
@@ -139,6 +141,7 @@ export const CartDrawer: React.FC = () => {
           durationText: String(res.durationText),
           durationMinutes: Number(res.durationMinutes),
           estimatedDeliveryFee: Number(res.estimatedDeliveryFee),
+          inDeliveryRadius: res.inDeliveryRadius,
           userLocation: res.userLocation,
           restaurantLocation: res.restaurantLocation,
           isCalculating: false
@@ -222,6 +225,10 @@ export const CartDrawer: React.FC = () => {
     const resolvedCustomerAddress = customAddress.trim() || selectedAddress?.address?.trim() || user?.address?.trim() || '';
     if (fulfillmentType !== 'pickup' && !resolvedCustomerAddress) {
       setPromoMessage({ text: 'Enter or select your real delivery address before placing the order.', isError: true });
+      return;
+    }
+    if (fulfillmentType !== 'pickup' && liveDistanceResult && !liveDistanceResult.inDeliveryRadius) {
+      setPromoMessage({ text: 'This address is outside the configured delivery radius for this restaurant.', isError: true });
       return;
     }
     if (fulfillmentType !== 'pickup' && (!liveDistanceResult || liveDistanceResult.isCalculating || distanceError)) {
