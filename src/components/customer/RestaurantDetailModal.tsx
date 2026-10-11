@@ -153,7 +153,7 @@ export const RestaurantDetailModal: React.FC = () => {
               </div>
               <span>·</span>
               <div className="text-slate-700 font-medium">
-                {formatCurrency(liveMetrics?.estimatedDeliveryFee || restaurant.calculatedDeliveryFee || restaurant.deliveryFee, currency)} delivery
+                {formatCurrency(liveMetrics?.estimatedDeliveryFee || restaurant.calculatedDeliveryFee ?? restaurant.deliveryFee, currency)} delivery
               </div>
               <span>·</span>
               <div className="text-slate-500">
