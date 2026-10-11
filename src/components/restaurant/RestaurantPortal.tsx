@@ -49,6 +49,9 @@ export const RestaurantPortal: React.FC = () => {
   const [newDishCategoryId, setNewDishCategoryId] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [savingCategory, setSavingCategory] = useState(false);
+  const [availableCouriers, setAvailableCouriers] = useState<any[]>([]);
+  const [selectedCourierByOrder, setSelectedCourierByOrder] = useState<Record<string, string>>({});
+  const [assigningOrderId, setAssigningOrderId] = useState<string | null>(null);
   const [savingDish, setSavingDish] = useState(false);
   const [editingDishId, setEditingDishId] = useState<string | null>(null);
 
@@ -85,6 +88,12 @@ export const RestaurantPortal: React.FC = () => {
 
   useEffect(() => {
     if (activeTab === 'menu') loadLiveMenu();
+    if (activeTab === 'tickets') {
+      api.admin.getAvailableCouriers().then((res: any) => {
+        const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        setAvailableCouriers(rows);
+      }).catch((err: any) => setMenuMsg(err?.message || 'Could not load courier list.'));
+    }
   }, [activeTab, loadLiveMenu]);
 
   const handleCreateDish = async (e: React.FormEvent) => {
@@ -118,6 +127,24 @@ export const RestaurantPortal: React.FC = () => {
       setMenuMsg(err?.message || 'Failed to save dish');
     } finally {
       setSavingDish(false);
+    }
+  };
+
+  const handleAssignCourier = async (orderId: string) => {
+    const courierId = selectedCourierByOrder[orderId];
+    if (!courierId) {
+      setMenuMsg('Select a courier before assigning the order.');
+      return;
+    }
+    setAssigningOrderId(orderId);
+    try {
+      await api.admin.assignCourier(orderId, courierId);
+      setMenuMsg('Courier assigned and recorded. Confirm handover separately when the courier collects the order.');
+      await api.admin.getOrders().then(() => undefined);
+    } catch (err: any) {
+      setMenuMsg(err?.message || 'Courier assignment failed.');
+    } finally {
+      setAssigningOrderId(null);
     }
   };
 
@@ -456,6 +483,18 @@ export const RestaurantPortal: React.FC = () => {
                     <span className="text-blue-400 font-semibold">Packed & Insulated</span>
                   </div>
 
+                  {ord.fulfillmentType !== 'pickup' && (
+                    <div className="space-y-2 rounded-xl border border-slate-700 bg-slate-800/70 p-3">
+                      <label htmlFor={`courier-${ord.id}`} className="block text-xs font-semibold text-slate-200">Assign delivery courier</label>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <select id={`courier-${ord.id}`} value={selectedCourierByOrder[ord.id] || ''} onChange={(e) => setSelectedCourierByOrder((prev) => ({ ...prev, [ord.id]: e.target.value }))} className="min-h-10 min-w-0 flex-1 rounded-lg border border-slate-500 bg-white px-3 py-2 text-sm text-slate-900">
+                          <option value="">Select courier</option>
+                          {availableCouriers.map((courier) => <option key={courier.id} value={courier.id}>{courier.name}</option>)}
+                        </select>
+                        <button type="button" onClick={() => handleAssignCourier(ord.id)} disabled={assigningOrderId === ord.id || !selectedCourierByOrder[ord.id]} className="min-h-10 rounded-lg bg-[#FF5500] px-3 py-2 text-xs font-bold text-white hover:bg-[#e64b00] disabled:opacity-50">{assigningOrderId === ord.id ? 'Assigning…' : 'Assign courier'}</button>
+                      </div>
+                    </div>
+                  )}
                   <div className="text-xs text-slate-300">
                     <div>
                       {ord.fulfillmentType === 'pickup' ? (
