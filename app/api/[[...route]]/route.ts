@@ -2415,9 +2415,21 @@ export async function PATCH(req: NextRequest) {
     if (name !== undefined && (typeof name !== 'string' || !name.trim())) return NextResponse.json({ success: false, error: 'Dish name cannot be empty.' }, { status: 400 });
     if (price !== undefined && (!Number.isFinite(Number(price)) || Number(price) <= 0)) return NextResponse.json({ success: false, error: 'Price must be greater than zero.' }, { status: 400 });
     const targetRestaurantId = user.role === 'restaurant' ? String(existingItem.restaurant_id) : String(restaurantId ?? existingItem.restaurant_id);
-    const nextCategory = categoryId !== undefined ? String(categoryId) : category !== undefined ? String(category) : String(existingItem.category_id || '');
-    const categoryCheck = await d1.query('SELECT id FROM menu_categories WHERE id = ? AND restaurant_id = ? LIMIT 1', [nextCategory, targetRestaurantId], { cache: false });
-    if ((categoryId !== undefined || category !== undefined) && !categoryCheck.results?.[0]) return NextResponse.json({ success: false, error: 'Selected category does not belong to this restaurant.' }, { status: 400 });
+    let nextCategory = String(categoryId !== undefined ? categoryId : category !== undefined ? category : existingItem.category_id || '').trim();
+    if (categoryId !== undefined || category !== undefined) {
+      let categoryCheck = await d1.query('SELECT id FROM menu_categories WHERE id = ? AND restaurant_id = ? LIMIT 1', [nextCategory, targetRestaurantId], { cache: false });
+      if (!categoryCheck.results?.[0] && category !== undefined) {
+        categoryCheck = await d1.query('SELECT id FROM menu_categories WHERE restaurant_id = ? AND LOWER(name) = LOWER(?) LIMIT 1', [targetRestaurantId, nextCategory], { cache: false });
+        if (!categoryCheck.results?.[0] && nextCategory) {
+          const categoryIdCreated = randomUUID();
+          const categoryInsert = await d1.query('INSERT INTO menu_categories (id, restaurant_id, name, description, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)', [categoryIdCreated, targetRestaurantId, nextCategory, '', 99, new Date().toISOString()]);
+          if (!categoryInsert || categoryInsert.success === false) return NextResponse.json({ success: false, error: 'Could not create the selected category.' }, { status: 500 });
+          categoryCheck = { results: [{ id: categoryIdCreated }] } as any;
+        }
+      }
+      if (!categoryCheck.results?.[0]) return NextResponse.json({ success: false, error: 'Selected category does not belong to this restaurant.' }, { status: 400 });
+      nextCategory = String(categoryCheck.results[0].id);
+    }
     if (restaurantId !== undefined && user.role !== 'restaurant') {
       const restaurantCheck = await d1.query('SELECT id FROM restaurants WHERE id = ? LIMIT 1', [targetRestaurantId], { cache: false });
       if (!restaurantCheck.results?.[0]) return NextResponse.json({ success: false, error: 'Restaurant not found.' }, { status: 404 });
