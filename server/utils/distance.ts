@@ -375,15 +375,15 @@ export async function calculateRestaurantDistanceMetrics(
   restaurant: any,
   userAddressOrCoords: string | { lat: number; lng: number }
 ): Promise<DistanceCalculationResult> {
-  const restaurantLat = Number(restaurant.lat);
-  const restaurantLng = Number(restaurant.lng);
+  const restaurantLat = Number(restaurant.lat ?? restaurant.latitude);
+  const restaurantLng = Number(restaurant.lng ?? restaurant.longitude);
   if (!Number.isFinite(restaurantLat) || !Number.isFinite(restaurantLng) || restaurantLat < -90 || restaurantLat > 90 || restaurantLng < -180 || restaurantLng > 180) {
     throw new Error('Restaurant location coordinates are missing or invalid in D1');
   }
   const restaurantLocation: GeoLocation = {
     lat: restaurantLat,
     lng: restaurantLng,
-    formattedAddress: restaurant.address || 'Restaurant Kitchen'
+    formattedAddress: restaurant.address || restaurant.formattedAddress || undefined
   };
 
   let userLocation: GeoLocation;
@@ -400,25 +400,39 @@ export async function calculateRestaurantDistanceMetrics(
   const { distanceKm, distanceText, durationMinutes, durationText, isLive, routingEngine } =
     await calculateDistanceAndDuration(userLocation, restaurantLocation);
 
-  // Use the restaurant's configured fee; do not invent a per-kilometre surcharge.
-  const baseDeliveryFee = Number(restaurant.deliveryFee);
-  if (!Number.isFinite(baseDeliveryFee) || baseDeliveryFee < 0) {
-    throw new Error('Restaurant delivery fee is missing or invalid in D1');
-  }
-  const estimatedDeliveryFee = baseDeliveryFee;
-  let configuredRadius = Number(restaurant.deliveryRadiusKm ?? restaurant.delivery_radius_km);
-  if ((!Number.isFinite(configuredRadius) || configuredRadius <= 0) && String(restaurant.zone || '').trim()) {
+  // Resolve configured delivery-zone pricing from D1. Never invent a base fee,
+  // per-kilometre price, radius, or surge multiplier in application code.
+  let matchedZone: any = null;
+  const zoneRef = String(restaurant.zoneId ?? restaurant.deliveryZoneId ?? restaurant.zone ?? restaurant.delivery_zone ?? restaurant.city ?? '').trim();
+  if (zoneRef) {
     try {
       const { d1Client } = await import('../db/d1Client.ts');
-      const zoneName = String(restaurant.zone).trim();
       const zoneResult = await d1Client.query(
-        'SELECT radius_km FROM delivery_zones WHERE is_active = 1 AND (code = ? OR name = ? OR city = ?) LIMIT 1',
-        [zoneName.toUpperCase(), zoneName, zoneName]
+        'SELECT * FROM delivery_zones WHERE is_active = 1 AND (id = ? OR code = ? OR name = ? OR city = ?) LIMIT 1',
+        [zoneRef, zoneRef.toUpperCase(), zoneRef, zoneRef]
       );
-      configuredRadius = Number(zoneResult.results?.[0]?.radius_km);
+      matchedZone = zoneResult.results?.[0] ?? null;
     } catch (error) {
-      console.warn('[Restaurant Distance] Could not read configured delivery radius:', error instanceof Error ? error.message : String(error));
+      console.warn('[Restaurant Distance] Configured zone lookup failed:', error instanceof Error ? error.message : String(error));
     }
+  }
+
+  let configuredRadius = Number(matchedZone?.radius_km ?? matchedZone?.max_radius_km ?? restaurant.deliveryRadiusKm ?? restaurant.delivery_radius_km);
+  let estimatedDeliveryFee: number;
+  if (matchedZone) {
+    const baseFee = Number(matchedZone.base_delivery_fee ?? matchedZone.base_fee);
+    const perKmFee = Number(matchedZone.per_km_fee ?? matchedZone.perKmFee);
+    const surge = Number(matchedZone.surge_multiplier ?? matchedZone.surgeMultiplier);
+    if (!Number.isFinite(baseFee) || baseFee < 0 || !Number.isFinite(perKmFee) || perKmFee < 0 || !Number.isFinite(surge) || surge < 0) {
+      throw new Error('The active delivery zone has incomplete or invalid pricing configuration.');
+    }
+    estimatedDeliveryFee = Math.round((baseFee + distanceKm * perKmFee) * surge * 100) / 100;
+  } else {
+    const configuredRestaurantFee = Number(restaurant.deliveryFee ?? restaurant.delivery_fee);
+    if (!Number.isFinite(configuredRestaurantFee) || configuredRestaurantFee < 0) {
+      throw new Error('Restaurant delivery fee or active delivery-zone pricing is not configured in D1.');
+    }
+    estimatedDeliveryFee = configuredRestaurantFee;
   }
   if (!Number.isFinite(configuredRadius) || configuredRadius <= 0) {
     throw new Error('Delivery radius is not configured for this restaurant or its active delivery zone.');
