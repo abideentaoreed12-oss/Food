@@ -233,18 +233,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: settingsMap, settings: settingsMap });
   }
 
-  // 9. Public delivery zones use the shared snapshot; admin management reads stay separate.
-  if (pathname === '/settings/zones') {
+  // Public delivery zones from live D1 (admin-managed — no hardcoded sample streets).
+  if (pathname === '/delivery-zones' || pathname === '/settings/zones') {
+    try {
+      const d1Res = await d1.query(
+        'SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL ORDER BY name ASC',
+        [],
+        { cache: false }
+      );
+      if (d1Res && d1Res.success !== false && Array.isArray(d1Res.results)) {
+        return NextResponse.json({ success: true, data: d1Res.results }, { headers: { 'Cache-Control': 'no-store' } });
+      }
+    } catch (err: any) {
+      console.warn('[delivery-zones] D1 read failed:', err?.message || err);
+    }
     let snapshot = await siteDataManager.loadSnapshot();
     if (!snapshot) snapshot = await siteDataManager.refreshSnapshot({ force: true });
-    else siteDataManager.syncIfStale().catch(() => {});
-    if (!snapshot) {
-      return NextResponse.json(
-        { success: false, error: 'Live delivery-zone data is temporarily unavailable.', data: null },
-        { status: 503, headers: { 'Cache-Control': 'no-store' } }
-      );
-    }
-    return NextResponse.json({ success: true, data: snapshot.deliveryZones || [] }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ success: true, data: snapshot?.deliveryZones || [] }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   if (pathname === '/admin/delivery-zones') {

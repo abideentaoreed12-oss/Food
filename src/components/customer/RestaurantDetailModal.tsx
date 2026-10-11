@@ -43,7 +43,7 @@ export const RestaurantDetailModal: React.FC = () => {
 
   useEffect(() => {
     if (!selectedRestaurantId || !restaurant) return;
-    const activeAddr = selectedAddress?.address || user?.address || 'Lekki Phase 1, Lagos';
+    const activeAddr = selectedAddress?.address || user?.address || '';
 
     let isMounted = true;
     api.restaurants

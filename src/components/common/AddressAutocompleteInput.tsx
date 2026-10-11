@@ -50,62 +50,7 @@ interface SuggestionItem {
   lng?: number;
 }
 
-const POPULAR_ZONES: SuggestionItem[] = [
-  {
-    id: 'pop-1',
-    mainText: 'Admiralty Way, Lekki Phase 1',
-    secondaryText: 'Lekki Peninsula, Lagos, Nigeria',
-    fullText: 'Admiralty Way, Lekki Phase 1, Lagos',
-    source: 'popular',
-    lat: 6.4474,
-    lng: 3.4723
-  },
-  {
-    id: 'pop-2',
-    mainText: 'Ahmadu Bello Way, Victoria Island',
-    secondaryText: 'Victoria Island, Lagos, Nigeria',
-    fullText: 'Ahmadu Bello Way, Victoria Island, Lagos',
-    source: 'popular',
-    lat: 6.4281,
-    lng: 3.4219
-  },
-  {
-    id: 'pop-3',
-    mainText: 'Bourdillon Road, Ikoyi',
-    secondaryText: 'Ikoyi, Lagos, Nigeria',
-    fullText: 'Bourdillon Road, Ikoyi, Lagos',
-    source: 'popular',
-    lat: 6.4549,
-    lng: 3.4357
-  },
-  {
-    id: 'pop-4',
-    mainText: 'Isaac John Street, GRA Ikeja',
-    secondaryText: 'Ikeja, Lagos, Nigeria',
-    fullText: 'Isaac John Street, GRA Ikeja, Lagos',
-    source: 'popular',
-    lat: 6.5866,
-    lng: 3.3578
-  },
-  {
-    id: 'pop-5',
-    mainText: 'Herbert Macaulay Way, Yaba',
-    secondaryText: 'Yaba / Alagomeji, Lagos, Nigeria',
-    fullText: 'Herbert Macaulay Way, Yaba, Lagos',
-    source: 'popular',
-    lat: 6.5059,
-    lng: 3.3781
-  },
-  {
-    id: 'pop-6',
-    mainText: 'Aminu Kano Crescent, Wuse 2',
-    secondaryText: 'Wuse 2, Abuja, FCT, Nigeria',
-    fullText: 'Aminu Kano Crescent, Wuse 2, Abuja',
-    source: 'popular',
-    lat: 9.0765,
-    lng: 7.4721
-  }
-];
+const popularZones_UNUSED: SuggestionItem[] = [];
 
 export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> = ({
   value,
@@ -127,6 +72,29 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
   const [isVerified, setIsVerified] = useState(false);
   const [locationError, setLocationError] = useState('');
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+  const [popularZones, setPopularZones] = useState<SuggestionItem[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/delivery-zones', { cache: 'no-store' });
+        const json = await res.json().catch(() => null);
+        const rows = Array.isArray(json?.data) ? json.data : [];
+        if (cancelled || !rows.length) return;
+        setPopularZones(rows.filter((z: any) => z && (z.name || z.code)).slice(0, 12).map((z: any, idx: number) => ({
+          id: String(z.id || `zone-${idx}`),
+          mainText: String(z.name || z.code || 'Delivery zone'),
+          secondaryText: z.code ? String(z.code) : 'Service area',
+          fullText: String(z.name || z.code || ''),
+          source: 'popular' as const,
+          lat: Number.isFinite(Number(z.center_lat ?? z.lat)) ? Number(z.center_lat ?? z.lat) : undefined,
+          lng: Number.isFinite(Number(z.center_lng ?? z.lng)) ? Number(z.center_lng ?? z.lng) : undefined,
+        })));
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -307,7 +275,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
         // 3. Fallback to matching popular zones
         if (items.length === 0) {
           const lower = trimmed.toLowerCase();
-          const matchedPopular = POPULAR_ZONES.filter(
+          const matchedPopular = popularZones.filter(
             (z) =>
               z.mainText.toLowerCase().includes(lower) ||
               z.secondaryText.toLowerCase().includes(lower)
@@ -627,7 +595,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
                 <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Quick Select Hubs (Lagos & Abuja)
                 </p>
-                {POPULAR_ZONES.map((zone, idx) => (
+                {popularZones.map((zone, idx) => (
                   <button
                     key={zone.id}
                     type="button"

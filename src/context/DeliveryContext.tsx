@@ -237,21 +237,14 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   }, [fulfillmentType]);
   
   const [walletDeposits, setWalletDeposits] = useState<WalletDepositRecord[]>([]);
-  const [platformSettings, setPlatformSettings] = useState<Record<string, string>>({
-    currency_ngn_usd_rate: '1400',
-    platform_commission_percent: '15',
-    base_service_fee_ngn: '500',
-    base_service_fee_usd: '1.99',
-    minimum_order_ngn: '2500',
-    minimum_order_usd: '10.00'
-  });
+  const [platformSettings, setPlatformSettings] = useState<Record<string, string>>({});
   const [deliveryZones, setDeliveryZones] = useState<any[]>([]);
   const [adminActiveTab, setAdminActiveTab] = useState<string>('dashboard');
 
   // Dynamic Service Fee calculated from D1 live settings based on current currency
   const serviceFee = currency === 'USD'
-    ? Number(platformSettings.base_service_fee_usd || 1.99)
-    : Number(platformSettings.base_service_fee_ngn || 500);
+    ? Number(platformSettings.base_service_fee_usd || 0)
+    : Number(platformSettings.base_service_fee_ngn || 0);
   
   // D1-Authoritative Saved Addresses & Guest Persistent Delivery Address
   // D1-Authoritative Saved Addresses associated exclusively by user account, not by browser cache
