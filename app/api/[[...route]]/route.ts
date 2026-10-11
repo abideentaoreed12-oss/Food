@@ -2135,9 +2135,6 @@ export async function POST(req: NextRequest) {
     }
 
     const deliveryFeeValue = targetRestaurant?.deliveryFee ?? targetRestaurant?.delivery_fee;
-    if (!Number.isFinite(Number(deliveryFeeValue)) || Number(deliveryFeeValue) < 0) {
-      return NextResponse.json({ success: false, error: 'This restaurant has no valid delivery fee configured.' }, { status: 503 });
-    }
 
     const userLoc =
       Number.isFinite(userLat) && Number.isFinite(userLng) &&
@@ -2148,17 +2145,19 @@ export async function POST(req: NextRequest) {
     try {
       const metrics = await calculateRestaurantDistanceMetrics(
         {
+          ...(targetRestaurant || {}),
           lat: Number(restLatValue),
           lng: Number(restLngValue),
-          address: restAddr || 'Restaurant Kitchen',
-          deliveryFee: Number(deliveryFeeValue)
+          address: restAddr,
+          deliveryFee: deliveryFeeValue == null ? undefined : Number(deliveryFeeValue),
+          delivery_fee: deliveryFeeValue == null ? undefined : Number(deliveryFeeValue)
         },
         userLoc
       );
       return NextResponse.json({ success: true, data: metrics });
     } catch (err: any) {
       console.warn('[Distance Metric] Calculation note:', err?.message || String(err));
-      return NextResponse.json({ success: false, error: err?.message || 'Failed to calculate live distance' }, { status: 500 });
+      return NextResponse.json({ success: false, error: err?.message || 'No live route or configured delivery pricing is available.' }, { status: 503 });
     }
   }
 
