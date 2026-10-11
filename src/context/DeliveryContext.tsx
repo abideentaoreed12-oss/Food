@@ -1054,7 +1054,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         })),
         subtotal: itemsSubtotal,
         deliveryFee,
-        serviceFee: serviceFee + packagingFee,
+        serviceFee,
         tip: details.tip,
         total: grossTotal,
         drivingMinutes: fulfillmentType === 'pickup' ? 0 : drivingMinutes,
