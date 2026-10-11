@@ -2227,6 +2227,37 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
+  // Restaurant/admin menu availability toggle. The client calls /admin/menu/:id/toggle.
+  const menuToggleMatch = pathname.match(/^\/admin\/menu\/([^/]+)\/toggle$/);
+  if (menuToggleMatch) {
+    if (!user || !['admin', 'sub_admin', 'restaurant'].includes(user.role)) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+    const itemId = decodeURIComponent(menuToggleMatch[1]);
+    const existingRes = await d1.query('SELECT id, restaurant_id, is_available FROM menu_items WHERE id = ? LIMIT 1', [itemId], { cache: false });
+    if (!existingRes.success) return NextResponse.json({ success: false, error: 'Menu item lookup failed.' }, { status: 503 });
+    const item = existingRes.results?.[0];
+    if (!item) return NextResponse.json({ success: false, error: 'Menu item not found.' }, { status: 404 });
+    if (user.role === 'restaurant') {
+      const assigned = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+      if (!assigned.success) return NextResponse.json({ success: false, error: 'Restaurant assignment could not be verified.' }, { status: 503 });
+      const restaurantId = assigned.results?.[0]?.restaurant_id || user.restaurantId;
+      if (!restaurantId || String(restaurantId) !== String(item.restaurant_id)) {
+        return NextResponse.json({ success: false, error: 'You can only change availability for your own dishes.' }, { status: 403 });
+      }
+    }
+    const nextAvailable = Number(item.is_available) === 1 ? 0 : 1;
+    const updated = await d1.query('UPDATE menu_items SET is_available = ? WHERE id = ?', [nextAvailable, itemId]);
+    if (!updated || updated.success === false) return NextResponse.json({ success: false, error: 'Could not update dish availability in D1.' }, { status: 503 });
+    const currentRes = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [itemId], { cache: false });
+    try {
+      await syncMenuItemToRestaurantJson(itemId, currentRes.results?.[0] || null, item.restaurant_id);
+    } catch (syncError: any) {
+      console.warn('[MenuSync] Availability changed in D1; snapshot refresh will retry:', syncError?.message || syncError);
+    }
+    return NextResponse.json({ success: true, data: { id: itemId, is_available: nextAvailable }, message: nextAvailable ? 'Dish is visible to customers.' : 'Dish hidden from customers.' });
+  }
+
   // 0. Assign courier — admin or owning restaurant; live D1
   const orderAssignMatch = pathname.match(/^\/(?:admin\/)?orders\/([^/]+)\/assign$/);
   if (orderAssignMatch) {
