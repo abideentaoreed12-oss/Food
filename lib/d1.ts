@@ -348,8 +348,8 @@ export class D1Client {
           name TEXT NOT NULL,
           code TEXT,
           currency TEXT DEFAULT 'NGN',
-          base_delivery_fee REAL DEFAULT 800,
-          per_km_fee REAL DEFAULT 200,
+          base_delivery_fee REAL,
+          per_km_fee REAL,
           is_active INTEGER DEFAULT 1,
           created_at TEXT NOT NULL
         );`,
