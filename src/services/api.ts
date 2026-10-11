@@ -458,6 +458,7 @@ export const api = {
     approveUser: async (userId: string) =>
       request(`/api/admin/users/${userId}/approve`, { method: 'POST' }),
     getOrders: async () => request('/api/admin/orders'),
+    getAvailableCouriers: async () => request('/api/couriers/available'),
     updateOrderStatus: async (orderId: string, status: OrderStatus, note?: string) =>
       request(`/api/admin/orders/${orderId}/status`, { method: 'PATCH', body: JSON.stringify({ status, note }) }),
     assignCourier: async (orderId: string, courierId: string) =>
