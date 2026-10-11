@@ -84,30 +84,6 @@ export function decodePolyline(str: string): { lat: number; lng: number }[] {
   return coordinates;
 }
 
-// Global Circuit Breaker State for Google Maps API Quota Management
-let googleMapsQuotaExceededUntil = 0; // Timestamp in ms
-const COOLDOWN_DURATION_MS = 15 * 60 * 1000; // 15 minutes cooldown when rate limited
-
-/**
- * Checks if Google Maps is currently available or in quota cooldown.
- */
-export function isGoogleMapsQuotaAvailable(): boolean {
-  if (Date.now() < googleMapsQuotaExceededUntil) {
-    const minutesLeft = Math.ceil((googleMapsQuotaExceededUntil - Date.now()) / 60000);
-    console.log(`[GeoRouting Circuit Breaker] Google Maps quota paused for ${minutesLeft} min. Utilizing live open-source fallback engine.`);
-    return false;
-  }
-  return true;
-}
-
-/**
- * Triggers circuit breaker cooldown when Google Maps returns quota/rate limit error.
- */
-export function markGoogleMapsQuotaExceeded(reason: string): void {
-  googleMapsQuotaExceededUntil = Date.now() + COOLDOWN_DURATION_MS;
-  console.warn(`[GeoRouting Circuit Breaker] Google Maps limit hit (${reason}). Auto-switched to OSRM / OpenRouteService / Nominatim fallbacks for 15 minutes.`);
-}
-
 /**
  * Straight-line distance only. Never treat this value as road distance or a delivery quote.
  */
