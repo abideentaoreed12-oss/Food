@@ -57,6 +57,29 @@ async function syncMenuItemToRestaurantJson(
 }
 
 
+const JWT_SECRET = (process.env.JWT_SECRET || '').trim();
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
+
+function verifyToken(req: NextRequest): any | null {
+  if (!JWT_SECRET) return null;
+  try {
+    const authHeader = req.headers.get('authorization');
+    const rawToken = authHeader?.startsWith('Bearer ')
+      ? authHeader.substring(7)
+      : req.cookies.get('veyrang_jwt_token')?.value ||
+        req.cookies.get('veyrang_token')?.value ||
+        req.cookies.get('veyrang_auth_token')?.value ||
+        req.cookies.get('token')?.value ||
+        req.cookies.get('auth_token')?.value;
+    const token = (rawToken || '').trim();
+    if (!token) return null;
+    return jwt.verify(token, JWT_SECRET) as any;
+  } catch {
+    return null;
+  }
+}
+
 async function getUser(req: NextRequest) {
   const decoded = verifyToken(req);
   if (!decoded) return null;
