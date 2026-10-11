@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { randomUUID, randomInt } from 'crypto';
-import { sendVerificationEmail } from '../../../lib/email';
 import { d1 } from '../../../lib/d1';
 import { r2 } from '../../../lib/r2';
 import { siteDataManager, PUBLIC_SETTINGS_WHITELIST } from '../../../lib/siteDataSnapshot';
-import { paymentGateway } from '../../../lib/payment';
-import {
-  calculateRestaurantDistanceMetrics,
-  calculateDistanceAndDuration,
-  calculateBatchRestaurantDistanceMetrics,
-  geocodeAddress,
-  reverseGeocodeCoordinates
-} from '../../../server/utils/distance';
-import { buildPublicRestaurant, buildPublicRestaurantList } from '../../../lib/restaurantMenu';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
