@@ -655,7 +655,7 @@ export const db = {
             fulfillmentType: parsed?.fulfillmentType || 'delivery',
             deliveryNotes: parsed?.deliveryNotes || '',
             routeProgress: parsed?.routeProgress ?? (o.status === 'delivered' ? 100 : 0),
-            estimatedArrivalMinutes: parsed?.estimatedArrivalMinutes ?? 0,
+            estimatedArrivalMinutes: parsed?.estimatedArrivalMinutes ?? null,
             statusHistory: parsed?.statusHistory || [
               {
                 status: o.status || 'placed',
@@ -718,7 +718,7 @@ export const db = {
           fulfillmentType: parsed?.fulfillmentType || 'delivery',
           deliveryNotes: parsed?.deliveryNotes || '',
           routeProgress: parsed?.routeProgress ?? (o.status === 'delivered' ? 100 : 0),
-          estimatedArrivalMinutes: parsed?.estimatedArrivalMinutes ?? 0,
+          estimatedArrivalMinutes: parsed?.estimatedArrivalMinutes ?? null,
           statusHistory: parsed?.statusHistory || [
             {
               status: o.status || 'placed',
