@@ -433,17 +433,17 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
                 <div className="text-[10px] text-slate-400 truncate">{kitchenCoord.address}</div>
               </div>
 
-              {/* Live Distance & ETA Center Telemetry */}
+              {/* Route and dispatch status; distances are shown only when supplied by a real router. */}
               <div className="bg-slate-900/95 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-emerald-500/40 text-center shadow-lg">
                 <div className="flex items-center justify-center gap-1.5 text-emerald-400 font-extrabold text-[11px]">
-                  <Radio className="w-3.5 h-3.5 animate-pulse" />
+                  <Radio className="w-3.5 h-3.5" />
                   <span>Dispatch Status</span>
                 </div>
                 <div className="text-base font-extrabold font-mono text-white mt-0.5">
-                  {order.status === 'delivered' ? 'Destination Reached' : `${remainingDistanceKm} km remaining`}
+                  {order.status === 'delivered' ? 'Destination Reached' : Number.isFinite(remainingDistanceKm) ? `${remainingDistanceKm} km remaining` : 'Distance unavailable'}
                 </div>
                 <div className="text-[10px] text-slate-400 font-mono">
-                  Speed: {order.status === 'in_transit' && Number.isFinite(courierCoord.speed) ? `${courierCoord.speed} km/h` : 'Speed unavailable'} · GPS status unavailable unless a fix is received
+                  Speed: {order.status === 'in_transit' && Number.isFinite(courierCoord.speed) ? `${courierCoord.speed} km/h` : 'Speed unavailable'} · Courier GPS shown only when a recent fix is received
                 </div>
               </div>
 
