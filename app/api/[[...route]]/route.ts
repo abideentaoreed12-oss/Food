@@ -691,8 +691,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
-  // 24. Admin Categories — normalized menu_categories only (auth required)
+  // 24. Categories — D1 only; admin all, restaurant own kitchen
   if (pathname === '/admin/categories') {
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin' && user.role !== 'restaurant')) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+    if (user.role === 'restaurant') {
+      const rid = user.restaurantId || (await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id])).results?.[0]?.restaurant_id;
+      if (!rid) return NextResponse.json({ success: true, data: [] });
+      const d1Res = await d1.query('SELECT * FROM menu_categories WHERE restaurant_id = ? ORDER BY sort_order ASC', [rid], { cache: false });
+      return NextResponse.json({ success: true, data: d1Res.results || [] });
+    }
     const d1Res = await d1.query('SELECT * FROM menu_categories ORDER BY sort_order ASC', [], { cache: false });
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
@@ -713,8 +723,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
-  // 26. Admin Addons — auth required
+  // 26. Addons — auth required (admin / sub_admin / restaurant)
   if (pathname === '/admin/addons') {
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin' && user.role !== 'restaurant')) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
     const d1Res = await d1.query('SELECT * FROM addons ORDER BY created_at DESC', [], { cache: false });
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
@@ -2575,13 +2589,18 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
+  const user = await getUser(req);
   if (pathname.startsWith('/admin/')) {
-    const user = await getUser(req);
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
-      return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 401 });
+    const menuPath = pathname.startsWith('/admin/menu') || pathname.startsWith('/admin/categories') || pathname.startsWith('/admin/addons');
+    const allowed =
+      user &&
+      (user.role === 'admin' ||
+        user.role === 'sub_admin' ||
+        (user.role === 'restaurant' && menuPath));
+    if (!allowed) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     }
   }
-  const user = await getUser(req);
 
   // 1. R2 Storage File Delete
   if (pathname.startsWith('/storage/file/')) {

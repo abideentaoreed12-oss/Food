@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 import { Order, OrderStatus } from '../../types';
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 import { SpecialActionButton } from '../shared/SpecialActionButton';
+import { api } from '../../services/api';
 
 export const RestaurantPortal: React.FC = () => {
   const { user } = useAuth();
@@ -38,6 +39,13 @@ export const RestaurantPortal: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'tickets' | 'menu' | 'finance'>('tickets');
   const [ticketPrinted, setTicketPrinted] = useState<string | null>(null);
+  const [liveMenu, setLiveMenu] = useState<any[]>([]);
+  const [menuLoading, setMenuLoading] = useState(false);
+  const [menuMsg, setMenuMsg] = useState('');
+  const [newDishName, setNewDishName] = useState('');
+  const [newDishPrice, setNewDishPrice] = useState('');
+  const [newDishDesc, setNewDishDesc] = useState('');
+  const [savingDish, setSavingDish] = useState(false);
 
   // Restaurant accounts are scoped to the restaurant assigned by an administrator.
   // Never default to restaurants[0] or allow a merchant to switch into another business.
@@ -49,6 +57,62 @@ export const RestaurantPortal: React.FC = () => {
   const restaurantOrders = currentRestaurant
     ? orders.filter((o) => o.restaurantId === currentRestaurant.id)
     : [];
+
+  const loadLiveMenu = useCallback(async () => {
+    if (!assignedRestaurantId) return;
+    setMenuLoading(true);
+    try {
+      const res: any = await api.admin.getMenuItems();
+      const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      setLiveMenu(rows);
+      setMenuMsg('');
+    } catch (err: any) {
+      setLiveMenu([]);
+      setMenuMsg(err?.message || 'Could not load menu from D1');
+    } finally {
+      setMenuLoading(false);
+    }
+  }, [assignedRestaurantId]);
+
+  useEffect(() => {
+    if (activeTab === 'menu') loadLiveMenu();
+  }, [activeTab, loadLiveMenu]);
+
+  const handleCreateDish = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDishName.trim() || !newDishPrice || !assignedRestaurantId) return;
+    setSavingDish(true);
+    setMenuMsg('');
+    try {
+      await api.admin.createMenuItem({
+        name: newDishName.trim(),
+        price: Number(newDishPrice),
+        description: newDishDesc.trim(),
+        restaurantId: assignedRestaurantId,
+        category: 'Main Dishes',
+      });
+      setNewDishName('');
+      setNewDishPrice('');
+      setNewDishDesc('');
+      setMenuMsg('Dish saved to D1. Visible to admin and public catalogue after LKG refresh.');
+      await loadLiveMenu();
+    } catch (err: any) {
+      setMenuMsg(err?.message || 'Failed to save dish');
+    } finally {
+      setSavingDish(false);
+    }
+  };
+
+  const handleToggleDish = async (id: string) => {
+    try {
+      await api.admin.toggleMenuItem(id);
+      await loadLiveMenu();
+      setMenuMsg('Availability updated in D1.');
+    } catch (err: any) {
+      setMenuMsg(err?.message || 'Toggle failed');
+    }
+  };
+
 
   const newTickets = restaurantOrders.filter((o) => o.status === 'placed');
   const preparingTickets = restaurantOrders.filter(
@@ -453,6 +517,45 @@ export const RestaurantPortal: React.FC = () => {
               Instantly toggle item availability (86 status) if kitchen ingredients run out. Changes update in customer storefronts immediately.
             </p>
           </div>
+
+          {menuMsg ? (
+            <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-950">{menuMsg}</div>
+          ) : null}
+
+          <form onSubmit={handleCreateDish} className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
+            <div className="md:col-span-4 text-sm font-bold text-slate-900">Add new dish (live D1 to admin to public catalogue)</div>
+            <input required value={newDishName} onChange={(e) => setNewDishName(e.target.value)} placeholder="Dish name" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
+            <input required type="number" min={0} step={50} value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} placeholder="Price (NGN)" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
+            <input value={newDishDesc} onChange={(e) => setNewDishDesc(e.target.value)} placeholder="Short description" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 md:col-span-2" />
+            <button type="submit" disabled={savingDish} className="md:col-span-4 rounded-xl bg-[#FF5500] px-4 py-2.5 text-sm font-bold text-white hover:bg-orange-600 disabled:opacity-60">
+              {savingDish ? 'Saving to D1' : 'Save dish to D1'}
+            </button>
+          </form>
+
+          <div className="space-y-2 rounded-2xl border border-slate-700 bg-slate-950/60 p-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-white">Your kitchen menu (from D1)</h4>
+              <button type="button" onClick={loadLiveMenu} className="text-xs font-bold text-[#FF5500] hover:text-orange-400">Refresh</button>
+            </div>
+            {menuLoading ? (
+              <p className="text-xs text-slate-300">Loading from D1</p>
+            ) : liveMenu.length === 0 ? (
+              <p className="text-xs text-slate-300">No dishes in D1 yet. Add one above.</p>
+            ) : (
+              liveMenu.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-600 bg-slate-900 px-3 py-2.5">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-white">{item.name}</div>
+                    <div className="text-xs text-slate-300">NGN {Number(item.price || 0).toLocaleString()} - {item.is_available === 0 ? 'Hidden' : 'Available'}</div>
+                  </div>
+                  <button type="button" onClick={() => handleToggleDish(item.id)} className="shrink-0 rounded-lg border border-slate-500 bg-white px-2.5 py-1 text-xs font-bold text-slate-900 hover:border-[#FF5500] hover:text-[#FF5500]">
+                    {item.is_available === 0 ? 'Restock' : 'Hide'}
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
 
           <div className="space-y-6">
             {currentRestaurant.categories.map((cat) => (
