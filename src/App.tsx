@@ -36,6 +36,8 @@ import { FloatingCartBar } from './components/customer/FloatingCartBar';
 import { MultiRestaurantConflictModal } from './components/customer/MultiRestaurantConflictModal';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import { GOOGLE_MAPS_API_KEY } from './utils/googleMapsConfig';
+import { APIProvider } from '@vis.gl/react-google-maps';
+import { GOOGLE_MAPS_API_KEY } from './utils/googleMapsConfig';
 
 const AppContent: React.FC = () => {
   const { activeRole, setActiveRole, activePage, setActivePage, isWalletModalOpen, setIsWalletModalOpen } = useDelivery();
@@ -142,5 +144,9 @@ export default function App({ initialRole }: { initialRole?: UserRole } = {}) {
     </AuthProvider>
   );
 
-  return content;
+  return (
+    <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={['places', 'geometry']} onError={(error) => console.warn('Optional map display unavailable:', error)}>
+      {content}
+    </APIProvider>
+  );
 }
