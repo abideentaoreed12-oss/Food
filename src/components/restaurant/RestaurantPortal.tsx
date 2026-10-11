@@ -46,6 +46,7 @@ export const RestaurantPortal: React.FC = () => {
   const [newDishPrice, setNewDishPrice] = useState('');
   const [newDishDesc, setNewDishDesc] = useState('');
   const [savingDish, setSavingDish] = useState(false);
+  const [editingDishId, setEditingDishId] = useState<string | null>(null);
 
   // Restaurant accounts are scoped to the restaurant assigned by an administrator.
   // Never default to restaurants[0] or allow a merchant to switch into another business.
@@ -84,17 +85,23 @@ export const RestaurantPortal: React.FC = () => {
     setSavingDish(true);
     setMenuMsg('');
     try {
-      await api.admin.createMenuItem({
+      const payload = {
         name: newDishName.trim(),
         price: Number(newDishPrice),
         description: newDishDesc.trim(),
         restaurantId: assignedRestaurantId,
-        category: 'Main Dishes',
-      });
+        ...(editingDishId ? {} : { category: 'Main Dishes' }),
+      };
+      if (editingDishId) {
+        await api.admin.updateMenuItem(editingDishId, payload);
+      } else {
+        await api.admin.createMenuItem(payload);
+      }
       setNewDishName('');
       setNewDishPrice('');
       setNewDishDesc('');
-      setMenuMsg('Dish saved to D1. Visible to admin and public catalogue after LKG refresh.');
+      setEditingDishId(null);
+      setMenuMsg(editingDishId ? 'Dish updated in D1.' : 'Dish saved to D1 and the shared catalogue refreshed.');
       await loadLiveMenu();
     } catch (err: any) {
       setMenuMsg(err?.message || 'Failed to save dish');
@@ -528,7 +535,7 @@ export const RestaurantPortal: React.FC = () => {
             <input required type="number" min={0} step={50} value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} placeholder="Price (NGN)" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
             <input value={newDishDesc} onChange={(e) => setNewDishDesc(e.target.value)} placeholder="Short description" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 md:col-span-2" />
             <button type="submit" disabled={savingDish} className="md:col-span-4 rounded-xl bg-[#FF5500] px-4 py-2.5 text-sm font-bold text-white hover:bg-orange-600 disabled:opacity-60">
-              {savingDish ? 'Saving to D1' : 'Save dish to D1'}
+              {savingDish ? 'Saving to D1' : editingDishId ? 'Update dish' : 'Save dish to D1'}
             </button>
           </form>
 
@@ -548,9 +555,13 @@ export const RestaurantPortal: React.FC = () => {
                     <div className="truncate text-sm font-semibold text-white">{item.name}</div>
                     <div className="text-xs text-slate-300">NGN {Number(item.price || 0).toLocaleString()} - {item.is_available === 0 ? 'Hidden' : 'Available'}</div>
                   </div>
-                  <button type="button" onClick={() => handleToggleDish(item.id)} className="shrink-0 rounded-lg border border-slate-500 bg-white px-2.5 py-1 text-xs font-bold text-slate-900 hover:border-[#FF5500] hover:text-[#FF5500]">
-                    {item.is_available === 0 ? 'Restock' : 'Hide'}
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button type="button" onClick={() => { setEditingDishId(String(item.id)); setNewDishName(String(item.name || '')); setNewDishPrice(String(item.price ?? '')); setNewDishDesc(String(item.description || '')); setMenuMsg('Editing dish. Save changes to update D1.'); }} className="rounded-lg border border-slate-500 bg-slate-800 px-2.5 py-1 text-xs font-bold text-white hover:border-[#FF5500]">Edit</button>
+                    <button type="button" onClick={() => handleToggleDish(item.id)} className="rounded-lg border border-slate-500 bg-white px-2.5 py-1 text-xs font-bold text-slate-900 hover:border-[#FF5500] hover:text-[#FF5500]">
+                      {item.is_available === 0 ? 'Restock' : 'Hide'}
+                    </button>
+                    <button type="button" onClick={async () => { if (!window.confirm('Delete this dish permanently?')) return; try { await api.admin.deleteMenuItem(String(item.id)); await loadLiveMenu(); setMenuMsg('Dish deleted from D1 and the shared catalogue refreshed.'); } catch (err: any) { setMenuMsg(err?.message || 'Could not delete dish.'); } }} className="rounded-lg border border-rose-700 bg-rose-950 px-2.5 py-1 text-xs font-bold text-rose-200 hover:bg-rose-900">Delete</button>
+                  </div>
                 </div>
               ))
             )}
