@@ -54,10 +54,17 @@ async function syncMenuItemToRestaurantJson(
       throw new Error('Could not strip embedded menu from restaurant ' + row.id);
     }
   }
-  // Publish mutations immediately instead of waiting for the normal polling interval.
-  const snapshot = await siteDataManager.refreshSnapshot({ force: true, allowEmpty: true, isAuthorizedAdmin: true });
-  if (!snapshot || snapshot.syncStatus !== 'synced' || !snapshot.metadata?.persistedToD1 || !snapshot.metadata?.persistedToR2) {
-    throw new Error('Menu changed in D1, but the shared catalogue snapshot could not be verified in D1 and R2.');
+  // The D1 menu mutation is already committed before this helper runs. Snapshot/R2
+  // persistence is a distribution step, not a reason to report a successful menu
+  // edit as failed. Attempt an immediate refresh; the regular sync cycle can retry
+  // if R2 is temporarily unavailable.
+  try {
+    const snapshot = await siteDataManager.refreshSnapshot({ force: true, allowEmpty: true, isAuthorizedAdmin: true });
+    if (!snapshot || snapshot.syncStatus !== 'synced' || !snapshot.metadata?.persistedToD1 || !snapshot.metadata?.persistedToR2) {
+      console.warn('[MenuSync] D1 mutation succeeded, but immediate snapshot persistence is incomplete; scheduled sync will retry.');
+    }
+  } catch (syncError: any) {
+    console.warn('[MenuSync] D1 mutation succeeded, but immediate snapshot refresh failed; scheduled sync will retry:', syncError?.message || syncError);
   }
 }
 
