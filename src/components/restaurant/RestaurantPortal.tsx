@@ -29,6 +29,7 @@ export const RestaurantPortal: React.FC = () => {
   const {
     restaurants,
     orders,
+    refreshData,
     advanceOrderStatus,
     adjustOrderPrepTime,
     updateItemAvailability,
@@ -140,7 +141,7 @@ export const RestaurantPortal: React.FC = () => {
     try {
       await api.admin.assignCourier(orderId, courierId);
       setMenuMsg('Courier assigned and recorded. Confirm handover separately when the courier collects the order.');
-      await api.admin.getOrders().then(() => undefined);
+      await refreshData();
     } catch (err: any) {
       setMenuMsg(err?.message || 'Courier assignment failed.');
     } finally {
