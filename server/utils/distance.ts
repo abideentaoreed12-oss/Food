@@ -475,7 +475,12 @@ export async function calculateBatchRestaurantDistanceMetrics(
           routingEngine: metrics.routingEngine
         };
       } catch (e) {
-        return rest;
+        const {
+          distanceKm, distanceText, durationMinutes, durationText,
+          calculatedDeliveryFee, inDeliveryRadius, isLiveRoadDistance, routingEngine,
+          ...restaurantWithoutStaleMetrics
+        } = rest;
+        return restaurantWithoutStaleMetrics;
       }
     })
   );
