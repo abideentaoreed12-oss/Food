@@ -160,11 +160,11 @@ export const CartDrawer: React.FC = () => {
     const targetAddr = customAddress.trim() || selectedAddress?.address?.trim() || user?.address?.trim() || '';
     if (!targetAddr) { setLiveDistanceResult(null); return; }
     const timer = setTimeout(() => {
-      calculateDistanceNow(targetAddr);
+      calculateDistanceNow(targetAddr, customCoords || undefined);
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [restaurantId, customAddress, user?.address, selectedAddress?.address, calculateDistanceNow]);
+  }, [restaurantId, customAddress, user?.address, selectedAddress?.address, customCoords, calculateDistanceNow]);
 
   const [selectedTipNGN, setSelectedTipNGN] = useState<number>(0);
   const [paymentMethod] = useState<string>('Debit Card');
@@ -524,7 +524,12 @@ export const CartDrawer: React.FC = () => {
                     />
                     <AddressAutocompleteInput
                       value={customAddress}
-                      onChange={setCustomAddress}
+                      onChange={(nextAddress) => {
+                        setCustomAddress(nextAddress);
+                        // Coordinates belong to a verified selection only. Do not route a newly typed
+                        // address using coordinates from the previous address.
+                        if (nextAddress.trim() !== customAddress.trim()) setCustomCoords(null);
+                      }}
                       onAddressSelect={(data) => {
                         setCustomAddress(data.address);
                         if (data.apartment && !customerApartment) {
@@ -720,7 +725,7 @@ export const CartDrawer: React.FC = () => {
                   }
                   handleCheckout();
                 }}
-                disabled={isSubmitting || (fulfillmentType !== 'pickup' && (!liveDistanceResult || liveDistanceResult.isCalculating || Boolean(distanceError)))}
+                disabled={isSubmitting}
                 className="w-full py-3.5 px-4 rounded-2xl bg-orange-600 text-white font-bold text-sm hover:bg-orange-700 transition-colors shadow-md shadow-orange-600/20 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
