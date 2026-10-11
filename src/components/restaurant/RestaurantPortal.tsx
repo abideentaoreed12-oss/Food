@@ -124,7 +124,7 @@ export const RestaurantPortal: React.FC = () => {
   );
 
   const totalKitchenRevenueUSD = restaurantOrders.reduce((sum, o) => sum + o.subtotal, 0);
-  const commissionRate = currentRestaurant?.commissionPercent || 15;
+  const commissionRate = currentRestaurant?.commissionPercent ?? 15;
   const platformFeeUSD = Math.round(totalKitchenRevenueUSD * (commissionRate / 100) * 100) / 100;
   const netPayoutUSD = Math.round((totalKitchenRevenueUSD - platformFeeUSD) * 100) / 100;
 
@@ -208,7 +208,7 @@ export const RestaurantPortal: React.FC = () => {
                 activeTab === 'menu' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
-              Stock (86)
+              Stock ({liveMenu.length})
             </button>
             <button
               onClick={() => setActiveTab('finance')}
@@ -356,7 +356,7 @@ export const RestaurantPortal: React.FC = () => {
                     <span className="font-mono font-bold text-white">{ord.shortId}</span>
                     <span className="text-amber-400 flex items-center gap-1 font-mono">
                       <Clock className="w-3 h-3" />
-                      {ord.prepTimeAdjustmentMin ? `+${ord.prepTimeAdjustmentMin}m added` : 'In oven (10m)'}
+                      {ord.prepTimeAdjustmentMin ? `+${ord.prepTimeAdjustmentMin}m added` : 'Preparing'}
                     </span>
                   </div>
 
