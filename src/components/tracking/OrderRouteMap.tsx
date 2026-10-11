@@ -191,7 +191,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
     if (courierLocation && Number.isFinite(courierLocation.lat) && Number.isFinite(courierLocation.lng)) {
       return courierLocation;
     }
-    return { lat: Number.NaN, lng: Number.NaN, speed: 0, heading: 0 };
+    return { lat: Number.NaN, lng: Number.NaN, speed: Number.NaN, heading: Number.NaN };
   }, [courierLocation]);
 
   // Trip and remaining distances
@@ -337,7 +337,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
             </AdvancedMarker>
 
             {/* 3. Live Courier Moving Marker */}
-            <AdvancedMarker position={{ lat: courierCoord.lat, lng: courierCoord.lng }} title="Rider in Transit">
+            {Number.isFinite(courierCoord.lat) && Number.isFinite(courierCoord.lng) && <AdvancedMarker position={{ lat: courierCoord.lat, lng: courierCoord.lng }} title="Courier GPS position">
               <div className="relative">
                 <div className="w-9 h-9 rounded-full bg-emerald-500 border-2 border-white shadow-xl flex items-center justify-center text-white ring-4 ring-emerald-400/30 animate-pulse">
                   <Bike className="w-5 h-5 stroke-[2.5]" />
@@ -346,7 +346,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
                   <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
                 </div>
               </div>
-            </AdvancedMarker>
+            </AdvancedMarker>}
 
             {/* 4. Real Route Polyline */}
             <GoogleMapsPolylineRoute path={routeWaypoints} color="#FF5500" />
@@ -437,13 +437,13 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
               <div className="bg-slate-900/95 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-emerald-500/40 text-center shadow-lg">
                 <div className="flex items-center justify-center gap-1.5 text-emerald-400 font-extrabold text-[11px]">
                   <Radio className="w-3.5 h-3.5 animate-pulse" />
-                  <span>Live Dispatch Vector</span>
+                  <span>Dispatch Status</span>
                 </div>
                 <div className="text-base font-extrabold font-mono text-white mt-0.5">
                   {order.status === 'delivered' ? 'Destination Reached' : `${remainingDistanceKm} km remaining`}
                 </div>
                 <div className="text-[10px] text-slate-400 font-mono">
-                  Speed: {order.status === 'in_transit' ? `${courierCoord.speed || 28} km/h` : '0 km/h'} · Active GPS
+                  Speed: {order.status === 'in_transit' && Number.isFinite(courierCoord.speed) ? `${courierCoord.speed} km/h` : 'Speed unavailable'} · GPS status unavailable unless a fix is received
                 </div>
               </div>
 
