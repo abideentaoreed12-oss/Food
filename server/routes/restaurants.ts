@@ -156,9 +156,10 @@ router.post('/calculate-distance', validateBody(CalculateDistanceSchema), async 
       return res.status(400).json({ success: false, error: 'Select a delivery address before calculating distance.' });
     }
 
-    const restLatValue = restaurantLat ?? targetRestaurant?.lat ?? targetRestaurant?.latitude;
-    const restLngValue = restaurantLng ?? targetRestaurant?.lng ?? targetRestaurant?.longitude;
-    const restAddr = restaurantAddress ?? targetRestaurant?.address;
+    if ((userLat !== undefined) !== (userLng !== undefined)) return res.status(400).json({ success: false, error: 'Customer latitude and longitude must be provided together.' });
+    const restLatValue = targetRestaurant?.lat ?? targetRestaurant?.latitude ?? restaurantLat;
+    const restLngValue = targetRestaurant?.lng ?? targetRestaurant?.longitude ?? restaurantLng;
+    const restAddr = targetRestaurant?.address ?? restaurantAddress;
 
     if (restLatValue === undefined || restLngValue === undefined ||
         !Number.isFinite(Number(restLatValue)) || !Number.isFinite(Number(restLngValue)) ||
