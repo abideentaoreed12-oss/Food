@@ -36,14 +36,14 @@ export const RestaurantsPage: React.FC = () => {
     if (!matchQuery) return false;
     if (filterFast && (r.deliveryTimeMin || 30) > 30) return false;
     if (filterTopRated && (r.rating || 0) < 4.7) return false;
-    if (filterLowFee && (r.deliveryFee || 0) > 500) return false;
+    if (filterLowFee && (!Number.isFinite(Number(r.calculatedDeliveryFee)) || Number(r.calculatedDeliveryFee) > 500)) return false;
     return true;
   });
 
   const sorted = [...filtered].sort((a, b) => {
     if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
     if (sortBy === 'time') return (a.deliveryTimeMin || 30) - (b.deliveryTimeMin || 30);
-    if (sortBy === 'fee') return (a.deliveryFee || 0) - (b.deliveryFee || 0);
+    if (sortBy === 'fee') return (Number.isFinite(Number(a.calculatedDeliveryFee)) ? Number(a.calculatedDeliveryFee) : Number.POSITIVE_INFINITY) - (Number.isFinite(Number(b.calculatedDeliveryFee)) ? Number(b.calculatedDeliveryFee) : Number.POSITIVE_INFINITY);
     return 0;
   });
 
@@ -176,7 +176,7 @@ export const RestaurantsPage: React.FC = () => {
                       {restaurant.distanceText || (restaurant.distanceKm ? `${restaurant.distanceKm} km` : 'Distance unavailable')}
                     </span>
                     <span className="px-2 py-1 rounded-xl bg-black/60 backdrop-blur-md font-mono text-[11px]">
-                      {formatCurrency(restaurant.calculatedDeliveryFee ?? restaurant.deliveryFee, currency)}
+                      {restaurant.calculatedDeliveryFee != null ? formatCurrency(restaurant.calculatedDeliveryFee, currency) : 'Fee after address'}
                     </span>
                   </div>
                 </div>
