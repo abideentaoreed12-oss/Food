@@ -955,15 +955,15 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     }
 
     const itemsSubtotal = cart.reduce((sum, item) => sum + item.itemTotal, 0);
-    const deliveryFee = fulfillmentType === 'pickup'
-      ? 0
-      : (Number.isFinite(Number(details.deliveryFee)) && details.deliveryFee !== undefined
-          ? Math.max(0, Number(details.deliveryFee))
-          : Math.max(0, Number(cartRestaurant.deliveryFee) || 0));
-    // serviceFee dynamically resolved from D1 settings
-    const packagingFee = 250;
+    const suppliedDeliveryFee = Number(details.deliveryFee);
+    if (fulfillmentType !== 'pickup' &&
+        (details.deliveryFee === undefined || !Number.isFinite(suppliedDeliveryFee) || suppliedDeliveryFee < 0)) {
+      throw new Error('A fresh address-based delivery fee quote is required before placing this order.');
+    }
+    const deliveryFee = fulfillmentType === 'pickup' ? 0 : suppliedDeliveryFee;
+    // Fees must come from configured platform/zone data; never add a hardcoded packaging charge.
     const discount = appliedPromo?.discountAmount || 0;
-    const grossTotal = itemsSubtotal + deliveryFee + serviceFee + packagingFee + details.tip - discount;
+    const grossTotal = itemsSubtotal + deliveryFee + serviceFee + details.tip - discount;
 
     // Always spend available wallet credit first; debit card covers only the remainder.
     const walletDeduction = Math.min(Math.max(0, Number(walletBalanceNGN) || 0), Math.max(0, grossTotal));
@@ -997,7 +997,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
       status: 'placed',
       subtotal: itemsSubtotal,
       deliveryFee,
-      serviceFee: serviceFee + packagingFee,
+      serviceFee,
       discountAmount: discount,
       tip: details.tip,
       total: grossTotal,
