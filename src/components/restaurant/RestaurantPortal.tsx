@@ -655,14 +655,14 @@ export const RestaurantPortal: React.FC = () => {
 
 
           <div className="space-y-6">
-            {currentRestaurant.categories.map((cat) => (
+            {(currentRestaurant.categories || []).map((cat) => (
               <div key={cat.id} className="space-y-3">
                 <h4 className="text-sm font-bold text-orange-400 pb-1 border-b border-slate-200">
                   {cat.name}
                 </h4>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {cat.items.map((it) => (
+                  {(cat.items || []).map((it) => (
                     <div
                       key={it.id}
                       className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-3"
