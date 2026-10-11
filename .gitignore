@@ -12,6 +12,7 @@ web_modules/
 dist/
 build/
 .next/
+.vercel/
 
 # Local environment variables (Never commit or create .env files)
 .env
