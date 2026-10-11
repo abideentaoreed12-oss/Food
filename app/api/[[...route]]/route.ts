@@ -46,14 +46,13 @@ async function syncMenuItemToRestaurantJson(
     try { restaurantData = row.raw_json ? JSON.parse(row.raw_json) : {}; } catch { restaurantData = {}; }
     if (!restaurantData || typeof restaurantData !== 'object') continue;
     if (!('categories' in restaurantData) && !('menuItems' in restaurantData) && !('menu_items' in restaurantData)) continue;
-    delete restaurantData.categories;
-    delete restaurantData.menuItems;
-    delete restaurantData.menu_items;
+    delete restaurantData.categories; delete restaurantData.menuItems; delete restaurantData.menu_items;
     const updateRes = await d1.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(restaurantData), row.id]);
-    if (!updateRes || updateRes.success === false) {
-      throw new Error('Could not strip embedded menu from restaurant ' + row.id);
-    }
+    if (!updateRes || updateRes.success === false) throw new Error('Could not strip embedded menu from restaurant ' + row.id);
   }
+  const refreshed = await siteDataManager.refreshSnapshot({ force: true });
+  if (!refreshed) throw new Error('D1 menu mutation succeeded but the live snapshot refresh failed.');
+  if (!refreshed.metadata?.persistedToD1 || !refreshed.metadata?.persistedToR2) throw new Error('Snapshot persistence to both D1 and R2 could not be verified.');
 }
 
 
@@ -147,9 +146,9 @@ export async function GET(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
   if (pathname.startsWith('/admin/')) {
     const user = await getUser(req);
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
-      return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 401 });
-    }
+    const isAdmin = user && (user.role === 'admin' || user.role === 'sub_admin');
+    const restaurantMenuRoute = user?.role === 'restaurant' && ['/admin/menu', '/admin/categories'].includes(pathname);
+    if (!isAdmin && !restaurantMenuRoute) return NextResponse.json({ success: false, error: 'Administrator or assigned restaurant access required' }, { status: 401 });
   }
 
   // 1. Health check
@@ -707,6 +706,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
+  if (pathname === '/restaurant/couriers') {
+    const user = await getUser(req);
+    if (!user || !['admin', 'sub_admin', 'restaurant'].includes(user.role)) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    const result = await d1.query("SELECT id, name, phone FROM users WHERE role = 'courier' AND is_approved = 1 ORDER BY name ASC", [], { cache: false });
+    if (!result || result.success === false) return NextResponse.json({ success: false, error: 'Could not load approved couriers from D1.' }, { status: 503 });
+    return NextResponse.json({ success: true, data: result.results || [] }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
   // 25. Admin Menu — normalized menu_items only (auth required, never mock/JSON embed)
   if (pathname === '/admin/menu') {
     const user = await getUser(req);
@@ -930,9 +937,9 @@ export async function POST(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
   if (pathname.startsWith('/admin/')) {
     const user = await getUser(req);
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
-      return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 401 });
-    }
+    const isAdmin = user && (user.role === 'admin' || user.role === 'sub_admin');
+    const restaurantMenuRoute = user?.role === 'restaurant' && ['/admin/menu', '/admin/categories'].includes(pathname);
+    if (!isAdmin && !restaurantMenuRoute) return NextResponse.json({ success: false, error: 'Administrator or assigned restaurant access required' }, { status: 401 });
   }
   const body = await req.json().catch(() => ({}));
 
@@ -1677,25 +1684,40 @@ export async function POST(req: NextRequest) {
     if (!user || (user.role !== 'admin' && user.role !== 'sub_admin' && user.role !== 'restaurant')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
-    const { name, price, categoryId, category, restaurantId, description, isAvailable, popular, imageR2Url, imageUrl } = body;
-    if (!name || price === undefined) {
-      return NextResponse.json({ success: false, error: 'Name and price are required' }, { status: 400 });
-    }
-    const id = `item-${Date.now()}`;
-    const now = new Date().toISOString();
+    const { name, price, categoryId, category, restaurantId, description, isAvailable, popular, imageR2Url, imageUrl, dietary } = body;
+    const cleanName = String(name || '').trim(), cleanPrice = Number(price);
+    if (!cleanName || price === undefined || !Number.isFinite(cleanPrice) || cleanPrice <= 0) return NextResponse.json({ success: false, error: 'Dish name and price greater than zero are required.' }, { status: 400 });
+    const id = `item-${randomUUID()}`, now = new Date().toISOString();
     let targetRestaurantId = restaurantId ? String(restaurantId) : '';
     if (user.role === 'restaurant') {
-      targetRestaurantId = String(user.restaurantId || (await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id])).results?.[0]?.restaurant_id || '');
-      if (!targetRestaurantId) {
-        return NextResponse.json({ success: false, error: 'Your account is not linked to a restaurant kitchen.' }, { status: 403 });
+      const assignment = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+      if (!assignment.success) return NextResponse.json({ success: false, error: 'Restaurant assignment could not be verified.' }, { status: 503 });
+      targetRestaurantId = String(assignment.results?.[0]?.restaurant_id || user.restaurantId || '');
+      if (!targetRestaurantId) return NextResponse.json({ success: false, error: 'Your account is not linked to a restaurant kitchen.' }, { status: 403 });
+    } else if (!targetRestaurantId) return NextResponse.json({ success: false, error: 'Select a restaurant so this dish is tagged to the correct kitchen.' }, { status: 400 });
+    const rest = await d1.query('SELECT id FROM restaurants WHERE id = ? LIMIT 1', [targetRestaurantId], { cache: false });
+    if (!rest.success) return NextResponse.json({ success: false, error: 'Restaurant lookup failed.' }, { status: 503 });
+    if (!rest.results?.length) return NextResponse.json({ success: false, error: 'Selected restaurant not found.' }, { status: 404 });
+    const categoryName = String(category || '').trim() || 'Main Dishes';
+    let resolvedCategoryId = categoryId ? String(categoryId) : '';
+    if (resolvedCategoryId) {
+      const check = await d1.query('SELECT id FROM menu_categories WHERE id = ? AND restaurant_id = ? LIMIT 1', [resolvedCategoryId, targetRestaurantId], { cache: false });
+      if (!check.success) return NextResponse.json({ success: false, error: 'Category lookup failed.' }, { status: 503 });
+      if (!check.results?.length) return NextResponse.json({ success: false, error: 'Category does not belong to this restaurant.' }, { status: 400 });
+    } else {
+      const check = await d1.query('SELECT id FROM menu_categories WHERE restaurant_id = ? AND LOWER(name) = LOWER(?) LIMIT 1', [targetRestaurantId, categoryName], { cache: false });
+      if (!check.success) return NextResponse.json({ success: false, error: 'Category lookup failed.' }, { status: 503 });
+      if (check.results?.[0]) resolvedCategoryId = String(check.results[0].id);
+      else {
+        resolvedCategoryId = 'cat-' + randomUUID();
+        const added = await d1.query('INSERT INTO menu_categories (id, restaurant_id, name, description, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)', [resolvedCategoryId, targetRestaurantId, categoryName, '', 99, now]);
+        if (!added || added.success === false) return NextResponse.json({ success: false, error: 'Could not save category to D1.' }, { status: 503 });
       }
-    } else if (!targetRestaurantId) {
-      return NextResponse.json({ success: false, error: 'restaurantId is required so the dish is tagged to a kitchen.' }, { status: 400 });
     }
     const insertRes = await d1.query(
       `INSERT INTO menu_items (id, restaurant_id, category_id, name, description, price, dietary_tags, popular, is_available, image_r2_url, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?)`,
-      [id, targetRestaurantId, categoryId || category || 'Main Dishes', name, description || '', Number(price), popular ? 1 : 0, isAvailable === false ? 0 : 1, imageR2Url || imageUrl || null, now]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, targetRestaurantId, resolvedCategoryId, cleanName, String(description || '').trim(), cleanPrice, JSON.stringify(Array.isArray(dietary) ? dietary.filter((v: any) => typeof v === 'string') : []), popular ? 1 : 0, isAvailable === false ? 0 : 1, imageR2Url || imageUrl || null, now]
     );
     if (insertRes?.success === false) {
       return NextResponse.json({ success: false, error: 'Menu item could not be saved to the database.' }, { status: 500 });
@@ -1713,7 +1735,7 @@ export async function POST(req: NextRequest) {
         details: syncError?.message || 'Catalogue synchronization failed'
       }, { status: 503 });
     }
-    return NextResponse.json({ success: true, data: { id, name, price: Number(price) } }, { status: 201 });
+    return NextResponse.json({ success: true, data: { id, restaurantId: targetRestaurantId, categoryId: resolvedCategoryId, name: cleanName, price: cleanPrice } }, { status: 201 });
   }
 
   // 18. Admin Addons Create
@@ -2270,18 +2292,72 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Promo toggled' });
   }
 
-  // 5. Admin Menu Item Toggle
+  const menuEditMatch = pathname.match(/^\/admin\/menu\/([^/]+)$/);
+  if (menuEditMatch) {
+    if (!user || !['admin', 'sub_admin', 'restaurant'].includes(user.role)) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    const itemId = decodeURIComponent(menuEditMatch[1]);
+    const found = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [itemId], { cache: false });
+    if (!found.success) return NextResponse.json({ success: false, error: 'Menu item lookup failed.' }, { status: 503 });
+    const old = found.results?.[0];
+    if (!old) return NextResponse.json({ success: false, error: 'Menu item not found.' }, { status: 404 });
+    let assignedId = '';
+    if (user.role === 'restaurant') {
+      const assignment = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+      if (!assignment.success) return NextResponse.json({ success: false, error: 'Restaurant assignment could not be verified.' }, { status: 503 });
+      assignedId = String(assignment.results?.[0]?.restaurant_id || user.restaurantId || '');
+      if (!assignedId || assignedId !== String(old.restaurant_id)) return NextResponse.json({ success: false, error: 'You cannot edit another restaurant’s dish.' }, { status: 403 });
+    }
+    const name = body.name === undefined ? String(old.name || '') : String(body.name || '').trim();
+    const price = body.price === undefined ? Number(old.price) : Number(body.price);
+    const targetRestaurantId = user.role === 'restaurant' ? assignedId : String(body.restaurantId || old.restaurant_id);
+    const description = body.description === undefined ? String(old.description || '') : String(body.description || '').trim();
+    const available = body.isAvailable === undefined ? Number(old.is_available || 0) : (body.isAvailable ? 1 : 0);
+    const popular = body.popular === undefined ? Number(old.popular || 0) : (body.popular ? 1 : 0);
+    if (!name || !Number.isFinite(price) || price <= 0) return NextResponse.json({ success: false, error: 'Dish name and price greater than zero are required.' }, { status: 400 });
+    const rest = await d1.query('SELECT id FROM restaurants WHERE id = ? LIMIT 1', [targetRestaurantId], { cache: false });
+    if (!rest.success) return NextResponse.json({ success: false, error: 'Restaurant lookup failed.' }, { status: 503 });
+    if (!rest.results?.length) return NextResponse.json({ success: false, error: 'Selected restaurant not found.' }, { status: 404 });
+    let categoryId = String(body.categoryId || old.category_id || '');
+    if (body.category && String(body.category).trim()) {
+      const name = String(body.category).trim();
+      const check = await d1.query('SELECT id FROM menu_categories WHERE restaurant_id = ? AND LOWER(name) = LOWER(?) LIMIT 1', [targetRestaurantId, name], { cache: false });
+      if (!check.success) return NextResponse.json({ success: false, error: 'Category lookup failed.' }, { status: 503 });
+      if (check.results?.[0]) categoryId = String(check.results[0].id);
+      else {
+        categoryId = 'cat-' + randomUUID();
+        const added = await d1.query('INSERT INTO menu_categories (id, restaurant_id, name, description, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)', [categoryId, targetRestaurantId, name, '', 99, new Date().toISOString()]);
+        if (!added || added.success === false) return NextResponse.json({ success: false, error: 'Could not save category to D1.' }, { status: 503 });
+      }
+    }
+    const image = body.imageR2Url !== undefined ? body.imageR2Url : body.imageUrl !== undefined ? body.imageUrl : old.image_r2_url;
+    const dietary = body.dietary === undefined ? old.dietary_tags || '[]' : JSON.stringify(Array.isArray(body.dietary) ? body.dietary : []);
+    const update = await d1.query('UPDATE menu_items SET restaurant_id = ?, category_id = ?, name = ?, description = ?, price = ?, is_available = ?, popular = ?, image_r2_url = ?, dietary_tags = ? WHERE id = ?', [targetRestaurantId, categoryId || null, name, description, price, available, popular, image || null, dietary, itemId]);
+    if (!update || update.success === false) return NextResponse.json({ success: false, error: 'Menu item update failed in D1.' }, { status: 503 });
+    const result = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [itemId], { cache: false });
+    if (!result.success || !result.results?.[0]) return NextResponse.json({ success: false, error: 'Updated dish could not be verified.' }, { status: 503 });
+    await syncMenuItemToRestaurantJson(itemId, result.results[0], targetRestaurantId);
+    return NextResponse.json({ success: true, data: result.results[0] });
+  }
+
   const menuToggleMatch = pathname.match(/^\/admin\/menu\/([^/]+)\/toggle$/);
   if (menuToggleMatch) {
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user || !['admin', 'sub_admin', 'restaurant'].includes(user.role)) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     const itemId = decodeURIComponent(menuToggleMatch[1]);
-    await d1.query('UPDATE menu_items SET is_available = CASE WHEN is_available = 1 THEN 0 ELSE 1 END WHERE id = ?', [itemId]);
-    const toggledRes = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [itemId]);
-    if (toggledRes.results?.[0]) await syncMenuItemToRestaurantJson(itemId, toggledRes.results[0], toggledRes.results[0].restaurant_id);
-    else await siteDataManager.refreshSnapshot({ force: true });
-    return NextResponse.json({ success: true, message: 'Menu item availability toggled' });
+    const found = await d1.query('SELECT id, restaurant_id FROM menu_items WHERE id = ? LIMIT 1', [itemId], { cache: false });
+    if (!found.success) return NextResponse.json({ success: false, error: 'Menu item lookup failed.' }, { status: 503 });
+    if (!found.results?.[0]) return NextResponse.json({ success: false, error: 'Menu item not found.' }, { status: 404 });
+    if (user.role === 'restaurant') {
+      const assignment = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+      if (!assignment.success) return NextResponse.json({ success: false, error: 'Restaurant assignment could not be verified.' }, { status: 503 });
+      const rid = assignment.results?.[0]?.restaurant_id || user.restaurantId;
+      if (!rid || String(rid) !== String(found.results[0].restaurant_id)) return NextResponse.json({ success: false, error: 'You cannot change another restaurant’s dish.' }, { status: 403 });
+    }
+    const update = await d1.query('UPDATE menu_items SET is_available = CASE WHEN is_available = 1 THEN 0 ELSE 1 END WHERE id = ?', [itemId]);
+    if (!update || update.success === false) return NextResponse.json({ success: false, error: 'Availability update failed in D1.' }, { status: 503 });
+    const result = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [itemId], { cache: false });
+    if (!result.success || !result.results?.[0]) return NextResponse.json({ success: false, error: 'Updated dish could not be verified.' }, { status: 503 });
+    await syncMenuItemToRestaurantJson(itemId, result.results[0], result.results[0].restaurant_id);
+    return NextResponse.json({ success: true, data: result.results[0] });
   }
 
   // 6. Admin User Role Update
@@ -2677,29 +2753,24 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Category deleted' });
   }
 
-  // 8. Admin Delete Menu Item
   const delMenuMatch = pathname.match(/^\/admin\/menu\/([^/]+)$/);
   if (delMenuMatch) {
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user || !['admin', 'sub_admin', 'restaurant'].includes(user.role)) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     const targetId = decodeURIComponent(delMenuMatch[1]);
-    const existingRes = await d1.query(
-      'SELECT id, restaurant_id, name FROM menu_items WHERE id = ? LIMIT 1',
-      [targetId]
-    );
-    const existingItem = existingRes.results?.[0];
-    const deleteRes = await d1.query('DELETE FROM menu_items WHERE id = ?', [targetId]);
-    if (deleteRes.success === false) {
-      return NextResponse.json({ success: false, error: 'Menu item could not be deleted from the database.' }, { status: 500 });
+    const found = await d1.query('SELECT id, restaurant_id, name FROM menu_items WHERE id = ? LIMIT 1', [targetId], { cache: false });
+    if (!found.success) return NextResponse.json({ success: false, error: 'Menu item lookup failed.' }, { status: 503 });
+    const item = found.results?.[0];
+    if (!item) return NextResponse.json({ success: false, error: 'Menu item not found.' }, { status: 404 });
+    if (user.role === 'restaurant') {
+      const assignment = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+      if (!assignment.success) return NextResponse.json({ success: false, error: 'Restaurant assignment could not be verified.' }, { status: 503 });
+      const rid = assignment.results?.[0]?.restaurant_id || user.restaurantId;
+      if (!rid || String(rid) !== String(item.restaurant_id)) return NextResponse.json({ success: false, error: 'You cannot delete another restaurant’s dish.' }, { status: 403 });
     }
-    await syncMenuItemToRestaurantJson(
-      targetId,
-      null,
-      existingItem?.restaurant_id || null,
-      existingItem?.name || null
-    );
-    return NextResponse.json({ success: true, message: 'Menu item deleted and public catalogue refreshed' });
+    const deleted = await d1.query('DELETE FROM menu_items WHERE id = ?', [targetId]);
+    if (!deleted || deleted.success === false) return NextResponse.json({ success: false, error: 'Menu item could not be deleted from D1.' }, { status: 503 });
+    await syncMenuItemToRestaurantJson(targetId, null, item.restaurant_id, item.name);
+    return NextResponse.json({ success: true, message: 'Menu item deleted and D1/R2 catalogue synchronization verified.' });
   }
 
   // 9. Admin Delete Addon

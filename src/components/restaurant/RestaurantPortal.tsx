@@ -45,7 +45,13 @@ export const RestaurantPortal: React.FC = () => {
   const [newDishName, setNewDishName] = useState('');
   const [newDishPrice, setNewDishPrice] = useState('');
   const [newDishDesc, setNewDishDesc] = useState('');
+  const [newDishCategory, setNewDishCategory] = useState('Main Dishes');
+  const [newDishImage, setNewDishImage] = useState('');
+  const [editingDishId, setEditingDishId] = useState<string | null>(null);
   const [savingDish, setSavingDish] = useState(false);
+  const [couriers, setCouriers] = useState<any[]>([]);
+  const [courierSelections, setCourierSelections] = useState<Record<string, string>>({});
+  const [orderActionMsg, setOrderActionMsg] = useState('');
 
   // Restaurant accounts are scoped to the restaurant assigned by an administrator.
   // Never default to restaurants[0] or allow a merchant to switch into another business.
@@ -64,7 +70,7 @@ export const RestaurantPortal: React.FC = () => {
     try {
       const res: any = await api.admin.getMenuItems();
       const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-      setLiveMenu(rows);
+      setLiveMenu(rows.filter((item: any) => String(item.restaurant_id || item.restaurantId || '') === String(assignedRestaurantId)));
       setMenuMsg('');
     } catch (err: any) {
       setLiveMenu([]);
@@ -78,39 +84,72 @@ export const RestaurantPortal: React.FC = () => {
     if (activeTab === 'menu') loadLiveMenu();
   }, [activeTab, loadLiveMenu]);
 
+  useEffect(() => {
+    if (!assignedRestaurantId) return;
+    let cancelled = false;
+    api.orders.getCouriers().then((res: any) => {
+      if (!cancelled) setCouriers(Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
+    }).catch((err: any) => {
+      if (!cancelled) setOrderActionMsg(err?.message || 'Approved couriers could not be loaded from D1.');
+    });
+    return () => { cancelled = true; };
+  }, [assignedRestaurantId]);
+
+  const resetDishForm = () => {
+    setEditingDishId(null); setNewDishName(''); setNewDishPrice(''); setNewDishDesc('');
+    setNewDishCategory('Main Dishes'); setNewDishImage('');
+  };
+
   const handleCreateDish = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDishName.trim() || !newDishPrice || !assignedRestaurantId) return;
-    setSavingDish(true);
+    setSavingDish(true); setMenuMsg('');
+    const payload = { name: newDishName.trim(), price: Number(newDishPrice), description: newDishDesc.trim(),
+      restaurantId: assignedRestaurantId, category: newDishCategory.trim() || 'Main Dishes', imageR2Url: newDishImage.trim() || null };
+    try {
+      if (editingDishId) {
+        await api.admin.updateMenuItem(editingDishId, payload);
+        setMenuMsg('Dish updated and D1/R2 catalogue sync verified.');
+      } else {
+        await api.admin.createMenuItem(payload);
+        setMenuMsg('Dish created and D1/R2 catalogue sync verified.');
+      }
+      resetDishForm(); await loadLiveMenu();
+    } catch (err: any) {
+      setMenuMsg(err?.message || 'Dish save failed. Verify the live D1/R2 connection.');
+    } finally { setSavingDish(false); }
+  };
+
+  const handleEditDish = (item: any) => {
+    setEditingDishId(String(item.id)); setNewDishName(String(item.name || ''));
+    setNewDishPrice(String(item.price ?? '')); setNewDishDesc(String(item.description || ''));
+    setNewDishCategory(String(item.category_name || item.category || 'Main Dishes'));
+    setNewDishImage(String(item.image_r2_url || item.imageUrl || item.image || ''));
+    setMenuMsg('Editing selected dish.');
+  };
+
+  const handleDeleteDish = async (id: string) => {
+    if (!window.confirm('Delete this dish from the live menu? This cannot be undone.')) return;
     setMenuMsg('');
     try {
-      await api.admin.createMenuItem({
-        name: newDishName.trim(),
-        price: Number(newDishPrice),
-        description: newDishDesc.trim(),
-        restaurantId: assignedRestaurantId,
-        category: 'Main Dishes',
-      });
-      setNewDishName('');
-      setNewDishPrice('');
-      setNewDishDesc('');
-      setMenuMsg('Dish saved to D1. Visible to admin and public catalogue after LKG refresh.');
+      await api.admin.deleteMenuItem(id);
+      if (editingDishId === id) resetDishForm();
+      setMenuMsg('Dish deleted and D1/R2 catalogue sync verified.');
       await loadLiveMenu();
-    } catch (err: any) {
-      setMenuMsg(err?.message || 'Failed to save dish');
-    } finally {
-      setSavingDish(false);
-    }
+    } catch (err: any) { setMenuMsg(err?.message || 'Dish deletion failed.'); }
   };
 
   const handleToggleDish = async (id: string) => {
-    try {
-      await api.admin.toggleMenuItem(id);
-      await loadLiveMenu();
-      setMenuMsg('Availability updated in D1.');
-    } catch (err: any) {
-      setMenuMsg(err?.message || 'Toggle failed');
-    }
+    try { await api.admin.toggleMenuItem(id); await loadLiveMenu(); setMenuMsg('Availability updated and D1/R2 catalogue sync verified.'); }
+    catch (err: any) { setMenuMsg(err?.message || 'Availability update failed.'); }
+  };
+
+  const handleAssignCourier = async (orderId: string) => {
+    const courierId = courierSelections[orderId];
+    if (!courierId) { setOrderActionMsg('Choose an approved courier first.'); return; }
+    setOrderActionMsg('');
+    try { await api.orders.assignCourier(orderId, courierId); setOrderActionMsg('Courier assignment saved to D1.'); }
+    catch (err: any) { setOrderActionMsg(err?.message || 'Courier assignment failed.'); }
   };
 
 
@@ -124,8 +163,8 @@ export const RestaurantPortal: React.FC = () => {
   );
 
   const totalKitchenRevenueUSD = restaurantOrders.reduce((sum, o) => sum + o.subtotal, 0);
-  const commissionRate = currentRestaurant?.commissionPercent || 15;
-  const platformFeeUSD = Math.round(totalKitchenRevenueUSD * (commissionRate / 100) * 100) / 100;
+  const commissionRate = typeof currentRestaurant?.commissionPercent === 'number' ? currentRestaurant.commissionPercent : null;
+  const platformFeeUSD = commissionRate === null ? 0 : Math.round(totalKitchenRevenueUSD * (commissionRate / 100) * 100) / 100;
   const netPayoutUSD = Math.round((totalKitchenRevenueUSD - platformFeeUSD) * 100) / 100;
 
   const handlePrint = (orderId: string) => {
@@ -208,7 +247,7 @@ export const RestaurantPortal: React.FC = () => {
                 activeTab === 'menu' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
-              Stock (86)
+              Menu ({liveMenu.length})
             </button>
             <button
               onClick={() => setActiveTab('finance')}
@@ -246,7 +285,7 @@ export const RestaurantPortal: React.FC = () => {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
           <div className="text-xs text-slate-400 font-medium">Platform Commission</div>
           <div className="text-2xl font-bold text-indigo-400 font-mono mt-1 tabular-nums">
-            {commissionRate}%
+            {commissionRate === null ? 'Not configured' : `${commissionRate}%`}
           </div>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
@@ -256,6 +295,8 @@ export const RestaurantPortal: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {orderActionMsg ? <div role="status" className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-950">{orderActionMsg}</div> : null}
 
       {/* Tab 1: Live Kitchen Tickets */}
       {activeTab === 'tickets' && (
@@ -274,7 +315,7 @@ export const RestaurantPortal: React.FC = () => {
 
             {newTickets.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-850">
-                No new pending tickets. Place an order from Customer view to trigger!
+                No new orders are waiting for this kitchen.
               </div>
             ) : (
               newTickets.map((ord) => (
@@ -356,7 +397,7 @@ export const RestaurantPortal: React.FC = () => {
                     <span className="font-mono font-bold text-white">{ord.shortId}</span>
                     <span className="text-amber-400 flex items-center gap-1 font-mono">
                       <Clock className="w-3 h-3" />
-                      {ord.prepTimeAdjustmentMin ? `+${ord.prepTimeAdjustmentMin}m added` : 'In oven (10m)'}
+                      {ord.prepTimeAdjustmentMin ? `+${ord.prepTimeAdjustmentMin}m added` : 'No prep-time adjustment'}
                     </span>
                   </div>
 
@@ -451,12 +492,19 @@ export const RestaurantPortal: React.FC = () => {
                     )}
                   </div>
 
-                  <button
-                    onClick={() => advanceOrderStatus(ord.id, ord.fulfillmentType === 'pickup' ? 'delivered' : 'in_transit')}
-                    className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-colors shadow-md"
-                  >
+                  <button onClick={() => advanceOrderStatus(ord.id, ord.fulfillmentType === 'pickup' ? 'delivered' : 'in_transit')} className="w-full py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-sm font-bold shadow-md">
                     {ord.fulfillmentType === 'pickup' ? 'Confirm Customer Handover' : 'Hand to Courier'}
                   </button>
+                  {ord.fulfillmentType !== 'pickup' ? <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
+                    <label className="block text-sm font-semibold text-slate-800">Assign a courier</label>
+                    <div className="flex gap-2">
+                      <select value={courierSelections[ord.id] || ''} onChange={(e) => setCourierSelections((prev) => ({ ...prev, [ord.id]: e.target.value }))} className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900">
+                        <option value="">Choose approved courier</option>
+                        {couriers.map((courier) => <option key={courier.id} value={courier.id}>{courier.name}{courier.phone ? ` · ${courier.phone}` : ''}</option>)}
+                      </select>
+                      <button type="button" onClick={() => handleAssignCourier(ord.id)} className="rounded-lg bg-orange-700 px-3 py-2 text-sm font-bold text-white hover:bg-orange-800">Assign</button>
+                    </div>
+                  </div> : null}
                 </div>
               ))
             )}
@@ -522,89 +570,44 @@ export const RestaurantPortal: React.FC = () => {
             <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-950">{menuMsg}</div>
           ) : null}
 
-          <form onSubmit={handleCreateDish} className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
-            <div className="md:col-span-4 text-sm font-bold text-slate-900">Add new dish (live D1 to admin to public catalogue)</div>
+          <form onSubmit={handleCreateDish} className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2">
+            <div className="md:col-span-2 flex items-center justify-between text-sm font-bold text-slate-900">
+              <span>{editingDishId ? 'Edit dish' : 'Add a dish'}</span>
+              {editingDishId ? <button type="button" onClick={resetDishForm} className="font-semibold text-slate-600 underline">Cancel edit</button> : null}
+            </div>
             <input required value={newDishName} onChange={(e) => setNewDishName(e.target.value)} placeholder="Dish name" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
-            <input required type="number" min={0} step={50} value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} placeholder="Price (NGN)" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
-            <input value={newDishDesc} onChange={(e) => setNewDishDesc(e.target.value)} placeholder="Short description" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 md:col-span-2" />
-            <button type="submit" disabled={savingDish} className="md:col-span-4 rounded-xl bg-[#FF5500] px-4 py-2.5 text-sm font-bold text-white hover:bg-orange-600 disabled:opacity-60">
-              {savingDish ? 'Saving to D1' : 'Save dish to D1'}
+            <input required type="number" min={0.01} step="0.01" value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} placeholder="Price (NGN)" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
+            <input required value={newDishCategory} onChange={(e) => setNewDishCategory(e.target.value)} placeholder="Category" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
+            <input value={newDishImage} onChange={(e) => setNewDishImage(e.target.value)} placeholder="Dish image URL (R2 URL recommended)" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
+            <textarea value={newDishDesc} onChange={(e) => setNewDishDesc(e.target.value)} placeholder="Description / ingredients" rows={2} className="md:col-span-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
+            <button type="submit" disabled={savingDish} className="md:col-span-2 rounded-xl bg-[#FF5500] px-4 py-2.5 text-sm font-bold text-white hover:bg-orange-700 disabled:opacity-60">
+              {savingDish ? 'Saving and syncing…' : editingDishId ? 'Save dish changes' : 'Create dish'}
             </button>
           </form>
 
-          <div className="space-y-2 rounded-2xl border border-slate-700 bg-slate-950/60 p-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-white">Your kitchen menu (from D1)</h4>
-              <button type="button" onClick={loadLiveMenu} className="text-xs font-bold text-[#FF5500] hover:text-orange-400">Refresh</button>
+          <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="text-sm font-bold text-slate-900">Your kitchen menu ({liveMenu.length})</h4>
+              <button type="button" onClick={loadLiveMenu} className="text-sm font-bold text-orange-800 hover:text-orange-950">Refresh</button>
             </div>
-            {menuLoading ? (
-              <p className="text-xs text-slate-300">Loading from D1</p>
-            ) : liveMenu.length === 0 ? (
-              <p className="text-xs text-slate-300">No dishes in D1 yet. Add one above.</p>
-            ) : (
-              liveMenu.map((item) => (
-                <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-600 bg-slate-900 px-3 py-2.5">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-white">{item.name}</div>
-                    <div className="text-xs text-slate-300">NGN {Number(item.price || 0).toLocaleString()} - {item.is_available === 0 ? 'Hidden' : 'Available'}</div>
-                  </div>
-                  <button type="button" onClick={() => handleToggleDish(item.id)} className="shrink-0 rounded-lg border border-slate-500 bg-white px-2.5 py-1 text-xs font-bold text-slate-900 hover:border-[#FF5500] hover:text-[#FF5500]">
-                    {item.is_available === 0 ? 'Restock' : 'Hide'}
-                  </button>
+            {menuLoading ? <p className="text-sm text-slate-600">Loading live dishes from D1…</p> : liveMenu.length === 0 ? (
+              <p className="text-sm text-slate-600">No dishes are recorded for this restaurant yet. Add the first dish above.</p>
+            ) : liveMenu.map((item) => (
+              <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-slate-900">{item.name}</div>
+                  <div className="text-sm text-slate-600">NGN {Number(item.price || 0).toLocaleString()} · {Number(item.is_available) === 1 ? 'Available' : 'Hidden'}</div>
+                  {item.description ? <div className="mt-1 text-xs text-slate-600">{item.description}</div> : null}
                 </div>
-              ))
-            )}
-          </div>
-
-
-          <div className="space-y-6">
-            {currentRestaurant.categories.map((cat) => (
-              <div key={cat.id} className="space-y-3">
-                <h4 className="text-sm font-bold text-orange-400 pb-1 border-b border-slate-800">
-                  {cat.name}
-                </h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {cat.items.map((it) => (
-                    <div
-                      key={it.id}
-                      className="p-3.5 bg-slate-850 border border-slate-800 rounded-2xl flex items-center justify-between gap-3"
-                    >
-                      <div className="min-w-0">
-                        <div className="font-semibold text-white text-xs sm:text-sm truncate">
-                          {it.name}
-                        </div>
-                        <div className="text-[11px] text-slate-400 font-mono">
-                          {formatCurrency(it.price, currency)} · {it.dietary.join(', ')}
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => updateItemAvailability(currentRestaurant.id, it.id, !it.isAvailable)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                          it.isAvailable
-                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60'
-                            : 'bg-rose-950 text-rose-300 border border-rose-700/60'
-                        }`}
-                      >
-                        {it.isAvailable ? (
-                          <>
-                            <ToggleRight className="w-4 h-4 text-emerald-400" />
-                            <span>Available</span>
-                          </>
-                        ) : (
-                          <>
-                            <ToggleLeft className="w-4 h-4 text-rose-400" />
-                            <span>86'd (Sold Out)</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  ))}
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => handleEditDish(item)} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 hover:border-orange-600">Edit</button>
+                  <button type="button" onClick={() => handleToggleDish(item.id)} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 hover:border-orange-600">{Number(item.is_available) === 1 ? 'Hide' : 'Restock'}</button>
+                  <button type="button" onClick={() => handleDeleteDish(item.id)} className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50">Delete</button>
                 </div>
               </div>
             ))}
           </div>
+
         </div>
       )}
 
@@ -618,10 +621,7 @@ export const RestaurantPortal: React.FC = () => {
                 Automated weekly bank disbursements with itemized platform commission deduction
               </p>
             </div>
-            <div className="px-3 py-1 bg-emerald-950/80 border border-emerald-700/60 rounded-xl text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Verified Merchant Payout Account</span>
-            </div>
+            <div className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium text-slate-700">Payout verification status is available from account settings.</div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -632,7 +632,7 @@ export const RestaurantPortal: React.FC = () => {
               </div>
             </div>
             <div className="p-4 bg-slate-850 rounded-2xl border border-slate-800 space-y-1">
-              <span className="text-xs text-slate-400">Platform Commission ({commissionRate}%)</span>
+              <span className="text-xs text-slate-400">Platform Commission ({commissionRate === null ? 'not configured' : `${commissionRate}%`})</span>
               <div className="text-xl font-bold font-mono text-rose-400">
                 -{formatCurrency(platformFeeUSD, currency)}
               </div>
