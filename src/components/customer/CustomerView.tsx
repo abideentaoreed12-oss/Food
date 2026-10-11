@@ -509,7 +509,7 @@ export const CustomerView: React.FC = () => {
                       </span>
                       <span>·</span>
                       <span className="font-semibold text-slate-700">
-                        {formatCurrency(restaurant.calculatedDeliveryFee || restaurant.deliveryFee, currency)} fee
+                        {formatCurrency(restaurant.calculatedDeliveryFee ?? restaurant.deliveryFee, currency)} fee
                       </span>
                     </div>
 
