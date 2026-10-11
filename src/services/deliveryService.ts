@@ -12,24 +12,33 @@ export const deliveryService = {
       const rawZones = res?.data || res?.zones || (Array.isArray(res) ? res : []);
       if (Array.isArray(rawZones) && rawZones.length > 0) {
         return rawZones.map((z: any) => ({
-          id: String(z.id || `zone-${z.code || Date.now()}`),
-          name: String(z.name || 'Delivery Zone'),
-          code: String(z.code || z.id || 'ZONE').toUpperCase(),
-          city: String(z.city || 'Lagos'),
-          country: String(z.country || 'Nigeria'),
-          currency: (z.currency || z.defaultCurrency || 'NGN') as any,
-          defaultCurrency: (z.currency || z.defaultCurrency || 'NGN') as any,
-          baseFee: Number(z.base_delivery_fee ?? z.baseFee ?? z.deliveryFee ?? 500),
-          deliveryFee: Number(z.base_delivery_fee ?? z.baseFee ?? z.deliveryFee ?? 500),
-          perKmFee: Number(z.per_km_fee ?? z.perKmFee ?? 150),
-          radiusKm: Number(z.radius_km ?? z.radiusKm ?? 10),
-          surgeMultiplier: Number(z.surge_multiplier ?? z.surgeMultiplier ?? 1.0),
-          centerLat: Number(z.center_lat ?? z.centerLat ?? 6.5244),
-          centerLng: Number(z.center_lng ?? z.centerLng ?? 3.3792),
-          averageSpeedMin: Number(z.average_speed_min ?? z.averageSpeedMin ?? 25),
-          isActive: Boolean(z.is_active === undefined ? true : Number(z.is_active) === 1),
+          id: String(z.id || ''),
+          name: String(z.name || ''),
+          code: String(z.code || z.id || '').toUpperCase(),
+          city: String(z.city || ''),
+          country: String(z.country || ''),
+          currency: (z.currency || z.defaultCurrency || '') as any,
+          defaultCurrency: (z.currency || z.defaultCurrency || '') as any,
+          baseFee: Number(z.base_delivery_fee ?? z.baseFee ?? z.deliveryFee),
+          deliveryFee: Number(z.base_delivery_fee ?? z.baseFee ?? z.deliveryFee),
+          perKmFee: Number(z.per_km_fee ?? z.perKmFee),
+          radiusKm: Number(z.radius_km ?? z.radiusKm),
+          surgeMultiplier: Number(z.surge_multiplier ?? z.surgeMultiplier),
+          centerLat: Number(z.center_lat ?? z.centerLat),
+          centerLng: Number(z.center_lng ?? z.centerLng),
+          averageSpeedMin: Number(z.average_speed_min ?? z.averageSpeedMin),
+          isActive: Number(z.is_active) === 1,
           mapImageR2Url: z.map_image_r2_url || z.mapImageR2Url || undefined
-        }));
+        })).filter((z: ZoneConfig) =>
+          !!z.id && !!z.name && !!z.city &&
+          Number.isFinite(z.baseFee) && z.baseFee >= 0 &&
+          Number.isFinite(z.perKmFee) && z.perKmFee >= 0 &&
+          Number.isFinite(z.radiusKm) && z.radiusKm > 0 &&
+          Number.isFinite(z.centerLat) && z.centerLat >= -90 && z.centerLat <= 90 &&
+          Number.isFinite(z.centerLng) && z.centerLng >= -180 && z.centerLng <= 180 &&
+          Number.isFinite(z.surgeMultiplier) && z.surgeMultiplier >= 0 &&
+          Number.isFinite(z.averageSpeedMin) && z.averageSpeedMin > 0
+        );
       }
     } catch (err) {
       console.warn('deliveryService: Failed to fetch live D1 delivery zones:', err);
