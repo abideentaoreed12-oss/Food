@@ -46,14 +46,6 @@ const nextConfig: NextConfig = {
       process.env.SMTP_PORT || '465',
     EMAIL_SENDER_NAME:
       process.env.EMAIL_SENDER_NAME || 'Veyrang Support',
-    NOMINATIM_BASE_URL:
-      process.env.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org',
-    PHOTON_BASE_URL:
-      process.env.PHOTON_BASE_URL || 'https://photon.komoot.io',
-    OSRM_BASE_URL:
-      process.env.OSRM_BASE_URL || 'https://router.project-osrm.org',
-    VALHALLA_BASE_URL:
-      process.env.VALHALLA_BASE_URL || 'https://valhalla.openstreetmap.de',
   },
   // Only explicitly approved image origins may be fetched by the public optimizer.
   images: {
