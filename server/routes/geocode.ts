@@ -19,7 +19,7 @@ export interface ReverseGeocodeResult {
  * Reverse geocodes coordinates using open-source failover chain:
  * Tier 1: Nominatim (CONFIG.NOMINATIM_BASE_URL, default https://nominatim.openstreetmap.org)
  * Tier 2: Photon Komoot (CONFIG.PHOTON_BASE_URL, default https://photon.komoot.io)
- * Tier 3: BigDataCloud client fallback
+ * If neither provider resolves the point, return an explicit unavailable error.
  */
 export async function reverseGeocodeCoordinates(lat: number, lng: number): Promise<ReverseGeocodeResult> {
   let resolvedAddress = '';
@@ -80,14 +80,14 @@ export async function reverseGeocodeCoordinates(lat: number, lng: number): Promi
           formattedAddress = [resolvedAddress, resolvedCity, resolvedCountry].filter(Boolean).join(', ');
         }
       } else if (pResp.status === 429) {
-        console.warn('[Geocode Reverse] Photon rate limit (429) - falling back to BigDataCloud');
+        console.warn('[Geocode Reverse] Photon rate limit (429).');
       }
     } catch (e: any) {
       console.warn('[Geocode Reverse] Photon note:', e?.message || String(e));
     }
   }
 
-  // Tier 3: BigDataCloud Server-Side Call
+
   if (!resolvedAddress) {
     try {
       const bResp = await fetch(
@@ -110,8 +110,7 @@ export async function reverseGeocodeCoordinates(lat: number, lng: number): Promi
   }
 
   if (!resolvedAddress) {
-    resolvedAddress = `Device Location (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
-    formattedAddress = resolvedAddress;
+    throw new Error('No public reverse-geocoding provider could resolve this location. Enter your street or area address manually.');
   }
 
   return {
@@ -127,7 +126,7 @@ export async function reverseGeocodeCoordinates(lat: number, lng: number): Promi
 
 /**
  * Forward Geocode Endpoint (Backend Proxy Server)
- * Resolves address text to coordinates using Google / Photon / Nominatim / Pelias chain.
+ * Resolves address text using public OpenStreetMap geocoders.
  */
 router.get(['/', '/search'], geocodeLimiter, async (req: Request, res: Response) => {
   try {
