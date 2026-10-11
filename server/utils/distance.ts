@@ -406,8 +406,24 @@ export async function calculateRestaurantDistanceMetrics(
     throw new Error('Restaurant delivery fee is missing or invalid in D1');
   }
   const estimatedDeliveryFee = baseDeliveryFee;
-  const configuredRadius = Number(restaurant.deliveryRadiusKm ?? restaurant.delivery_radius_km);
-  const inDeliveryRadius = Number.isFinite(configuredRadius) && configuredRadius > 0 ? distanceKm <= configuredRadius : true;
+  let configuredRadius = Number(restaurant.deliveryRadiusKm ?? restaurant.delivery_radius_km);
+  if ((!Number.isFinite(configuredRadius) || configuredRadius <= 0) && String(restaurant.zone || '').trim()) {
+    try {
+      const { d1Client } = await import('../db/d1Client.ts');
+      const zoneName = String(restaurant.zone).trim();
+      const zoneResult = await d1Client.query(
+        'SELECT radius_km FROM delivery_zones WHERE is_active = 1 AND (code = ? OR name = ? OR city = ?) LIMIT 1',
+        [zoneName.toUpperCase(), zoneName, zoneName]
+      );
+      configuredRadius = Number(zoneResult.results?.[0]?.radius_km);
+    } catch (error) {
+      console.warn('[Restaurant Distance] Could not read configured delivery radius:', error instanceof Error ? error.message : String(error));
+    }
+  }
+  if (!Number.isFinite(configuredRadius) || configuredRadius <= 0) {
+    throw new Error('Delivery radius is not configured for this restaurant or its active delivery zone.');
+  }
+  const inDeliveryRadius = distanceKm <= configuredRadius;
 
   return {
     distanceKm,
