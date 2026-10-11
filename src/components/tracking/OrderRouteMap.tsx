@@ -64,7 +64,7 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
 export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
   order,
   courierLocation,
-  signalStatus = 'live',
+  signalStatus = 'searching',
   routePoints: propRoutePoints,
   remainingDistanceKm: propRemainingKm,
   totalDistanceKm: propTotalKm,
@@ -175,8 +175,8 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
     if (order.status === 'preparing') return 0.25;
     if (order.status === 'ready_for_pickup') return 0.35;
     if (order.status === 'in_transit') {
-      const p = order.routeProgress != null ? order.routeProgress : 65;
-      return Math.max(0.4, Math.min(0.96, p / 100));
+      if (!Number.isFinite(order.routeProgress)) return Number.NaN;
+      return Math.max(0, Math.min(1, Number(order.routeProgress) / 100));
     }
     return 0;
   }, [order.status, order.routeProgress]);
@@ -186,9 +186,8 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
     if (propRoutePoints && propRoutePoints.length >= 2) {
       return propRoutePoints;
     }
-    // Without a routing-provider response, use only known endpoints, not a fabricated road.
-    if (![kitchenCoord.lat, kitchenCoord.lng, customerCoord.lat, customerCoord.lng].every(Number.isFinite)) return [];
-    return [kitchenCoord, customerCoord].map(({ lat, lng }) => ({ lat, lng }));
+    // Do not draw a straight endpoint connector as if it were a road route.
+    return [];
   }, [propRoutePoints, kitchenCoord, customerCoord]);
 
   // 5. Use only a verified live courier fix. Never synthesize movement from order progress.
@@ -202,19 +201,13 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
   // Trip and remaining distances
   const totalTripKm = useMemo(() => {
     if (Number.isFinite(propTotalKm)) return propTotalKm as number;
-    if (![kitchenCoord.lat, kitchenCoord.lng, customerCoord.lat, customerCoord.lng].every(Number.isFinite)) {
-      return Number.NaN;
-    }
-    return calculateDistanceKm(kitchenCoord.lat, kitchenCoord.lng, customerCoord.lat, customerCoord.lng);
+    return Number.NaN;
   }, [propTotalKm, kitchenCoord, customerCoord]);
 
   const remainingDistanceKm = useMemo(() => {
     if (order.status === 'delivered') return 0;
     if (Number.isFinite(propRemainingKm)) return propRemainingKm as number;
-    if (![courierCoord.lat, courierCoord.lng, customerCoord.lat, customerCoord.lng].every(Number.isFinite)) {
-      return Number.NaN;
-    }
-    return calculateDistanceKm(courierCoord.lat, courierCoord.lng, customerCoord.lat, customerCoord.lng);
+    return Number.NaN;
   }, [order.status, propRemainingKm, courierCoord, customerCoord]);
 
   const centerCoord = useMemo(() => {
@@ -226,7 +219,8 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
 
   // True Geographic Bounding-Box Coordinate Projection for the SVG Vector Map
   const svgMapPoints = useMemo(() => {
-    const allPoints = [...routeWaypoints, courierCoord, kitchenCoord, customerCoord];
+    const allPoints = [...routeWaypoints, courierCoord, kitchenCoord, customerCoord].filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    if (allPoints.length < 2) return { pathD: '', riderX: 0, riderY: 0 };
     let minLat = Infinity, maxLat = -Infinity;
     let minLng = Infinity, maxLng = -Infinity;
 
@@ -256,16 +250,14 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
     const pRider = project(courierCoord);
 
     // Build SVG Path
-    let pathD = `M ${projectedWaypoints[0]?.x || pOrigin.x} ${projectedWaypoints[0]?.y || pOrigin.y}`;
-    for (let i = 1; i < projectedWaypoints.length; i++) {
-      const prev = projectedWaypoints[i - 1];
-      const curr = projectedWaypoints[i];
-      const midX = (prev.x + curr.x) / 2;
-      const midY = (prev.y + curr.y) / 2;
-      pathD += ` Q ${prev.x} ${prev.y}, ${midX} ${midY}`;
+    let pathD = '';
+    if (projectedWaypoints.length >= 2) {
+      pathD = `M ${projectedWaypoints[0].x} ${projectedWaypoints[0].y}`;
+      for (let i = 1; i < projectedWaypoints.length; i++) {
+        const point = projectedWaypoints[i];
+        pathD += ` L ${point.x} ${point.y}`;
+      }
     }
-    const last = projectedWaypoints[projectedWaypoints.length - 1] || pDest;
-    pathD += ` L ${last.x} ${last.y}`;
 
     return {
       pathD,
@@ -295,21 +287,21 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
           />
           <span className="font-bold text-white flex items-center gap-1">
             <Radio className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Dynamic Live Route GPS</span>
+            <span>Courier GPS Status</span>
           </span>
           <span className="text-slate-500">·</span>
           <span className="text-orange-400 font-mono font-semibold">
-            {order.status === 'delivered' ? 'Destination Reached' : `${remainingDistanceKm} km away`}
+            {order.status === 'delivered' ? 'Destination Reached' : Number.isFinite(remainingDistanceKm) ? `${remainingDistanceKm} km away` : 'Distance unavailable'}
           </span>
         </div>
 
         <div className="flex items-center gap-3 text-[11px] font-mono text-slate-300">
           <span className="flex items-center gap-1">
-            <span className="text-slate-400">Total:</span> {totalTripKm} km
+            <span className="text-slate-400">Total:</span> {Number.isFinite(totalTripKm) ? `${totalTripKm} km` : '—'}
           </span>
           <span className="text-slate-600">|</span>
           <span className="flex items-center gap-1">
-            <span className="text-slate-400">Progress:</span> {Math.round(progressRatio * 100)}%
+            <span className="text-slate-400">Progress:</span> {Number.isFinite(progressRatio) ? `${Math.round(progressRatio * 100)}%` : '—'}
           </span>
         </div>
       </div>
