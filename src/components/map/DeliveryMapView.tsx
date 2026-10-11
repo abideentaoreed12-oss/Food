@@ -143,7 +143,7 @@ export const DeliveryMapView: React.FC<DeliveryMapViewProps> = ({
                           <span>·</span>
                           <span className="flex items-center gap-0.5">
                             <Clock className="w-3 h-3 text-slate-400" />
-                            {rest.deliveryTimeMin}-{rest.deliveryTimeMax}m
+                            {rest.deliveryTimeMin != null && rest.deliveryTimeMax != null ? `${rest.deliveryTimeMin}-${rest.deliveryTimeMax}m prep` : 'Time unavailable'}
                           </span>
                         </div>
 
