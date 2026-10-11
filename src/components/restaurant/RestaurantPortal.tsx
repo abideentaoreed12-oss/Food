@@ -45,6 +45,10 @@ export const RestaurantPortal: React.FC = () => {
   const [newDishName, setNewDishName] = useState('');
   const [newDishPrice, setNewDishPrice] = useState('');
   const [newDishDesc, setNewDishDesc] = useState('');
+  const [menuCategories, setMenuCategories] = useState<any[]>([]);
+  const [newDishCategoryId, setNewDishCategoryId] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [savingCategory, setSavingCategory] = useState(false);
   const [savingDish, setSavingDish] = useState(false);
   const [editingDishId, setEditingDishId] = useState<string | null>(null);
 
@@ -66,6 +70,10 @@ export const RestaurantPortal: React.FC = () => {
       const res: any = await api.admin.getMenuItems();
       const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       setLiveMenu(rows);
+      const categoriesRes: any = await api.admin.getCategories();
+      const categories = Array.isArray(categoriesRes?.data) ? categoriesRes.data : Array.isArray(categoriesRes) ? categoriesRes : [];
+      setMenuCategories(categories);
+      setNewDishCategoryId((current) => current || String(categories[0]?.id || ''));
       setMenuMsg('');
     } catch (err: any) {
       setLiveMenu([]);
@@ -81,7 +89,10 @@ export const RestaurantPortal: React.FC = () => {
 
   const handleCreateDish = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDishName.trim() || !newDishPrice || !assignedRestaurantId) return;
+    if (!newDishName.trim() || !newDishPrice || !assignedRestaurantId || !newDishCategoryId) {
+      setMenuMsg('Enter a dish name and valid price, then choose a category before saving.');
+      return;
+    }
     setSavingDish(true);
     setMenuMsg('');
     try {
@@ -90,7 +101,7 @@ export const RestaurantPortal: React.FC = () => {
         price: Number(newDishPrice),
         description: newDishDesc.trim(),
         restaurantId: assignedRestaurantId,
-        ...(editingDishId ? {} : { category: 'Main Dishes' }),
+        categoryId: newDishCategoryId,
       };
       if (editingDishId) {
         await api.admin.updateMenuItem(editingDishId, payload);
@@ -534,9 +545,44 @@ export const RestaurantPortal: React.FC = () => {
             <input required value={newDishName} onChange={(e) => setNewDishName(e.target.value)} placeholder="Dish name" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
             <input required type="number" min={0} step={50} value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} placeholder="Price (NGN)" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
             <input value={newDishDesc} onChange={(e) => setNewDishDesc(e.target.value)} placeholder="Short description" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 md:col-span-2" />
+            <div className="md:col-span-2">
+              <label htmlFor="restaurant-dish-category" className="mb-1.5 block text-xs font-semibold text-slate-700">Category <span className="text-rose-600">*</span></label>
+              <select id="restaurant-dish-category" required value={newDishCategoryId} onChange={(e) => setNewDishCategoryId(e.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#FF5500] focus:ring-2 focus:ring-orange-100">
+                <option value="">Choose a category</option>
+                {menuCategories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+              </select>
+              {menuCategories.length === 0 && <p className="mt-1 text-xs text-amber-700">Create a category below before adding dishes.</p>}
+            </div>
             <button type="submit" disabled={savingDish} className="md:col-span-4 min-h-11 rounded-xl bg-[#FF5500] px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#e64b00] focus:ring-2 focus:ring-orange-300 disabled:opacity-60">
               {savingDish ? 'Saving to D1' : editingDishId ? 'Update dish' : 'Save dish to D1'}
             </button>
+          </form>
+
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const categoryName = newCategoryName.trim();
+            if (!categoryName || !assignedRestaurantId) return;
+            setSavingCategory(true);
+            try {
+              await api.admin.createCategory({ name: categoryName, restaurantId: assignedRestaurantId });
+              const result: any = await api.admin.getCategories();
+              const rows = Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : [];
+              setMenuCategories(rows);
+              const created = rows.find((cat: any) => String(cat.name).toLowerCase() === categoryName.toLowerCase());
+              if (created) setNewDishCategoryId(String(created.id));
+              setNewCategoryName('');
+              setMenuMsg('Category saved to D1.');
+            } catch (err: any) {
+              setMenuMsg(err?.message || 'Could not create category.');
+            } finally {
+              setSavingCategory(false);
+            }
+          }} className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-[1fr_auto]">
+            <div>
+              <label htmlFor="restaurant-new-category" className="mb-1.5 block text-xs font-semibold text-slate-700">Create a category</label>
+              <input id="restaurant-new-category" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g. Rice dishes" className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-[#FF5500] focus:ring-2 focus:ring-orange-100" />
+            </div>
+            <button type="submit" disabled={savingCategory || !newCategoryName.trim()} className="self-end min-h-11 rounded-xl border border-orange-200 bg-white px-4 py-2 text-sm font-bold text-[#FF5500] hover:bg-orange-50 disabled:opacity-50">{savingCategory ? 'Saving…' : 'Add category'}</button>
           </form>
 
           <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4">
@@ -556,7 +602,7 @@ export const RestaurantPortal: React.FC = () => {
                     <div className="text-xs text-slate-300">NGN {Number(item.price || 0).toLocaleString()} - {item.is_available === 0 ? 'Hidden' : 'Available'}</div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <button type="button" onClick={() => { setEditingDishId(String(item.id)); setNewDishName(String(item.name || '')); setNewDishPrice(String(item.price ?? '')); setNewDishDesc(String(item.description || '')); setMenuMsg('Editing dish. Save changes to update D1.'); }} className="rounded-lg border border-slate-500 bg-slate-800 px-2.5 py-1 text-xs font-bold text-white hover:border-[#FF5500]">Edit</button>
+                    <button type="button" onClick={() => { setEditingDishId(String(item.id)); setNewDishName(String(item.name || '')); setNewDishPrice(String(item.price ?? '')); setNewDishDesc(String(item.description || '')); setNewDishCategoryId(String(item.category_id || '')); setMenuMsg('Editing dish. Save changes to update D1.'); }} className="rounded-lg border border-slate-500 bg-slate-800 px-2.5 py-1 text-xs font-bold text-white hover:border-[#FF5500]">Edit</button>
                     <button type="button" onClick={() => handleToggleDish(item.id)} className="rounded-lg border border-slate-500 bg-white px-2.5 py-1 text-xs font-bold text-slate-900 hover:border-[#FF5500] hover:text-[#FF5500]">
                       {item.is_available === 0 ? 'Restock' : 'Hide'}
                     </button>
