@@ -96,6 +96,12 @@ router.get('/', async (req: Request, res: Response) => {
       } catch (metricErr: any) {
         console.warn('[Restaurants Route] Live distance metrics unavailable:', metricErr?.message || String(metricErr));
       }
+    } else {
+      // Do not expose stale location metrics from cached restaurant records without a current customer origin.
+      list = list.map((r: any) => {
+        const { distanceKm, distanceText, durationMinutes, durationText, calculatedDeliveryFee, inDeliveryRadius, isLiveRoadDistance, routingEngine, ...withoutStaleMetrics } = r;
+        return withoutStaleMetrics;
+      });
     }
 
     const publicList = list.map((r) => {
@@ -350,8 +356,13 @@ router.get('/:id', async (req: Request, res: Response) => {
           inDeliveryRadius: distanceMetrics.inDeliveryRadius
         };
       } catch (err) {
+        const { distanceKm, distanceText, durationMinutes, durationText, calculatedDeliveryFee, inDeliveryRadius, isLiveRoadDistance, routingEngine, ...withoutStaleMetrics } = restaurant;
+        restaurant = withoutStaleMetrics;
         console.warn('[Restaurants Route] Live distance metrics unavailable:', err instanceof Error ? err.message : String(err));
       }
+    } else {
+      const { distanceKm, distanceText, durationMinutes, durationText, calculatedDeliveryFee, inDeliveryRadius, isLiveRoadDistance, routingEngine, ...withoutStaleMetrics } = restaurant;
+      restaurant = withoutStaleMetrics;
     }
 
     const { commissionPercent, bankAccount, ownerEmail, ...publicRestaurant } = restaurant;
