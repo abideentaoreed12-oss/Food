@@ -1686,7 +1686,12 @@ export async function POST(req: NextRequest) {
       'INSERT INTO menu_categories (id, restaurant_id, name, description, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)',
       [id, restId, name.trim(), String(description || ''), 99, new Date().toISOString()]
     );
-    if (inserted?.success === false) return NextResponse.json({ success: false, error: 'Category could not be saved.' }, { status: 500 });
+    if (!inserted || inserted.success === false) return NextResponse.json({ success: false, error: 'Category could not be saved.' }, { status: 500 });
+    try {
+      await syncMenuItemToRestaurantJson('category:' + id, null, restId);
+    } catch (syncError: any) {
+      return NextResponse.json({ success: false, error: 'Category was saved, but the shared catalogue could not be synchronized.', details: syncError?.message || 'Snapshot synchronization failed' }, { status: 503 });
+    }
     return NextResponse.json({ success: true, data: { id, name: name.trim(), description: description || '', restaurantId: restId } }, { status: 201 });
   }
 
@@ -2391,9 +2396,16 @@ export async function PATCH(req: NextRequest) {
     if (imageR2Url !== undefined) { updates.push('image_r2_url = ?'); values.push(imageR2Url); }
     if (updates.length > 0) {
       values.push(catId);
-      await d1.query(`UPDATE menu_categories SET ${updates.join(', ')} WHERE id = ?`, values);
+      const updateRes = await d1.query(`UPDATE menu_categories SET ${updates.join(', ')} WHERE id = ?`, values);
+      if (!updateRes || updateRes.success === false) return NextResponse.json({ success: false, error: 'Category update failed in D1.' }, { status: 500 });
     }
-    return NextResponse.json({ success: true, message: 'Category updated' });
+    const categoryRes = await d1.query('SELECT restaurant_id FROM menu_categories WHERE id = ? LIMIT 1', [catId], { cache: false });
+    try {
+      await syncMenuItemToRestaurantJson('category:' + catId, null, categoryRes.results?.[0]?.restaurant_id || null);
+    } catch (syncError: any) {
+      return NextResponse.json({ success: false, error: 'Category updated, but catalogue synchronization failed.', details: syncError?.message || 'Snapshot synchronization failed' }, { status: 503 });
+    }
+    return NextResponse.json({ success: true, message: 'Category updated and catalogue refreshed' });
   }
 
   // 10. Menu Item Update
@@ -2758,8 +2770,18 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const targetId = decodeURIComponent(catMatch[1]);
-    await d1.query('DELETE FROM menu_categories WHERE id = ?', [targetId]);
-    return NextResponse.json({ success: true, message: 'Category deleted' });
+    const existingCategory = await d1.query('SELECT restaurant_id FROM menu_categories WHERE id = ? LIMIT 1', [targetId], { cache: false });
+    if (!existingCategory.results?.[0]) return NextResponse.json({ success: false, error: 'Category not found.' }, { status: 404 });
+    const linkedItems = await d1.query('SELECT id FROM menu_items WHERE category_id = ? LIMIT 1', [targetId], { cache: false });
+    if (linkedItems.results?.[0]) return NextResponse.json({ success: false, error: 'Move or delete the dishes in this category before deleting it.' }, { status: 409 });
+    const deleted = await d1.query('DELETE FROM menu_categories WHERE id = ?', [targetId]);
+    if (!deleted || deleted.success === false) return NextResponse.json({ success: false, error: 'Category could not be deleted.' }, { status: 500 });
+    try {
+      await syncMenuItemToRestaurantJson('category:' + targetId, null, existingCategory.results[0].restaurant_id);
+    } catch (syncError: any) {
+      return NextResponse.json({ success: false, error: 'Category deleted, but catalogue synchronization failed.', details: syncError?.message || 'Snapshot synchronization failed' }, { status: 503 });
+    }
+    return NextResponse.json({ success: true, message: 'Category deleted and catalogue refreshed' });
   }
 
   // 8. Admin Delete Menu Item
