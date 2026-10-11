@@ -403,13 +403,13 @@ export async function calculateRestaurantDistanceMetrics(
   // Resolve configured delivery-zone pricing from D1. Never invent a base fee,
   // per-kilometre price, radius, or surge multiplier in application code.
   let matchedZone: any = null;
-  const zoneRef = String(restaurant.zoneId ?? restaurant.deliveryZoneId ?? restaurant.zone ?? restaurant.delivery_zone ?? restaurant.city ?? '').trim();
+  const zoneRef = String(restaurant.zoneId ?? restaurant.deliveryZoneId ?? restaurant.zone ?? restaurant.delivery_zone ?? '').trim();
   if (zoneRef) {
     try {
       const { d1Client } = await import('../db/d1Client.ts');
       const zoneResult = await d1Client.query(
-        'SELECT * FROM delivery_zones WHERE is_active = 1 AND (id = ? OR code = ? OR name = ? OR city = ?) LIMIT 1',
-        [zoneRef, zoneRef.toUpperCase(), zoneRef, zoneRef]
+        'SELECT * FROM delivery_zones WHERE is_active = 1 AND (id = ? OR code = ? OR name = ?) LIMIT 1',
+        [zoneRef, zoneRef.toUpperCase(), zoneRef]
       );
       matchedZone = zoneResult.results?.[0] ?? null;
     } catch (error) {
