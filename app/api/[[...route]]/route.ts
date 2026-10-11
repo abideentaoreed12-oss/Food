@@ -54,6 +54,11 @@ async function syncMenuItemToRestaurantJson(
       throw new Error('Could not strip embedded menu from restaurant ' + row.id);
     }
   }
+  // Publish mutations immediately instead of waiting for the normal polling interval.
+  const snapshot = await siteDataManager.refreshSnapshot({ force: true, allowEmpty: true, isAuthorizedAdmin: true });
+  if (!snapshot || snapshot.syncStatus !== 'synced' || !snapshot.metadata?.persistedToD1 || !snapshot.metadata?.persistedToR2) {
+    throw new Error('Menu changed in D1, but the shared catalogue snapshot could not be verified in D1 and R2.');
+  }
 }
 
 
