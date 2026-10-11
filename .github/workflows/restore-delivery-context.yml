@@ -11,15 +11,14 @@ jobs:
         with:
           ref: main
           fetch-depth: 5
-      - name: Restore api and apply restaurant ops
-        run: |
-          bash scripts/restore_api_and_ops.sh
-      - name: Commit
+      - name: Apply kitchen final on main
+        run: python3 scripts/apply_kitchen_final.py
+      - name: Commit on main
         run: |
           set -e
-          git config user.name veyrang-bot
-          git config user.email bot@veyrang.com
+          git config user.name "veyrang-bot"
+          git config user.email "bot@veyrang.com"
           git add -A
-          if git diff --cached --quiet; then echo none; exit 0; fi
-          git commit -m "fix: restore api.ts; restaurant live D1 menu/order routes"
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "fix(kitchen): auth categories/addons; restaurant DELETE menu; readable add-dish form on portal"
           git push origin HEAD:main
