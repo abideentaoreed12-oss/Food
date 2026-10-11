@@ -81,6 +81,20 @@ Configure only the integrations you use, based on `.env.example`, including:
 
 Some features will be unavailable until their required environment variables and provider services are configured.
 
+## Location and routing (no API key or self-hosting required)
+
+The delivery backend uses public OpenStreetMap-based services by default:
+
+- **Address search:** Photon, then Nominatim.
+- **Road routing:** OSRM, then the public Valhalla service, then the public OSRM-compatible OpenStreetMap routing endpoint.
+- **Reverse geocoding:** Nominatim, then Photon.
+- **Pricing:** Active delivery-zone rates and radius from D1 when an assigned/unique zone is available; otherwise a configured restaurant fee and radius are required.
+- **Failure behavior:** If no real router returns a valid road route, checkout fails with an availability error. The app does not replace a failed route with straight-line distance, guessed travel time, synthetic route geometry, or simulated courier GPS.
+
+These are public community/demo endpoints: they do not require your own server or API key, but they are **not guaranteed permanent, unlimited, or SLA-backed**. They may rate-limit requests or change availability. Keep the default URLs in `.env.example` unless you intentionally choose another compatible public endpoint. Do not configure Google Maps, GraphHopper, or OpenRouteService credentials for the delivery-routing chain.
+
+Google Maps is optional for map display components only; it is not used to calculate delivery distance, ETA, or fees. `GEMINI_API_KEY` is an optional placeholder and is not used to invent coordinates or routes.
+
 ## Testing
 
 The package defines an `npm test` script. Ensure the test runner and test dependencies are installed before running it.
