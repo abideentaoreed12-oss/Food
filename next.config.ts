@@ -26,10 +26,6 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['node:sqlite'],
   reactStrictMode: true,
   env: {
-    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:
-      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyAmbptl02WYRIvSdBljM2NahJAjnf-OfUw',
-    GOOGLE_MAPS_API_KEY:
-      process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyAmbptl02WYRIvSdBljM2NahJAjnf-OfUw',
     NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL:
       process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || process.env.CLOUDFLARE_R2_PUBLIC_URL || 'https://cdn.veyrang.com',
     NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY:
@@ -58,10 +54,6 @@ const nextConfig: NextConfig = {
       process.env.OSRM_BASE_URL || 'https://router.project-osrm.org',
     VALHALLA_BASE_URL:
       process.env.VALHALLA_BASE_URL || 'https://valhalla.openstreetmap.de',
-    OPENROUTESERVICE_BASE_URL:
-      process.env.OPENROUTESERVICE_BASE_URL || 'https://api.openrouteservice.org',
-    GRAPHHOPPER_BASE_URL:
-      process.env.GRAPHHOPPER_BASE_URL || 'https://graphhopper.com/api/1',
   },
   // Only explicitly approved image origins may be fetched by the public optimizer.
   images: {
