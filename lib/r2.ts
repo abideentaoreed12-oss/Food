@@ -8,26 +8,38 @@ export interface R2UploadResult {
   error?: string;
 }
 
-// In-memory mock store for environments without configured external R2 storage
-const inMemoryStore = new Map<string, { data: Buffer; contentType: string }>();
-
 export class R2Client {
   private accountId: string;
   private apiToken: string;
+  private authEmail: string;
   private bucketName: string;
   private publicCdnUrl: string;
   private workerUrl: string;
 
   constructor() {
-    this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || CONFIG.CLOUDFLARE_ACCOUNT_ID;
-    this.apiToken = process.env.CLOUDFLARE_R2_API_TOKEN || CONFIG.CLOUDFLARE_R2_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || CONFIG.CLOUDFLARE_API_TOKEN;
-    this.bucketName = process.env.CLOUDFLARE_R2_BUCKET || CONFIG.CLOUDFLARE_R2_BUCKET;
+    this.accountId = process.env.CLOUDFLARE_ACCOUNT_ID || CONFIG.CLOUDFLARE_ACCOUNT_ID || '';
+    this.apiToken =
+      process.env.CLOUDFLARE_R2_API_TOKEN ||
+      CONFIG.CLOUDFLARE_R2_API_TOKEN ||
+      process.env.CLOUDFLARE_API_TOKEN ||
+      CONFIG.CLOUDFLARE_API_TOKEN ||
+      '';
+    this.authEmail =
+      process.env.CLOUDFLARE_AUTH_EMAIL ||
+      CONFIG.CLOUDFLARE_AUTH_EMAIL ||
+      process.env.ADMIN_EMAIL ||
+      CONFIG.ADMIN_EMAIL ||
+      'abideentaoreed12@gmail.com';
+    this.bucketName = process.env.CLOUDFLARE_R2_BUCKET || CONFIG.CLOUDFLARE_R2_BUCKET || '';
     this.publicCdnUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || CONFIG.CLOUDFLARE_R2_PUBLIC_URL || '').replace(/\/$/, '');
     this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || CONFIG.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, '');
   }
 
   public isConfigured(): boolean {
-    return Boolean(this.bucketName && (this.apiToken || this.workerUrl));
+    const hasAccount = Boolean(this.accountId && !this.accountId.includes('veyrang_account'));
+    const hasBucket = Boolean(this.bucketName && !this.bucketName.includes('veyrang_bucket'));
+    const hasToken = Boolean(this.apiToken && !this.apiToken.includes('veyrang_token') && this.apiToken.length > 20);
+    return hasAccount && hasBucket && hasToken;
   }
 
   public getDetails() {
@@ -35,122 +47,125 @@ export class R2Client {
       bucketName: this.bucketName,
       publicCdnUrl: this.publicCdnUrl,
       workerUrl: this.workerUrl,
-      isConfigured: this.isConfigured()
+      isConfigured: this.isConfigured(),
+      engine: this.isConfigured() ? 'Cloudflare R2 Native Edge API' : 'Unconfigured'
     };
   }
 
   public getCdnUrl(key: string): string {
     const cleanKey = key.replace(/^\//, '');
-    return `${this.publicCdnUrl}/${cleanKey}`;
+    return `/api/storage/file/${cleanKey}`;
+  }
+
+  private getAuthHeaders(contentType?: string): Record<string, string> {
+    const isKey = this.apiToken.startsWith('cfk_') || this.apiToken.length < 55;
+    const headers: Record<string, string> = isKey
+      ? {
+          'X-Auth-Email': this.authEmail,
+          'X-Auth-Key': this.apiToken,
+        }
+      : {
+          Authorization: `Bearer ${this.apiToken}`,
+        };
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
+    return headers;
+  }
+
+  private getDirectObjectUrl(cleanKey: string): string {
+    return `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${cleanKey}`;
+  }
+
+  public async ping(): Promise<{ connected: boolean; latencyMs: number; error?: string }> {
+    if (!this.isConfigured()) {
+      return { connected: false, latencyMs: 0, error: 'Cloudflare R2 is not configured' };
+    }
+    const start = Date.now();
+    try {
+      const url = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}`;
+      const res = await fetch(url, { headers: this.getAuthHeaders(), cache: 'no-store' });
+      const latencyMs = Math.max(1, Date.now() - start);
+      if (res.ok) {
+        return { connected: true, latencyMs };
+      }
+      return { connected: false, latencyMs, error: `Cloudflare R2 returned HTTP ${res.status}` };
+    } catch (err: any) {
+      return { connected: false, latencyMs: Date.now() - start, error: err?.message || String(err) };
+    }
   }
 
   public async upload(key: string, dataBase64: string, contentType: string = 'image/jpeg'): Promise<R2UploadResult> {
     const cleanKey = key.replace(/^\//, '');
     const cdnUrl = this.getCdnUrl(cleanKey);
 
-    // Strategy 1: Cloudflare Worker R2 proxy upload endpoint (Authoritative R2 bridge in Cloudflare architecture)
-    if (this.workerUrl) {
-      const workerUploadEndpoints = [
-        `${this.workerUrl}/storage/upload`,
-        `${this.workerUrl}/upload`,
-        `${this.workerUrl}/api/storage/upload`
-      ];
-
-      for (const endpoint of workerUploadEndpoints) {
-        try {
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(this.apiToken ? { Authorization: `Bearer ${this.apiToken}` } : {})
-            },
-            body: JSON.stringify({ key: cleanKey, dataBase64, contentType, bucket: this.bucketName }),
-            cache: 'no-store'
-          });
-
-          if (res.ok) {
-            const json = await res.json().catch(() => ({}));
-            if (json.cdnUrl || json.url || json.success) {
-              return {
-                success: true,
-                key: cleanKey,
-                cdnUrl: json.cdnUrl || json.url || cdnUrl
-              };
-            }
-          }
-        } catch (err: any) {
-          console.warn('[R2 Worker Upload Notice]', err?.message || err);
-        }
-      }
-    }
-
-    // In production, do not falsely report durable persistence if Cloudflare R2 worker/storage is unavailable
-    if (process.env.NODE_ENV === 'production') {
+    if (!this.isConfigured()) {
       return {
         success: false,
         key: cleanKey,
         cdnUrl,
-        error: 'Cloudflare R2 durable storage is not configured or worker endpoint is unreachable.'
+        error: 'Cloudflare R2 durable storage is not configured; missing credentials or bucket.'
       };
     }
 
-    // Development & Test Environment fallback (clearly identified as local non-durable)
     try {
       const binaryData = Buffer.from(dataBase64.replace(/^data:[^;]+;base64,/, ''), 'base64');
-      inMemoryStore.set(cleanKey, { data: binaryData, contentType });
-      return {
-        success: true,
-        key: cleanKey,
-        cdnUrl: `/api/storage/file/${cleanKey}`
-      };
-    } catch {
+      const url = this.getDirectObjectUrl(cleanKey);
+      const headers = this.getAuthHeaders(contentType);
+
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers,
+        body: binaryData,
+        cache: 'no-store'
+      });
+
+      if (res.ok) {
+        return {
+          success: true,
+          key: cleanKey,
+          cdnUrl
+        };
+      }
+
+      const errText = await res.text().catch(() => '');
       return {
         success: false,
         key: cleanKey,
         cdnUrl,
-        error: 'In-memory test storage failed to buffer file.'
+        error: `Cloudflare R2 upload failed (HTTP ${res.status}): ${errText}`
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        key: cleanKey,
+        cdnUrl,
+        error: `Cloudflare R2 upload network error: ${err?.message || err}`
       };
     }
   }
 
   public async getObject(key: string): Promise<{ data: Buffer; contentType: string } | null> {
     const cleanKey = key.replace(/^\//, '');
-    if (process.env.NODE_ENV !== 'production' && inMemoryStore.has(cleanKey)) {
-      return inMemoryStore.get(cleanKey)!;
-    }
+    if (!this.isConfigured()) return null;
 
-    // Try Worker endpoint
-    if (this.workerUrl) {
-      const endpoints = [
-        `${this.workerUrl}/storage/file/${encodeURIComponent(cleanKey)}`,
-        `${this.workerUrl}/${cleanKey}`
-      ];
-      for (const ep of endpoints) {
-        try {
-          const res = await fetch(ep, {
-            method: 'GET',
-            headers: this.apiToken ? { Authorization: `Bearer ${this.apiToken}` } : {},
-            cache: 'no-store'
-          });
-          if (res.ok) {
-            const arrayBuf = await res.arrayBuffer();
-            const contentType = res.headers.get('content-type') || 'application/octet-stream';
-            return { data: Buffer.from(arrayBuf), contentType };
-          }
-        } catch {}
+    try {
+      const url = this.getDirectObjectUrl(cleanKey);
+      const headers = this.getAuthHeaders();
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers,
+        cache: 'no-store'
+      });
+
+      if (res.ok) {
+        const arrayBuf = await res.arrayBuffer();
+        const contentType = res.headers.get('content-type') || 'application/octet-stream';
+        return { data: Buffer.from(arrayBuf), contentType };
       }
-    }
-
-    // Try public CDN endpoint if configured
-    if (this.publicCdnUrl) {
-      try {
-        const res = await fetch(`${this.publicCdnUrl}/${cleanKey}`, { method: 'GET', cache: 'no-store' });
-        if (res.ok) {
-          const arrayBuf = await res.arrayBuffer();
-          const contentType = res.headers.get('content-type') || 'application/octet-stream';
-          return { data: Buffer.from(arrayBuf), contentType };
-        }
-      } catch {}
+    } catch (err: any) {
+      console.warn('[R2 GetObject]', err?.message || err);
     }
 
     return null;
@@ -177,25 +192,20 @@ export class R2Client {
     if (!cleanKey || cleanKey.split('/').some((part) => part === '..' || part === '.')) {
       return { success: false };
     }
+    if (!this.isConfigured()) return { success: false };
 
-    if (this.workerUrl) {
-      try {
-        const response = await fetch(`${this.workerUrl}/storage/file/${encodeURIComponent(cleanKey)}`, {
-          method: 'DELETE',
-          headers: this.apiToken ? { Authorization: `Bearer ${this.apiToken}` } : {},
-          cache: 'no-store'
-        });
-        if (response.ok || response.status === 404) {
-          inMemoryStore.delete(cleanKey);
-          return { success: true };
-        }
-      } catch {}
+    try {
+      const url = this.getDirectObjectUrl(cleanKey);
+      const headers = this.getAuthHeaders();
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers,
+        cache: 'no-store'
+      });
+      return { success: res.ok };
+    } catch {
+      return { success: false };
     }
-
-    // Never report durable deletion when remote storage has not confirmed it.
-    if (process.env.NODE_ENV === 'production') return { success: false };
-    inMemoryStore.delete(cleanKey);
-    return { success: true };
   }
 }
 

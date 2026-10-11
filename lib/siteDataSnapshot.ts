@@ -362,14 +362,8 @@ export class SiteDataManager {
       d1.clearCache();
     }
 
-    // If a refresh is already in-flight, await it when force is true, then start a fresh authoritative pull
+    // If a refresh is already in-flight, share single in-flight promise across concurrent callers
     if (this.inFlightRefreshPromise) {
-      if (options?.force) {
-        try {
-          await this.inFlightRefreshPromise;
-        } catch {}
-        return this.refreshSnapshot({ ...options, force: false });
-      }
       return this.inFlightRefreshPromise;
     }
 
