@@ -1267,8 +1267,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const deliveryFee = fulfillmentType === 'pickup' ? 0 : Number(restaurant.delivery_fee || 500);
-    const serviceFee = 500;
+    const configuredDeliveryFee = Number(restaurant.delivery_fee ?? restaurant.deliveryFee);
+    if (fulfillmentType !== 'pickup' && (!Number.isFinite(configuredDeliveryFee) || configuredDeliveryFee < 0)) {
+      return NextResponse.json({ success: false, error: 'This restaurant has no valid delivery fee configured.' }, { status: 503 });
+    }
+    const deliveryFee = fulfillmentType === 'pickup' ? 0 : configuredDeliveryFee;
+    const serviceFeeKey = String(currency || 'NGN').toUpperCase() === 'USD' ? 'base_service_fee_usd' : 'base_service_fee_ngn';
+    const serviceSettingRes = await d1.query('SELECT value FROM platform_settings WHERE key = ? LIMIT 1', [serviceFeeKey]);
+    const configuredServiceFee = Number(serviceSettingRes.results?.[0]?.value);
+    if (!Number.isFinite(configuredServiceFee) || configuredServiceFee < 0) {
+      return NextResponse.json({ success: false, error: 'The platform service fee is not configured. Please contact support.' }, { status: 503 });
+    }
+    const serviceFee = configuredServiceFee;
     const preWalletTotal = Math.max(0, verifiedSubtotal + deliveryFee + serviceFee + (Number(tip) || 0) - discountAmount);
     const verifiedWalletDeduction = Math.min(preWalletTotal, Math.max(0, Number(walletDeduction) || 0));
     const fullyPaidByWallet = verifiedWalletDeduction >= preWalletTotal;
@@ -1347,8 +1357,14 @@ export async function POST(req: NextRequest) {
 
   // 9. Order Quote
   if (pathname === '/orders/quote') {
-    const { restaurantId, subtotal, promoCode, fulfillmentType } = body;
+    const { restaurantId, subtotal, promoCode, fulfillmentType, currency } = body;
     const cleanSubtotal = Number(subtotal || 0);
+    const restaurantRes = await d1.query('SELECT delivery_fee FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+    if (!restaurantRes.results?.length) return NextResponse.json({ success: false, error: 'Restaurant not found.' }, { status: 404 });
+    const configuredDeliveryFee = Number(restaurantRes.results[0].delivery_fee);
+    if (fulfillmentType !== 'pickup' && (!Number.isFinite(configuredDeliveryFee) || configuredDeliveryFee < 0)) {
+      return NextResponse.json({ success: false, error: 'This restaurant has no valid delivery fee configured.' }, { status: 503 });
+    }
     let discountAmount = 0;
     if (promoCode) {
       const codeUpper = String(promoCode).trim().toUpperCase();
@@ -1360,8 +1376,13 @@ export async function POST(req: NextRequest) {
         if (p.max_discount_cap) discountAmount = Math.min(discountAmount, Number(p.max_discount_cap));
       }
     }
-    const deliveryFee = fulfillmentType === 'pickup' ? 0 : 500;
-    const serviceFee = 500;
+    const deliveryFee = fulfillmentType === 'pickup' ? 0 : configuredDeliveryFee;
+    const serviceFeeKey = String(currency || 'NGN').toUpperCase() === 'USD' ? 'base_service_fee_usd' : 'base_service_fee_ngn';
+    const serviceSettingRes = await d1.query('SELECT value FROM platform_settings WHERE key = ? LIMIT 1', [serviceFeeKey]);
+    const serviceFee = Number(serviceSettingRes.results?.[0]?.value);
+    if (!Number.isFinite(serviceFee) || serviceFee < 0) {
+      return NextResponse.json({ success: false, error: 'The platform service fee is not configured. Please contact support.' }, { status: 503 });
+    }
     const total = Math.max(0, cleanSubtotal + deliveryFee + serviceFee - discountAmount);
     return NextResponse.json({
       success: true,
@@ -1810,8 +1831,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const { name, code, city, baseDeliveryFee, perKmFee, currency, centerLat, centerLng, radiusKm } = body;
-    if (!name || !code) {
-      return NextResponse.json({ success: false, error: 'Name and code required' }, { status: 400 });
+    const requiredZoneNumbers = [baseDeliveryFee, perKmFee, centerLat, centerLng, radiusKm].map(Number);
+    if (!name || !code || !city || requiredZoneNumbers.some(value => !Number.isFinite(value)) ||
+        Number(baseDeliveryFee) < 0 || Number(perKmFee) < 0 ||
+        Number(centerLat) < -90 || Number(centerLat) > 90 ||
+        Number(centerLng) < -180 || Number(centerLng) > 180 || Number(radiusKm) <= 0) {
+      return NextResponse.json({ success: false, error: 'Provide zone name, code, city, base fee, per-kilometre fee, valid centre coordinates, and a positive radius.' }, { status: 400 });
     }
     const id = `zone-${Date.now()}`;
     const now = new Date().toISOString();
@@ -1822,13 +1847,13 @@ export async function POST(req: NextRequest) {
         id,
         name,
         code.toUpperCase(),
-        city || 'Lagos',
-        Number(baseDeliveryFee || 1000),
-        Number(perKmFee || 200),
+        city,
+        Number(baseDeliveryFee),
+        Number(perKmFee),
         currency || 'NGN',
-        Number(centerLat || 6.4474),
-        Number(centerLng || 3.4723),
-        Number(radiusKm || 15),
+        Number(centerLat),
+        Number(centerLng),
+        Number(radiusKm),
         now
       ]
     );
@@ -2102,7 +2127,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'This restaurant has no valid coordinates configured.' }, { status: 422 });
     }
 
-    const deliveryFeeValue = targetRestaurant?.deliveryFee ?? targetRestaurant?.delivery_fee ?? 500;
+    const deliveryFeeValue = targetRestaurant?.deliveryFee ?? targetRestaurant?.delivery_fee;
+    if (!Number.isFinite(Number(deliveryFeeValue)) || Number(deliveryFeeValue) < 0) {
+      return NextResponse.json({ success: false, error: 'This restaurant has no valid delivery fee configured.' }, { status: 503 });
+    }
 
     const userLoc =
       Number.isFinite(userLat) && Number.isFinite(userLng) &&
