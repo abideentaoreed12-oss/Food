@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { d1 } from '../../../lib/d1';
+import { buildPublicRestaurant } from '../../../lib/restaurantMenu';
 
 export const revalidate = 300;
 
@@ -29,46 +30,38 @@ type RestaurantData = {
 
 async function getRestaurant(id: string): Promise<RestaurantData | null> {
   if (!id || id.length > 160 || /[/?#]/.test(id)) return null;
-
-  // Always resolve restaurant details from the authoritative D1 row.
-  // A saved snapshot must never resurrect a deleted restaurant.
   try {
-    const result = await d1.query('SELECT id, raw_json FROM restaurants WHERE id = ? LIMIT 1', [id], { cache: false });
+    const result = await d1.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id], { cache: false });
     const row = result?.results?.[0];
     if (!result?.success || !row) return null;
-    let stored: any = row;
-    try { stored = row.raw_json ? JSON.parse(row.raw_json) : row; } catch { stored = row; }
-    if (!stored || typeof stored !== 'object') return null;
-
-    // Public SEO output is deliberately constructed from an allowlist; never serialize raw D1 data.
-    const categories = (Array.isArray(stored.categories) ? stored.categories : []).map((category: any) => ({
-      name: typeof category?.name === 'string' ? category.name : 'Menu',
-      items: (Array.isArray(category?.items) ? category.items : []).map((item: any) => ({
-        id: String(item?.id || ''),
-        name: String(item?.name || ''),
-        description: typeof item?.description === 'string' ? item.description : '',
-        price: Number.isFinite(Number(item?.price)) ? Number(item.price) : undefined,
-        image: typeof (item?.imageUrl || item?.image) === 'string' ? (item.imageUrl || item.image) : undefined,
-        isAvailable: item?.isAvailable !== false,
-        dietary: Array.isArray(item?.dietary) ? item.dietary.filter((tag: any) => typeof tag === 'string').slice(0, 12) : []
-      })).filter((item: any) => item.name)
-    }));
+    const built = await buildPublicRestaurant(row, { includeMenu: true });
     return {
-      id: String(row.id || id),
-      name: typeof stored.name === 'string' ? stored.name : 'Restaurant',
-      description: typeof stored.description === 'string' ? stored.description : '',
-      tagline: typeof stored.tagline === 'string' ? stored.tagline : '',
-      cuisine: typeof stored.cuisine === 'string' ? stored.cuisine : '',
-      image: typeof (stored.imageUrl || stored.image_url || stored.image) === 'string' ? (stored.imageUrl || stored.image_url || stored.image) : undefined,
-      logo: typeof (stored.logoUrl || stored.logo_r2_url || stored.logo) === 'string' ? (stored.logoUrl || stored.logo_r2_url || stored.logo) : undefined,
-      rating: Number.isFinite(Number(stored.rating)) ? Number(stored.rating) : undefined,
-      reviewCount: Number.isFinite(Number(stored.reviewCount)) ? Number(stored.reviewCount) : undefined,
-      address: typeof stored.address === 'string' ? stored.address : '',
-      city: typeof stored.city === 'string' ? stored.city : '',
-      deliveryFee: Number.isFinite(Number(stored.deliveryFee)) ? Number(stored.deliveryFee) : undefined,
-      minimumOrder: Number.isFinite(Number(stored.minimumOrder ?? stored.minOrder)) ? Number(stored.minimumOrder ?? stored.minOrder) : undefined,
-      isOpen: stored.isOpen === true,
-      categories
+      id: String(built.id),
+      name: typeof built.name === 'string' ? built.name : undefined,
+      description: typeof built.description === 'string' ? built.description : undefined,
+      tagline: typeof built.tagline === 'string' ? built.tagline : undefined,
+      cuisine: typeof built.cuisine === 'string' ? built.cuisine : undefined,
+      image: typeof (built.imageUrl || built.bannerUrl || built.image) === 'string' ? (built.imageUrl || built.bannerUrl || built.image) : undefined,
+      logo: typeof (built.logoUrl || built.logo) === 'string' ? (built.logoUrl || built.logo) : undefined,
+      rating: Number.isFinite(Number(built.rating)) ? Number(built.rating) : undefined,
+      reviewCount: Number.isFinite(Number(built.reviewCount)) ? Number(built.reviewCount) : undefined,
+      address: typeof built.address === 'string' ? built.address : undefined,
+      city: typeof built.city === 'string' ? built.city : undefined,
+      deliveryFee: Number.isFinite(Number(built.deliveryFee)) ? Number(built.deliveryFee) : undefined,
+      minimumOrder: Number.isFinite(Number(built.minOrder ?? built.minimumOrder)) ? Number(built.minOrder ?? built.minimumOrder) : undefined,
+      isOpen: built.isOpen === true,
+      categories: (built.categories || []).map((category: any) => ({
+        name: typeof category?.name === 'string' ? category.name : 'Menu',
+        items: (Array.isArray(category?.items) ? category.items : []).map((item: any) => ({
+          id: String(item?.id || ''),
+          name: String(item?.name || ''),
+          description: typeof item?.description === 'string' ? item.description : '',
+          price: Number.isFinite(Number(item?.price)) ? Number(item.price) : undefined,
+          image: typeof (item?.imageUrl || item?.image) === 'string' ? (item.imageUrl || item.image) : undefined,
+          isAvailable: item?.isAvailable !== false,
+          dietary: Array.isArray(item?.dietary) ? item.dietary.filter((tag: any) => typeof tag === 'string').slice(0, 12) : []
+        })).filter((item: any) => item.name)
+      }))
     };
   } catch (err) {
     console.warn('Failed to load restaurant from authoritative D1:', err);

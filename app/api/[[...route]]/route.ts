@@ -13,7 +13,8 @@ import {
   calculateBatchRestaurantDistanceMetrics,
   geocodeAddress
 } from '../../../server/utils/distance';
-import { reverseGeocodeCoordinates } from '../../../server/routes/geocode';
+import { reverseGeocodeCoordinates } from '../../../server/routes/geocode'
+import { buildPublicRestaurant, buildPublicRestaurantList } from '../../../lib/restaurantMenu';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,107 +29,33 @@ async function syncMenuItemToRestaurantJson(
   targetRestaurantId?: string | null,
   deletedItemName?: string | null
 ) {
-  const restaurantsRes = await d1.query('SELECT id, raw_json FROM restaurants', [], { cache: false });
+  // Public menus are served from menu_items / menu_categories only.
+  // Strip legacy embedded categories from restaurants.raw_json after mutations.
+  const restaurantsRes = await d1.query(
+    targetRestaurantId
+      ? 'SELECT id, raw_json FROM restaurants WHERE id = ?'
+      : 'SELECT id, raw_json FROM restaurants',
+    targetRestaurantId ? [targetRestaurantId] : [],
+    { cache: false }
+  );
   if (!restaurantsRes || restaurantsRes.success === false || !Array.isArray(restaurantsRes.results)) {
-    throw new Error('Could not read restaurants while synchronizing the public menu.');
+    throw new Error('Could not read restaurants while clearing legacy embedded menus.');
   }
-
-  // Reconcile deletions against normalized menu_items, not just the deleted row's ID.
-  // This removes stale legacy/duplicate-ID entries that otherwise reappear publicly.
-  let liveMenuIds: Set<string> | null = null;
-  let liveMenuNames: Set<string> | null = null;
-  if (!item && targetRestaurantId) {
-    const liveMenuRes = await d1.query(
-      'SELECT id, name FROM menu_items WHERE restaurant_id = ?',
-      [targetRestaurantId]
-    );
-    if (!liveMenuRes || liveMenuRes.success === false || !Array.isArray(liveMenuRes.results)) {
-      throw new Error('Could not verify the restaurant menu after deletion.');
-    }
-    liveMenuIds = new Set(liveMenuRes.results.map((entry: any) => String(entry.id)));
-    liveMenuNames = new Set(liveMenuRes.results.map((entry: any) => String(entry.name || '').trim().toLocaleLowerCase()));
-  }
-
   for (const row of restaurantsRes.results || []) {
     let restaurantData: any = {};
     try { restaurantData = row.raw_json ? JSON.parse(row.raw_json) : {}; } catch { restaurantData = {}; }
-    if (!Array.isArray(restaurantData.categories)) restaurantData.categories = [];
-    let changed = false;
-    for (const category of restaurantData.categories) {
-      if (!Array.isArray(category.items)) continue;
-      const filtered = category.items.filter((entry: any) => {
-        if (String(entry?.id) === String(itemId)) return false;
-        if (!item && String(row.id) === String(targetRestaurantId) && liveMenuIds && liveMenuNames) {
-          const entryId = String(entry?.id || '');
-          const entryName = String(entry?.name || '').trim().toLocaleLowerCase();
-          return liveMenuIds.has(entryId) || liveMenuNames.has(entryName);
-        }
-        if (!item && deletedItemName && String(row.id) === String(targetRestaurantId) &&
-            String(entry?.name || '').trim().toLocaleLowerCase() === deletedItemName.trim().toLocaleLowerCase()) return false;
-        return true;
-      });
-      if (filtered.length !== category.items.length) { category.items = filtered; changed = true; }
+    if (!restaurantData || typeof restaurantData !== 'object') continue;
+    if (!('categories' in restaurantData) && !('menuItems' in restaurantData) && !('menu_items' in restaurantData)) continue;
+    delete restaurantData.categories;
+    delete restaurantData.menuItems;
+    delete restaurantData.menu_items;
+    const updateRes = await d1.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(restaurantData), row.id]);
+    if (!updateRes || updateRes.success === false) {
+      throw new Error('Could not strip embedded menu from restaurant ' + row.id);
     }
-    if (item && String(row.id) === String(targetRestaurantId || item.restaurant_id)) {
-      const categoryKey = String(item.category_id || 'Main Dishes');
-      let category = restaurantData.categories.find((entry: any) =>
-        String(entry?.id || '') === categoryKey || String(entry?.name || '').toLowerCase() === categoryKey.toLowerCase()
-      );
-      if (!category) {
-        category = { id: categoryKey.startsWith('cat-') ? categoryKey : `cat-${Date.now()}`, name: categoryKey, items: [] };
-        restaurantData.categories.push(category);
-      }
-      if (!Array.isArray(category.items)) category.items = [];
-      let dietaryTags: any[] = [];
-      try { dietaryTags = Array.isArray(item.dietary_tags) ? item.dietary_tags : JSON.parse(item.dietary_tags || '[]'); } catch {}
-      category.items.push({
-        id: item.id, name: item.name, description: item.description || '', price: Number(item.price || 0),
-        category: category.name || categoryKey, categoryId: category.id, restaurantId: row.id,
-        imageUrl: item.image_r2_url || item.image_url || '',
-        isAvailable: item.is_available === 1 || item.is_available === true,
-        popular: item.popular === 1 || item.popular === true, dietaryTags
-      });
-      changed = true;
-    }
-    if (changed) {
-      const updateRes = await d1.query(
-        'UPDATE restaurants SET raw_json = ? WHERE id = ?',
-        [JSON.stringify(restaurantData), row.id]
-      );
-      if (updateRes?.success === false) {
-        throw new Error(`Failed to synchronize restaurant menu JSON for restaurant ${row.id}`);
-      }
-    }
-  }
-  const refreshed = await siteDataManager.refreshSnapshot({ force: true });
-  if (!refreshed) {
-    throw new Error('Menu changed in the database, but the public catalogue snapshot could not be refreshed.');
   }
 }
 
-
-const JWT_SECRET = (process.env.JWT_SECRET || '').trim();
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
-const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || '').trim();
-
-function verifyToken(req: NextRequest): any | null {
-  if (!JWT_SECRET) return null;
-  try {
-    const authHeader = req.headers.get('authorization');
-    const rawToken = authHeader?.startsWith('Bearer ')
-      ? authHeader.substring(7)
-      : req.cookies.get('veyrang_jwt_token')?.value ||
-        req.cookies.get('veyrang_token')?.value ||
-        req.cookies.get('veyrang_auth_token')?.value ||
-        req.cookies.get('token')?.value ||
-        req.cookies.get('auth_token')?.value;
-    const token = (rawToken || '').trim();
-    if (!token) return null;
-    return jwt.verify(token, JWT_SECRET) as any;
-  } catch {
-    return null;
-  }
-}
 
 async function getUser(req: NextRequest) {
   const decoded = verifyToken(req);
@@ -384,20 +311,7 @@ export async function GET(req: NextRequest) {
       if (!restaurantsRes || restaurantsRes.success === false || !Array.isArray(restaurantsRes.results)) {
         throw new Error('Authoritative D1 restaurant query failed');
       }
-      const restaurants = restaurantsRes.results.map((row: any) => {
-        let parsed: any = {};
-        try { parsed = row.raw_json ? JSON.parse(row.raw_json) : {}; } catch { parsed = {}; }
-        return {
-          ...parsed,
-          id: row.id,
-          name: row.name || parsed.name,
-          cuisine: row.cuisine || parsed.cuisine,
-          rating: row.rating ?? parsed.rating,
-          isOpen: row.is_open === 1 || row.is_open === true,
-          isBusyPaused: row.is_busy_paused === 1 || row.is_busy_paused === true,
-          categories: Array.isArray(parsed.categories) ? parsed.categories : []
-        };
-      });
+      const restaurants = await buildPublicRestaurantList(restaurantsRes.results);
       const settingsRes = await d1.query(
         "SELECT key, value FROM platform_settings WHERE key IN ('delivery_zones', 'promo_codes')",
         [],
@@ -469,13 +383,7 @@ export async function GET(req: NextRequest) {
       if (!d1Res || d1Res.success === false || !Array.isArray(d1Res.results)) {
         throw new Error('D1 restaurant query failed');
       }
-      list = d1Res.results.map((r: any) => {
-        try {
-          const parsed = r.raw_json ? JSON.parse(r.raw_json) : r;
-          return { ...parsed, id: r.id, name: r.name || parsed.name, cuisine: r.cuisine || parsed.cuisine,
-            rating: r.rating ?? parsed.rating, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 };
-        } catch { return r; }
-      });
+      list = await buildPublicRestaurantList(d1Res.results);
     } catch (err: any) {
       console.error('[Restaurants] Authoritative D1 query failed:', err?.message || err);
       return NextResponse.json(
@@ -555,37 +463,27 @@ export async function GET(req: NextRequest) {
   if (pathname.startsWith('/restaurants/')) {
     const parts = pathname.split('/').filter(Boolean);
     const id = parts[1];
-    if (id && id !== 'calculate-distance') {
+    if (id && id !== 'calculate-distance' && parts.length === 2) {
       let foundInD1 = false;
       try {
         const d1Res = await d1.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id], { cache: false });
         if (d1Res && d1Res.success !== false) {
           foundInD1 = true;
           if (d1Res.results?.[0]) {
-            const r = d1Res.results[0];
-            try {
-              const parsed = r.raw_json ? JSON.parse(r.raw_json) : r;
-              return NextResponse.json({ success: true, data: { ...parsed, id: r.id, isOpen: r.is_open === 1, isBusyPaused: r.is_busy_paused === 1 } });
-            } catch {
-              return NextResponse.json({ success: true, data: r });
-            }
+            const data = await buildPublicRestaurant(d1Res.results[0], { includeMenu: true });
+            return NextResponse.json({ success: true, data }, { headers: { 'Cache-Control': 'no-store' } });
           }
         }
       } catch (err) {
         console.warn('[Single Restaurant] Primary query warning:', err);
       }
-
-      // If D1 was reached and definitively returned no record, return 404 (do not pull a phantom restaurant)
       if (foundInD1) {
         return NextResponse.json({ success: false, error: 'Restaurant not found' }, { status: 404 });
       }
-
-      // A D1 outage is not a not-found response and must never resurrect a stale restaurant.
       return NextResponse.json({ success: false, error: 'Restaurant data temporarily unavailable. Please retry.' },
         { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
   }
-
   // 13. Orders List
   if (pathname === '/orders' || pathname === '/admin/orders') {
     const user = await getUser(req);

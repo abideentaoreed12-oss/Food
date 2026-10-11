@@ -151,6 +151,11 @@ export class SiteDataManager {
     return this.currentSnapshot;
   }
 
+  /** Last successful D1 catalogue that was stored and distributed. */
+  public getLastSync(): SiteDataSnapshot | null {
+    return this.getLastKnownGood();
+  }
+
   public getRestaurants(): any[] {
     const snap = this.getLastKnownGood();
     return snap?.restaurants || [];
@@ -342,10 +347,10 @@ export class SiteDataManager {
   }
 
   /**
-   * Refreshes the site data snapshot from authoritative Cloudflare D1.
-   * Validates fresh data before updating.
-   * Preserves previous valid snapshot during failures or transient empty states.
-   * Protects against concurrent refreshes using a promise lock.
+   * Refreshes from authoritative Cloudflare D1.
+   * Success: store+distribute that exact result (empty catalogue allowed) as last-known-good.
+   * Failure: return getLastKnownGood() / getLastSync() — last successful D1 read only.
+   * Never invent restaurants, prices, or demo menus.
    */
   public async refreshSnapshot(
     options?: { force?: boolean; allowEmpty?: boolean; isAuthorizedAdmin?: boolean }
@@ -362,7 +367,7 @@ export class SiteDataManager {
     if (!options?.force && this.consecutiveFailures > 0) {
       const backoffMs = Math.min(60000, 5000 * Math.pow(2, this.consecutiveFailures - 1));
       if (now - this.lastSyncTimestamp < backoffMs) {
-        return null;
+        return this.getLastKnownGood();
       }
     }
 
@@ -406,12 +411,15 @@ export class SiteDataManager {
           };
         });
 
-        // Filter out any internal passwords or secret columns
+        // Secrets + never publish embedded menu blobs (menu_items is the dish source).
         for (const r of restaurants) {
           delete r.password;
           delete r.password_hash;
           delete r.token;
           delete r.secret;
+          delete r.categories;
+          delete r.menuItems;
+          delete r.menu_items;
         }
 
         const zonesRes = await d1.query('SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL').catch(() => ({ results: [] }));
@@ -468,10 +476,35 @@ export class SiteDataManager {
         }
       } catch (err: any) {
         this.consecutiveFailures++;
+        // Outage: distribute last successful D1 snapshot only — never invent catalogue data.
+        const lkg = this.getLastKnownGood();
+        if (lkg) {
+          console.warn(
+            '[SiteData] D1 refresh failed; distributing last successful D1 snapshot v' +
+              lkg.version +
+              ':',
+            err?.message || err
+          );
+          return {
+            ...lkg,
+            syncStatus: 'fallback' as const,
+            lastAttemptedAt: new Date().toISOString(),
+            metadata: {
+              ...(lkg.metadata || {
+                restaurantCount: lkg.restaurants?.length || 0,
+                deliveryZoneCount: lkg.deliveryZones?.length || 0,
+                promoCodeCount: lkg.promoCodes?.length || 0,
+                persistedToD1: false,
+                persistedToR2: false,
+              }),
+              consecutiveFailures: this.consecutiveFailures,
+              lastError: String(err?.message || err),
+            },
+          };
+        }
         console.warn(
-          '[SiteData] Failed to refresh snapshot from primary source:',
-          err?.message || err,
-          'Not serving a stale catalogue after a failed D1 refresh.'
+          '[SiteData] D1 refresh failed and no last-known-good snapshot exists yet:',
+          err?.message || err
         );
         return null;
       } finally {
