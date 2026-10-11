@@ -2246,11 +2246,10 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Courier not found' }, { status: 404 });
     }
     const now = new Date().toISOString();
-    const previousStatus = String(order.status || '');
-    const nextStatus = previousStatus === 'ready_for_pickup' || previousStatus === 'confirmed' ? 'in_transit' : previousStatus;
+    const nextStatus = String(order.status || '');
     const upd = await d1.query(
-      'UPDATE orders SET courier_id = ?, status = ?, updated_at = ? WHERE id = ?',
-      [courierId, nextStatus, now, order.id]
+      'UPDATE orders SET courier_id = ?, updated_at = ? WHERE id = ?',
+      [courierId, now, order.id]
     );
     if (!upd || upd.success === false) return NextResponse.json({ success: false, error: 'Assignment failed in D1' }, { status: 503 });
     const audit = await d1.query(
