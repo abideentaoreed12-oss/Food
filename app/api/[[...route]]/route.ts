@@ -536,7 +536,7 @@ export async function GET(req: NextRequest) {
           handoverPin: o.handover_pin,
           prepTimeAdjustmentMin: o.prep_time_adjustment_min || 0,
           routeProgress: o.route_progress || (o.status === 'delivered' ? 100 : 0),
-          estimatedArrivalMinutes: o.estimated_arrival_minutes || 25,
+          estimatedArrivalMinutes: o.estimated_arrival_minutes ?? parsed.estimatedArrivalMinutes ?? null,
           createdAt: o.created_at,
           updatedAt: o.updated_at
         };
