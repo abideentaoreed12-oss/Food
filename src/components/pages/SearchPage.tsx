@@ -260,7 +260,7 @@ export const SearchPage: React.FC = () => {
                         <span>·</span>
                         <span className="text-orange-600 font-medium">{r.distanceText || (Number.isFinite(Number(r.distanceKm)) && Number(r.distanceKm) > 0 ? `${r.distanceKm} km` : 'Distance unavailable')}</span>
                         <span>·</span>
-                        <span>{Number.isFinite(Number(r.calculatedDeliveryFee ?? r.deliveryFee)) ? `${formatCurrency(Number(r.calculatedDeliveryFee ?? r.deliveryFee), currency)} fee` : 'Fee unavailable'}</span>
+                        <span>{r.calculatedDeliveryFee != null && Number.isFinite(Number(r.calculatedDeliveryFee)) ? `${formatCurrency(Number(r.calculatedDeliveryFee), currency)} fee` : 'Fee after address'}</span>
                       </div>
                     </div>
                     <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-lg">
