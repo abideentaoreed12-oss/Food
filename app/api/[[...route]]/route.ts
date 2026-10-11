@@ -128,8 +128,29 @@ async function getUser(req: NextRequest) {
   };
 }
 
+function isAllowedOrigin(origin: string | null): boolean {
+  if (!origin) return false;
+  return (
+    origin === 'https://veyrang.com' ||
+    origin === 'https://www.veyrang.com' ||
+    origin.endsWith('.googleusercontent.com') ||
+    origin.endsWith('.aistudio.google.com') ||
+    origin.endsWith('.webcontainer.io') ||
+    origin.endsWith('.stackblitz.io') ||
+    origin.endsWith('.run.app') ||
+    origin.includes('localhost') ||
+    origin.includes('127.0.0.1')
+  );
+}
+
 export async function GET(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
+  if (pathname.startsWith('/admin/')) {
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 401 });
+    }
+  }
 
   // 1. Health check
   if (pathname === '/' || pathname === '/health') {
@@ -672,30 +693,18 @@ export async function GET(req: NextRequest) {
 
   // 24. Admin Categories — normalized menu_categories only (auth required)
   if (pathname === '/admin/categories') {
-    const user = await getUser(req);
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin' && user.role !== 'restaurant')) {
-      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
-    }
     const d1Res = await d1.query('SELECT * FROM menu_categories ORDER BY sort_order ASC', [], { cache: false });
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
   // 25. Admin Menu — normalized menu_items only (auth required, never mock/JSON embed)
   if (pathname === '/admin/menu') {
-    const user = await getUser(req);
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin' && user.role !== 'restaurant')) {
-      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
-    }
     const d1Res = await d1.query('SELECT * FROM menu_items ORDER BY created_at DESC LIMIT 500', [], { cache: false });
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
   // 26. Admin Addons — auth required
   if (pathname === '/admin/addons') {
-    const user = await getUser(req);
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin' && user.role !== 'restaurant')) {
-      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
-    }
     const d1Res = await d1.query('SELECT * FROM addons ORDER BY created_at DESC', [], { cache: false });
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
@@ -895,6 +904,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
+  if (pathname.startsWith('/admin/')) {
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 401 });
+    }
+  }
   const body = await req.json().catch(() => ({}));
 
   // 1. Storage Upload (Direct to Cloudflare R2 bucket)
@@ -2045,6 +2060,12 @@ export async function PUT(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
+  if (pathname.startsWith('/admin/')) {
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 401 });
+    }
+  }
   const body = await req.json().catch(() => ({}));
   const user = await getUser(req);
 
@@ -2159,6 +2180,55 @@ export async function PATCH(req: NextRequest) {
     await d1.query('UPDATE users SET is_approved = 1, updated_at = ? WHERE id = ?', [new Date().toISOString(), driverId]);
     await d1.query('UPDATE courier_profiles SET is_verified = 1, verification_status = \'verified\', updated_at = ? WHERE user_id = ?', [new Date().toISOString(), driverId]).catch(() => {});
     return NextResponse.json({ success: true, message: 'Driver approved successfully' });
+  }
+
+  // Admin Restaurant Assign to Merchant
+  const restAssignMatch = pathname.match(/^\/admin\/restaurants\/([^/]+)\/assign$/);
+  if (restAssignMatch) {
+    if (user.role === 'sub_admin') {
+      return NextResponse.json({ success: false, error: 'Only Super Admins can assign restaurants to merchants.' }, { status: 403 });
+    }
+    const restaurantId = decodeURIComponent(restAssignMatch[1]);
+    const ownerUserId = typeof body?.ownerUserId === 'string' && body.ownerUserId.trim() ? body.ownerUserId.trim() : null;
+    const restaurantRes = await d1.query('SELECT id, name, raw_json FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+    if (!restaurantRes.success || !restaurantRes.results?.length) {
+      return NextResponse.json({ success: false, error: 'Restaurant not found' }, { status: 404 });
+    }
+    let owner: any = null;
+    if (ownerUserId) {
+      const ownerRes = await d1.query('SELECT id, name, email, role, restaurant_id FROM users WHERE id = ? LIMIT 1', [ownerUserId]);
+      owner = ownerRes.results?.[0];
+      if (!owner) return NextResponse.json({ success: false, error: 'Merchant account not found' }, { status: 404 });
+      if (owner.role !== 'restaurant') {
+        return NextResponse.json({ success: false, error: 'Selected user must have the Restaurant Merchant role first' }, { status: 400 });
+      }
+    }
+    const now = new Date().toISOString();
+    const restaurant = restaurantRes.results[0];
+    let rawJson: any = {};
+    try { rawJson = restaurant.raw_json ? JSON.parse(restaurant.raw_json) : {}; } catch { rawJson = {}; }
+    rawJson.ownerId = ownerUserId;
+    await d1.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(rawJson), restaurantId]);
+    if (!ownerUserId) {
+      await d1.query('UPDATE users SET restaurant_id = NULL, updated_at = ? WHERE role = ? AND restaurant_id = ?', [now, 'restaurant', restaurantId]);
+    } else {
+      if (owner.restaurant_id && owner.restaurant_id !== restaurantId) {
+        const previous = await d1.query('SELECT raw_json FROM restaurants WHERE id = ? LIMIT 1', [owner.restaurant_id]);
+        if (previous.results?.[0]) {
+          let previousJson: any = {};
+          try { previousJson = previous.results[0].raw_json ? JSON.parse(previous.results[0].raw_json) : {}; } catch { previousJson = {}; }
+          previousJson.ownerId = null;
+          await d1.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(previousJson), owner.restaurant_id]);
+        }
+      }
+      await d1.query('UPDATE users SET restaurant_id = ?, updated_at = ? WHERE id = ?', [restaurantId, now, ownerUserId]);
+      await d1.query('UPDATE users SET restaurant_id = NULL, updated_at = ? WHERE role = ? AND restaurant_id = ? AND id <> ?', [now, 'restaurant', restaurantId, ownerUserId]);
+    }
+    await d1.query(
+      'INSERT INTO audit_logs (id, user_id, user_email, user_role, action, resource, resource_id, details, ip, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [randomUUID(), user.id, user.email, user.role, ownerUserId ? 'ADMIN_RESTAURANT_ASSIGNED' : 'ADMIN_RESTAURANT_UNASSIGNED', 'RESTAURANT', restaurantId, JSON.stringify({ restaurantName: restaurant.name, ownerUserId }), req.headers.get('x-forwarded-for') || '127.0.0.1', now]
+    ).catch(() => {});
+    return NextResponse.json({ success: true, data: { restaurantId, ownerUserId }, message: ownerUserId ? 'Restaurant assigned to merchant' : 'Restaurant unassigned' });
   }
 
   // 8. Restaurant Busy Mode Toggle
@@ -2387,6 +2457,12 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
+  if (pathname.startsWith('/admin/')) {
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 401 });
+    }
+  }
   const user = await getUser(req);
 
   // 1. R2 Storage File Delete
@@ -2535,14 +2611,15 @@ export async function DELETE(req: NextRequest) {
 }
 
 export async function OPTIONS(req: NextRequest) {
-  const origin = req.headers.get('origin') || '*';
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Allow-Credentials': 'true'
-    }
-  });
+  const origin = req.headers.get('origin');
+  const allowed = isAllowedOrigin(origin) ? origin : 'https://www.veyrang.com';
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true'
+  };
+  if (allowed) {
+    headers['Access-Control-Allow-Origin'] = allowed;
+  }
+  return new Response(null, { status: 204, headers });
 }

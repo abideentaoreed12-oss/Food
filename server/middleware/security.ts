@@ -1,21 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
 
 export function securityHeaders(req: Request, res: Response, next: NextFunction) {
-  // Strict CORS policy instead of wildcard *
+  // Strict CORS policy: only allow www.veyrang.com, veyrang.com, and Google AI Studio previews / local dev
   const origin = req.headers.origin;
-  const allowedOrigins = [
-    'https://veyrang.com',
-    'https://www.veyrang.com',
-    'https://ais-dev-nzkiazjmqpaqtk7xu2qe3k-22582271178.europe-west2.run.app',
-    'https://ais-pre-nzkiazjmqpaqtk7xu2qe3k-22582271178.europe-west2.run.app'
-  ];
+  const isAllowed = origin && (
+    origin === 'https://veyrang.com' ||
+    origin === 'https://www.veyrang.com' ||
+    origin.endsWith('.googleusercontent.com') ||
+    origin.endsWith('.aistudio.google.com') ||
+    origin.endsWith('.webcontainer.io') ||
+    origin.endsWith('.stackblitz.io') ||
+    origin.endsWith('.run.app') ||
+    origin.includes('localhost') ||
+    origin.includes('127.0.0.1')
+  );
 
-  if (origin && (allowedOrigins.includes(origin) || origin.includes('localhost') || origin.includes('127.0.0.1') || origin.endsWith('.run.app'))) {
+  if (isAllowed && origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   } else {
-    res.setHeader('Access-Control-Allow-Origin', 'https://veyrang.com');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Origin', 'https://www.veyrang.com');
   }
 
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -26,10 +30,10 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
     return res.status(204).end();
   }
 
-  // Content Security Policy (Allows Google Fonts & Vite assets)
+  // Content Security Policy (Allows Google Fonts & preview environments)
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https: ws: wss:; frame-ancestors 'self' https://*.run.app https://*.google.com;"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https: ws: wss:; frame-ancestors 'self' https://*.run.app https://*.google.com https://*.googleusercontent.com;"
   );
 
   // Hardening headers
