@@ -11,21 +11,22 @@ jobs:
         with:
           ref: main
           fetch-depth: 5
-      - name: Apply LKG + normalized menu wiring on main
+      - name: Apply LKG, menu auth, cleanup on main
         run: |
           set -e
-          python3 scripts/apply_lkg_policy.py
-          if [ -f scripts/apply_normalized_menu.py ]; then python3 scripts/apply_normalized_menu.py; fi
-          if [ -f scripts/apply_seo_menu.py ]; then python3 scripts/apply_seo_menu.py; fi
+          python3 scripts/apply_lkg_policy.py || true
+          python3 scripts/apply_normalized_menu.py || true
+          python3 scripts/apply_seo_menu.py || true
+          python3 scripts/apply_menu_auth_and_cleanup.py
       - name: Commit on main
         run: |
           set -e
           git config user.name "veyrang-bot"
           git config user.email "bot@veyrang.com"
-          git add lib/siteDataSnapshot.ts 'app/api/[[...route]]/route.ts' 'app/restaurants/[id]/page.tsx' || true
+          git add -A
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
           fi
-          git commit -m "feat(snapshot): LKG is last successful D1 read; menus from menu_items on main"
+          git commit -m "feat(menu): menu_items/menu_categories only from live D1; auth admin reads; drop mock JSON on main"
           git push origin HEAD:main
