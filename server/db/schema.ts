@@ -190,7 +190,7 @@ export const OrderSchema = z.object({
   statusHistory: z.array(OrderStatusEventSchema),
   courier: CourierInfoSchema.optional(),
   routeProgress: z.number().min(0).max(100),
-  estimatedArrivalMinutes: z.number().int().nonnegative(),
+  estimatedArrivalMinutes: z.number().int().nonnegative().nullable(),
   messages: z.array(ChatMessageSchema),
   updatedAt: z.string()
 });
