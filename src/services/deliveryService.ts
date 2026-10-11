@@ -27,7 +27,7 @@ export const deliveryService = {
           centerLat: Number(z.center_lat ?? z.centerLat),
           centerLng: Number(z.center_lng ?? z.centerLng),
           averageSpeedMin: Number.isFinite(Number(z.average_speed_min ?? z.averageSpeedMin)) ? Number(z.average_speed_min ?? z.averageSpeedMin) : undefined,
-          isActive: Number(z.is_active) === 1,
+          isActive: Number(z.is_active ?? z.isActive) === 1,
           mapImageR2Url: z.map_image_r2_url || z.mapImageR2Url || undefined
         })).filter((z: ZoneConfig) =>
           !!z.id && !!z.name && !!z.city &&
