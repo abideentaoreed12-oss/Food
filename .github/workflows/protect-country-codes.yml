@@ -1,0 +1,38 @@
+name: Protect country-code data
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/data/countryCodes.ts'
+      - 'src/components/common/CountryCodePicker.tsx'
+      - 'scripts/guard-country-codes.mjs'
+      - '.github/workflows/protect-country-codes.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  protect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Restore country-code data if accidentally removed
+        run: node scripts/guard-country-codes.mjs --restore
+      - name: Commit automatic restoration directly to main
+        run: |
+          set -e
+          git config user.name "veyrang-bot"
+          git config user.email "bot@veyrang.com"
+          git add src/data/countryCodes.ts
+          if git diff --cached --quiet; then
+            echo "Country-code data exists and is valid; no restoration needed."
+            exit 0
+          fi
+          git commit -m "fix(signup): automatically restore required country-code data"
+          git push origin HEAD:main
