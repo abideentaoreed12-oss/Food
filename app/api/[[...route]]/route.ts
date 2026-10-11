@@ -739,6 +739,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
+  // Restaurant-safe courier choices: expose only display fields, never contact details.
+  if (pathname === '/couriers/available') {
+    const user = await getUser(req);
+    if (!user || !['admin', 'sub_admin', 'restaurant'].includes(user.role)) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+    const courierRes = await d1.query(
+      "SELECT id, name FROM users WHERE role = 'courier' AND (is_approved = 1 OR is_approved IS NULL) ORDER BY name ASC",
+      [],
+      { cache: false }
+    );
+    if (!courierRes || courierRes.success === false) return NextResponse.json({ success: false, error: 'Could not load available couriers.' }, { status: 503 });
+    return NextResponse.json({ success: true, data: courierRes.results || [] }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
   // 27. Admin Drivers / Couriers
   if (pathname === '/admin/drivers') {
     const user = await getUser(req);
