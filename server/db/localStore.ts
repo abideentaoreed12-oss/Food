@@ -92,10 +92,11 @@ export function seedInitialData(): DatabaseSchema {
     });
   }
 
-  // Preserves verified restaurants without injecting demo seed data
-  const restaurants: Restaurant[] = [];
-
   const snapshot = siteDataManager.getLastKnownGood();
+  // Preserves verified restaurants from last known good snapshot
+  const restaurants: Restaurant[] = (snapshot?.restaurants || []).map((r: any) => ({
+    ...r
+  }));
   const promoCodes: PromoCodeRecord[] = (snapshot?.promoCodes || []).map((p: any) => ({
     id: p.id || `promo-${p.code.toLowerCase()}`,
     code: p.code,

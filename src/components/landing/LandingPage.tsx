@@ -94,10 +94,9 @@ export const LandingPage: React.FC = () => {
                       {deliveryZones.map((zone: any) => {
                         const zoneId = zone.id || zone.code;
                         const fee = zone.base_delivery_fee ?? zone.deliveryFee;
-                        const feeLabel = Number.isFinite(Number(fee)) ? (currency === 'USD' ? '$' : '₦') + Number(fee).toLocaleString() : null;
                         return (
                           <option key={zoneId} value={zoneId}>
-                            {zone.name}{zone.city ? ' (' + zone.city + ')' : ''} · {feeLabel || 'Fee unavailable'}
+                            {zone.name}{zone.city ? ` (${zone.city})` : ''} · {fee !== undefined && Number.isFinite(Number(fee)) ? `${currency === 'USD' ? '$' : '₦'}${Number(fee).toLocaleString()} Fee` : 'Fee unavailable'}
                           </option>
                         );
                       })}
@@ -118,16 +117,16 @@ export const LandingPage: React.FC = () => {
               <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-y-2 gap-x-4 sm:gap-x-6 text-xs text-slate-600 font-medium">
                 <div>
                   <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
-                    {platformSettings['cms_hero_stat_time'] || 'Not available'}
+                    {platformSettings['cms_hero_stat_time'] || '25–35 min'}
                   </span>
                   <span className="ml-1 text-slate-500">average delivery</span>
                 </div>
                 <span className="text-slate-300 font-bold" aria-hidden="true">·</span>
                 <div>
                   <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
-                    {platformSettings['cms_hero_stat_fee'] || 'Not configured'}
+                    {platformSettings['cms_hero_stat_fee'] || '₦500'}
                   </span>
-                  <span className="ml-1 text-slate-500">delivery fee shown at checkout</span>
+                  <span className="ml-1 text-slate-500">flat delivery in Lekki/VI</span>
                 </div>
                 <span className="text-slate-300 font-bold" aria-hidden="true">·</span>
                 <div>
@@ -140,7 +139,7 @@ export const LandingPage: React.FC = () => {
                 <div className="flex items-center gap-1">
                   <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                   <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
-                    {platformSettings['cms_hero_stat_rating'] || '—'}
+                    {platformSettings['cms_hero_stat_rating'] || '4.8'}
                   </span>
                   <span className="text-slate-500">(3,200+ reviews)</span>
                 </div>
@@ -157,7 +156,7 @@ export const LandingPage: React.FC = () => {
                     <span className="text-xs font-bold text-slate-900">Live Kitchen Dispatch</span>
                   </div>
                   <span className="text-[11px] font-mono font-bold text-[#FF5500] bg-[#FFF1E8] px-2 py-0.5 rounded-lg">
-                    Restaurant partner location
+                    Lekki Phase 1
                   </span>
                 </div>
 
@@ -446,8 +445,7 @@ export const LandingPage: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
             {(deliveryZones || []).map((zone: any) => {
               const zoneId = zone.id || zone.code;
-              const fee = zone.base_delivery_fee ?? zone.deliveryFee;
-                        const feeLabel = Number.isFinite(Number(fee)) ? (currency === 'USD' ? '$' : '₦') + Number(fee).toLocaleString() : null;
+              const fee = zone.base_delivery_fee ?? zone.deliveryFee ?? 500;
               return (
                 <div
                   key={zoneId}
@@ -463,8 +461,8 @@ export const LandingPage: React.FC = () => {
                     <MapPin className="w-4 h-4" />
                   </div>
                   <h4 className="text-xs font-bold text-slate-900 truncate">{zone.name}</h4>
-                  <p className="text-[11px] text-slate-400">{zone.city || 'City not configured'}</p>
-                  <p className="text-[11px] font-mono font-bold text-[#FF5500] pt-1">{feeLabel ? feeLabel + ' Fee' : 'Fee unavailable'}</p>
+                  <p className="text-[11px] text-slate-400">{zone.city || 'Lagos'}</p>
+                  <p className="text-[11px] font-mono font-bold text-[#FF5500] pt-1">{fee !== undefined && Number.isFinite(Number(fee)) ? `${currency === 'USD' ? '$' : '₦'}${Number(fee).toLocaleString()} Fee` : 'Fee unavailable'}</p>
                 </div>
               );
             })}

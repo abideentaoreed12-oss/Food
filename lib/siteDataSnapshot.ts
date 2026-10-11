@@ -62,9 +62,7 @@ export function isValidSiteData(
   if (typeof candidate.version !== 'number' || !Number.isFinite(candidate.version) || candidate.version < 1) return false;
   if (typeof candidate.updatedAt !== 'string' || !candidate.updatedAt.trim()) return false;
   if (!Array.isArray(candidate.restaurants)) return false;
-
-  // An empty restaurant catalogue is valid live data. If the authoritative database
-  // has no restaurants, the public catalogue must be empty rather than resurrecting stale demo data.
+  if (!options?.allowEmpty && candidate.restaurants.length === 0) return false;
 
   // Ensure all restaurants are valid objects with non-empty string id and name
   for (const r of candidate.restaurants) {
@@ -283,7 +281,8 @@ export class SiteDataManager {
     snapshot: SiteDataSnapshot,
     options?: { allowEmpty?: boolean; isAuthorizedAdmin?: boolean }
   ): Promise<boolean> {
-    if (!isValidSiteData(snapshot, { allowEmpty: true })) {
+    const allowEmpty = Boolean(options?.allowEmpty || options?.isAuthorizedAdmin);
+    if (!isValidSiteData(snapshot, { allowEmpty })) {
       console.error('[SiteData] Attempted to save invalid or empty site snapshot. Aborting.');
       return false;
     }

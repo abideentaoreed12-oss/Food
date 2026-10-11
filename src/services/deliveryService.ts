@@ -31,12 +31,12 @@ export const deliveryService = {
           mapImageR2Url: z.map_image_r2_url || z.mapImageR2Url || undefined
         })).filter((z: ZoneConfig) =>
           !!z.id && !!z.name && !!z.city &&
-          Number.isFinite(z.baseFee) && z.baseFee >= 0 &&
-          Number.isFinite(z.perKmFee) && z.perKmFee >= 0 &&
-          Number.isFinite(z.radiusKm) && z.radiusKm > 0 &&
-          Number.isFinite(z.centerLat) && z.centerLat >= -90 && z.centerLat <= 90 &&
-          Number.isFinite(z.centerLng) && z.centerLng >= -180 && z.centerLng <= 180 &&
-          Number.isFinite(z.surgeMultiplier) && z.surgeMultiplier >= 0
+          typeof z.baseFee === 'number' && Number.isFinite(z.baseFee) && z.baseFee >= 0 &&
+          typeof z.perKmFee === 'number' && Number.isFinite(z.perKmFee) && z.perKmFee >= 0 &&
+          typeof z.radiusKm === 'number' && Number.isFinite(z.radiusKm) && z.radiusKm > 0 &&
+          typeof z.centerLat === 'number' && Number.isFinite(z.centerLat) && z.centerLat >= -90 && z.centerLat <= 90 &&
+          typeof z.centerLng === 'number' && Number.isFinite(z.centerLng) && z.centerLng >= -180 && z.centerLng <= 180 &&
+          typeof z.surgeMultiplier === 'number' && Number.isFinite(z.surgeMultiplier) && z.surgeMultiplier >= 0
         );
       }
     } catch (err) {
