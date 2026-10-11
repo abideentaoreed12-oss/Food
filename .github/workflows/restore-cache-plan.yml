@@ -11,14 +11,14 @@ jobs:
         with:
           ref: main
           fetch-depth: 5
-      - name: Harden LKG on main
-        run: python3 scripts/apply_lkg_harden.py
+      - name: Restore verifyToken on main
+        run: python3 scripts/apply_fix_verify_token.py
       - name: Commit on main
         run: |
           set -e
           git config user.name "veyrang-bot"
           git config user.email "bot@veyrang.com"
-          git add lib/siteDataSnapshot.ts lib/restaurantMenu.ts
+          git add 'app/api/[[...route]]/route.ts'
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
-          git commit -m "fix(lkg): cold-start bootstrap await; sync timestamps on load; drop empty menu categories"
+          git commit -m "fix(build): restore verifyToken + JWT_SECRET/ADMIN env constants (compile error)"
           git push origin HEAD:main
