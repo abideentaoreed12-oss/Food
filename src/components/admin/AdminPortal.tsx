@@ -965,29 +965,32 @@ export const AdminPortal: React.FC = () => {
     setEditRestName(rest.name || '');
     setEditRestAddress(rest.address || '');
     setEditRestCuisine(rest.cuisine || '');
-    setEditRestDeliveryFee(String(rest.deliveryFee || rest.delivery_fee || 1000));
-    setEditRestDeliveryMin(String(rest.deliveryTimeMin || rest.delivery_time_min || 20));
-    setEditRestDeliveryMax(String(rest.deliveryTimeMax || rest.delivery_time_max || 40));
-    setEditRestRating(String(rest.rating || 4.8));
+    setEditRestDeliveryFee(String(rest.deliveryFee ?? rest.delivery_fee ?? ''));
+    setEditRestDeliveryMin(String(rest.deliveryTimeMin ?? rest.delivery_time_min ?? ''));
+    setEditRestDeliveryMax(String(rest.deliveryTimeMax ?? rest.delivery_time_max ?? ''));
+    setEditRestRating(String(rest.rating ?? ''));
     setEditRestTagline(rest.tagline || '');
     setEditRestBannerUrl(rest.bannerUrl || rest.banner_r2_url || '');
     setEditRestLogoUrl(rest.logoUrl || '');
-    setEditRestZone(rest.zone || 'Lekki / Victoria Island');
+    setEditRestZone(rest.zone || '');
     setIsEditRestaurantModalOpen(true);
   };
 
   const handleSaveEditRestaurant = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingRestaurant || !editRestName.trim() || !editRestAddress.trim()) return;
+    if (!editingRestaurant || !editRestName.trim() || !editRestAddress.trim() || [editRestDeliveryFee, editRestDeliveryMin, editRestDeliveryMax].some(value => value.trim() === '' || !Number.isFinite(Number(value)) || Number(value) < 0) || Number(editRestDeliveryMax) < Number(editRestDeliveryMin)) {
+      showActionFeedback('Enter a valid delivery fee and preparation-time range before saving.');
+      return;
+    }
     try {
       await api.admin.updateRestaurant(editingRestaurant.id, {
         name: editRestName.trim(),
         address: editRestAddress.trim(),
         cuisine: editRestCuisine.trim(),
-        deliveryFee: Number(editRestDeliveryFee || 1000),
-        deliveryTimeMin: Number(editRestDeliveryMin || 20),
-        deliveryTimeMax: Number(editRestDeliveryMax || 40),
-        rating: Number(editRestRating || 4.8),
+        deliveryFee: Number(editRestDeliveryFee),
+        deliveryTimeMin: Number(editRestDeliveryMin),
+        deliveryTimeMax: Number(editRestDeliveryMax),
+        ...(editRestRating.trim() !== '' && Number.isFinite(Number(editRestRating)) ? { rating: Number(editRestRating) } : {}),
         tagline: editRestTagline.trim(),
         bannerUrl: editRestBannerUrl.trim(),
         logoUrl: editRestLogoUrl.trim(),
@@ -2321,7 +2324,7 @@ export const AdminPortal: React.FC = () => {
                     {deliveryZonesList.map((z) => (
                       <tr key={z.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="p-3 font-semibold text-slate-900">{z.name}</td>
-                        <td className="p-3 text-slate-600">{z.city || 'Lagos'}</td>
+                        <td className="p-3 text-slate-600">{z.city || 'City not configured'}</td>
                         <td className="p-3 font-mono font-bold text-slate-900">₦{Number(z.base_delivery_fee || 1000).toLocaleString('en-NG')}</td>
                         <td className="p-3 font-mono text-slate-600">₦{Number(z.per_km_fee || 200).toLocaleString('en-NG')} / km</td>
                         <td className="p-3 font-mono font-bold text-[#FF5500]">{Number(z.surge_multiplier || 1.0).toFixed(1)}x</td>
@@ -3697,8 +3700,8 @@ export const AdminPortal: React.FC = () => {
                         </td>
                         <td className="p-3 text-slate-600 max-w-[200px] truncate">{rest.address}</td>
                         <td className="p-3 text-slate-600">{rest.cuisine || 'Continental'}</td>
-                        <td className="p-3 font-bold text-amber-600">⭐ {Number(rest.rating || 4.8).toFixed(1)}</td>
-                        <td className="p-3 font-mono font-bold text-slate-900">₦{Number(rest.deliveryFee || rest.delivery_fee || 1000).toLocaleString('en-NG')}</td>
+                        <td className="p-3 font-bold text-amber-600">⭐ {rest.rating != null && Number(rest.rating) > 0 ? Number(rest.rating).toFixed(1) : 'Not rated'}</td>
+                        <td className="p-3 font-mono font-bold text-slate-900">{Number.isFinite(Number(rest.deliveryFee ?? rest.delivery_fee)) ? `₦${Number(rest.deliveryFee ?? rest.delivery_fee).toLocaleString('en-NG')}` : 'Not configured'}</td>
                         <td className="p-3 min-w-[220px]">
                           <select value={usersList.find((u: any) => u.role === 'restaurant' && u.restaurantId === rest.id)?.id || rest.ownerId || ''} onChange={(e) => handleAssignRestaurant(rest.id, e.target.value || null)} className="w-full min-w-[190px] bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-[#FF5500] outline-none" aria-label={`Assign merchant to ${rest.name}`} disabled={isSubAdmin}>
                             <option value="">Unassigned</option>
