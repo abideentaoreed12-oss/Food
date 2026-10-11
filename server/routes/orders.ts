@@ -105,22 +105,38 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
     verifiedSubtotal = Math.round(verifiedSubtotal * 100) / 100;
 
     let deliveryFee = 0;
-    let estimatedArrivalMinutes = (restaurant.deliveryTimeMin || 25) + 5;
+    let estimatedArrivalMinutes: number | null = null;
     let distanceMetrics: any = null;
     if (fulfillmentType === 'pickup') {
       deliveryFee = 0;
     } else {
+      const preparationMinutes = Number(restaurant.deliveryTimeMin);
+      if (!Number.isFinite(preparationMinutes) || preparationMinutes < 0) {
+        return res.status(503).json({ success: false, error: 'Restaurant preparation time is not configured.' });
+      }
       try {
         distanceMetrics = await calculateRestaurantDistanceMetrics(restaurant, customerAddress);
         deliveryFee = distanceMetrics.estimatedDeliveryFee;
-        estimatedArrivalMinutes = Math.max(15, (restaurant.deliveryTimeMin || 20) + distanceMetrics.durationMinutes);
+        estimatedArrivalMinutes = preparationMinutes + distanceMetrics.durationMinutes;
       } catch (error) {
         console.error('[Order pricing] Delivery fee calculation failed:', error);
         return res.status(503).json({ success: false, error: 'Delivery pricing is temporarily unavailable. Please try again.' });
       }
     }
 
-    const serviceFee = currency === 'USD' ? Math.round(verifiedSubtotal * 0.08 * 100) / 100 : 200;
+    const serviceFeeKey = currency === 'USD' ? 'base_service_fee_usd' : 'base_service_fee_ngn';
+    let configuredServiceFee: number;
+    try {
+      const serviceFeeResult = await d1Client.query('SELECT value FROM platform_settings WHERE key = ? LIMIT 1', [serviceFeeKey]);
+      configuredServiceFee = Number(serviceFeeResult.results?.[0]?.value);
+    } catch (error) {
+      console.error('[Order pricing] Platform fee lookup failed:', error);
+      return res.status(503).json({ success: false, error: 'Platform fee configuration is unavailable. Please try again.' });
+    }
+    if (!Number.isFinite(configuredServiceFee) || configuredServiceFee < 0) {
+      return res.status(503).json({ success: false, error: 'Platform service fee is not configured.' });
+    }
+    const serviceFee = configuredServiceFee;
     let discountAmount = 0;
     if (promoCode) {
       const codeUpper = String(promoCode).trim().toUpperCase();
