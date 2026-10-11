@@ -116,6 +116,7 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
       }
       try {
         distanceMetrics = await calculateRestaurantDistanceMetrics(restaurant, customerAddress);
+        if (!distanceMetrics.inDeliveryRadius) return res.status(400).json({ success: false, error: 'This address is outside the configured delivery radius for this restaurant.' });
         deliveryFee = distanceMetrics.estimatedDeliveryFee;
         estimatedArrivalMinutes = preparationMinutes + distanceMetrics.durationMinutes;
       } catch (error) {
@@ -333,6 +334,7 @@ router.post('/quote', async (req: AuthRequest, res: Response) => {
     if (fulfillmentType !== 'pickup') {
       try {
         distanceMetrics = await calculateRestaurantDistanceMetrics(restaurant, customerAddress);
+        if (!distanceMetrics.inDeliveryRadius) return res.status(400).json({ success: false, error: 'This address is outside the configured delivery radius for this restaurant.' });
         deliveryFee = distanceMetrics.estimatedDeliveryFee;
       } catch {
         return res.status(503).json({ success: false, error: 'Delivery pricing is temporarily unavailable. Please try again.' });
