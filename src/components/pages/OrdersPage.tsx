@@ -162,7 +162,10 @@ export const OrdersPage: React.FC = () => {
   const getRemainingEtaMinutes = (order: Order): number => {
     if (order.status === 'awaiting_payment' || order.paymentStatus === 'pending') return -1;
     if (order.status === 'delivered' || order.status === 'cancelled') return 0;
-    if (clockNow === 0) return Number(order.estimatedArrivalMinutes) || 25;
+    if (clockNow === 0) {
+      const initialEta = Number(order.estimatedArrivalMinutes);
+      return order.estimatedArrivalMinutes != null && Number.isFinite(initialEta) && initialEta >= 0 ? initialEta : -1;
+    }
     const created = new Date(order.createdAt).getTime();
     const eta = Number(order.estimatedArrivalMinutes);
     if (!Number.isFinite(created) || !Number.isFinite(eta) || eta < 0) return -1;
@@ -412,7 +415,7 @@ export const OrdersPage: React.FC = () => {
 
                   <div className="flex items-center gap-1 font-bold text-orange-950 font-mono">
                     <Clock className="w-3.5 h-3.5 text-[#FF5500]" />
-                    <span>{getRemainingEtaMinutes(order) < 0 ? 'Awaiting payment' : getRemainingEtaMinutes(order) === 0 ? 'ETA reached' : `ETA: ${getRemainingEtaMinutes(order)} min`}</span>
+                    <span>{order.status === 'awaiting_payment' || order.paymentStatus === 'pending' ? 'Awaiting payment' : getRemainingEtaMinutes(order) < 0 ? 'ETA unavailable' : getRemainingEtaMinutes(order) === 0 ? 'ETA reached' : `ETA: ${getRemainingEtaMinutes(order)} min`}</span>
                   </div>
                 </div>
 
