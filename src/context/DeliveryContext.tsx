@@ -969,7 +969,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     const walletDeduction = Math.min(Math.max(0, Number(walletBalanceNGN) || 0), Math.max(0, grossTotal));
     const finalPayable = Math.max(0, grossTotal - walletDeduction);
 
-    // ETA is based on the live road-routing duration returned by OSRM/Google/etc.
+    // ETA is based on the actual road-routing duration returned by the free OpenStreetMap routing providers.
     // Add the agreed 15-minute kitchen/dispatch buffer; never invent a drive time.
     const drivingMinutes = Number(details.drivingMinutes);
     const hasLiveDriveTime = fulfillmentType === 'pickup' || (Number.isFinite(drivingMinutes) && drivingMinutes > 0);
@@ -1008,7 +1008,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
       isContactless,
       handoverPin: Math.floor(1000 + Math.random() * 9000).toString(),
       estimatedArrivalMinutes: computedETA,
-      routeProgress: 5,
+      routeProgress: 0,
       createdAt: new Date().toISOString(),
       statusHistory: [
         {
