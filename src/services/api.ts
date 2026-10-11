@@ -414,6 +414,13 @@ export const api = {
       });
     },
 
+    payWithWallet: async (orderId: string) => {
+      return request(`/api/orders/${encodeURIComponent(orderId)}/pay-with-wallet`, {
+        method: 'POST',
+        body: JSON.stringify({})
+      });
+    },
+
     adjustPrepTime: async (orderId: string, adjustmentMinutes: number) => {
       return request(`/api/orders/${orderId}/prep-time`, {
         method: 'PATCH',

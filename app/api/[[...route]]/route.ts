@@ -2006,6 +2006,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Order marked as refunded' });
   }
 
+  // Pay unpaid order using wallet balance
+  const payWalletMatch = pathname.match(/^\/orders\/([^/]+)\/pay-with-wallet$/);
+  if (payWalletMatch && req.method === 'POST') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    const orderId = decodeURIComponent(payWalletMatch[1]);
+    const orderRes = await d1.query('SELECT * FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
+    const order = orderRes.results?.[0] as any;
+    if (!order) return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    if (String(order.customer_id || '') !== String(user.id)) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
+    if (['paid', 'completed'].includes(String(order.payment_status || '').toLowerCase())) {
+      return NextResponse.json({ success: false, error: 'This order is already paid.' }, { status: 400 });
+    }
+    const orderTotal = Number(order.total || 0);
+    const userBalance = Number(user.walletBalanceNGN || 0);
+    if (userBalance < orderTotal) {
+      return NextResponse.json({ success: false, error: `Insufficient wallet balance. You have ₦${userBalance.toLocaleString()}, but this order requires ₦${orderTotal.toLocaleString()}.` }, { status: 400 });
+    }
+    const now = new Date().toISOString();
+    await d1.query('UPDATE users SET wallet_balance_ngn = wallet_balance_ngn - ?, updated_at = ? WHERE id = ?', [orderTotal, now, user.id]);
+    await d1.query("UPDATE orders SET payment_status = 'paid', payment_method = 'Wallet Balance', status = 'placed', updated_at = ? WHERE id = ?", [now, order.id]);
+    await d1.query(
+      `INSERT INTO wallet_transactions (id, user_id, type, amount, currency, description, status, created_at, reference, payment_method)
+       VALUES (?, ?, 'order', ?, 'NGN', ?, 'completed', ?, ?, 'Wallet Balance')`,
+      [`tx-${Date.now()}`, user.id, -orderTotal, `Order Payment — ${order.restaurant_name || order.short_id}`, now, order.short_id || order.id]
+    );
+    return NextResponse.json({ success: true, message: 'Payment completed successfully from wallet balance.', newBalance: userBalance - orderTotal });
+  }
+
   // QR Delivery Handover & Review: secure, expiring, hashed bearer tokens.
   const qrIssueMatch = pathname.match(/^\/orders\/([^/]+)\/handover-qr$/);
   if (qrIssueMatch && req.method === 'POST') {
@@ -2038,7 +2067,8 @@ export async function POST(req: NextRequest) {
     const result = await d1.query('SELECT t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.payment_status, o.restaurant_name FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
     const row = result.results?.[0] as any;
     if (!row || row.consumed_at || new Date(row.expires_at).getTime() <= Date.now()) return NextResponse.json({ success: false, error: 'This handover link is invalid, expired, or already used.' }, { status: 410, headers: { 'Cache-Control': 'no-store' } });
-    if (!['paid', 'completed'].includes(String(row.payment_status || '').toLowerCase())) return NextResponse.json({ success: false, error: 'Payment is not confirmed. This handover QR is locked.' }, { status: 409, headers: { 'Cache-Control': 'no-store' } });
+    const isPaymentConfirmed = ['paid', 'completed'].includes(String(row.payment_status || '').toLowerCase());
+    if (!isPaymentConfirmed) return NextResponse.json({ success: false, error: 'Payment is not confirmed. This handover QR is locked.' }, { status: 409, headers: { 'Cache-Control': 'no-store' } });
     const viewer = await getUser(req);
     if (!viewer || viewer.role !== 'customer') return NextResponse.json({ success: false, error: 'Sign in to VeyraNG with your customer account to view this handover.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
     const owner = await d1.query('SELECT customer_id FROM orders WHERE id = ? LIMIT 1', [row.order_id]);
@@ -2053,7 +2083,8 @@ export async function POST(req: NextRequest) {
     const result = await d1.query('SELECT t.id AS token_id, t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.payment_status, o.customer_id FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
     const row = result.results?.[0] as any;
     if (!row || row.consumed_at || new Date(row.expires_at).getTime() <= Date.now()) return NextResponse.json({ success: false, error: 'This handover link is invalid, expired, or already used.' }, { status: 410 });
-    if (!['paid', 'completed'].includes(String(row.payment_status || '').toLowerCase())) return NextResponse.json({ success: false, error: 'Payment must be confirmed before completing handover.' }, { status: 409 });
+    const isPaymentConfirmed = ['paid', 'completed'].includes(String(row.payment_status || '').toLowerCase());
+    if (!isPaymentConfirmed) return NextResponse.json({ success: false, error: 'Payment must be confirmed before completing handover.' }, { status: 409 });
     const user = await getUser(req);
     if (!user) return NextResponse.json({ success: false, error: 'Sign in to VeyraNG as the order customer to confirm receipt.' }, { status: 401 });
     if (user.role !== 'customer' || String(user.id) !== String(row.customer_id)) return NextResponse.json({ success: false, error: 'Only the signed-in customer for this order can confirm receipt.' }, { status: 403 });
@@ -2078,12 +2109,13 @@ export async function POST(req: NextRequest) {
     if (user.role !== 'customer') return NextResponse.json({ success: false, error: 'Only the signed-in customer can confirm receipt.' }, { status: 403 });
     const orderId = decodeURIComponent(handoverMatch[1]);
     const enteredPin = String(body?.enteredPin || body?.pin || body?.code || '').trim();
-    if (!/^\d{4,8}$/.test(enteredPin)) return NextResponse.json({ success: false, error: 'Enter a valid 4-digit handover code.' }, { status: 400 });
+    if (!/^\d{4,8}$/.test(enteredPin)) return NextResponse.json({ success: false, error: 'Enter a valid handover code.' }, { status: 400 });
     const result = await d1.query('SELECT id, short_id, customer_id, status, payment_status, raw_json FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
     const row = result.results?.[0] as any;
     if (!row) return NextResponse.json({ success: false, error: 'Order not found.' }, { status: 404 });
     if (String(row.customer_id || '') !== String(user.id)) return NextResponse.json({ success: false, error: 'You are not authorized to confirm this order.' }, { status: 403 });
-    if (!['paid', 'completed'].includes(String(row.payment_status || '').toLowerCase())) return NextResponse.json({ success: false, error: 'Payment must be confirmed before verifying handover.' }, { status: 409 });
+    const isPaymentConfirmed = ['paid', 'completed'].includes(String(row.payment_status || '').toLowerCase());
+    if (!isPaymentConfirmed) return NextResponse.json({ success: false, error: 'Payment must be confirmed before verifying handover.' }, { status: 409 });
     if (['delivered', 'cancelled'].includes(String(row.status || '').toLowerCase())) return NextResponse.json({ success: false, error: 'This order is already delivered or cancelled.' }, { status: 409 });
     let orderData: any = {};
     try { orderData = JSON.parse(row.raw_json || '{}'); } catch { return NextResponse.json({ success: false, error: 'Order data could not be verified.' }, { status: 500 }); }
@@ -2326,7 +2358,7 @@ export async function PATCH(req: NextRequest) {
         if (!assigned.results?.[0]?.restaurant_id || String(assigned.results[0].restaurant_id) !== String(order.restaurant_id)) {
           return NextResponse.json({ success: false, error: 'You cannot update another restaurant’s order' }, { status: 403 });
         }
-        if (!['confirmed', 'preparing', 'ready_for_pickup', 'cancelled'].includes(status)) return NextResponse.json({ success: false, error: 'Restaurant cannot set this delivery status' }, { status: 403 });
+        if (!['confirmed', 'preparing', 'ready_for_pickup', 'in_transit', 'delivered', 'cancelled'].includes(status)) return NextResponse.json({ success: false, error: 'Restaurant cannot set this delivery status' }, { status: 403 });
       } else if (user.role === 'courier') {
         if (String(order.courier_id || '') !== String(user.id)) return NextResponse.json({ success: false, error: 'You are not assigned to this delivery' }, { status: 403 });
         if (!['in_transit', 'delivered', 'cancelled'].includes(status)) return NextResponse.json({ success: false, error: 'Courier cannot set this delivery status' }, { status: 403 });
