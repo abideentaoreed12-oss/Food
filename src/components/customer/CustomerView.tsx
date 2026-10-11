@@ -149,7 +149,7 @@ export const CustomerView: React.FC = () => {
       // Filter pills
       if (activeFilter === 'fast' && (r.deliveryTimeMax || 30) > 30) return false;
       if (activeFilter === 'top' && (r.rating || 0) < 4.7) return false;
-      if (activeFilter === 'lowFee' && (r.deliveryFee || 0) > 500) return false;
+      if (activeFilter === 'lowFee' && (!Number.isFinite(Number(r.calculatedDeliveryFee)) || Number(r.calculatedDeliveryFee) > 500)) return false;
 
       // Search query
       if (searchQuery.trim()) {
@@ -509,7 +509,7 @@ export const CustomerView: React.FC = () => {
                       </span>
                       <span>·</span>
                       <span className="font-semibold text-slate-700">
-                        {formatCurrency(restaurant.calculatedDeliveryFee ?? restaurant.deliveryFee, currency)} fee
+                        {restaurant.calculatedDeliveryFee != null ? `${formatCurrency(restaurant.calculatedDeliveryFee, currency)} fee` : 'Fee after address'}
                       </span>
                     </div>
 
