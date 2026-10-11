@@ -2434,10 +2434,21 @@ export async function PATCH(req: NextRequest) {
   // 9. Category Update
   const catPatchMatch = pathname.match(/^\/admin\/categories\/([^/]+)$/);
   if (catPatchMatch) {
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+    if (!user || !['admin', 'sub_admin', 'restaurant'].includes(user.role)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const catId = decodeURIComponent(catPatchMatch[1]);
+    const categoryOwner = await d1.query('SELECT restaurant_id FROM menu_categories WHERE id = ? LIMIT 1', [catId], { cache: false });
+    const categoryRow = categoryOwner.results?.[0];
+    if (!categoryRow) return NextResponse.json({ success: false, error: 'Category not found.' }, { status: 404 });
+    if (user.role === 'restaurant') {
+      const assigned = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+      if (!assigned.success) return NextResponse.json({ success: false, error: 'Restaurant assignment could not be verified.' }, { status: 503 });
+      const restaurantId = assigned.results?.[0]?.restaurant_id || user.restaurantId;
+      if (!restaurantId || String(restaurantId) !== String(categoryRow.restaurant_id)) {
+        return NextResponse.json({ success: false, error: 'You can only edit categories for your own restaurant.' }, { status: 403 });
+      }
+    }
     const { name, description, sortOrder, isActive, imageR2Url } = body;
     const updates: string[] = [];
     const values: any[] = [];
@@ -2818,12 +2829,20 @@ export async function DELETE(req: NextRequest) {
   // 7. Admin Delete Category
   const catMatch = pathname.match(/^\/admin\/categories\/([^/]+)$/);
   if (catMatch) {
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+    if (!user || !['admin', 'sub_admin', 'restaurant'].includes(user.role)) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const targetId = decodeURIComponent(catMatch[1]);
     const existingCategory = await d1.query('SELECT restaurant_id FROM menu_categories WHERE id = ? LIMIT 1', [targetId], { cache: false });
     if (!existingCategory.results?.[0]) return NextResponse.json({ success: false, error: 'Category not found.' }, { status: 404 });
+    if (user.role === 'restaurant') {
+      const assigned = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+      if (!assigned.success) return NextResponse.json({ success: false, error: 'Restaurant assignment could not be verified.' }, { status: 503 });
+      const restaurantId = assigned.results?.[0]?.restaurant_id || user.restaurantId;
+      if (!restaurantId || String(restaurantId) !== String(existingCategory.results[0].restaurant_id)) {
+        return NextResponse.json({ success: false, error: 'You can only delete categories for your own restaurant.' }, { status: 403 });
+      }
+    }
     const linkedItems = await d1.query('SELECT id FROM menu_items WHERE category_id = ? LIMIT 1', [targetId], { cache: false });
     if (linkedItems.results?.[0]) return NextResponse.json({ success: false, error: 'Move or delete the dishes in this category before deleting it.' }, { status: 409 });
     const deleted = await d1.query('DELETE FROM menu_categories WHERE id = ?', [targetId]);
