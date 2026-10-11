@@ -2060,7 +2060,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: { url: `${origin}/handover/${token}`, expiresAt, orderReference: order.short_id } }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
-  const qrDetailsMatch = pathname.match(/^\/handover\/([A-Za-z0-9_-]{30,100})$/);
+  const qrDetailsMatch = pathname.match(/^\/api\/handover\/([A-Za-z0-9_-]{30,100})$/);
   if (qrDetailsMatch && req.method === 'GET') {
     const tokenHash = createHash('sha256').update(qrDetailsMatch[1]).digest('hex');
     await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
@@ -2076,7 +2076,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: { orderReference: row.short_id, restaurantName: row.restaurant_name, status: row.status, expiresAt: row.expires_at } }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
-  const qrConfirmMatch = pathname.match(/^\/handover\/([A-Za-z0-9_-]{30,100})\/confirm$/);
+  const qrConfirmMatch = pathname.match(/^\/api\/handover\/([A-Za-z0-9_-]{30,100})\/confirm$/);
   if (qrConfirmMatch && req.method === 'POST') {
     const tokenHash = createHash('sha256').update(qrConfirmMatch[1]).digest('hex');
     await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
