@@ -256,7 +256,7 @@ export const SearchPage: React.FC = () => {
                           <span className="font-bold">{r.rating != null && Number.isFinite(Number(r.rating)) ? Number(r.rating).toFixed(1) : 'Not rated'}</span>
                         </div>
                         <span>·</span>
-                        <span>{r.durationText || (r.deliveryTimeMin ? `${r.deliveryTimeMin} min` : 'Time unavailable')}</span>
+                        <span>{r.durationText || 'Delivery time unavailable'}</span>
                         <span>·</span>
                         <span className="text-orange-600 font-medium">{r.distanceText || (Number.isFinite(Number(r.distanceKm)) && Number(r.distanceKm) > 0 ? `${r.distanceKm} km` : 'Distance unavailable')}</span>
                         <span>·</span>
