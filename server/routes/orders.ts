@@ -36,7 +36,7 @@ const CreateOrderSchema = z.object({
   customerLng: z.number().finite().min(-180).max(180).optional(),
   customerApartment: z.string().optional(),
   deliveryNotes: z.string().optional(),
-  tip: z.number().nonnegative().default(5.0),
+  tip: z.number().nonnegative().default(0),
   paymentMethod: z.string().default('Digital Card'),
   currency: z.enum(['USD', 'NGN']).default('NGN'),
   fulfillmentType: z.enum(['delivery', 'pickup', 'scheduled']).default('delivery'),
