@@ -104,8 +104,7 @@ export function calculateHaversineDistanceKm(
       { latitude: lat2, longitude: lon2 }
     );
     const straightLineKm = straightLineMeters / 1000;
-    const roadDistanceKm = straightLineKm * 1.32;
-    return Math.round(roadDistanceKm * 10) / 10;
+    return Math.round(straightLineKm * 10) / 10;
   }
 }
 
@@ -269,19 +268,17 @@ export async function calculateDistanceAndDuration(
         const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
         const durationMinutes = Math.max(1, Math.round(route.duration / 60));
         const rawCoords = route.geometry?.coordinates || [];
-        const points = rawCoords.map((coord: [number, number]) => ({
-          lat: coord[1],
-          lng: coord[0]
-        }));
+        const points = rawCoords.map((coord: [number, number]) => ({ lat: coord[1], lng: coord[0] }));
+        if (distanceKm <= 0 || durationMinutes <= 0 || points.length < 2) throw new Error('OSRM returned an incomplete route geometry.');
 
         return {
           distanceKm,
           distanceText: `${distanceKm} km`,
           durationMinutes,
-          durationText: `${durationMinutes}–${durationMinutes + 8} min`,
+          durationText: `${durationMinutes} min`,
           isLive: true,
           routingEngine: 'OSRM',
-          points: points.length > 0 ? points : [originGeo, destGeo],
+          points,
           originGeo,
           destGeo
         };
@@ -295,9 +292,8 @@ export async function calculateDistanceAndDuration(
 
   // Tier 3: Valhalla Routing Engine (Open Source, Hosted or Self-Hosted)
   const valhallaBase = (CONFIG.VALHALLA_BASE_URL || 'https://valhalla.openstreetmap.de').replace(/\/+$/, '').replace(/\/route$/, '');
-  const valhallaApiKey = (CONFIG.VALHALLA_API_KEY || '').trim();
   try {
-    const valhallaUrl = `${valhallaBase}/route${valhallaApiKey ? `?api_key=${encodeURIComponent(valhallaApiKey)}` : ''}`;
+    const valhallaUrl = `${valhallaBase}/route`;
     const vPayload = {
       locations: [
         { lat: originGeo.lat, lon: originGeo.lng },
@@ -322,18 +318,17 @@ export async function calculateDistanceAndDuration(
       if (summary && Number.isFinite(summary.length) && Number.isFinite(summary.time)) {
         const distanceKm = Math.round(summary.length * 10) / 10;
         const durationMinutes = Math.max(1, Math.round(summary.time / 60));
-        let points = [originGeo, destGeo];
+        let points: { lat: number; lng: number }[] = [];
         const legs = vData.trip?.legs;
         if (Array.isArray(legs) && legs[0]?.shape) {
-          try {
-            points = decodePolyline(legs[0].shape);
-          } catch {}
+          try { points = decodePolyline(legs[0].shape); } catch { points = []; }
         }
+        if (distanceKm <= 0 || durationMinutes <= 0 || points.length < 2) throw new Error('Valhalla returned an incomplete route geometry.');
         return {
           distanceKm,
           distanceText: `${distanceKm} km`,
           durationMinutes,
-          durationText: `${durationMinutes}–${durationMinutes + 6} min`,
+          durationText: `${durationMinutes} min`,
           isLive: true,
           routingEngine: 'Valhalla',
           points,
