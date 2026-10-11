@@ -338,7 +338,7 @@ export const CourierView: React.FC = () => {
                 </div>
 
                 <div className="text-xs font-mono font-bold text-slate-400">
-                  Est. Delivery: <span className="text-white">{activeDelivery.estimatedArrivalMinutes} mins</span>
+                  Est. Delivery: <span className="text-white">{activeDelivery.estimatedArrivalMinutes == null ? 'ETA unavailable' : `${activeDelivery.estimatedArrivalMinutes} mins`}</span>
                 </div>
               </div>
 
