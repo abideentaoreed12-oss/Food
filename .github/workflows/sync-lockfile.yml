@@ -1,0 +1,36 @@
+name: sync-lockfile
+on:
+  workflow_dispatch:
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: https://registry.npmjs.org
+      - name: Regenerate lockfile
+        run: |
+          set -e
+          rm -f package-lock.json
+          npm install --no-fund --no-audit
+          # Prove ci works with the new lock
+          rm -rf node_modules
+          npm ci --no-audit --no-fund
+      - name: Commit lockfile on main
+        run: |
+          set -e
+          git config user.name "veyrang-bot"
+          git config user.email "bot@veyrang.com"
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "Lockfile already in sync"
+            exit 0
+          fi
+          git commit -m "build: regenerate package-lock.json (npm ci compatible)"
+          git push origin HEAD:main
