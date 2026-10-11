@@ -146,10 +146,10 @@ export const AdminPortal: React.FC = () => {
   const [newRestName, setNewRestName] = useState('');
   const [newRestAddress, setNewRestAddress] = useState('');
   const [newRestCuisine, setNewRestCuisine] = useState('Nigerian & Continental');
-  const [newRestDeliveryFee, setNewRestDeliveryFee] = useState('1000');
-  const [newRestDeliveryMin, setNewRestDeliveryMin] = useState('20');
-  const [newRestDeliveryMax, setNewRestDeliveryMax] = useState('40');
-  const [newRestRating, setNewRestRating] = useState('4.8');
+  const [newRestDeliveryFee, setNewRestDeliveryFee] = useState('');
+  const [newRestDeliveryMin, setNewRestDeliveryMin] = useState('');
+  const [newRestDeliveryMax, setNewRestDeliveryMax] = useState('');
+  const [newRestRating, setNewRestRating] = useState('');
   const [newRestTagline, setNewRestTagline] = useState('Authentic dishes prepared fresh to order');
   const [newRestBannerUrl, setNewRestBannerUrl] = useState('');
   const [newRestZone, setNewRestZone] = useState('Lekki / Victoria Island');
@@ -899,16 +899,18 @@ export const AdminPortal: React.FC = () => {
   // Restaurant Branch Handlers
   const handleCreateRestaurant = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRestName.trim() || !newRestAddress.trim()) return;
+    if (!newRestName.trim() || !newRestAddress.trim() || [newRestDeliveryFee, newRestDeliveryMin, newRestDeliveryMax].some(value => value.trim() === '' || !Number.isFinite(Number(value)) || Number(value) < 0) || Number(newRestDeliveryMax) < Number(newRestDeliveryMin)) {
+      showActionFeedback('Enter the restaurant address, configured delivery fee, and valid preparation-time range.');
+      return;
+    }
     try {
       await api.admin.createRestaurant({
         name: newRestName.trim(),
         address: newRestAddress,
         cuisine: newRestCuisine,
-        deliveryFee: Number(newRestDeliveryFee || 1000),
-        deliveryTimeMin: Number(newRestDeliveryMin || 20),
-        deliveryTimeMax: Number(newRestDeliveryMax || 40),
-        rating: Number(newRestRating || 4.8),
+        deliveryFee: Number(newRestDeliveryFee),
+        deliveryTimeMin: Number(newRestDeliveryMin),
+        deliveryTimeMax: Number(newRestDeliveryMax),
         tagline: newRestTagline,
         bannerUrl: newRestBannerUrl || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1000',
         zone: newRestZone,
@@ -2747,6 +2749,14 @@ export const AdminPortal: React.FC = () => {
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
                       />
                     </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Preparation Time Min (minutes) *</label>
+                      <input type="number" required min="0" value={newRestDeliveryMin} onChange={(e) => setNewRestDeliveryMin(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-[#FF5500] outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Preparation Time Max (minutes) *</label>
+                      <input type="number" required min="0" value={newRestDeliveryMax} onChange={(e) => setNewRestDeliveryMax(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-[#FF5500] outline-none" />
+                    </div>
                     <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
                       <button
                         type="button"
@@ -3509,6 +3519,8 @@ export const AdminPortal: React.FC = () => {
                       <label className="text-[11px] font-semibold text-slate-600 block mb-1">Delivery Fee (NGN)</label>
                       <input
                         type="number"
+                        required
+                        min="0"
                         value={newRestDeliveryFee}
                         onChange={(e) => setNewRestDeliveryFee(e.target.value)}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-[#FF5500] outline-none"
