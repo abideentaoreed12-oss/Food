@@ -188,7 +188,7 @@ export const OrderTrackingModal: React.FC = () => {
           <div>
             <div className="text-[11px] font-bold uppercase tracking-wider text-orange-600 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>Live Dispatch & ETA Tracking</span>
+              <span>Order and Courier Tracking</span>
             </div>
             <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
               <span>{order.restaurantName}</span>
