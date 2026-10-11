@@ -55,7 +55,7 @@ export function getCourierLocationForOrder(orderId: string, courierId?: string):
 /**
  * Decodes Google encoded polyline string into array of GPS coordinates.
  */
-export function decodePolyline(str: string): { lat: number; lng: number }[] {
+export function decodePolyline(str: string, precision: number = 5): { lat: number; lng: number }[] {
   let index = 0, lat = 0, lng = 0;
   const coordinates: { lat: number; lng: number }[] = [];
   while (index < str.length) {
@@ -77,8 +77,8 @@ export function decodePolyline(str: string): { lat: number; lng: number }[] {
     const dlng = (result & 1) ? ~(result >> 1) : (result >> 1);
     lng += dlng;
     coordinates.push({
-      lat: Math.round(lat * 1e-5 * 1e6) / 1e6,
-      lng: Math.round(lng * 1e-5 * 1e6) / 1e6
+      lat: Math.round((lat / Math.pow(10, precision)) * 1e6) / 1e6,
+      lng: Math.round((lng / Math.pow(10, precision)) * 1e6) / 1e6
     });
   }
   return coordinates;
@@ -319,7 +319,7 @@ export async function calculateDistanceAndDuration(
         let points: { lat: number; lng: number }[] = [];
         const legs = vData.trip?.legs;
         if (Array.isArray(legs) && legs[0]?.shape) {
-          try { points = decodePolyline(legs[0].shape); } catch { points = []; }
+          try { points = decodePolyline(legs[0].shape, 6); } catch { points = []; }
         }
         if (distanceKm <= 0 || durationMinutes <= 0 || points.length < 2) throw new Error('Valhalla returned an incomplete route geometry.');
         return {
