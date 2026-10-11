@@ -254,7 +254,7 @@ router.get('/reverse', geocodeLimiter, async (req: Request, res: Response) => {
 
 /**
  * Live Distance & Duration Calculation Endpoint
- * Calculates precise driving distance, traffic duration, and routing provider via Valhalla / OSRM / OpenRouteService / Google Maps.
+ * Calculates road distance and duration using public open-source routers.
  */
 router.get('/distance', async (req: Request, res: Response) => {
   try {
@@ -266,13 +266,11 @@ router.get('/distance', async (req: Request, res: Response) => {
     const destLng = req.query.destLng ? parseFloat(req.query.destLng as string) : null;
     const destAddr = req.query.destAddress as string;
 
-    const origin = (originLat !== null && originLng !== null && !isNaN(originLat) && !isNaN(originLng))
-      ? { lat: originLat, lng: originLng }
-      : (originAddr || 'Lekki Phase 1, Lagos');
-
-    const destination = (destLat !== null && destLng !== null && !isNaN(destLat) && !isNaN(destLng))
-      ? { lat: destLat, lng: destLng }
-      : (destAddr || 'Victoria Island, Lagos');
+    const validPair = (lat: number | null, lng: number | null) => lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+    if (!validPair(originLat, originLng) && !originAddr?.trim()) return res.status(400).json({ success: false, error: 'Provide a valid origin coordinate pair or origin address.' });
+    if (!validPair(destLat, destLng) && !destAddr?.trim()) return res.status(400).json({ success: false, error: 'Provide a valid destination coordinate pair or destination address.' });
+    const origin = validPair(originLat, originLng) ? { lat: originLat!, lng: originLng! } : originAddr.trim();
+    const destination = validPair(destLat, destLng) ? { lat: destLat!, lng: destLng! } : destAddr.trim();
 
     const { calculateDistanceAndDuration } = await import('../utils/distance');
     const result = await calculateDistanceAndDuration(origin, destination);
@@ -283,10 +281,7 @@ router.get('/distance', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error('Backend distance calculation error:', err);
-    return res.status(500).json({
-      success: false,
-      error: err?.message || 'Failed to calculate distance and duration.'
-    });
+    return res.status(503).json({ success: false, error: err?.message || 'No routing provider is available. Please retry shortly.' });
   }
 });
 
