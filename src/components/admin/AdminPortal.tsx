@@ -543,7 +543,7 @@ export const AdminPortal: React.FC = () => {
         description: newMenuDesc,
         category: newMenuCategory,
         restaurantId: newMenuRestaurantId,
-        imageUrl: newMenuImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500'
+        imageUrl: newMenuImageUrl || null
       });
 
       showActionFeedback(`Dish "${newMenuName}" added to Platform D1!`);
