@@ -11,7 +11,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 5
-      - name: Apply kitchen final on main
+      - name: Apply kitchen final
         run: python3 scripts/apply_kitchen_final.py
       - name: Commit on main
         run: |
@@ -19,6 +19,6 @@ jobs:
           git config user.name "veyrang-bot"
           git config user.email "bot@veyrang.com"
           git add -A
-          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
-          git commit -m "fix(kitchen): auth categories/addons; restaurant DELETE menu; readable add-dish form on portal"
+          if git diff --cached --quiet; then echo No changes; exit 0; fi
+          git commit -m "fix(kitchen): auth categories/addons; readable white-panel add-dish form"
           git push origin HEAD:main
