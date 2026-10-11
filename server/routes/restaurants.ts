@@ -332,12 +332,10 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Restaurant not found' });
     }
 
-    const userLocation =
-      userLat !== undefined && userLng !== undefined
-        ? { lat: userLat, lng: userLng }
-        : userAddress
-        ? userAddress
-        : null;
+    const validCoordinatePair = userLat !== undefined && userLng !== undefined &&
+      Number.isFinite(userLat) && Number.isFinite(userLng) &&
+      userLat >= -90 && userLat <= 90 && userLng >= -180 && userLng <= 180;
+    const userLocation = validCoordinatePair ? { lat: userLat!, lng: userLng! } : userAddress?.trim() || null;
 
     if (userLocation) {
       try {
@@ -351,7 +349,9 @@ router.get('/:id', async (req: Request, res: Response) => {
           calculatedDeliveryFee: distanceMetrics.estimatedDeliveryFee,
           inDeliveryRadius: distanceMetrics.inDeliveryRadius
         };
-      } catch (err) {}
+      } catch (err) {
+        console.warn('[Restaurants Route] Live distance metrics unavailable:', err instanceof Error ? err.message : String(err));
+      }
     }
 
     const { commissionPercent, bankAccount, ownerEmail, ...publicRestaurant } = restaurant;
