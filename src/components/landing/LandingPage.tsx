@@ -165,22 +165,28 @@ export const LandingPage: React.FC = () => {
                   onClick={handleExploreStorefront}
                   className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-orange-300 hover:bg-orange-50/30 transition-all cursor-pointer"
                 >
-                  <img
-                    src={platformSettings['cms_hero_dish1_image'] || ''}
-                    alt={platformSettings['cms_hero_dish1_title'] || ''}
-                    className="w-16 h-16 rounded-xl object-cover shrink-0"
-                  />
+                  {platformSettings['cms_hero_dish1_image'] ? (
+                    <img
+                      src={platformSettings['cms_hero_dish1_image']}
+                      alt={platformSettings['cms_hero_dish1_title'] || 'Featured Dish 1'}
+                      className="w-16 h-16 rounded-xl object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600">
+                      <ChefHat className="w-6 h-6" />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#FF5500] truncate">
-                        {platformSettings['cms_hero_dish1_title'] || ''}
+                        {platformSettings['cms_hero_dish1_title'] || 'Jollof Party Special'}
                       </h4>
                       <span className="text-xs font-bold font-mono text-slate-900">
-                        ₦{Number(platformSettings['cms_hero_dish1_price'] || 0).toLocaleString('en-NG')}
+                        ₦{Number(platformSettings['cms_hero_dish1_price'] || 4500).toLocaleString('en-NG')}
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                      {platformSettings['cms_hero_dish1_restaurant'] || ''} · 20–30 min
+                      {platformSettings['cms_hero_dish1_restaurant'] || 'Mega Chicken'} · 20–30 min
                     </p>
                     <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-600">
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
@@ -196,22 +202,28 @@ export const LandingPage: React.FC = () => {
                   onClick={handleExploreStorefront}
                   className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-orange-300 hover:bg-orange-50/30 transition-all cursor-pointer"
                 >
-                  <img
-                    src={platformSettings['cms_hero_dish2_image'] || ''}
-                    alt={platformSettings['cms_hero_dish2_title'] || 'Classic Smash Cheese Burger'}
-                    className="w-16 h-16 rounded-xl object-cover shrink-0"
-                  />
+                  {platformSettings['cms_hero_dish2_image'] ? (
+                    <img
+                      src={platformSettings['cms_hero_dish2_image']}
+                      alt={platformSettings['cms_hero_dish2_title'] || 'Classic Smash Cheese Burger'}
+                      className="w-16 h-16 rounded-xl object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600">
+                      <ChefHat className="w-6 h-6" />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#FF5500] truncate">
-                        {platformSettings['cms_hero_dish2_title'] || ''}
+                        {platformSettings['cms_hero_dish2_title'] || 'Classic Smash Cheese Burger'}
                       </h4>
                       <span className="text-xs font-bold font-mono text-slate-900">
-                        ₦{Number(platformSettings['cms_hero_dish2_price'] || 0).toLocaleString('en-NG')}
+                        ₦{Number(platformSettings['cms_hero_dish2_price'] || 3800).toLocaleString('en-NG')}
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                      {platformSettings['cms_hero_dish2_restaurant'] || ''} · 25–35 min
+                      {platformSettings['cms_hero_dish2_restaurant'] || 'Burgers & Co.'} · 25–35 min
                     </p>
                     <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-600">
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
@@ -227,11 +239,17 @@ export const LandingPage: React.FC = () => {
                   onClick={handleExploreStorefront}
                   className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-orange-300 hover:bg-orange-50/30 transition-all cursor-pointer"
                 >
-                  <img
-                    src={platformSettings['cms_hero_dish3_image'] || ''}
-                    alt={platformSettings['cms_hero_dish3_title'] || 'Suya Beef Skewers'}
-                    className="w-16 h-16 rounded-xl object-cover shrink-0"
-                  />
+                  {platformSettings['cms_hero_dish3_image'] ? (
+                    <img
+                      src={platformSettings['cms_hero_dish3_image']}
+                      alt={platformSettings['cms_hero_dish3_title'] || 'Suya Beef Skewers'}
+                      className="w-16 h-16 rounded-xl object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600">
+                      <ChefHat className="w-6 h-6" />
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#FF5500] truncate">

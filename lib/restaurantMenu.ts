@@ -260,7 +260,7 @@ export async function buildPublicRestaurant(row: any, options?: { includeMenu?: 
 
 /** Batch-build public restaurants (list view includes menus so cart rehydrate works). */
 export async function buildPublicRestaurantList(rows: any[]) {
-  const out = [];
+  const out: any[] = [];
   for (const row of rows) {
     out.push(await buildPublicRestaurant(row, { includeMenu: true }));
   }

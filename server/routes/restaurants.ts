@@ -28,7 +28,7 @@ router.get('/', async (req: Request, res: Response) => {
     let list: any[] = [];
     let d1QuerySucceeded = false;
     try {
-      const d1Res = await d1Client.query('SELECT * FROM restaurants ORDER BY rating DESC', [], { cache: false });
+      const d1Res = await d1Client.query('SELECT * FROM restaurants ORDER BY rating DESC', []);
       if (!d1Res || d1Res.success === false || !Array.isArray(d1Res.results)) {
         throw new Error('D1 restaurant query failed');
       }
@@ -205,7 +205,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     let restaurant: any = null;
     try {
-      const d1Res = await d1Client.query('SELECT * FROM restaurants WHERE id = ?', [id], { cache: false });
+      const d1Res = await d1Client.query('SELECT * FROM restaurants WHERE id = ?', [id]);
       if (!d1Res || d1Res.success === false || !Array.isArray(d1Res.results)) {
         throw new Error('D1 restaurant query failed');
       }
