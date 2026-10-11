@@ -176,7 +176,7 @@ export const RestaurantsPage: React.FC = () => {
                       {restaurant.distanceText || (restaurant.distanceKm ? `${restaurant.distanceKm} km` : 'Live Distance')}
                     </span>
                     <span className="px-2 py-1 rounded-xl bg-black/60 backdrop-blur-md font-mono text-[11px]">
-                      {formatCurrency(restaurant.calculatedDeliveryFee || restaurant.deliveryFee, currency)}
+                      {formatCurrency(restaurant.calculatedDeliveryFee ?? restaurant.deliveryFee, currency)}
                     </span>
                   </div>
                 </div>
