@@ -11,16 +11,14 @@ jobs:
         with:
           ref: main
           fetch-depth: 5
-      - name: Apply LKG public serve on main
-        run: |
-          set -e
-          python3 scripts/apply_lkg_serve_public.py
+      - name: Harden LKG on main
+        run: python3 scripts/apply_lkg_harden.py
       - name: Commit on main
         run: |
           set -e
           git config user.name "veyrang-bot"
           git config user.email "bot@veyrang.com"
-          git add -A
+          git add lib/siteDataSnapshot.ts lib/restaurantMenu.ts
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
-          git commit -m "feat(lkg): public catalogue served from last-known-good; D1 refresh every 10s"
+          git commit -m "fix(lkg): cold-start bootstrap await; sync timestamps on load; drop empty menu categories"
           git push origin HEAD:main
