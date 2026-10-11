@@ -1920,7 +1920,7 @@ export const AdminPortal: React.FC = () => {
                         <label htmlFor="admin-menu-restaurant" className="text-[11px] text-slate-600 font-semibold block mb-1">Restaurant *</label>
                         <select id="admin-menu-restaurant" required value={newMenuRestaurantId} onChange={(e) => setNewMenuRestaurantId(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none">
                           <option value="">Select a restaurant</option>
-                          {restaurants.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
+                          {restaurantsList.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
                         </select>
                       </div>
                       <div>
@@ -2018,7 +2018,7 @@ export const AdminPortal: React.FC = () => {
                         <label htmlFor="admin-edit-menu-restaurant" className="text-[11px] text-slate-600 font-semibold block mb-1">Restaurant *</label>
                         <select id="admin-edit-menu-restaurant" required value={editMenuRestaurantId} onChange={(e) => setEditMenuRestaurantId(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none">
                           <option value="">Select a restaurant</option>
-                          {restaurants.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
+                          {restaurantsList.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
                         </select>
                       </div>
                       <div>
@@ -2712,7 +2712,7 @@ export const AdminPortal: React.FC = () => {
                       <label htmlFor="admin-category-restaurant" className="text-[11px] font-semibold text-slate-600 block mb-1">Restaurant *</label>
                       <select id="admin-category-restaurant" required value={newCatRestaurantId} onChange={(e) => setNewCatRestaurantId(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none">
                         <option value="">Select a restaurant</option>
-                        {restaurants.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
+                        {restaurantsList.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
                       </select>
                     </div>
                     <div>
