@@ -6,11 +6,8 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   const isAllowed = origin && (
     origin === 'https://veyrang.com' ||
     origin === 'https://www.veyrang.com' ||
-    origin.endsWith('.googleusercontent.com') ||
-    origin.endsWith('.aistudio.google.com') ||
-    origin.endsWith('.webcontainer.io') ||
-    origin.endsWith('.stackblitz.io') ||
-    origin.endsWith('.run.app') ||
+    origin === 'https://ais-dev-b3frbycfvmzsap3tmpvq42-66468010994.europe-west2.run.app' ||
+    origin === 'https://ais-pre-b3frbycfvmzsap3tmpvq42-66468010994.europe-west2.run.app' ||
     origin.includes('localhost') ||
     origin.includes('127.0.0.1')
   );
@@ -33,7 +30,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   // Content Security Policy (Allows Google Fonts & preview environments)
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https: ws: wss:; frame-ancestors 'self' https://*.run.app https://*.google.com https://*.googleusercontent.com;"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https: ws: wss:; frame-ancestors 'self' https://www.veyrang.com https://veyrang.com https://ais-dev-b3frbycfvmzsap3tmpvq42-66468010994.europe-west2.run.app https://ais-pre-b3frbycfvmzsap3tmpvq42-66468010994.europe-west2.run.app;"
   );
 
   // Hardening headers

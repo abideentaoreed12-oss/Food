@@ -145,11 +145,8 @@ function isAllowedOrigin(origin: string | null): boolean {
   return (
     origin === 'https://veyrang.com' ||
     origin === 'https://www.veyrang.com' ||
-    origin.endsWith('.googleusercontent.com') ||
-    origin.endsWith('.aistudio.google.com') ||
-    origin.endsWith('.webcontainer.io') ||
-    origin.endsWith('.stackblitz.io') ||
-    origin.endsWith('.run.app') ||
+    origin === 'https://ais-dev-b3frbycfvmzsap3tmpvq42-66468010994.europe-west2.run.app' ||
+    origin === 'https://ais-pre-b3frbycfvmzsap3tmpvq42-66468010994.europe-west2.run.app' ||
     origin.includes('localhost') ||
     origin.includes('127.0.0.1')
   );
