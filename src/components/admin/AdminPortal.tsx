@@ -2660,31 +2660,22 @@ export const AdminPortal: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-800">1. Valhalla Engine</span>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    </div>
-                    <p className="text-[11px] text-slate-500">Primary Provider (3s Timeout)</p>
-                    <div className="text-[10px] font-mono text-emerald-700 font-semibold">🟢 Operational (0 Errors)</div>
-                  </div>
-
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                    <div className="font-bold text-slate-800">1. Photon Geocoding</div>
+                    <div className="font-bold text-slate-800">Photon Geocoding</div>
                     <p className="text-[11px] text-slate-500">Public OpenStreetMap address search</p>
                     <div className="text-[10px] font-mono text-slate-600 font-semibold">Availability checked per request</div>
                   </div>
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                    <div className="font-bold text-slate-800">2. Nominatim Geocoding</div>
+                    <div className="font-bold text-slate-800">Nominatim Geocoding</div>
                     <p className="text-[11px] text-slate-500">OpenStreetMap fallback address search</p>
                     <div className="text-[10px] font-mono text-slate-600 font-semibold">Public usage policy applies</div>
                   </div>
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                    <div className="font-bold text-slate-800">3. OSRM Routing</div>
+                    <div className="font-bold text-slate-800">OSRM Routing</div>
                     <p className="text-[11px] text-slate-500">Road distance, ETA and road geometry</p>
                     <div className="text-[10px] font-mono text-slate-600 font-semibold">No key; public-service limits apply</div>
                   </div>
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                    <div className="font-bold text-slate-800">4. Valhalla / OSM Routing</div>
+                    <div className="font-bold text-slate-800">Valhalla / OSM Routing</div>
                     <p className="text-[11px] text-slate-500">Open-source routing failover</p>
                     <div className="text-[10px] font-mono text-slate-600 font-semibold">Availability is not assumed</div>
                   </div>
