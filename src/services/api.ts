@@ -458,7 +458,6 @@ export const api = {
     approveUser: async (userId: string) =>
       request(`/api/admin/users/${userId}/approve`, { method: 'POST' }),
     getOrders: async () => request('/api/admin/orders'),
-    getAvailableCouriers: async () => request('/api/couriers/available'),
     updateOrderStatus: async (orderId: string, status: OrderStatus, note?: string) =>
       request(`/api/admin/orders/${orderId}/status`, { method: 'PATCH', body: JSON.stringify({ status, note }) }),
     assignCourier: async (orderId: string, courierId: string) =>
@@ -518,10 +517,10 @@ export const api = {
     getRestaurants: async () => request('/api/restaurants'),
     updateRestaurant: async (restaurantId: string, updates: Partial<Restaurant>) =>
       request(`/api/restaurants/${restaurantId}`, { method: 'PUT', body: JSON.stringify(updates) }),
-    toggleRestaurantOpen: async (restaurantId: string) =>
-      request(`/api/admin/restaurants/${restaurantId}/toggle`, { method: 'PATCH' }),
+
     toggleBranchStatus: async (restaurantId: string) =>
       request(`/api/admin/restaurants/${restaurantId}/toggle`, { method: 'PATCH' }),
+
     createRestaurant: async (data: any) =>
       request('/api/admin/restaurants', { method: 'POST', body: JSON.stringify(data) }),
     assignRestaurant: async (restaurantId: string, ownerUserId: string | null) =>
