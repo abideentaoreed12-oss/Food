@@ -221,14 +221,14 @@ export const CourierView: React.FC = () => {
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
               <span>Logistics Transit Network</span>
               <span className="text-slate-500">·</span>
-              <span className={isOnline ? 'text-emerald-700 font-bold' : 'text-slate-400'}>
+              <span className={isOnline ? 'text-emerald-700 font-bold' : 'text-slate-600'}>
                 {isOnline ? 'Online & Ready for Runs' : 'Offline (Shift Paused)'}
               </span>
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
               {displayName}
             </h1>
-            <div className="text-xs text-slate-400 mt-0.5 font-mono">
+            <div className="text-xs text-slate-600 mt-0.5 font-mono">
               Transit ID: {user?.id || '—'} · Dedicated Courier Partner
             </div>
           </div>
@@ -238,25 +238,27 @@ export const CourierView: React.FC = () => {
         <div className="flex flex-wrap items-center gap-4">
           <button
             onClick={() => setCourierAvailability(!isOnline)}
+            disabled={availabilityBusy}
+            aria-busy={availabilityBusy}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
               isOnline
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 : 'bg-slate-100 text-slate-600 border-slate-200'
             }`}
           >
-            {isOnline ? '🟢 Available' : '⚪ Go Online'}
+            {availabilityBusy ? 'Updating…' : isOnline ? '🟢 Available' : '⚪ Go Online'}
           </button>
 
-          <div className="flex items-center gap-4 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-750">
+          <div className="flex items-center gap-4 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-200">
             <div>
-              <div className="text-[11px] text-slate-400 font-medium">Shift Earnings</div>
-              <div className="text-xl font-bold font-mono text-emerald-400 tabular-nums">
+              <div className="text-[11px] text-slate-600 font-medium">Shift Earnings</div>
+              <div className="text-xl font-bold font-mono text-emerald-700 tabular-nums">
                 {formatCurrency(courierEarnings, currency)}
               </div>
             </div>
             <div className="w-px h-8 bg-slate-700" />
             <div>
-              <div className="text-[11px] text-slate-400 font-medium">Rider Rating</div>
+              <div className="text-[11px] text-slate-600 font-medium">Rider Rating</div>
               <div className="text-xl font-bold font-mono text-amber-700 tabular-nums">
                 —
               </div>
@@ -462,6 +464,7 @@ export const CourierView: React.FC = () => {
                   <div className="text-[11px] text-slate-400 truncate">{order.customerAddress}</div>
                   <button
                     onClick={() => acceptDelivery(order.id)}
+                    disabled={acceptingOrderId === order.id}
                     className="w-full mt-1 py-1.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
                   >
                     {acceptingOrderId === order.id ? 'Accepting…' : 'Accept Run & Pick Up'}
