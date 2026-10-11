@@ -377,7 +377,6 @@ router.patch('/:id/status', requireAuth, async (req: AuthRequest, res: Response)
     // Log history (simplified, needs better implementation)
     await d1Client.query('INSERT INTO audit_logs (id, user_id, action, resource, resourceId, created_at) VALUES (?, ?, ?, ?, ?, ?)', [randomUUID(), req.user!.id, 'ORDER_STATUS_UPDATED', 'ORDER', id, now]);
     
-    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
     return res.json({ success: true, message: 'Status updated' });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
