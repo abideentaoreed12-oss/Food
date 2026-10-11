@@ -219,6 +219,11 @@ export const CartDrawer: React.FC = () => {
 
   const handleCheckout = async () => {
     if (cart.length === 0 || !cartRestaurant) return;
+    const resolvedCustomerAddress = customAddress.trim() || selectedAddress?.address?.trim() || user?.address?.trim() || '';
+    if (fulfillmentType !== 'pickup' && !resolvedCustomerAddress) {
+      setPromoMessage({ text: 'Enter or select your real delivery address before placing the order.', isError: true });
+      return;
+    }
     if (fulfillmentType !== 'pickup' && (!liveDistanceResult || liveDistanceResult.isCalculating || distanceError)) {
       setPromoMessage({ text: 'A fresh live road-distance quote is required before delivery checkout. Verify your address and retry the distance calculation.', isError: true });
       return;
@@ -229,10 +234,10 @@ export const CartDrawer: React.FC = () => {
       await placeOrder({
         customerName: customerName || user?.name || 'Customer',
         customerPhone: customerPhone || user?.phone || '+234 800 000 0000',
-        customerAddress: customAddress || selectedAddress?.address || 'Delivery Address',
+        customerAddress: resolvedCustomerAddress,
         customerApartment,
-        customerLat: customCoords?.lat || liveDistanceResult?.userLocation?.lat,
-        customerLng: customCoords?.lng || liveDistanceResult?.userLocation?.lng,
+        customerLat: customCoords?.lat ?? liveDistanceResult?.userLocation?.lat,
+        customerLng: customCoords?.lng ?? liveDistanceResult?.userLocation?.lng,
         deliveryNotes,
         tip,
         deliveryFee: fulfillmentType === 'pickup' ? 0 : liveDistanceResult?.estimatedDeliveryFee,
