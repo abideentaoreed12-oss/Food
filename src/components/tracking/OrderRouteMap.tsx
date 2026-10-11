@@ -84,7 +84,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
         lat: propKitchenLoc.lat,
         lng: propKitchenLoc.lng,
         name: propKitchenLoc.name || order.restaurantName || 'Kitchen Hub',
-        address: propKitchenLoc.formattedAddress || order.restaurantAddress || 'Kitchen Address'
+        address: propKitchenLoc.formattedAddress || order.restaurantAddress || 'Restaurant address unavailable'
       };
     }
     const matchingRest = (restaurants || []).find((r) => r.id === order.restaurantId);
@@ -142,7 +142,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
       return {
         lat: propCustomerLoc.lat,
         lng: propCustomerLoc.lng,
-        address: propCustomerLoc.formattedAddress || order.customerAddress || 'Delivery Address'
+        address: propCustomerLoc.formattedAddress || order.customerAddress || 'Customer address unavailable'
       };
     }
     if (Number.isFinite(order.customerLat) && Number.isFinite(order.customerLng)) {
