@@ -129,7 +129,7 @@ export const AdminPortal: React.FC = () => {
   const [newMenuPrice, setNewMenuPrice] = useState('');
   const [newMenuDesc, setNewMenuDesc] = useState('');
   const [newMenuCategory, setNewMenuCategory] = useState('Main');
-  const [newMenuRestaurantId, setNewMenuRestaurantId] = useState('rest-1');
+  const [newMenuRestaurantId, setNewMenuRestaurantId] = useState('');
   const [newMenuImageUrl, setNewMenuImageUrl] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
@@ -533,7 +533,10 @@ export const AdminPortal: React.FC = () => {
   // Menu items management
   const handleCreateMenuItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMenuName || !newMenuPrice) return;
+    if (!newMenuName.trim() || !newMenuPrice || !newMenuRestaurantId) {
+      showActionFeedback('Enter a dish name and price, and select the restaurant that owns this dish.');
+      return;
+    }
 
     try {
       await api.admin.createMenuItem({
@@ -542,7 +545,7 @@ export const AdminPortal: React.FC = () => {
         description: newMenuDesc,
         category: newMenuCategory,
         restaurantId: newMenuRestaurantId,
-        imageUrl: newMenuImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500'
+        imageUrl: newMenuImageUrl.trim() || null
       });
 
       showActionFeedback(`Dish "${newMenuName}" added to Platform D1!`);
@@ -551,6 +554,7 @@ export const AdminPortal: React.FC = () => {
       setNewMenuPrice('');
       setNewMenuDesc('');
       setNewMenuImageUrl('');
+      setNewMenuRestaurantId('');
       fetchData();
     } catch (err: any) {
       showActionFeedback(`Failed to add dish: ${err.message}`);
@@ -587,7 +591,7 @@ export const AdminPortal: React.FC = () => {
     setEditMenuPrice(String(item.price || ''));
     setEditMenuDesc(item.description || '');
     setEditMenuCategory(item.category_id || item.category || 'Main');
-    setEditMenuRestaurantId(item.restaurant_id || 'rest-1');
+    setEditMenuRestaurantId(item.restaurant_id || '');
     setEditMenuImageUrl(item.image_url || item.image_r2_url || '');
     setIsEditMenuModalOpen(true);
   };
@@ -1913,6 +1917,13 @@ export const AdminPortal: React.FC = () => {
                           onChange={(e) => setNewMenuPrice(e.target.value)}
                           className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#FF5500] outline-none"
                         />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-slate-600 font-semibold block mb-1">Restaurant / Kitchen *</label>
+                        <select required value={newMenuRestaurantId} onChange={(e) => setNewMenuRestaurantId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none">
+                          <option value="">Select the restaurant that owns this dish</option>
+                          {restaurantsList.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
+                        </select>
                       </div>
                       <div>
                         <label className="text-[11px] text-slate-600 font-semibold block mb-1">Category</label>
