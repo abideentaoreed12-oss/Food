@@ -4,8 +4,8 @@
   "installCommand": "npm ci",
   "crons": [
     {
-      "path": "/api/cron/sync-site-data",
-      "schedule": "*/5 * * * *"
+      "path": "/api/cron/sync",
+      "schedule": "0 0 * * *"
     }
   ],
   "redirects": [

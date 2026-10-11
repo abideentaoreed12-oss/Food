@@ -17,7 +17,7 @@ export const CountryCodePicker: React.FC<CountryCodePickerProps> = ({
   const [search, setSearch] = useState('');
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Find currently selected country or default to Nigeria (+234)
+  // Find currently selected country by dial code or default to Nigeria (+234)
   const selectedCountry =
     ALL_COUNTRY_CODES.find((c) => c.code === value) || ALL_COUNTRY_CODES[0];
 
@@ -57,7 +57,7 @@ export const CountryCodePicker: React.FC<CountryCodePickerProps> = ({
         <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
       </button>
 
-      {/* Full World Country Search Modal / Popover */}
+      {/* Country Search Modal / Popover */}
       {isOpen && (
         <div className="absolute z-50 left-0 top-11 w-72 sm:w-80 bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 text-slate-900">
           {/* Header & Search Bar */}
@@ -88,14 +88,14 @@ export const CountryCodePicker: React.FC<CountryCodePickerProps> = ({
             </div>
           </div>
 
-          {/* Scrollable Country List */}
+          {/* Scrollable Country List - Keyed uniquely by country.iso to prevent collisions */}
           <div className="max-h-64 overflow-y-auto divide-y divide-slate-100/60 p-1">
             {filteredCountries.length > 0 ? (
-              filteredCountries.map((country, idx) => {
+              filteredCountries.map((country) => {
                 const isSelected = country.code === value && country.iso === selectedCountry.iso;
                 return (
                   <button
-                    key={`${country.iso}-${country.code}-${idx}`}
+                    key={country.iso}
                     type="button"
                     onClick={() => {
                       onChange(country.code);

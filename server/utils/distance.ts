@@ -563,3 +563,94 @@ export async function calculateLiveOrderTracking(order: any, restaurantObj?: any
     customerLocation
   };
 }
+
+export interface ReverseGeocodeResult {
+  latitude: number;
+  longitude: number;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  formattedAddress: string;
+}
+
+export async function reverseGeocodeCoordinates(lat: number, lng: number): Promise<ReverseGeocodeResult> {
+  let resolvedAddress = '';
+  let resolvedCity = '';
+  let resolvedState = '';
+  let resolvedCountry = '';
+  let formattedAddress = '';
+
+  // Tier 1: OpenStreetMap Nominatim Server-Side Call
+  try {
+    const nominatimBase = (CONFIG.NOMINATIM_BASE_URL || 'https://nominatim.openstreetmap.org').replace(/\/+$/, '');
+    const osmResp = await fetch(
+      `${nominatimBase}/reverse?lat=${lat}&lon=${lng}&format=json`,
+      {
+        headers: {
+          'User-Agent': 'VeyraNG-FoodDelivery-Server/1.0 (contact: support@veyrang.app)',
+          'Accept': 'application/json'
+        },
+        signal: AbortSignal.timeout(3000)
+      }
+    );
+
+    if (osmResp.ok) {
+      const data = await osmResp.json();
+      if (data && data.address) {
+        const addr = data.address;
+        const road = addr.road || addr.pedestrian || addr.suburb || addr.neighbourhood || addr.amenity || 'Current Location';
+        const house = addr.house_number ? `${addr.house_number} ` : '';
+        resolvedAddress = `${house}${road}`.trim();
+        resolvedCity = addr.city || addr.town || addr.county || addr.state || '';
+        resolvedState = addr.state || '';
+        resolvedCountry = addr.country || '';
+        formattedAddress = data.display_name || [resolvedAddress, resolvedCity, resolvedState, resolvedCountry].filter(Boolean).join(', ');
+      }
+    } else if (osmResp.status === 429) {
+      console.warn('[Geocode Reverse] Nominatim rate limit (429) - falling back to Photon');
+    }
+  } catch (e: any) {
+    console.warn('[Geocode Reverse] Nominatim note:', e?.message || String(e));
+  }
+
+  // Tier 2: Photon Komoot Server-Side Call
+  if (!resolvedAddress) {
+    try {
+      const photonBase = (CONFIG.PHOTON_BASE_URL || 'https://photon.komoot.io').replace(/\/+$/, '').replace(/\/reverse$/, '').replace(/\/api$/, '');
+      const pResp = await fetch(`${photonBase}/reverse?lat=${lat}&lon=${lng}`, {
+        headers: { 'User-Agent': 'VeyraNG-FoodDelivery-Server/1.0' },
+        signal: AbortSignal.timeout(3000)
+      });
+      if (pResp.ok) {
+        const pData = await pResp.json();
+        const props = pData.features?.[0]?.properties;
+        if (props) {
+          resolvedAddress = [props.housenumber, props.street || props.name].filter(Boolean).join(' ') || props.name || 'Current Location';
+          resolvedCity = props.city || props.county || props.state || '';
+          resolvedState = props.state || '';
+          resolvedCountry = props.country || '';
+          formattedAddress = [resolvedAddress, resolvedCity, resolvedCountry].filter(Boolean).join(', ');
+        }
+      } else if (pResp.status === 429) {
+        console.warn('[Geocode Reverse] Photon rate limit (429).');
+      }
+    } catch (e: any) {
+      console.warn('[Geocode Reverse] Photon note:', e?.message || String(e));
+    }
+  }
+
+  if (!resolvedAddress) {
+    throw new Error('No public reverse-geocoding provider could resolve this location. Enter your street or area address manually.');
+  }
+
+  return {
+    latitude: lat,
+    longitude: lng,
+    address: resolvedAddress,
+    city: resolvedCity,
+    state: resolvedState,
+    country: resolvedCountry,
+    formattedAddress
+  };
+}

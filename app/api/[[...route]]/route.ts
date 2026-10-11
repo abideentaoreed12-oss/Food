@@ -11,9 +11,9 @@ import {
   calculateRestaurantDistanceMetrics,
   calculateDistanceAndDuration,
   calculateBatchRestaurantDistanceMetrics,
-  geocodeAddress
+  geocodeAddress,
+  reverseGeocodeCoordinates
 } from '../../../server/utils/distance';
-import { reverseGeocodeCoordinates } from '../../../server/routes/geocode'
 import { buildPublicRestaurant, buildPublicRestaurantList } from '../../../lib/restaurantMenu';
 
 export const runtime = 'nodejs';

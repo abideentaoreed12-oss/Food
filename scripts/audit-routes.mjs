@@ -59,9 +59,13 @@ console.log('\nNext.js API route files: ' + nextApiRows.length);
 for (const row of nextApiRows.sort((a, b) => a.path.localeCompare(b.path))) {
   console.log('API   ' + row.path.padEnd(34) + (row.methods.join(', ') || 'NO EXPLICIT HTTP METHODS') + '  [' + row.file + ']');
 }
-console.log('\nExpress handler declarations: ' + expressRows.length);
-for (const row of expressRows.sort((a, b) => (a.path + a.method).localeCompare(b.path + b.method))) {
-  console.log('EXP   ' + row.method.padEnd(7) + row.path.padEnd(42) + (row.mounted ? '' : 'WARNING: mount not found') + '  [' + row.file + ']');
+if (expressApp) {
+  console.log('\nExpress handler declarations: ' + expressRows.length);
+  for (const row of expressRows.sort((a, b) => (a.path + a.method).localeCompare(b.path + b.method))) {
+    console.log('EXP   ' + row.method.padEnd(7) + row.path.padEnd(42) + (row.mounted ? '' : 'WARNING: mount not found') + '  [' + row.file + ']');
+  }
+} else {
+  console.log('\nExpress server retired: server/app.ts removed. All API endpoints served by Next.js App Router (app/api/**/route.ts).');
 }
 console.log('\nIMPORTANT: A source declaration is not proof of deployment or functionality.');
 console.log('The standard package start script runs Next.js; Express handlers are not served by that process unless explicitly bridged or deployed separately.');

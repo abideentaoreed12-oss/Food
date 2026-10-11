@@ -616,6 +616,14 @@ export class SiteDataManager {
   }
 
   /**
+   * One-time authoritative snapshot refresh from database.
+   * Safe for serverless cron jobs and on-demand invocation.
+   */
+  public async syncOnce(): Promise<SiteDataSnapshot | null> {
+    return this.refreshSnapshot({ force: true, allowEmpty: true, isAuthorizedAdmin: true });
+  }
+
+  /**
    * Starts a persistent server-side background timer for long-running Node/Express processes.
    */
   public startBackgroundSync(intervalMs: number = 10000): void {

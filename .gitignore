@@ -44,3 +44,4 @@ src/data/mockData.ts
 # Internal SDK caches and development artifacts
 .gmp_cache/
 .aistudio/
+*.tsbuildinfo

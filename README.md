@@ -27,7 +27,7 @@ Availability of individual features depends on environment configuration and bac
 
 ## Requirements
 
-- Node.js 22.x
+- Node.js 22+
 - npm
 
 ## Getting Started
@@ -75,25 +75,25 @@ Configure only the integrations you use, based on `.env.example`, including:
 
 - Cloudflare D1 and R2
 - Paystack
-- Google Maps
+- Google Maps (optional for map display components)
 - JWT authentication
 - Optional email and AI services
 
 Some features will be unavailable until their required environment variables and provider services are configured.
 
-## Location and routing (no API key or self-hosting required)
+## Location and routing
 
-The delivery backend uses public OpenStreetMap-based services by default:
+The delivery backend uses public OpenStreetMap-based services by default for development:
 
 - **Address search:** Photon, then Nominatim.
-- **Road routing:** OSRM, then the public Valhalla service, then the public OSRM-compatible OpenStreetMap routing endpoint.
+- **Road routing:** OSRM, then public Valhalla, then public OSRM-compatible OpenStreetMap routing.
 - **Reverse geocoding:** Nominatim, then Photon.
-- **Pricing:** Active delivery-zone rates and radius from D1 when an assigned/unique zone is available; otherwise a configured restaurant fee and radius are required.
+- **Pricing:** Active delivery-zone rates and radius from D1.
 - **Failure behavior:** If no real router returns a valid road route, checkout fails with an availability error. The app does not replace a failed route with straight-line distance, guessed travel time, synthetic route geometry, or simulated courier GPS.
 
-These are public community/demo endpoints: they do not require your own server or API key, but they are **not guaranteed permanent, unlimited, or SLA-backed**. They may rate-limit requests or change availability. Keep the default URLs in `.env.example` unless you intentionally choose another compatible public endpoint. Do not configure Google Maps, GraphHopper, or OpenRouteService credentials for the delivery-routing chain.
+> **Production Notice:** The default community Nominatim and OSRM servers are intended for development and staging only. They enforce strict rate limits and provide no uptime SLA. For commercial production deployments, configure a paid geocoding/routing API or self-hosted OSRM/Valhalla/Nominatim instances via `NOMINATIM_BASE_URL`, `OSRM_BASE_URL`, and `VALHALLA_BASE_URL`.
 
-Google Maps is optional for map display components only; it is not used to calculate delivery distance, ETA, or fees. `GEMINI_API_KEY` is an optional placeholder and is not used to invent coordinates or routes.
+Google Maps is optional for interactive client-side map display components only; it is not used for server-side distance, ETA, or delivery fee calculation.
 
 ## Testing
 
