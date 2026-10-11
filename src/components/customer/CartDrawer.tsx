@@ -67,7 +67,7 @@ export const CartDrawer: React.FC = () => {
     durationText: string;
     durationMinutes: number;
     estimatedDeliveryFee: number;
-    inDeliveryRadius: boolean;
+    inDeliveryRadius?: boolean;
     userLocation?: { lat: number; lng: number; formattedAddress?: string };
     restaurantLocation?: { lat: number; lng: number; formattedAddress?: string };
     isCalculating?: boolean;
