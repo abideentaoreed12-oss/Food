@@ -22,11 +22,11 @@ export const deliveryService = {
           baseFee: Number(z.base_delivery_fee ?? z.baseFee ?? z.deliveryFee),
           deliveryFee: Number(z.base_delivery_fee ?? z.baseFee ?? z.deliveryFee),
           perKmFee: Number(z.per_km_fee ?? z.perKmFee),
-          radiusKm: Number(z.radius_km ?? z.radiusKm),
+          radiusKm: Number(z.radius_km ?? z.radiusKm ?? z.max_radius_km),
           surgeMultiplier: Number(z.surge_multiplier ?? z.surgeMultiplier),
           centerLat: Number(z.center_lat ?? z.centerLat),
           centerLng: Number(z.center_lng ?? z.centerLng),
-          averageSpeedMin: Number(z.average_speed_min ?? z.averageSpeedMin),
+          averageSpeedMin: Number.isFinite(Number(z.average_speed_min ?? z.averageSpeedMin)) ? Number(z.average_speed_min ?? z.averageSpeedMin) : undefined,
           isActive: Number(z.is_active) === 1,
           mapImageR2Url: z.map_image_r2_url || z.mapImageR2Url || undefined
         })).filter((z: ZoneConfig) =>
@@ -36,8 +36,7 @@ export const deliveryService = {
           Number.isFinite(z.radiusKm) && z.radiusKm > 0 &&
           Number.isFinite(z.centerLat) && z.centerLat >= -90 && z.centerLat <= 90 &&
           Number.isFinite(z.centerLng) && z.centerLng >= -180 && z.centerLng <= 180 &&
-          Number.isFinite(z.surgeMultiplier) && z.surgeMultiplier >= 0 &&
-          Number.isFinite(z.averageSpeedMin) && z.averageSpeedMin > 0
+          Number.isFinite(z.surgeMultiplier) && z.surgeMultiplier >= 0
         );
       }
     } catch (err) {
