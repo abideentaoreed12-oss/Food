@@ -505,7 +505,7 @@ export const CustomerView: React.FC = () => {
                       <span>·</span>
                       <span className="text-orange-600 font-medium flex items-center gap-0.5">
                         <MapPin className="w-3 h-3 shrink-0" />
-                        <span>{restaurant.distanceText || (restaurant.distanceKm ? `${restaurant.distanceKm} km` : 'Live Distance')}</span>
+                        <span>{restaurant.distanceText || (restaurant.distanceKm ? `${restaurant.distanceKm} km` : 'Distance unavailable')}</span>
                       </span>
                       <span>·</span>
                       <span className="font-semibold text-slate-700">
