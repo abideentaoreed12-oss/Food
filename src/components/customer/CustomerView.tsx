@@ -500,7 +500,7 @@ export const CustomerView: React.FC = () => {
                     <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-xs text-slate-500">
                       <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                       <span className="font-mono tabular-nums">
-                        {restaurant.durationText || `${restaurant.deliveryTimeMin}–${restaurant.deliveryTimeMax} min`}
+                        {restaurant.durationText || 'Delivery time unavailable'}
                       </span>
                       <span>·</span>
                       <span className="text-orange-600 font-medium flex items-center gap-0.5">
