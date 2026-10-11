@@ -69,20 +69,9 @@ export const CONFIG = {
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
   RESEND_WEBHOOK_SECRET: (process.env.RESEND_WEBHOOK_SECRET || process.env.RESEND_WEBHOOK_SIGNING_SECRET || '').trim(),
 
-  GOOGLE_MAPS_API_KEY:
-    (process.env.GOOGLE_MAPS_API_KEY ||
-    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
-    process.env.VITE_GOOGLE_MAPS_API_KEY ||
-    '').trim(),
   NOMINATIM_BASE_URL: sanitizeBaseUrl(process.env.NOMINATIM_BASE_URL || process.env.NOMINATIM_URL, 'https://nominatim.openstreetmap.org'),
   PHOTON_BASE_URL: sanitizeBaseUrl(process.env.PHOTON_BASE_URL || process.env.PHOTON_URL, 'https://photon.komoot.io'),
-  PELIAS_BASE_URL: sanitizeBaseUrl(process.env.PELIAS_BASE_URL || process.env.PELIAS_URL, ''),
-  PELIAS_API_KEY: (process.env.PELIAS_API_KEY || '').trim(),
   OSRM_BASE_URL: sanitizeBaseUrl(process.env.OSRM_BASE_URL || process.env.OSRM_URL, 'https://router.project-osrm.org'),
   VALHALLA_BASE_URL: sanitizeBaseUrl(process.env.VALHALLA_BASE_URL || process.env.VALHALLA_URL, 'https://valhalla.openstreetmap.de'),
-  VALHALLA_API_KEY: (process.env.VALHALLA_API_KEY || '').trim(),
-  GRAPHHOPPER_BASE_URL: sanitizeBaseUrl(process.env.GRAPHHOPPER_BASE_URL || process.env.GRAPHHOPPER_URL, 'https://graphhopper.com/api/1'),
-  GRAPHHOPPER_API_KEY: (process.env.GRAPHHOPPER_API_KEY || '').trim(),
-  OPENROUTESERVICE_BASE_URL: sanitizeBaseUrl(process.env.OPENROUTESERVICE_BASE_URL || process.env.ORS_BASE_URL || process.env.ORS_URL, 'https://api.openrouteservice.org'),
-  OPENROUTESERVICE_API_KEY: (process.env.OPENROUTESERVICE_API_KEY || process.env.ORS_API_KEY || '').trim()
+
 };
