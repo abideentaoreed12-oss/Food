@@ -2669,43 +2669,25 @@ export const AdminPortal: React.FC = () => {
                   </div>
 
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-800">2. OSRM Engine</span>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    </div>
-                    <p className="text-[11px] text-slate-500">Secondary Provider (3s Timeout)</p>
-                    <div className="text-[10px] font-mono text-emerald-700 font-semibold">🟢 Ready for Failover</div>
+                    <div className="font-bold text-slate-800">1. Photon Geocoding</div>
+                    <p className="text-[11px] text-slate-500">Public OpenStreetMap address search</p>
+                    <div className="text-[10px] font-mono text-slate-600 font-semibold">Availability checked per request</div>
                   </div>
-
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-800">3. Google Maps API</span>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    </div>
-                    <p className="text-[11px] text-slate-500">Emergency Fallback (5s Timeout)</p>
-                    <div className="text-[10px] font-mono text-emerald-700 font-semibold">🟢 Quota Protected</div>
+                    <div className="font-bold text-slate-800">2. Nominatim Geocoding</div>
+                    <p className="text-[11px] text-slate-500">OpenStreetMap fallback address search</p>
+                    <div className="text-[10px] font-mono text-slate-600 font-semibold">Public usage policy applies</div>
                   </div>
-
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-800">4. Haversine Safety</span>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    </div>
-                    <p className="text-[11px] text-slate-500">1.3x Urban Road Multiplier</p>
-                    <div className="text-[10px] font-mono text-emerald-700 font-semibold">🟢 100% Resilient Backup</div>
+                    <div className="font-bold text-slate-800">3. OSRM Routing</div>
+                    <p className="text-[11px] text-slate-500">Road distance, ETA and road geometry</p>
+                    <div className="text-[10px] font-mono text-slate-600 font-semibold">No key; public-service limits apply</div>
                   </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* CATEGORIES MANAGEMENT */}
-          {activeTab === 'categories' && (
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-5">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Menu Categories Catalog</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Live dish categorizations stored directly in Platform D1.</p>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                    <div className="font-bold text-slate-800">4. Valhalla / OSM Routing</div>
+                    <p className="text-[11px] text-slate-500">Open-source routing failover</p>
+                    <div className="text-[10px] font-mono text-slate-600 font-semibold">Availability is not assumed</div>
+                  </div>
                 </div>
                 <button
                   onClick={() => setIsAddCatModalOpen(true)}
