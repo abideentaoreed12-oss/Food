@@ -170,10 +170,6 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
   // 3. Compute Progress Ratio
   const progressRatio = useMemo(() => {
     if (order.status === 'delivered') return 1;
-    if (order.status === 'placed') return 0.05;
-    if (order.status === 'confirmed') return 0.15;
-    if (order.status === 'preparing') return 0.25;
-    if (order.status === 'ready_for_pickup') return 0.35;
     if (order.status === 'in_transit') {
       if (!Number.isFinite(order.routeProgress)) return Number.NaN;
       return Math.max(0, Math.min(1, Number(order.routeProgress) / 100));
