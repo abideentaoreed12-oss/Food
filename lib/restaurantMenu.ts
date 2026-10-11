@@ -11,15 +11,19 @@ import { d1 } from './d1';
 
 export type PublicMenuItem = {
   id: string;
+  restaurantId: string;
   name: string;
   description: string;
   price: number;
+  category: string;
   image?: string;
   imageUrl?: string;
   isAvailable: boolean;
   dietary: string[];
   popular?: boolean;
   categoryId?: string;
+  prepTimeMin?: number;
+  calories?: number;
 };
 
 export type PublicMenuCategory = {
@@ -40,19 +44,23 @@ function parseJsonSafe(value: any, fallback: any = {}) {
   }
 }
 
-function mapItemRow(row: any): PublicMenuItem {
+function mapItemRow(row: any, defaultRestaurantId: string = '', categoryName: string = 'Menu'): PublicMenuItem {
   const dietary = parseJsonSafe(row.dietary_tags, []);
   return {
     id: String(row.id),
+    restaurantId: String(row.restaurant_id || defaultRestaurantId),
     name: String(row.name || ''),
     description: typeof row.description === 'string' ? row.description : '',
     price: Number.isFinite(Number(row.price)) ? Number(row.price) : 0,
-    image: typeof row.image_r2_url === 'string' && row.image_r2_url ? row.image_r2_url : undefined,
-    imageUrl: typeof row.image_r2_url === 'string' && row.image_r2_url ? row.image_r2_url : undefined,
+    category: categoryName || String(row.category || 'Menu'),
+    image: typeof row.image_r2_url === 'string' && row.image_r2_url ? row.image_r2_url : (typeof row.image_url === 'string' ? row.image_url : undefined),
+    imageUrl: typeof row.image_r2_url === 'string' && row.image_r2_url ? row.image_r2_url : (typeof row.image_url === 'string' ? row.image_url : undefined),
     isAvailable: row.is_available === 1 || row.is_available === true,
     dietary: Array.isArray(dietary) ? dietary.filter((t: any) => typeof t === 'string') : [],
     popular: row.popular === 1 || row.popular === true,
     categoryId: row.category_id ? String(row.category_id) : undefined,
+    prepTimeMin: Number(row.prep_time_min) || 20,
+    calories: Number(row.calories) || undefined,
   };
 }
 
@@ -75,7 +83,15 @@ export async function loadNormalizedMenu(restaurantId: string): Promise<PublicMe
     throw new Error('Normalized menu query failed');
   }
 
-  const items = (itemsRes.results || []).map(mapItemRow);
+  const catsMap = new Map<string, string>();
+  for (const c of (catsRes.results || [])) {
+    catsMap.set(String(c.id), String(c.name || 'Menu'));
+  }
+
+  const items = (itemsRes.results || []).map((row: any) => {
+    const catName = row.category_id ? (catsMap.get(String(row.category_id)) || 'Menu') : 'Menu';
+    return mapItemRow(row, restaurantId, catName);
+  });
   const byCategory = new Map<string, PublicMenuItem[]>();
   const uncategorized: PublicMenuItem[] = [];
 

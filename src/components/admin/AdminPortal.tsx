@@ -553,6 +553,7 @@ export const AdminPortal: React.FC = () => {
       setNewMenuDesc('');
       setNewMenuImageUrl('');
       fetchData();
+      await refreshData();
     } catch (err: any) {
       showActionFeedback(`Failed to add dish: ${err.message}`);
     }
@@ -565,6 +566,7 @@ export const AdminPortal: React.FC = () => {
         prev.map((m) => (m.id === id ? { ...m, is_available: res.isAvailable ? 1 : 0 } : m))
       );
       showActionFeedback(`Menu availability updated in D1.`);
+      await refreshData();
     } catch (err: any) {
       showActionFeedback(`Toggle failed: ${err.message}`);
     }
@@ -576,6 +578,7 @@ export const AdminPortal: React.FC = () => {
       await api.admin.deleteMenuItem(id);
       showActionFeedback(`Dish "${name}" deleted.`);
       fetchData();
+      await refreshData();
     } catch (err: any) {
       showActionFeedback(`Delete failed: ${err.message}`);
     }
@@ -609,6 +612,7 @@ export const AdminPortal: React.FC = () => {
       setIsEditMenuModalOpen(false);
       setEditingMenuItem(null);
       fetchData();
+      await refreshData();
     } catch (err: any) {
       showActionFeedback(`Failed to update dish: ${err.message}`);
     }
@@ -809,6 +813,7 @@ export const AdminPortal: React.FC = () => {
       setNewCatDesc('');
       setIsAddCatModalOpen(false);
       fetchData();
+      await refreshData();
     } catch (err: any) {
       showActionFeedback(`Failed to create category: ${err.message}`);
     }
@@ -820,6 +825,7 @@ export const AdminPortal: React.FC = () => {
       await api.admin.deleteCategory(id);
       showActionFeedback(`Category "${name}" deleted.`);
       fetchData();
+      await refreshData();
     } catch (err: any) {
       showActionFeedback(`Delete failed: ${err.message}`);
     }
@@ -922,6 +928,7 @@ export const AdminPortal: React.FC = () => {
       setNewRestAddress('');
       setNewRestOwnerUserId('');
       fetchData();
+      await refreshData();
     } catch (err: any) {
       showActionFeedback(`Branch creation failed: ${err.message}`);
     }
@@ -933,6 +940,7 @@ export const AdminPortal: React.FC = () => {
       await api.admin.assignRestaurant(restaurantId, ownerUserId || null);
       showActionFeedback(ownerUserId ? 'Restaurant assignment saved. Merchant access is now linked to this restaurant.' : 'Restaurant unassigned successfully.');
       await fetchData();
+      await refreshData();
     } catch (err: any) {
       showActionFeedback(`Restaurant assignment failed: ${err.message}`);
       await fetchData();
@@ -944,6 +952,7 @@ export const AdminPortal: React.FC = () => {
       await api.admin.toggleBranchStatus(id);
       showActionFeedback('Restaurant open/busy status updated in D1.');
       fetchData();
+      await refreshData();
     } catch (err: any) {
       showActionFeedback(`Toggle failed: ${err.message}`);
     }
@@ -955,6 +964,7 @@ export const AdminPortal: React.FC = () => {
       await api.admin.deleteRestaurant(id);
       showActionFeedback(`Restaurant "${name}" removed.`);
       fetchData();
+      await refreshData();
     } catch (err: any) {
       showActionFeedback(`Delete failed: ${err.message}`);
     }

@@ -135,8 +135,29 @@ export function clearAuthStorage(): void {
   }
 }
 
-/** Purge legacy keys that may have stored authoritative data */
+/** Purge legacy keys that may have stored authoritative food, menu, or order data */
 export function purgeLegacyAuthoritativeCaches(): void {
-  safeRemove(STORAGE_KEYS.USER_CACHE_LEGACY);
-  safeRemove(STORAGE_KEYS.CART_LEGACY);
+  const legacyKeys = [
+    STORAGE_KEYS.USER_CACHE_LEGACY,
+    STORAGE_KEYS.CART_LEGACY,
+    'veyrang_orders',
+    'veyrang_past_orders',
+    'veyrang_foods',
+    'veyrang_menu',
+    'veyrang_restaurants',
+    'orders',
+    'past_orders',
+    'cart',
+    'foods',
+    'menu',
+    'restaurants'
+  ];
+  for (const k of legacyKeys) {
+    safeRemove(k);
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem(k);
+      } catch {}
+    }
+  }
 }

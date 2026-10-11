@@ -142,6 +142,7 @@ export const RestaurantPortal: React.FC = () => {
       setEditingDishId(null);
       setMenuMsg(editingDishId ? 'Dish updated in D1.' : 'Dish saved to D1 and the shared catalogue refreshed.');
       await loadLiveMenu();
+      await refreshData();
     } catch (err: any) {
       setMenuMsg(err?.message || 'Failed to save dish');
     } finally {
@@ -171,6 +172,7 @@ export const RestaurantPortal: React.FC = () => {
     try {
       await api.admin.toggleMenuItem(id);
       await loadLiveMenu();
+      await refreshData();
       setMenuMsg('Availability updated in D1.');
     } catch (err: any) {
       setMenuMsg(err?.message || 'Toggle failed');
@@ -630,6 +632,7 @@ export const RestaurantPortal: React.FC = () => {
               if (created) setNewDishCategoryId(String(created.id));
               setNewCategoryName('');
               setMenuMsg('Category saved to D1.');
+              await refreshData();
             } catch (err: any) {
               setMenuMsg(err?.message || 'Could not create category.');
             } finally {
@@ -656,15 +659,15 @@ export const RestaurantPortal: React.FC = () => {
               liveMenu.map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-600 bg-white px-3 py-2.5">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-slate-900">{item.name}</div>
-                    <div className="text-xs text-slate-700">NGN {Number(item.price || 0).toLocaleString()} - {item.is_available === 0 ? 'Hidden' : 'Available'}</div>
+                     <div className="truncate text-sm font-semibold text-slate-900">{item.name}</div>
+                     <div className="text-xs text-slate-700">NGN {Number(item.price || 0).toLocaleString()} - {item.is_available === 0 ? 'Hidden' : 'Available'}</div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <button type="button" onClick={() => { setEditingDishId(String(item.id)); setNewDishName(String(item.name || '')); setNewDishPrice(String(item.price ?? '')); setNewDishDesc(String(item.description || '')); setNewDishCategoryId(String(item.category_id || '')); setMenuMsg('Editing dish. Save changes to update D1.'); }} className="rounded-lg border border-slate-500 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-900 hover:border-[#FF5500]">Edit</button>
                     <button type="button" onClick={() => handleToggleDish(item.id)} className="rounded-lg border border-slate-500 bg-white px-2.5 py-1 text-xs font-bold text-slate-900 hover:border-[#FF5500] hover:text-[#FF5500]">
                       {item.is_available === 0 ? 'Restock' : 'Hide'}
                     </button>
-                    <button type="button" onClick={async () => { if (!window.confirm('Delete this dish permanently?')) return; try { await api.admin.deleteMenuItem(String(item.id)); await loadLiveMenu(); setMenuMsg('Dish deleted from D1 and the shared catalogue refreshed.'); } catch (err: any) { setMenuMsg(err?.message || 'Could not delete dish.'); } }} className="rounded-lg border border-rose-700 bg-rose-950 px-2.5 py-1 text-xs font-bold text-rose-200 hover:bg-rose-900">Delete</button>
+                    <button type="button" onClick={async () => { if (!window.confirm('Delete this dish permanently?')) return; try { await api.admin.deleteMenuItem(String(item.id)); await loadLiveMenu(); await refreshData(); setMenuMsg('Dish deleted from D1 and the shared catalogue refreshed.'); } catch (err: any) { setMenuMsg(err?.message || 'Could not delete dish.'); } }} className="rounded-lg border border-rose-700 bg-rose-950 px-2.5 py-1 text-xs font-bold text-rose-200 hover:bg-rose-900">Delete</button>
                   </div>
                 </div>
               ))

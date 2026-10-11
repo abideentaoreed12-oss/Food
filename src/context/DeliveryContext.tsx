@@ -16,6 +16,7 @@ import {
 import { api } from '../services/api';
 import { useAuth } from './AuthContext';
 import { formatOrderTime } from '../utils/format';
+import { purgeLegacyAuthoritativeCaches } from '../lib/clientStorage';
 
 interface DeliveryContextType {
   platformSettings: Record<string, string>;
@@ -410,9 +411,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartLoaded, setIsCartLoaded] = useState<boolean>(false);
 
-  // Restore cart on client mount after hydration
+  // Restore cart on client mount after hydration and purge any legacy cached orders/foods
   useEffect(() => {
     try {
+      purgeLegacyAuthoritativeCaches();
       const saved = localStorage.getItem('veyrang_cart_v1');
       if (saved) {
         setCart(JSON.parse(saved));
@@ -464,10 +466,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     try {
       // All shared catalog/settings reads come from the last-known-good snapshot.
       // A failed request preserves the last successful state; it never switches to mock/direct fallback data.
+      let freshRestaurants: Restaurant[] | null = null;
       try {
         const snapRes = await api.siteData.getPublicSnapshot();
         const snap = snapRes?.data || snapRes;
         if (snap && Array.isArray(snap.restaurants)) {
+          freshRestaurants = snap.restaurants;
           setRestaurants(snap.restaurants);
           if (Array.isArray(snap.deliveryZones)) setDeliveryZones(snap.deliveryZones);
           if (snap.platformSettings && typeof snap.platformSettings === 'object') {
@@ -475,19 +479,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
             setCmsContent((prev) => ({ ...prev, ...snap.platformSettings }));
           }
 
-          // Notify other open tabs when the authoritative snapshot version changes.
-          if (typeof window !== 'undefined' && Number.isFinite(Number(snap.version))) {
-            const version = Number(snap.version);
+          // Notify other open tabs when the authoritative snapshot changes.
+          if (typeof window !== 'undefined') {
+            const version = Number(snap.version || 0);
+            const updatedAt = String(snap.updatedAt || '');
             const previousVersion = Number(sessionStorage.getItem('veyrang_site_data_version') || 0);
-            if (version > previousVersion) {
+            const previousUpdatedAt = sessionStorage.getItem('veyrang_site_data_updated_at') || '';
+            if (version > previousVersion || (version === previousVersion && updatedAt !== previousUpdatedAt)) {
               sessionStorage.setItem('veyrang_site_data_version', String(version));
+              sessionStorage.setItem('veyrang_site_data_updated_at', updatedAt);
               try {
                 const channel = new BroadcastChannel('veyrang-site-data');
-                channel.postMessage({ type: 'snapshot-updated', version, updatedAt: snap.updatedAt });
+                channel.postMessage({ type: 'snapshot-updated', version, updatedAt });
                 channel.close();
               } catch {}
               window.dispatchEvent(new CustomEvent('veyrang-site-data-updated', {
-                detail: { version, updatedAt: snap.updatedAt }
+                detail: { version, updatedAt }
               }));
             }
           }
@@ -505,25 +512,33 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
       // Validate cart against fresh restaurant data
       setCart(prevCart => {
         let changed = false;
-        const newCart = prevCart.map(item => {
-          const rest = restaurants.find(r => r.id === item.menuItem.restaurantId);
-          const allItems = (rest as any)?.menuItems || rest?.categories?.flatMap((c) => c.items || []) || [];
-          const menuItem = allItems.find((mi: any) => mi.id === item.menuItem.id);
+        const validCart: CartItem[] = [];
+        const activeRestaurants = freshRestaurants && Array.isArray(freshRestaurants) ? freshRestaurants : restaurants;
+        for (const item of prevCart) {
+          const rest = activeRestaurants.find((r: any) => r.id === item.menuItem?.restaurantId);
+          const allItems = (rest as any)?.menuItems || rest?.categories?.flatMap((c: any) => c.items || []) || [];
+          const liveItem = allItems.find((mi: any) => mi.id === item.menuItem?.id);
           
-          if (menuItem && (menuItem.price !== item.menuItem.price || menuItem.isAvailable !== item.menuItem.isAvailable)) {
+          if (!liveItem) {
+            // Dish was deleted by restaurant or admin: prune from cart immediately
+            changed = true;
+            continue;
+          }
+          if (liveItem.price !== item.menuItem.price || liveItem.isAvailable !== item.menuItem.isAvailable || liveItem.name !== item.menuItem.name) {
             changed = true;
             const optionsTotal = item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0);
-            const unitPrice = menuItem.price + optionsTotal;
-            return {
+            const unitPrice = liveItem.price + optionsTotal;
+            validCart.push({
               ...item,
-              menuItem,
+              menuItem: liveItem,
               itemTotal: Math.round(unitPrice * item.quantity)
-            };
+            });
+          } else {
+            validCart.push(item);
           }
-          return item;
-        });
-        if (changed) setCartAlert('Some items in your cart have been updated due to price or availability changes.');
-        return newCart;
+        }
+        if (changed) setCartAlert('Your cart was refreshed to reflect current menu availability and pricing.');
+        return validCart;
       });
 
       if (user) {

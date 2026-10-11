@@ -388,7 +388,7 @@ export async function GET(req: NextRequest) {
       }
     }, {
       headers: {
-        'Cache-Control': 'public, max-age=5, stale-while-revalidate=10',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
         'X-Veyrang-Source': 'last-known-good'
       }
     });
@@ -448,7 +448,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(
       { success: true, data: list, meta: { source: 'last-known-good', version: snapshot.version, updatedAt: snapshot.updatedAt } },
-      { headers: { 'Cache-Control': 'public, max-age=5, stale-while-revalidate=10', 'X-Veyrang-Source': 'last-known-good' } }
+      { headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'X-Veyrang-Source': 'last-known-good' } }
     );
   }
 
@@ -462,7 +462,7 @@ export async function GET(req: NextRequest) {
       if (fromLkg) {
         return NextResponse.json(
           { success: true, data: fromLkg },
-          { headers: { 'Cache-Control': 'public, max-age=5, stale-while-revalidate=10', 'X-Veyrang-Source': 'last-known-good' } }
+          { headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'X-Veyrang-Source': 'last-known-good' } }
         );
       }
       try {

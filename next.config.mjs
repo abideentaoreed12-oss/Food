@@ -1,4 +1,4 @@
-import type { NextConfig } from 'next';
+
 
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -22,7 +22,7 @@ const securityHeaders = [
   }
 ];
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   serverExternalPackages: ['node:sqlite'],
   reactStrictMode: true,
   env: {
@@ -63,7 +63,7 @@ const nextConfig: NextConfig = {
     formats: ['image/avif', 'image/webp']
   },
   output: 'standalone',
-  typedRoutes: true,
+  typedRoutes: false,
   experimental: {
     optimizePackageImports: ['lucide-react', 'motion/react'],
   },

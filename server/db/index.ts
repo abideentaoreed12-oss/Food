@@ -499,26 +499,6 @@ export const db = {
                 const snapRest = snapshot?.restaurants?.find((sr: any) => sr.id === r.id);
                 if (snapRest?.categories?.length) {
                   categories = snapRest.categories;
-                } else {
-                  categories = [
-                    {
-                      id: `cat-${r.id}-1`,
-                      name: 'Main Dishes',
-                      description: 'Popular freshly prepared dishes',
-                      items: [
-                        {
-                          id: `item-${r.id}-101`,
-                          name: `${(r.cuisine || obj.cuisine || 'Special').split(' ')[0]} House Platter`,
-                          description: 'Signature freshly prepared specialty platter',
-                          price: 4500,
-                          isAvailable: true,
-                          dietary: ['Halal'],
-                          popular: true,
-                          categoryId: `cat-${r.id}-1`
-                        }
-                      ]
-                    }
-                  ];
                 }
               }
               return {
@@ -563,26 +543,6 @@ export const db = {
               const snapRest = snapshot?.restaurants?.find((sr: any) => sr.id === r.id);
               if (snapRest?.categories?.length) {
                 categories = snapRest.categories;
-              } else {
-                categories = [
-                  {
-                    id: `cat-${r.id}-1`,
-                    name: 'Main Dishes',
-                    description: 'Popular freshly prepared dishes',
-                    items: [
-                      {
-                        id: `item-${r.id}-101`,
-                        name: `${(r.cuisine || obj.cuisine || 'Special').split(' ')[0]} House Platter`,
-                        description: 'Signature freshly prepared specialty platter',
-                        price: 4500,
-                        isAvailable: true,
-                        dietary: ['Halal'],
-                        popular: true,
-                        categoryId: `cat-${r.id}-1`
-                      }
-                    ]
-                  }
-                ];
               }
             }
             return {
@@ -615,6 +575,10 @@ export const db = {
   updateMenuItemAvailability: async (restaurantId: string, itemId: string, isAvailable: boolean): Promise<boolean> => {
     let rest: any = null;
     try {
+      await d1Client.query(
+        'UPDATE menu_items SET is_available = ? WHERE id = ? AND restaurant_id = ?',
+        [isAvailable ? 1 : 0, itemId, restaurantId]
+      );
       const d1Res = await d1Client.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
       if (d1Res?.results?.length) {
         const r: any = d1Res.results[0];
@@ -625,25 +589,7 @@ export const db = {
           if (snapRest?.categories?.length) {
             rest.categories = JSON.parse(JSON.stringify(snapRest.categories));
           } else {
-            rest.categories = [
-              {
-                id: `cat-${restaurantId}-1`,
-                name: 'Main Dishes',
-                description: 'Popular freshly prepared dishes',
-                items: [
-                  {
-                    id: itemId || `item-${restaurantId}-101`,
-                    name: `${(rest.cuisine || 'Special').split(' ')[0]} House Platter`,
-                    description: 'Signature freshly prepared specialty platter',
-                    price: 4500,
-                    isAvailable: true,
-                    dietary: ['Halal'],
-                    popular: true,
-                    categoryId: `cat-${restaurantId}-1`
-                  }
-                ]
-              }
-            ];
+            rest.categories = [];
           }
         }
       }

@@ -358,8 +358,18 @@ export class SiteDataManager {
   public async refreshSnapshot(
     options?: { force?: boolean; allowEmpty?: boolean; isAuthorizedAdmin?: boolean }
   ): Promise<SiteDataSnapshot | null> {
-    // If a refresh is already in-flight, return the existing promise to prevent duplicate requests
+    if (options?.force) {
+      d1.clearCache();
+    }
+
+    // If a refresh is already in-flight, await it when force is true, then start a fresh authoritative pull
     if (this.inFlightRefreshPromise) {
+      if (options?.force) {
+        try {
+          await this.inFlightRefreshPromise;
+        } catch {}
+        return this.refreshSnapshot({ ...options, force: false });
+      }
       return this.inFlightRefreshPromise;
     }
 
@@ -441,9 +451,9 @@ export class SiteDataManager {
           console.warn('[SiteData] LKG menu attach note:', menuErr?.message || menuErr);
         }
 
-        const zonesRes = await d1.query('SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL').catch(() => ({ results: [] }));
-        const promoRes = await d1.query('SELECT * FROM promo_codes WHERE is_active = 1').catch(() => ({ results: [] }));
-        const settingsRes = await d1.query('SELECT key, value FROM platform_settings').catch(() => ({ results: [] }));
+        const zonesRes = await d1.query('SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL', [], { cache: false }).catch(() => ({ results: [] }));
+        const promoRes = await d1.query('SELECT * FROM promo_codes WHERE is_active = 1', [], { cache: false }).catch(() => ({ results: [] }));
+        const settingsRes = await d1.query('SELECT key, value FROM platform_settings', [], { cache: false }).catch(() => ({ results: [] }));
 
         // Public settings allowlist: never leak private keys, secrets or credentials
         const safeSettings: Record<string, any> = {};

@@ -1,11 +1,66 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db, loadDatabase } from '../server/db';
+import { d1Client } from '../server/db/d1Client';
 import { CONFIG } from '../server/config';
 import bcrypt from 'bcryptjs';
 
 describe('Production Database & Security Ledger', () => {
   beforeEach(async () => {
     loadDatabase();
+    // Ensure test restaurant exists
+    const rests = await db.getRestaurants();
+    if (rests.length === 0) {
+      const now = new Date().toISOString();
+      const testRest = {
+        id: 'rest-1',
+        name: 'Burger House Lekki',
+        cuisine: 'Burgers & American',
+        rating: 4.8,
+        reviewCount: 120,
+        deliveryTimeMin: 20,
+        deliveryTimeMax: 35,
+        deliveryFee: 1200,
+        minOrder: 2500,
+        priceTier: '$$',
+        address: '10 Victoria Island, Lagos',
+        isOpen: true,
+        isBusyPaused: false,
+        categories: [
+          {
+            id: 'cat-1',
+            name: 'Burgers',
+            items: [
+              {
+                id: 'item-101',
+                restaurantId: 'rest-1',
+                name: 'Classic Suya Burger',
+                description: 'Spiced beef patty with artisanal brioche',
+                price: 5200,
+                category: 'Burgers',
+                dietary: ['Halal'],
+                isAvailable: true,
+                prepTimeMin: 20
+              }
+            ]
+          }
+        ]
+      };
+      await d1Client.query(
+        `INSERT OR REPLACE INTO restaurants (id, name, slug, cuisine, rating, review_count, delivery_time_min, delivery_time_max, delivery_fee, address, is_open, is_busy_paused, raw_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)`,
+        ['rest-1', 'Burger House Lekki', 'burger-house-lekki', 'Burgers & American', 4.8, 120, 20, 35, 1200, '10 Victoria Island, Lagos', JSON.stringify(testRest), now]
+      );
+      await d1Client.query(
+        `INSERT OR REPLACE INTO menu_categories (id, restaurant_id, name, sort_order, created_at)
+         VALUES (?, ?, ?, 1, ?)`,
+        ['cat-1', 'rest-1', 'Burgers', now]
+      );
+      await d1Client.query(
+        `INSERT OR REPLACE INTO menu_items (id, restaurant_id, category_id, name, description, price, is_available, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
+        ['item-101', 'rest-1', 'cat-1', 'Classic Suya Burger', 'Spiced beef patty with artisanal brioche', 5200, now]
+      );
+    }
     // Ensure at least one test order exists
     const orders = await db.getOrders();
     if (orders.length === 0) {
