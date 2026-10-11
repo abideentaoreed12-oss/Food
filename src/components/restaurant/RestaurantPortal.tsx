@@ -204,7 +204,7 @@ export const RestaurantPortal: React.FC = () => {
             <ChefHat className="w-6 h-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 uppercase tracking-wider">
               <span>Merchant Kitchen Display (KDS)</span>
               <span className="text-slate-600">·</span>
               {currentRestaurant.isBusyPaused ? (
@@ -227,7 +227,7 @@ export const RestaurantPortal: React.FC = () => {
             className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1.5 ${
               currentRestaurant.isBusyPaused
                 ? 'bg-rose-950 text-rose-300 border-rose-700'
-                : 'bg-slate-850 text-slate-300 border-slate-700 hover:text-white'
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:text-slate-900'
             }`}
           >
             {currentRestaurant.isBusyPaused ? '🔴 Busy (Paused)' : '🟢 Pause Orders (Busy Mode)'}
@@ -278,26 +278,26 @@ export const RestaurantPortal: React.FC = () => {
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <div className="text-xs text-slate-500 font-medium">Sales Volume</div>
+          <div className="text-xs text-slate-600 font-medium">Sales Volume</div>
           <div className="text-2xl font-bold text-emerald-400 font-mono mt-1 tabular-nums">
             {formatCurrency(totalKitchenRevenueUSD, currency)}
           </div>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <div className="text-xs text-slate-400 font-medium">Active Tickets</div>
-          <div className="text-2xl font-bold text-white font-mono mt-1 tabular-nums">
+          <div className="text-xs text-slate-600 font-medium">Active Tickets</div>
+          <div className="text-2xl font-bold text-slate-900 font-mono mt-1 tabular-nums">
             {newTickets.length + preparingTickets.length + readyTickets.length}
           </div>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <div className="text-xs text-slate-400 font-medium">Platform Commission</div>
+          <div className="text-xs text-slate-600 font-medium">Platform Commission</div>
           <div className="text-2xl font-bold text-indigo-400 font-mono mt-1 tabular-nums">
             {commissionRate}%
           </div>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <div className="text-xs text-slate-400 font-medium">Doorstep Rating</div>
-          <div className="text-2xl font-bold text-white font-mono mt-1 tabular-nums">
+          <div className="text-xs text-slate-600 font-medium">Doorstep Rating</div>
+          <div className="text-2xl font-bold text-slate-900 font-mono mt-1 tabular-nums">
             ★ {currentRestaurant.rating.toFixed(2)}
           </div>
         </div>
@@ -308,7 +308,7 @@ export const RestaurantPortal: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {/* New Incoming Tickets */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-ping" />
                 <h3 className="text-sm font-bold text-slate-900">New Tickets</h3>
@@ -319,28 +319,28 @@ export const RestaurantPortal: React.FC = () => {
             </div>
 
             {newTickets.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-850">
+              <div className="p-8 text-center text-xs text-slate-600 bg-slate-50 rounded-2xl border border-slate-200">
                 No new pending tickets. Place an order from Customer view to trigger!
               </div>
             ) : (
               newTickets.map((ord) => (
                 <div
                   key={ord.id}
-                  className="bg-slate-900 border-2 border-orange-500/70 rounded-2xl p-4 space-y-3 shadow-lg animate-pulse"
+                  className="bg-white border-2 border-orange-500/70 rounded-2xl p-4 space-y-3 shadow-lg animate-pulse"
                 >
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-mono font-bold text-white">{ord.shortId}</span>
+                    <span className="font-mono font-bold text-slate-900">{ord.shortId}</span>
                     <span className="text-orange-400 font-semibold">{ord.createdAt}</span>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-white">{ord.customerName}</span>
+                    <span className="text-sm font-bold text-slate-900">{ord.customerName}</span>
                     <span className="text-[11px] font-mono text-emerald-400">
                       {ord.fulfillmentType === 'pickup' ? 'Takeaway' : 'Doorstep'}
                     </span>
                   </div>
 
-                  <div className="space-y-1.5 pt-2 border-t border-slate-800 text-xs text-slate-300">
+                  <div className="space-y-1.5 pt-2 border-t border-slate-200 text-xs text-slate-700">
                     {ord.items.map((it) => (
                       <div key={it.cartItemId} className="flex justify-between">
                         <span>
@@ -359,7 +359,7 @@ export const RestaurantPortal: React.FC = () => {
                   <div className="pt-2 flex gap-2">
                     <button
                       onClick={() => handlePrint(ord.shortId)}
-                      className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl"
+                      className="p-2 bg-slate-100 hover:bg-slate-700 text-slate-700 rounded-xl"
                       title="Print ticket"
                     >
                       <Printer className="w-4 h-4" />
@@ -378,10 +378,10 @@ export const RestaurantPortal: React.FC = () => {
 
           {/* In Kitchen Prep */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <Utensils className="w-4 h-4 text-amber-400" />
-                <h3 className="text-sm font-bold text-white">Cooking</h3>
+                <h3 className="text-sm font-bold text-slate-900">Cooking</h3>
               </div>
               <span className="text-xs font-mono font-bold bg-amber-950 text-amber-400 px-2 py-0.5 rounded-full border border-amber-800">
                 {preparingTickets.length}
@@ -389,26 +389,26 @@ export const RestaurantPortal: React.FC = () => {
             </div>
 
             {preparingTickets.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-850">
+              <div className="p-8 text-center text-xs text-slate-600 bg-slate-50 rounded-2xl border border-slate-200">
                 No orders currently in pans or ovens.
               </div>
             ) : (
               preparingTickets.map((ord) => (
                 <div
                   key={ord.id}
-                  className="bg-slate-900 border border-amber-500/40 rounded-2xl p-4 space-y-3 shadow-md"
+                  className="bg-white border border-amber-500/40 rounded-2xl p-4 space-y-3 shadow-md"
                 >
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-mono font-bold text-white">{ord.shortId}</span>
+                    <span className="font-mono font-bold text-slate-900">{ord.shortId}</span>
                     <span className="text-amber-400 flex items-center gap-1 font-mono">
                       <Clock className="w-3 h-3" />
                       {ord.prepTimeAdjustmentMin ? `+${ord.prepTimeAdjustmentMin}m added` : 'Preparing'}
                     </span>
                   </div>
 
-                  <div className="text-sm font-bold text-white">{ord.customerName}</div>
+                  <div className="text-sm font-bold text-slate-900">{ord.customerName}</div>
 
-                  <div className="space-y-1.5 pt-2 border-t border-slate-800 text-xs text-slate-300">
+                  <div className="space-y-1.5 pt-2 border-t border-slate-200 text-xs text-slate-700">
                     {ord.items.map((it) => (
                       <div key={it.cartItemId} className="flex justify-between">
                         <span>
@@ -419,18 +419,18 @@ export const RestaurantPortal: React.FC = () => {
                   </div>
 
                   {/* Prep Time Adjusters */}
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                  <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1">
                     <span>Adjust prep time:</span>
                     <div className="flex gap-1">
                       <button
                         onClick={() => adjustOrderPrepTime(ord.id, 5)}
-                        className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded font-mono"
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-slate-700 text-amber-300 rounded font-mono"
                       >
                         +5m
                       </button>
                       <button
                         onClick={() => adjustOrderPrepTime(ord.id, 10)}
-                        className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded font-mono"
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-slate-700 text-amber-300 rounded font-mono"
                       >
                         +10m
                       </button>
@@ -440,7 +440,7 @@ export const RestaurantPortal: React.FC = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handlePrint(ord.shortId)}
-                      className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl"
+                      className="p-2 bg-slate-100 hover:bg-slate-700 text-slate-700 rounded-xl"
                       title="Print ticket"
                     >
                       <Printer className="w-4 h-4" />
@@ -459,10 +459,10 @@ export const RestaurantPortal: React.FC = () => {
 
           {/* Ready for Pickup */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <Bike className="w-4 h-4 text-blue-400" />
-                <h3 className="text-sm font-bold text-white">Ready for Pickup</h3>
+                <h3 className="text-sm font-bold text-slate-900">Ready for Pickup</h3>
               </div>
               <span className="text-xs font-mono font-bold bg-blue-950 text-blue-400 px-2 py-0.5 rounded-full border border-blue-800">
                 {readyTickets.length}
@@ -470,38 +470,38 @@ export const RestaurantPortal: React.FC = () => {
             </div>
 
             {readyTickets.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-850">
+              <div className="p-8 text-center text-xs text-slate-600 bg-slate-50 rounded-2xl border border-slate-200">
                 All bagged meals handed to couriers or picked up.
               </div>
             ) : (
               readyTickets.map((ord) => (
                 <div
                   key={ord.id}
-                  className="bg-slate-900 border border-blue-500/40 rounded-2xl p-4 space-y-3 shadow-md"
+                  className="bg-white border border-blue-500/40 rounded-2xl p-4 space-y-3 shadow-md"
                 >
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-mono font-bold text-white">{ord.shortId}</span>
+                    <span className="font-mono font-bold text-slate-900">{ord.shortId}</span>
                     <span className="text-blue-400 font-semibold">Packed & Insulated</span>
                   </div>
 
                   {ord.fulfillmentType !== 'pickup' && (
-                    <div className="space-y-2 rounded-xl border border-slate-700 bg-slate-800/70 p-3">
+                    <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-100/70 p-3">
                       <label htmlFor={`courier-${ord.id}`} className="block text-xs font-semibold text-slate-200">Assign delivery courier</label>
                       <div className="flex flex-col gap-2 sm:flex-row">
                         <select id={`courier-${ord.id}`} value={selectedCourierByOrder[ord.id] || ''} onChange={(e) => setSelectedCourierByOrder((prev) => ({ ...prev, [ord.id]: e.target.value }))} className="min-h-10 min-w-0 flex-1 rounded-lg border border-slate-500 bg-white px-3 py-2 text-sm text-slate-900">
                           <option value="">Select courier</option>
                           {availableCouriers.map((courier) => <option key={courier.id} value={courier.id}>{courier.name}</option>)}
                         </select>
-                        <button type="button" onClick={() => handleAssignCourier(ord.id)} disabled={assigningOrderId === ord.id || !selectedCourierByOrder[ord.id]} className="min-h-10 rounded-lg bg-[#FF5500] px-3 py-2 text-xs font-bold text-white hover:bg-[#e64b00] disabled:opacity-50">{assigningOrderId === ord.id ? 'Assigning…' : 'Assign courier'}</button>
+                        <button type="button" onClick={() => handleAssignCourier(ord.id)} disabled={assigningOrderId === ord.id || !selectedCourierByOrder[ord.id]} className="min-h-10 rounded-lg bg-[#FF5500] px-3 py-2 text-xs font-bold text-slate-900 hover:bg-[#e64b00] disabled:opacity-50">{assigningOrderId === ord.id ? 'Assigning…' : 'Assign courier'}</button>
                       </div>
                     </div>
                   )}
-                  <div className="text-xs text-slate-300">
+                  <div className="text-xs text-slate-700">
                     <div>
                       {ord.fulfillmentType === 'pickup' ? (
                         <span className="text-emerald-400 font-bold">Waiting for Customer Takeaway</span>
                       ) : (
-                        <>Courier: <strong className="text-white">{ord.courier?.name || 'Rider Assigned'}</strong></>
+                        <>Courier: <strong className="text-slate-900">{ord.courier?.name || 'Rider Assigned'}</strong></>
                       )}
                     </div>
                     {ord.handoverPin && (
@@ -522,10 +522,10 @@ export const RestaurantPortal: React.FC = () => {
 
           {/* En Route & Delivered */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-bold text-white">Dispatched</h3>
+                <h3 className="text-sm font-bold text-slate-900">Dispatched</h3>
               </div>
               <span className="text-xs font-mono font-bold bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-800">
                 {inTransitTickets.length}
@@ -533,29 +533,29 @@ export const RestaurantPortal: React.FC = () => {
             </div>
 
             {inTransitTickets.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-500 bg-slate-900/50 rounded-2xl border border-slate-850">
+              <div className="p-8 text-center text-xs text-slate-600 bg-slate-50 rounded-2xl border border-slate-200">
                 No active orders currently dispatched.
               </div>
             ) : (
               inTransitTickets.map((ord) => (
                 <div
                   key={ord.id}
-                  className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2.5 shadow-sm text-xs"
+                  className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2.5 shadow-sm text-xs"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-white">{ord.shortId}</span>
+                    <span className="font-mono font-bold text-slate-900">{ord.shortId}</span>
                     <span className={`font-semibold ${ord.status === 'delivered' ? 'text-emerald-400' : 'text-indigo-400'}`}>
                       {ord.status === 'delivered' ? 'Delivered' : `En Route (${Math.round(ord.routeProgress)}%)`}
                     </span>
                   </div>
 
-                  <div className="text-slate-300 truncate">
+                  <div className="text-slate-700 truncate">
                     To: {ord.customerName} · {ord.customerAddress}
                   </div>
 
                   <button
                     onClick={() => openTracking(ord.id)}
-                    className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition-colors"
+                    className="w-full py-1.5 bg-slate-100 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition-colors"
                   >
                     View Live GPS Route
                   </button>
@@ -568,10 +568,10 @@ export const RestaurantPortal: React.FC = () => {
 
       {/* Tab 2: Menu Stock & Availability Manager (86-list) */}
       {activeTab === 'menu' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl space-y-6">
           <div>
-            <h3 className="text-lg font-bold text-white">Live Menu Stock Controller</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="text-lg font-bold text-slate-900">Live Menu Stock Controller</h3>
+            <p className="text-xs text-slate-600">
               Instantly toggle item availability (86 status) if kitchen ingredients run out. Changes update in customer storefronts immediately.
             </p>
           </div>
@@ -582,9 +582,9 @@ export const RestaurantPortal: React.FC = () => {
 
           <form onSubmit={handleCreateDish} className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
             <div className="md:col-span-4 text-sm font-bold text-slate-900">Add new dish (live D1 to admin to public catalogue)</div>
-            <input required value={newDishName} onChange={(e) => setNewDishName(e.target.value)} placeholder="Dish name" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
-            <input required type="number" min={0} step={50} value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} placeholder="Price (NGN)" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
-            <input value={newDishDesc} onChange={(e) => setNewDishDesc(e.target.value)} placeholder="Short description" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 md:col-span-2" />
+            <input required value={newDishName} onChange={(e) => setNewDishName(e.target.value)} placeholder="Dish name" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-600" />
+            <input required type="number" min={0} step={50} value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} placeholder="Price (NGN)" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-600" />
+            <input value={newDishDesc} onChange={(e) => setNewDishDesc(e.target.value)} placeholder="Short description" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-600 md:col-span-2" />
             <div className="md:col-span-2">
               <label htmlFor="restaurant-dish-category" className="mb-1.5 block text-xs font-semibold text-slate-700">Category <span className="text-rose-600">*</span></label>
               <select id="restaurant-dish-category" required value={newDishCategoryId} onChange={(e) => setNewDishCategoryId(e.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#FF5500] focus:ring-2 focus:ring-orange-100">
@@ -593,7 +593,7 @@ export const RestaurantPortal: React.FC = () => {
               </select>
               {menuCategories.length === 0 && <p className="mt-1 text-xs text-amber-700">Create a category below before adding dishes.</p>}
             </div>
-            <button type="submit" disabled={savingDish} className="md:col-span-4 min-h-11 rounded-xl bg-[#FF5500] px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#e64b00] focus:ring-2 focus:ring-orange-300 disabled:opacity-60">
+            <button type="submit" disabled={savingDish} className="md:col-span-4 min-h-11 rounded-xl bg-[#FF5500] px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm hover:bg-[#e64b00] focus:ring-2 focus:ring-orange-300 disabled:opacity-60">
               {savingDish ? 'Saving to D1' : editingDishId ? 'Update dish' : 'Save dish to D1'}
             </button>
           </form>
@@ -620,7 +620,7 @@ export const RestaurantPortal: React.FC = () => {
           }} className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-[1fr_auto]">
             <div>
               <label htmlFor="restaurant-new-category" className="mb-1.5 block text-xs font-semibold text-slate-700">Create a category</label>
-              <input id="restaurant-new-category" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g. Rice dishes" className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-[#FF5500] focus:ring-2 focus:ring-orange-100" />
+              <input id="restaurant-new-category" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g. Rice dishes" className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-600 focus:border-[#FF5500] focus:ring-2 focus:ring-orange-100" />
             </div>
             <button type="submit" disabled={savingCategory || !newCategoryName.trim()} className="self-end min-h-11 rounded-xl border border-orange-200 bg-white px-4 py-2 text-sm font-bold text-[#FF5500] hover:bg-orange-50 disabled:opacity-50">{savingCategory ? 'Saving…' : 'Add category'}</button>
           </form>
@@ -633,16 +633,16 @@ export const RestaurantPortal: React.FC = () => {
             {menuLoading ? (
               <p className="text-sm text-slate-600">Loading your dishes</p>
             ) : liveMenu.length === 0 ? (
-              <p className="text-xs text-slate-300">No dishes in D1 yet. Add one above.</p>
+              <p className="text-xs text-slate-700">No dishes in D1 yet. Add one above.</p>
             ) : (
               liveMenu.map((item) => (
-                <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-600 bg-slate-900 px-3 py-2.5">
+                <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-600 bg-white px-3 py-2.5">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold text-slate-900">{item.name}</div>
-                    <div className="text-xs text-slate-300">NGN {Number(item.price || 0).toLocaleString()} - {item.is_available === 0 ? 'Hidden' : 'Available'}</div>
+                    <div className="text-xs text-slate-700">NGN {Number(item.price || 0).toLocaleString()} - {item.is_available === 0 ? 'Hidden' : 'Available'}</div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <button type="button" onClick={() => { setEditingDishId(String(item.id)); setNewDishName(String(item.name || '')); setNewDishPrice(String(item.price ?? '')); setNewDishDesc(String(item.description || '')); setNewDishCategoryId(String(item.category_id || '')); setMenuMsg('Editing dish. Save changes to update D1.'); }} className="rounded-lg border border-slate-500 bg-slate-800 px-2.5 py-1 text-xs font-bold text-white hover:border-[#FF5500]">Edit</button>
+                    <button type="button" onClick={() => { setEditingDishId(String(item.id)); setNewDishName(String(item.name || '')); setNewDishPrice(String(item.price ?? '')); setNewDishDesc(String(item.description || '')); setNewDishCategoryId(String(item.category_id || '')); setMenuMsg('Editing dish. Save changes to update D1.'); }} className="rounded-lg border border-slate-500 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-900 hover:border-[#FF5500]">Edit</button>
                     <button type="button" onClick={() => handleToggleDish(item.id)} className="rounded-lg border border-slate-500 bg-white px-2.5 py-1 text-xs font-bold text-slate-900 hover:border-[#FF5500] hover:text-[#FF5500]">
                       {item.is_available === 0 ? 'Restock' : 'Hide'}
                     </button>
@@ -657,7 +657,7 @@ export const RestaurantPortal: React.FC = () => {
           <div className="space-y-6">
             {currentRestaurant.categories.map((cat) => (
               <div key={cat.id} className="space-y-3">
-                <h4 className="text-sm font-bold text-orange-400 pb-1 border-b border-slate-800">
+                <h4 className="text-sm font-bold text-orange-400 pb-1 border-b border-slate-200">
                   {cat.name}
                 </h4>
 
@@ -665,13 +665,13 @@ export const RestaurantPortal: React.FC = () => {
                   {cat.items.map((it) => (
                     <div
                       key={it.id}
-                      className="p-3.5 bg-slate-850 border border-slate-800 rounded-2xl flex items-center justify-between gap-3"
+                      className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-3"
                     >
                       <div className="min-w-0">
-                        <div className="font-semibold text-white text-xs sm:text-sm truncate">
+                        <div className="font-semibold text-slate-900 text-xs sm:text-sm truncate">
                           {it.name}
                         </div>
-                        <div className="text-[11px] text-slate-400 font-mono">
+                        <div className="text-[11px] text-slate-600 font-mono">
                           {formatCurrency(it.price, currency)} · {it.dietary.join(', ')}
                         </div>
                       </div>
@@ -707,11 +707,11 @@ export const RestaurantPortal: React.FC = () => {
 
       {/* Tab 3: Finance & Payout Settlement Ledger */}
       {activeTab === 'finance' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-bold text-white">Merchant Payouts & Settlement Schedule</h3>
-              <p className="text-xs text-slate-400">
+              <h3 className="text-lg font-bold text-slate-900">Merchant Payouts & Settlement Schedule</h3>
+              <p className="text-xs text-slate-600">
                 Automated weekly bank disbursements with itemized platform commission deduction
               </p>
             </div>
@@ -722,20 +722,20 @@ export const RestaurantPortal: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-slate-850 rounded-2xl border border-slate-800 space-y-1">
-              <span className="text-xs text-slate-400">Gross Food Sales</span>
-              <div className="text-xl font-bold font-mono text-white">
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
+              <span className="text-xs text-slate-600">Gross Food Sales</span>
+              <div className="text-xl font-bold font-mono text-slate-900">
                 {formatCurrency(totalKitchenRevenueUSD, currency)}
               </div>
             </div>
-            <div className="p-4 bg-slate-850 rounded-2xl border border-slate-800 space-y-1">
-              <span className="text-xs text-slate-400">Platform Commission ({commissionRate}%)</span>
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
+              <span className="text-xs text-slate-600">Platform Commission ({commissionRate}%)</span>
               <div className="text-xl font-bold font-mono text-rose-400">
                 -{formatCurrency(platformFeeUSD, currency)}
               </div>
             </div>
-            <div className="p-4 bg-slate-850 rounded-2xl border border-slate-800 space-y-1">
-              <span className="text-xs text-slate-400">Net Scheduled Payout</span>
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
+              <span className="text-xs text-slate-600">Net Scheduled Payout</span>
               <div className="text-xl font-bold font-mono text-emerald-400">
                 {formatCurrency(netPayoutUSD, currency)}
               </div>
