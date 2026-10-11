@@ -93,6 +93,9 @@ export const OrderTrackingModal: React.FC = () => {
           if (json.order?.status && json.order.status !== orderStatus) {
             refreshData();
           }
+        } else {
+          const lastUpdate = lastTelemetryAtRef.current;
+          setSignalStatus(lastUpdate === null ? 'searching' : Date.now() - lastUpdate > 10000 ? 'paused' : 'live');
         }
       } catch (err) {
         const lastUpdate = lastTelemetryAtRef.current;
