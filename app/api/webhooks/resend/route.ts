@@ -45,7 +45,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Official requirement: raw body string for signature verification
   const payload = await req.text();
 
   const svixId = req.headers.get('svix-id');
@@ -61,8 +60,6 @@ export async function POST(req: NextRequest) {
 
   let event: ResendWebhookEvent;
   try {
-    // Official Resend SDK verification (throws if invalid)
-    // https://resend.com/docs/webhooks/verify-webhooks-requests
     const resend = new Resend(process.env.RESEND_API_KEY || 're_placeholder_for_verify_only');
     const verified = resend.webhooks.verify({
       payload,
@@ -87,7 +84,6 @@ export async function POST(req: NextRequest) {
   const subject = String(data.subject || '');
   const now = new Date().toISOString();
 
-  // Persist delivery lifecycle for verification / audit (idempotent on svix-id)
   try {
     await d1
       .query(
@@ -153,10 +149,6 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  return NextResponse.json({
-    success: true,
-    endpoint: '/api/webhooks/resend',
-    configured: Boolean(getWebhookSecret()),
-    docs: 'https://resend.com/docs/webhooks/verify-webhooks-requests',
-  });
+  // Do not disclose configuration state to anonymous callers.
+  return NextResponse.json({ success: true }, { status: 200 });
 }
