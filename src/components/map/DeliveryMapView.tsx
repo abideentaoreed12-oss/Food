@@ -42,14 +42,14 @@ export const DeliveryMapView: React.FC<DeliveryMapViewProps> = ({
       <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
         <div className="bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-slate-200 shadow-md text-xs font-bold text-slate-800 flex items-center gap-2 pointer-events-auto">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-display font-extrabold text-slate-900">Live Coverage</span>
+          <span className="font-display font-extrabold text-slate-900">Restaurant Locations</span>
           <span className="text-slate-300">·</span>
           <span className="text-[#FF5500] font-mono">Verified Partner Locations</span>
         </div>
 
         <div className="bg-slate-900/90 backdrop-blur-md text-white px-3 py-1.5 rounded-2xl text-[11px] font-semibold border border-slate-700 shadow-md pointer-events-auto hidden sm:flex items-center gap-1.5">
           <Compass className="w-3.5 h-3.5 text-orange-400" />
-          <span>Interactive Dispatch Map</span>
+          <span>Restaurant Map</span>
         </div>
       </div>
 
@@ -176,15 +176,15 @@ export const DeliveryMapView: React.FC<DeliveryMapViewProps> = ({
                 <Navigation className="w-6 h-6 rotate-45" />
               </div>
               <h3 className="text-sm font-bold text-white font-display">
-                Connecting Live Dispatch Radar
+                Interactive map unavailable
               </h3>
               <p className="text-xs text-slate-400">
-                The map will appear when verified restaurant coordinates are available.
+                Configure the optional map display provider to enable the interactive map. Address search and delivery routing remain available through OpenStreetMap services.
               </p>
               <div className="flex items-center justify-center gap-2 pt-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                 <span className="text-[11px] font-mono text-emerald-400 font-semibold">
-                  {(restaurants || []).length} Kitchen Hubs Online
+                  {(restaurants || []).length} restaurant records
                 </span>
               </div>
             </div>
