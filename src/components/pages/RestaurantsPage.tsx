@@ -169,11 +169,11 @@ export const RestaurantsPage: React.FC = () => {
 
                   <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs font-bold gap-1">
                     <span className="px-2 py-1 rounded-xl bg-black/60 backdrop-blur-md font-mono text-[11px]">
-                      {restaurant.durationText || `${restaurant.deliveryTimeMin} mins`}
+                      {restaurant.durationText || 'Delivery time unavailable'}
                     </span>
                     <span className="px-2 py-1 rounded-xl bg-orange-600/90 backdrop-blur-md font-mono text-[11px] flex items-center gap-0.5">
                       <MapPin className="w-3 h-3" />
-                      {restaurant.distanceText || (restaurant.distanceKm ? `${restaurant.distanceKm} km` : 'Live Distance')}
+                      {restaurant.distanceText || (restaurant.distanceKm ? `${restaurant.distanceKm} km` : 'Distance unavailable')}
                     </span>
                     <span className="px-2 py-1 rounded-xl bg-black/60 backdrop-blur-md font-mono text-[11px]">
                       {formatCurrency(restaurant.calculatedDeliveryFee ?? restaurant.deliveryFee, currency)}
