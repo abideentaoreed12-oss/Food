@@ -88,13 +88,31 @@ export const RestaurantPortal: React.FC = () => {
   }, [assignedRestaurantId]);
 
   useEffect(() => {
-    if (activeTab === 'menu') loadLiveMenu();
-    if (activeTab === 'tickets') {
-      api.admin.getAvailableCouriers().then((res: any) => {
-        const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        setAvailableCouriers(rows);
-      }).catch((err: any) => setMenuMsg(err?.message || 'Could not load courier list.'));
-    }
+    let isMounted = true;
+
+    const fetchData = async () => {
+      if (activeTab === 'menu') {
+        await loadLiveMenu();
+      } else if (activeTab === 'tickets') {
+        try {
+          const res: any = await api.admin.getAvailableCouriers();
+          if (isMounted) {
+            const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+            setAvailableCouriers(rows);
+          }
+        } catch (err: any) {
+          if (isMounted) {
+            setMenuMsg(err?.message || 'Could not load courier list.');
+          }
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [activeTab, loadLiveMenu]);
 
   const handleCreateDish = async (e: React.FormEvent) => {
