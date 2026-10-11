@@ -1223,7 +1223,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         ord.id === orderId
           ? {
               ...ord,
-              estimatedArrivalMinutes: Math.max(5, (ord.estimatedArrivalMinutes || 30) + minutes)
+              estimatedArrivalMinutes: ord.estimatedArrivalMinutes == null || !Number.isFinite(Number(ord.estimatedArrivalMinutes)) ? null : Math.max(0, Number(ord.estimatedArrivalMinutes) + minutes)
             }
           : ord
       )
