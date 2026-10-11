@@ -149,7 +149,7 @@ export const RestaurantDetailModal: React.FC = () => {
               <span>·</span>
               <div className="flex items-center gap-1 text-orange-600 font-semibold bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200/60">
                 <MapPin className="w-3.5 h-3.5" />
-                <span>{liveMetrics?.distanceText || restaurant.distanceText || (restaurant.distanceKm ? `${restaurant.distanceKm} km away` : 'Live Distance')}</span>
+                <span>{liveMetrics?.distanceText || restaurant.distanceText || (restaurant.distanceKm ? `${restaurant.distanceKm} km away` : 'Distance unavailable')}</span>
               </div>
               <span>·</span>
               <div className="text-slate-700 font-medium">
