@@ -1066,7 +1066,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         promoCode: appliedPromo?.code,
         walletDeduction,
         estimatedArrivalMinutes: computedETA,
-        routeProgress: 5,
+        routeProgress: 0,
         idempotencyKey: `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
       });
 
