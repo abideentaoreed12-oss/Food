@@ -4,14 +4,25 @@ import { siteDataManager } from '../../../../lib/siteDataSnapshot';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function authorizeCron(req: NextRequest): NextResponse | null {
+  const cronSecret = (process.env.CRON_SECRET || '').trim();
+  if (!cronSecret) {
+    return NextResponse.json(
+      { success: false, error: 'CRON_SECRET is not configured' },
+      { status: 503 }
+    );
+  }
+  const authHeader = req.headers.get('authorization');
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ success: false, error: 'Unauthorized cron invocation' }, { status: 401 });
+  }
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ success: false, error: 'Unauthorized cron invocation' }, { status: 401 });
-    }
+    const denied = authorizeCron(req);
+    if (denied) return denied;
 
     const snapshot = await siteDataManager.syncOnce();
 
