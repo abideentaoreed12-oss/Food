@@ -89,27 +89,6 @@ export async function reverseGeocodeCoordinates(lat: number, lng: number): Promi
 
 
   if (!resolvedAddress) {
-    try {
-      const bResp = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`,
-        { signal: AbortSignal.timeout(3000) }
-      );
-      if (bResp.ok) {
-        const bData = await bResp.json();
-        if (bData) {
-          resolvedAddress = [bData.locality, bData.principalSubdivision].filter(Boolean).join(', ') || 'Current Location';
-          resolvedCity = bData.city || bData.locality || bData.principalSubdivision || '';
-          resolvedState = bData.principalSubdivision || '';
-          resolvedCountry = bData.countryName || '';
-          formattedAddress = [resolvedAddress, resolvedCountry].filter(Boolean).join(', ');
-        }
-      }
-    } catch (e: any) {
-      console.warn('[Geocode Reverse] BigDataCloud note:', e?.message || String(e));
-    }
-  }
-
-  if (!resolvedAddress) {
     throw new Error('No public reverse-geocoding provider could resolve this location. Enter your street or area address manually.');
   }
 
