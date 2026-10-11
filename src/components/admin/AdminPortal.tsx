@@ -152,7 +152,7 @@ export const AdminPortal: React.FC = () => {
   const [newRestRating, setNewRestRating] = useState('');
   const [newRestTagline, setNewRestTagline] = useState('Authentic dishes prepared fresh to order');
   const [newRestBannerUrl, setNewRestBannerUrl] = useState('');
-  const [newRestZone, setNewRestZone] = useState('Lekki / Victoria Island');
+  const [newRestZone, setNewRestZone] = useState('');
   const [newRestOwnerUserId, setNewRestOwnerUserId] = useState('');
 
   // Edit Restaurant Branch State
@@ -2325,7 +2325,7 @@ export const AdminPortal: React.FC = () => {
                       <tr key={z.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="p-3 font-semibold text-slate-900">{z.name}</td>
                         <td className="p-3 text-slate-600">{z.city || 'City not configured'}</td>
-                        <td className="p-3 font-mono font-bold text-slate-900">₦{Number(z.base_delivery_fee || 1000).toLocaleString('en-NG')}</td>
+                        <td className="p-3 font-mono font-bold text-slate-900">{Number.isFinite(Number(z.base_delivery_fee ?? z.baseFee)) ? `₦${Number(z.base_delivery_fee ?? z.baseFee).toLocaleString('en-NG')}` : 'Not configured'}</td>
                         <td className="p-3 font-mono text-slate-600">₦{Number(z.per_km_fee || 200).toLocaleString('en-NG')} / km</td>
                         <td className="p-3 font-mono font-bold text-[#FF5500]">{Number(z.surge_multiplier || 1.0).toFixed(1)}x</td>
                         <td className="p-3">
