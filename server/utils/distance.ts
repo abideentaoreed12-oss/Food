@@ -110,10 +110,8 @@ export function calculateHaversineDistanceKm(
 
 /**
  * Geocodes an address to live latitude & longitude using a 4-tier failover chain:
- * Tier 1: Google Maps Geocoding API
- * Tier 2: OpenStreetMap Nominatim
- * Tier 3: Photon Komoot
- * Tier 4: BigDataCloud
+ * Tier 1: Photon (OpenStreetMap)
+ * Tier 2: Nominatim (OpenStreetMap)
  */
 export async function geocodeAddress(addressStr: string): Promise<GeoLocation & { isLive: boolean; provider?: string }> {
   const cleanAddr = (addressStr || '').trim().replace(/\\s+/g, ' ');
