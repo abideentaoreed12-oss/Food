@@ -2326,8 +2326,8 @@ export const AdminPortal: React.FC = () => {
                         <td className="p-3 font-semibold text-slate-900">{z.name}</td>
                         <td className="p-3 text-slate-600">{z.city || 'City not configured'}</td>
                         <td className="p-3 font-mono font-bold text-slate-900">{Number.isFinite(Number(z.base_delivery_fee ?? z.baseFee)) ? `₦${Number(z.base_delivery_fee ?? z.baseFee).toLocaleString('en-NG')}` : 'Not configured'}</td>
-                        <td className="p-3 font-mono text-slate-600">₦{Number(z.per_km_fee || 200).toLocaleString('en-NG')} / km</td>
-                        <td className="p-3 font-mono font-bold text-[#FF5500]">{Number(z.surge_multiplier || 1.0).toFixed(1)}x</td>
+                        <td className="p-3 font-mono text-slate-600">{Number.isFinite(Number(z.per_km_fee ?? z.perKmFee)) ? '₦' + Number(z.per_km_fee ?? z.perKmFee).toLocaleString('en-NG') : 'Not configured'} / km</td>
+                        <td className="p-3 font-mono font-bold text-[#FF5500]">{Number.isFinite(Number(z.surge_multiplier ?? z.surgeMultiplier)) ? Number(z.surge_multiplier ?? z.surgeMultiplier).toFixed(1) + 'x' : 'Not configured'}</td>
                         <td className="p-3">
                           <button
                             onClick={() => handleToggleZoneActive(z.id)}
@@ -2627,8 +2627,8 @@ export const AdminPortal: React.FC = () => {
                       <tr key={z.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="p-3 font-semibold text-slate-900">{z.name}</td>
                         <td className="p-3 font-mono font-bold text-slate-900">₦{Number.isFinite(Number(z.base_delivery_fee ?? z.baseFee)) ? Number(z.base_delivery_fee ?? z.baseFee).toLocaleString('en-NG') : 'Not configured'}</td>
-                        <td className="p-3 font-mono text-slate-600">₦{Number(z.per_km_fee || 200).toLocaleString('en-NG')}/km</td>
-                        <td className="p-3 font-mono font-bold text-[#FF5500]">{Number(z.surge_multiplier || 1.0).toFixed(1)}x</td>
+                        <td className="p-3 font-mono text-slate-600">{Number.isFinite(Number(z.per_km_fee ?? z.perKmFee)) ? '₦' + Number(z.per_km_fee ?? z.perKmFee).toLocaleString('en-NG') : 'Not configured'}/km</td>
+                        <td className="p-3 font-mono font-bold text-[#FF5500]">{Number.isFinite(Number(z.surge_multiplier ?? z.surgeMultiplier)) ? Number(z.surge_multiplier ?? z.surgeMultiplier).toFixed(1) + 'x' : 'Not configured'}</td>
                         <td className="p-3">
                           <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase ${
                             z.is_active === 1 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'
