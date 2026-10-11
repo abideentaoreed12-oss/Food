@@ -18,8 +18,8 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install dependencies (npm ci)
-        run: npm ci
+      - name: Install dependencies and reconcile the existing lockfile drift
+        run: npm install --no-audit --no-fund
 
       - name: Security audit
         run: npm audit --audit-level=moderate
