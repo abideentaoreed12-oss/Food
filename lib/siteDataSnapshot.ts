@@ -422,6 +422,22 @@ export class SiteDataManager {
           delete r.menu_items;
         }
 
+        // Attach live menu_items/menu_categories into LKG so public traffic can be served
+        // from the distributed snapshot without hammering D1 on every request.
+        try {
+          const { loadNormalizedMenu } = await import('./restaurantMenu');
+          for (const r of restaurants) {
+            if (!r?.id) continue;
+            try {
+              r.categories = await loadNormalizedMenu(String(r.id));
+            } catch {
+              r.categories = [];
+            }
+          }
+        } catch (menuErr: any) {
+          console.warn('[SiteData] LKG menu attach note:', menuErr?.message || menuErr);
+        }
+
         const zonesRes = await d1.query('SELECT * FROM delivery_zones WHERE is_active = 1 OR is_active IS NULL').catch(() => ({ results: [] }));
         const promoRes = await d1.query('SELECT * FROM promo_codes WHERE is_active = 1').catch(() => ({ results: [] }));
         const settingsRes = await d1.query('SELECT key, value FROM platform_settings').catch(() => ({ results: [] }));
@@ -520,16 +536,35 @@ export class SiteDataManager {
    * Throttled sync: Runs at most once every 10 seconds (10,000 ms).
    * Safe to call from serverless request handlers without introducing latency.
    */
+  /**
+   * Public-facing path: always return last-known-good immediately (no D1 wait).
+   * If older than 10s (or force), kick a background D1 refresh that updates and
+   * redistributes the same snapshot file to memory + D1 + R2 + disk.
+   */
   public async syncIfStale(force: boolean = false): Promise<SiteDataSnapshot | null> {
     const now = Date.now();
-    const intervalMs = 10000; // 10 seconds refresh interval
+    const intervalMs = 10000; // 10 seconds — LKG refresh cadence
 
-    if (!force && (now - this.lastSyncTimestamp < intervalMs)) {
-      return this.getLastKnownGood();
+    if (!this.currentSnapshot) {
+      await this.loadSnapshot();
     }
 
-    // Trigger refresh in background if stale
-    return this.refreshSnapshot({ force });
+    const lkg = this.getLastKnownGood();
+    const age = now - this.lastSyncTimestamp;
+    const needsRefresh = force || this.lastSyncTimestamp === 0 || age >= intervalMs;
+
+    if (needsRefresh && !this.inFlightRefreshPromise) {
+      this.refreshSnapshot({ force: true }).catch((err) => {
+        console.warn('[SiteData] background 10s LKG refresh:', err?.message || err);
+      });
+    }
+
+    return lkg;
+  }
+
+  /** Alias for public handlers: serve LKG and schedule 10s refresh. */
+  public async servePublicCatalogue(): Promise<SiteDataSnapshot | null> {
+    return this.syncIfStale(false);
   }
 
   /**
