@@ -18,6 +18,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Verify required country-code data
+        run: node scripts/guard-country-codes.mjs --check
+
       - name: Install dependencies (resolve from package manifest)
         run: npm install --no-audit --no-fund
 
