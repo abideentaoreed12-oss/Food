@@ -112,7 +112,7 @@ export async function loadNormalizedMenu(restaurantId: string): Promise<PublicMe
     });
   }
 
-  return categories.filter((c) => c.items.length > 0 || categories.length === 1);
+  return categories.filter((c) => c.items.length > 0);
 }
 
 /**

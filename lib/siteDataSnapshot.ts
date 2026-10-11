@@ -216,6 +216,8 @@ export class SiteDataManager {
             source: 'cloudflare_d1',
             syncStatus: 'synced'
           };
+          const loadedAt = Date.parse(String(parsed.updatedAt || '')) || Date.now();
+          this.lastSyncTimestamp = loadedAt;
           this.persistToDisk(this.currentSnapshot);
           return this.currentSnapshot;
         }
@@ -235,6 +237,8 @@ export class SiteDataManager {
             source: 'cloudflare_r2',
             syncStatus: 'synced'
           };
+          const loadedAt = Date.parse(String(r2Snapshot.updatedAt || '')) || Date.now();
+          this.lastSyncTimestamp = loadedAt;
           this.persistToDisk(this.currentSnapshot);
           return this.currentSnapshot;
         }
@@ -564,6 +568,18 @@ export class SiteDataManager {
 
   /** Alias for public handlers: serve LKG and schedule 10s refresh. */
   public async servePublicCatalogue(): Promise<SiteDataSnapshot | null> {
+    if (!this.currentSnapshot) {
+      await this.loadSnapshot();
+    }
+    if (!this.getLastKnownGood()) {
+      // First boot / empty cache: wait once for D1 so public does not 503 on cold start.
+      try {
+        return await this.refreshSnapshot({ force: true });
+      } catch (err: any) {
+        console.warn('[SiteData] bootstrap refresh failed:', err?.message || err);
+        return null;
+      }
+    }
     return this.syncIfStale(false);
   }
 
