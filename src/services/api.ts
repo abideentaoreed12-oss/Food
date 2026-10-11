@@ -488,6 +488,7 @@ export const api = {
       request('/api/admin/addons', { method: 'POST', body: JSON.stringify(data) }),
     deleteAddon: async (id: string) =>
       request(`/api/admin/addons/${id}`, { method: 'DELETE' }),
+    getAvailableCouriers: async () => request('/api/couriers/available'),
     getDrivers: async () => request('/api/admin/drivers'),
     createDriver: async (data: any) =>
       request('/api/admin/drivers', { method: 'POST', body: JSON.stringify(data) }),
