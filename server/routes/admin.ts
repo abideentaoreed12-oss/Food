@@ -569,8 +569,15 @@ router.patch('/menu/:id/toggle', async (req: AuthRequest, res: Response) => {
 router.post('/restaurants', async (req: AuthRequest, res: Response) => {
   try {
     const { name, address, cuisine, deliveryTimeMin, deliveryTimeMax, deliveryFee, rating, bannerUrl, tagline, zone, ownerUserId } = req.body;
-    if (!name || !address) {
-      return res.status(400).json({ success: false, error: 'Restaurant name and address are required' });
+    const numericRestaurantFields = [deliveryTimeMin, deliveryTimeMax, deliveryFee].map(Number);
+    if (!name || !address || numericRestaurantFields.some(value => !Number.isFinite(value)) ||
+        Number(deliveryFee) < 0 || Number(deliveryTimeMin) < 0 || Number(deliveryTimeMax) < Number(deliveryTimeMin)) {
+      return res.status(400).json({ success: false, error: 'Restaurant name, address, configured delivery fee, and valid preparation-time range are required.' });
+    }
+    const minimumOrderSetting = await d1Client.query('SELECT value FROM platform_settings WHERE key = ? LIMIT 1', ['minimum_order_ngn']);
+    const configuredMinimumOrder = Number(minimumOrderSetting.results?.[0]?.value);
+    if (!Number.isFinite(configuredMinimumOrder) || configuredMinimumOrder < 0) {
+      return res.status(503).json({ success: false, error: 'Platform minimum-order configuration is unavailable.' });
     }
 
     if (ownerUserId) {
@@ -591,18 +598,17 @@ router.post('/restaurants', async (req: AuthRequest, res: Response) => {
       tagline: tagline || 'Authentic dishes prepared fresh to order',
       cuisine: cuisine || 'Nigerian & Continental',
       address,
-      rating: Number(rating || 4.8),
-      reviewCount: 1,
-      deliveryTimeMin: Number(deliveryTimeMin || 20),
-      deliveryTimeMax: Number(deliveryTimeMax || 40),
-      deliveryFee: Number(deliveryFee || 1000),
-      minOrder: 1500,
+      rating: Number.isFinite(Number(rating)) ? Number(rating) : 0,
+      reviewCount: 0,
+      deliveryTimeMin: Number(deliveryTimeMin),
+      deliveryTimeMax: Number(deliveryTimeMax),
+      deliveryFee: Number(deliveryFee),
+      minOrder: configuredMinimumOrder,
       priceTier: '$$',
       bannerUrl: bannerUrl || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1000',
       logoUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=200',
       isOpen: true,
       isBusyPaused: false,
-      distanceKm: 2.5,
       categories: [
         {
           id: `cat-${Date.now()}`,
@@ -615,20 +621,21 @@ router.post('/restaurants', async (req: AuthRequest, res: Response) => {
 
     await d1Client.query(
       `INSERT INTO restaurants (id, name, cuisine, rating, raw_json, created_at, slug, review_count, delivery_time_min, delivery_time_max, delivery_fee, min_order, price_tier, address, is_open, is_busy_paused, zone, banner_r2_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, 1500, '$$', ?, 1, 0, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, '$', ?, 1, 0, ?, ?)`,
       [
         restId,
         name,
         cuisine || 'Nigerian',
-        Number(rating || 4.8),
+        Number.isFinite(Number(rating)) ? Number(rating) : 0,
         JSON.stringify(initialData),
         now,
         slug,
-        Number(deliveryTimeMin || 20),
-        Number(deliveryTimeMax || 40),
-        Number(deliveryFee || 1000),
+        Number(deliveryTimeMin),
+        Number(deliveryTimeMax),
+        Number(deliveryFee),
+        configuredMinimumOrder,
         address,
-        zone || 'Lekki / Victoria Island',
+        zone || '',
         bannerUrl || ''
       ]
     );
