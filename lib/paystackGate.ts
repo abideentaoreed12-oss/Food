@@ -44,10 +44,7 @@ export class PaystackLiveGate {
    * Official Paystack Public Key
    */
   public getPublicKey(): string {
-    return (
-      process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ||
-      'pk_live_49b0196c7c50a9138e64d0a169ea5cced6ff14f0'
-    ).trim();
+    return (process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '').trim();
   }
 
   /**

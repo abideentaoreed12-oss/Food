@@ -23,6 +23,8 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "strict": false,
+    "strictNullChecks": true,
+    "alwaysStrict": true,
     "incremental": false,
     "esModuleInterop": true,
     "resolveJsonModule": true,
@@ -30,8 +32,7 @@
       {
         "name": "next"
       }
-    ],
-    "strictNullChecks": true
+    ]
   },
   "include": [
     "next-env.d.ts",

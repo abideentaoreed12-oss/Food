@@ -40,3 +40,7 @@ data/
 src/data/mockData.ts
 **/mockData.ts
 **/INITIAL_RESTAURANTS*
+
+# Internal SDK caches and development artifacts
+.gmp_cache/
+.aistudio/

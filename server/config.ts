@@ -57,7 +57,7 @@ export const CONFIG = {
 
   // Paystack Official Integration Configuration
   PAYSTACK_SECRET_KEY: (process.env.PAYSTACK_SECRET_KEY || '').trim(),
-  NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: (process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_live_49b0196c7c50a9138e64d0a169ea5cced6ff14f0').trim(),
+  NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: (process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '').trim(),
   PAYSTACK_CALLBACK_URL: (process.env.PAYSTACK_CALLBACK_URL || 'https://www.veyrang.com/payment/callback').trim(),
   PAYSTACK_WEBHOOK_URL: (process.env.PAYSTACK_WEBHOOK_URL || 'https://www.veyrang.com/api/webhooks/paystack').trim(),
 

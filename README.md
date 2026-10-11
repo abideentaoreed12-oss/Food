@@ -17,17 +17,17 @@ Availability of individual features depends on environment configuration and bac
 
 ## Technology Stack
 
-- **Web framework:** Next.js 15
+- **Web framework:** Next.js 15 (App Router)
 - **UI:** React 19, TypeScript, Tailwind CSS
 - **Icons and motion:** Lucide React, Motion
-- **Backend/API:** Node.js and Express components, with JWT-based authentication
-- **Database and storage configuration:** Cloudflare D1 and R2
-- **Payments:** Paystack integration
-- **Maps:** Google Maps integration (optional; requires API key)
+- **Backend/API:** Next.js Route Handlers (`app/api/*`) with JWT-based authentication
+- **Database and storage:** Cloudflare D1 (authoritative SQL database) and Cloudflare R2 (asset storage)
+- **Payments:** Paystack integration with SHA-512 HMAC webhook verification
+- **Maps & Geocoding:** Photon, Nominatim, and OSRM/Valhalla routing chain (with optional Google Maps client UI)
 
 ## Requirements
 
-- Node.js 18 or newer
+- Node.js 22.x
 - npm
 
 ## Getting Started
@@ -42,7 +42,7 @@ npm install
 
 Use `.env.example` as the reference for the environment variables required by your deployment. Create a local `.env` file and fill in the values needed for the services you intend to run.
 
-**Never commit real API keys, database tokens, payment secrets, JWT secrets, or administrator credentials to Git.** Keep production secrets in your hosting provider's environment settings. Do not enable demo seed data in production.
+**Never commit real API keys, database tokens, payment secrets, JWT secrets, or administrator credentials to Git.** Keep production secrets in your hosting provider's environment settings.
 
 ### 3. Start the Next.js development server
 
@@ -64,10 +64,10 @@ The production server uses port 3000 by default, as configured in the package sc
 ### 5. Type-check the project
 
 ```bash
-npm run lint
+npm run typecheck
 ```
 
-The `lint` script currently runs TypeScript's no-emit check.
+Runs TypeScript's `tsc --noEmit` validation check.
 
 ## Environment and Integrations
 

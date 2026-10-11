@@ -1,4 +1,3 @@
-import * as geolib from 'geolib';
 import * as turf from '@turf/turf';
 import { CONFIG } from '../config.ts';
 
@@ -98,13 +97,16 @@ export function calculateHaversineDistanceKm(
     const point2 = turf.point([lon2, lat2]);
     const straightLineKm = turf.distance(point1, point2, { units: 'kilometers' });
     return Math.round(straightLineKm * 10) / 10;
-  } catch (e) {
-    const straightLineMeters = geolib.getDistance(
-      { latitude: lat1, longitude: lon1 },
-      { latitude: lat2, longitude: lon2 }
-    );
-    const straightLineKm = straightLineMeters / 1000;
-    return Math.round(straightLineKm * 10) / 10;
+  } catch {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c * 10) / 10;
   }
 }
 

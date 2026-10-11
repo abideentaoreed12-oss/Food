@@ -2,14 +2,16 @@
 
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(self)' },
   {
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
       "base-uri 'self'",
       "object-src 'none'",
+      "frame-ancestors 'self'",
       "form-action 'self' https://checkout.paystack.com https://*.paystack.com",
       "img-src 'self' data: blob: https: https://*.r2.dev https://*.r2.cloudflarestorage.com https://*.googleapis.com https://*.gstatic.com",
       "font-src 'self' data: https://fonts.gstatic.com",
@@ -29,13 +31,13 @@ const nextConfig = {
     NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL:
       process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || process.env.CLOUDFLARE_R2_PUBLIC_URL || 'https://cdn.veyrang.com',
     NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY:
-      process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_live_49b0196c7c50a9138e64d0a169ea5cced6ff14f0',
+      process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
     APP_URL:
       process.env.APP_URL || 'https://www.veyrang.com',
     NEXT_PUBLIC_APP_URL:
       process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://www.veyrang.com',
     NEXT_PUBLIC_API_BASE_URL:
-      process.env.NEXT_PUBLIC_API_BASE_URL || process.env.VITE_API_BASE_URL || '',
+      process.env.NEXT_PUBLIC_API_BASE_URL || '',
     PAYSTACK_CALLBACK_URL:
       process.env.PAYSTACK_CALLBACK_URL || 'https://www.veyrang.com/payment/callback',
     PAYSTACK_WEBHOOK_URL:
@@ -62,7 +64,6 @@ const nextConfig = {
     minimumCacheTTL: 31536000, // Optimize cache for 1 year
     formats: ['image/avif', 'image/webp']
   },
-  output: 'standalone',
   typedRoutes: false,
   experimental: {
     optimizePackageImports: ['lucide-react', 'motion/react'],
