@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 import { DriverChatModal } from './DriverChatModal';
@@ -44,6 +44,7 @@ export const OrderTrackingModal: React.FC = () => {
   // Live Courier GPS Location & Connection Health Polling
   const [courierLoc, setCourierLoc] = useState<{ lat: number; lng: number; heading?: number; speed?: number; updatedAt?: string } | null>(null);
   const [signalStatus, setSignalStatus] = useState<'live' | 'paused' | 'searching' | 'transmitting'>('searching');
+  const lastTelemetryAtRef = useRef<number | null>(null);
   const [trackingData, setTrackingData] = useState<{
     routePoints?: { lat: number; lng: number }[];
     remainingDistanceKm?: number;
@@ -70,11 +71,16 @@ export const OrderTrackingModal: React.FC = () => {
         const res = await fetch(`/api/orders/${orderId}/tracking`);
         const json = await res.json();
         if (json.success && json.tracking) {
-          if (json.tracking.location) {
-            setCourierLoc(json.tracking.location);
-          }
-          if (json.tracking.signalStatus) {
-            setSignalStatus(json.tracking.signalStatus || 'searching');
+          const location = json.tracking.location;
+          if (location && Number.isFinite(Number(location.lat)) && Number.isFinite(Number(location.lng))) {
+            setCourierLoc(location);
+            const updatedAtMs = Date.parse(String(location.updatedAt || ''));
+            const fresh = Number.isFinite(updatedAtMs) && Date.now() - updatedAtMs <= 10000 && Date.now() >= updatedAtMs - 5000;
+            if (Number.isFinite(updatedAtMs)) lastTelemetryAtRef.current = updatedAtMs;
+            setSignalStatus(fresh ? 'live' : 'paused');
+          } else {
+            const lastUpdate = lastTelemetryAtRef.current;
+            setSignalStatus(lastUpdate !== null && Date.now() - lastUpdate <= 10000 ? 'live' : lastUpdate !== null ? 'paused' : 'searching');
           }
           setTrackingData({
             routePoints: json.tracking.routePoints,
@@ -89,12 +95,14 @@ export const OrderTrackingModal: React.FC = () => {
           }
         }
       } catch (err) {
-        console.warn('Live tracking fetch error:', err);
+        const lastUpdate = lastTelemetryAtRef.current;
+        setSignalStatus(lastUpdate === null ? 'searching' : Date.now() - lastUpdate > 10000 ? 'paused' : 'live');
+        console.warn('Live tracking fetch error; retaining only the last received courier GPS fix:', err);
       }
     };
 
     fetchLiveTracking();
-    const trackingInterval = setInterval(fetchLiveTracking, 4000);
+    const trackingInterval = setInterval(fetchLiveTracking, 10000);
     return () => clearInterval(trackingInterval);
   }, [orderId, isDelivered]);
 
