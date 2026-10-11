@@ -406,7 +406,7 @@ export const LandingPage: React.FC = () => {
                   </div>
 
                   <p className="text-xs text-slate-500 truncate">
-                    {restaurant.cuisine || restaurant.tags?.[0] || 'Kitchen'} · {restaurant.address || 'Lagos'}
+                    {restaurant.cuisine || restaurant.tags?.[0] || 'Kitchen'} · {restaurant.address || 'Address unavailable'}
                   </p>
 
                   <div className="pt-2 flex items-center justify-between text-xs text-slate-600 border-t border-slate-100">
