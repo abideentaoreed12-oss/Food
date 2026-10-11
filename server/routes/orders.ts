@@ -351,7 +351,7 @@ router.post('/quote', async (req: AuthRequest, res: Response) => {
       data: {
         deliveryFee,
         distanceKm: distanceMetrics?.distanceKm ?? restaurant.distanceKm,
-        isLiveGoogleMaps: Boolean(distanceMetrics?.isLiveGoogleMaps)
+        isLiveRoadDistance: Boolean(distanceMetrics?.isLiveRoadDistance)
       }
     });
   } catch (error: any) {
