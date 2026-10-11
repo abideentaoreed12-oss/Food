@@ -204,7 +204,7 @@ export const RestaurantPortal: React.FC = () => {
             <button
               onClick={() => setActiveTab('tickets')}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                activeTab === 'tickets' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'
+                activeTab === 'tickets' ? 'bg-[#FF5500] text-white shadow-sm' : 'text-slate-700 hover:bg-white hover:text-slate-900'
               }`}
             >
               Tickets ({restaurantOrders.length})
@@ -212,7 +212,7 @@ export const RestaurantPortal: React.FC = () => {
             <button
               onClick={() => setActiveTab('menu')}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                activeTab === 'menu' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'
+                activeTab === 'menu' ? 'bg-[#FF5500] text-white shadow-sm' : 'text-slate-700 hover:bg-white hover:text-slate-900'
               }`}
             >
               Stock ({liveMenu.length})
@@ -220,7 +220,7 @@ export const RestaurantPortal: React.FC = () => {
             <button
               onClick={() => setActiveTab('finance')}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                activeTab === 'finance' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'
+                activeTab === 'finance' ? 'bg-[#FF5500] text-white shadow-sm' : 'text-slate-700 hover:bg-white hover:text-slate-900'
               }`}
             >
               Payouts
@@ -244,19 +244,19 @@ export const RestaurantPortal: React.FC = () => {
             {formatCurrency(totalKitchenRevenueUSD, currency)}
           </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
           <div className="text-xs text-slate-400 font-medium">Active Tickets</div>
           <div className="text-2xl font-bold text-white font-mono mt-1 tabular-nums">
             {newTickets.length + preparingTickets.length + readyTickets.length}
           </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
           <div className="text-xs text-slate-400 font-medium">Platform Commission</div>
           <div className="text-2xl font-bold text-indigo-400 font-mono mt-1 tabular-nums">
             {commissionRate}%
           </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
           <div className="text-xs text-slate-400 font-medium">Doorstep Rating</div>
           <div className="text-2xl font-bold text-white font-mono mt-1 tabular-nums">
             ★ {currentRestaurant.rating.toFixed(2)}
@@ -534,25 +534,25 @@ export const RestaurantPortal: React.FC = () => {
             <input required value={newDishName} onChange={(e) => setNewDishName(e.target.value)} placeholder="Dish name" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
             <input required type="number" min={0} step={50} value={newDishPrice} onChange={(e) => setNewDishPrice(e.target.value)} placeholder="Price (NGN)" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500" />
             <input value={newDishDesc} onChange={(e) => setNewDishDesc(e.target.value)} placeholder="Short description" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 md:col-span-2" />
-            <button type="submit" disabled={savingDish} className="md:col-span-4 rounded-xl bg-[#FF5500] px-4 py-2.5 text-sm font-bold text-white hover:bg-orange-600 disabled:opacity-60">
+            <button type="submit" disabled={savingDish} className="md:col-span-4 min-h-11 rounded-xl bg-[#FF5500] px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#e64b00] focus:ring-2 focus:ring-orange-300 disabled:opacity-60">
               {savingDish ? 'Saving to D1' : editingDishId ? 'Update dish' : 'Save dish to D1'}
             </button>
           </form>
 
-          <div className="space-y-2 rounded-2xl border border-slate-700 bg-slate-950/60 p-4">
+          <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-white">Your kitchen menu (from D1)</h4>
+              <h4 className="text-sm font-bold text-slate-900">Your dishes</h4>
               <button type="button" onClick={loadLiveMenu} className="text-xs font-bold text-[#FF5500] hover:text-orange-400">Refresh</button>
             </div>
             {menuLoading ? (
-              <p className="text-xs text-slate-300">Loading from D1</p>
+              <p className="text-sm text-slate-600">Loading your dishes</p>
             ) : liveMenu.length === 0 ? (
               <p className="text-xs text-slate-300">No dishes in D1 yet. Add one above.</p>
             ) : (
               liveMenu.map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-600 bg-slate-900 px-3 py-2.5">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-white">{item.name}</div>
+                    <div className="truncate text-sm font-semibold text-slate-900">{item.name}</div>
                     <div className="text-xs text-slate-300">NGN {Number(item.price || 0).toLocaleString()} - {item.is_available === 0 ? 'Hidden' : 'Available'}</div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
