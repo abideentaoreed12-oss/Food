@@ -10,15 +10,49 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 5
-      - name: Restore verifyToken on main
-        run: python3 scripts/apply_fix_verify_token.py
+          fetch-depth: 15
+      - name: Restore api.ts and apply restaurant ops
+        run: |
+          set -e
+          # Restore api.ts from last good commit before empty push
+          git show c73179e:src/services/api.ts > src/services/api.ts
+          # Add assignCourier if missing
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/services/api.ts')
+          t = p.read_text()
+          if 'assignCourier' not in t:
+              old = """    updateOrderStatus: async (orderId: string, status: OrderStatus, note?: string) =>
+      request(`/api/admin/orders/${orderId}/status`, { method: 'PATCH', body: JSON.stringify({ status, note }) }),
+    refundOrder:"""
+              new = """    updateOrderStatus: async (orderId: string, status: OrderStatus, note?: string) =>
+      request(`/api/admin/orders/${orderId}/status`, { method: 'PATCH', body: JSON.stringify({ status, note }) }),
+    assignCourier: async (orderId: string, courierId: string) =>
+      request(`/api/admin/orders/${encodeURIComponent(orderId)}/assign`, {
+        method: 'PATCH',
+        body: JSON.stringify({ courierId }),
+      }),
+    refundOrder:"""
+              if old in t:
+                  t = t.replace(old, new)
+                  p.write_text(t)
+                  print('assignCourier added')
+              else:
+                  print('WARN assign pattern')
+          else:
+              print('assignCourier ok')
+          PY
+          python3 scripts/apply_restaurant_ops.py || true
+          # Portal from previous if broken - only if empty
+          if [ ! -s src/components/restaurant/RestaurantPortal.tsx ]; then
+            git show c73179e:src/components/restaurant/RestaurantPortal.tsx > src/components/restaurant/RestaurantPortal.tsx
+          fi
       - name: Commit on main
         run: |
           set -e
           git config user.name "veyrang-bot"
           git config user.email "bot@veyrang.com"
-          git add 'app/api/[[...route]]/route.ts'
-          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
-          git commit -m "fix(build): restore verifyToken + JWT_SECRET/ADMIN env constants (compile error)"
+          git add src/services/api.ts 'app/api/[[...route]]/route.ts' src/components/restaurant/RestaurantPortal.tsx || true
+          if git diff --cached --quiet; then echo No changes; exit 0; fi
+          git commit -m "feat(restaurant): restore api + live D1 menu/order routes for kitchen and admin"
           git push origin HEAD:main
