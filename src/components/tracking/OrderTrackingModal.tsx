@@ -58,7 +58,8 @@ export const OrderTrackingModal: React.FC = () => {
   const orderId = order?.id;
   const orderStatus = order?.status;
   const orderCreatedAt = order?.createdAt;
-  const totalEtaMins = order?.estimatedArrivalMinutes || 25;
+  const etaValue = Number(order?.estimatedArrivalMinutes);
+  const totalEtaMins = order?.estimatedArrivalMinutes != null && Number.isFinite(etaValue) && etaValue >= 0 ? etaValue : null;
 
   // Live Courier GPS Location & Connection Health Polling Effect
   useEffect(() => {
@@ -99,7 +100,7 @@ export const OrderTrackingModal: React.FC = () => {
 
   // Live countdown timer Effect
   useEffect(() => {
-    if (!orderId || isDelivered || !orderCreatedAt) {
+    if (!orderId || isDelivered || !orderCreatedAt || totalEtaMins === null) {
       setSecondsLeft(0);
       return;
     }
@@ -129,11 +130,11 @@ export const OrderTrackingModal: React.FC = () => {
   const courierName = order.courier?.name || 'Assigned Courier';
   let notificationMsg = 'Order confirmed and successfully queued.';
   if (order.status === 'preparing') {
-    notificationMsg = `${order.restaurantName} kitchen is freshly preparing your items. Est. remaining: ${mins} mins.`;
+    notificationMsg = `${order.restaurantName} kitchen is preparing your items. Est. remaining: ${totalEtaMins === null ? 'unavailable' : `${mins} mins`}.`;
   } else if (order.status === 'ready_for_pickup') {
     notificationMsg = `Order is ready! ${courierName} is picking up your package at the kitchen.`;
   } else if (order.status === 'in_transit') {
-    notificationMsg = `Rider ${courierName} is en route to ${order.customerAddress}! ETA ${mins} mins.`;
+    notificationMsg = `Rider ${courierName} is en route to ${order.customerAddress}! ETA ${totalEtaMins === null ? 'unavailable' : `${mins} mins`}.`;
   } else if (order.status === 'delivered') {
     notificationMsg = `Order #${order.shortId} has been delivered to your doorstep. Enjoy your meal!`;
   }
@@ -252,13 +253,13 @@ export const OrderTrackingModal: React.FC = () => {
             <div className="relative z-10 flex items-center justify-between mb-4">
               <div>
                 <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-orange-400">
-                  Distance & Buffer Countdown (ETA {totalEtaMins}m)
+                  Distance & Buffer Countdown (ETA {totalEtaMins === null ? 'unavailable' : `${totalEtaMins}m`})
                 </span>
                 <div className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-white mt-0.5">
-                  {isDelivered ? '00m : 00s' : `${String(mins).padStart(2, '0')}m : ${String(secs).padStart(2, '0')}s`}
+                  {isDelivered ? '00m : 00s' : totalEtaMins === null ? 'ETA unavailable' : `${String(mins).padStart(2, '0')}m : ${String(secs).padStart(2, '0')}s`}
                 </div>
                 <div className="text-xs text-slate-300 mt-1">
-                  {isDelivered ? 'Order successfully delivered' : 'Calculated live from location road distance + kitchen prep'}
+                  {isDelivered ? 'Order successfully delivered' : totalEtaMins === null ? 'A verified route ETA is not available.' : 'Calculated from road-route duration + 15-minute buffer'}
                 </div>
               </div>
 
