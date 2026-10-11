@@ -126,25 +126,6 @@ export async function acquireLiveLocation(
     console.warn('Backend geocode API note:', backendErr);
   }
 
-  // Reverse Tier 1: Google Maps Geocoder if available
-  if (!resolvedAddress && window.google?.maps?.Geocoder) {
-    try {
-      const geocoder = new window.google.maps.Geocoder();
-      const res = await geocoder.geocode({ location: { lat, lng } });
-      if (res.results && res.results[0]) {
-        formattedAddress = res.results[0].formatted_address;
-        resolvedAddress = formattedAddress.split(',')[0] || formattedAddress;
-        for (const comp of res.results[0].address_components) {
-          if (comp.types.includes('locality')) resolvedCity = comp.long_name;
-          if (comp.types.includes('administrative_area_level_1')) resolvedState = comp.long_name;
-          if (comp.types.includes('country')) resolvedCountry = comp.long_name;
-        }
-      }
-    } catch (gErr) {
-      console.warn('Google reverse geocode note:', gErr);
-    }
-  }
-
   // Reverse Tier 2: OpenStreetMap Reverse Geocoding
   if (!resolvedAddress) {
     try {
@@ -187,25 +168,6 @@ export async function acquireLiveLocation(
       }
     } catch (pErr) {
       console.warn('Photon reverse geocode note:', pErr);
-    }
-  }
-
-  // Reverse Tier 4: BigDataCloud Reverse Geocoding
-  if (!resolvedAddress) {
-    try {
-      const bResp = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
-      if (bResp.ok) {
-        const bData = await bResp.json();
-        if (bData) {
-          resolvedAddress = [bData.locality, bData.principalSubdivision].filter(Boolean).join(', ') || 'Current Location';
-          resolvedCity = bData.city || bData.locality || bData.principalSubdivision || '';
-          resolvedState = bData.principalSubdivision || '';
-          resolvedCountry = bData.countryName || '';
-          formattedAddress = [resolvedAddress, resolvedCountry].filter(Boolean).join(', ');
-        }
-      }
-    } catch (bErr) {
-      console.warn('BigDataCloud reverse geocode note:', bErr);
     }
   }
 
