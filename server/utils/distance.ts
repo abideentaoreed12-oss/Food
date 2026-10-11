@@ -17,7 +17,7 @@ export interface DistanceCalculationResult {
   inDeliveryRadius: boolean;
   userLocation?: GeoLocation;
   restaurantLocation?: GeoLocation;
-  isLiveGoogleMaps: boolean;
+  isLiveRoadDistance: boolean;
   routingEngine?: 'OSRM' | 'OpenStreetMap Routing' | 'Valhalla';
   points?: { lat: number; lng: number }[];
 }
@@ -221,7 +221,7 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
 }
 
 /**
- * Calculates live driving road distance, traffic duration, and exact road geometry.
+ * Calculates driving distance, router-estimated duration, and returned road geometry.
  */
 export async function calculateDistanceAndDuration(
   origin: GeoLocation | string,
@@ -448,7 +448,7 @@ export async function calculateRestaurantDistanceMetrics(
     inDeliveryRadius,
     userLocation,
     restaurantLocation,
-    isLiveGoogleMaps: isLive,
+    isLiveRoadDistance: isLive,
     routingEngine
   };
 }
@@ -485,7 +485,7 @@ export async function calculateBatchRestaurantDistanceMetrics(
           durationText: metrics.durationText,
           calculatedDeliveryFee: metrics.estimatedDeliveryFee,
           inDeliveryRadius: metrics.inDeliveryRadius,
-          isLiveRoadDistance: metrics.isLiveGoogleMaps,
+          isLiveRoadDistance: metrics.isLiveRoadDistance,
           routingEngine: metrics.routingEngine
         };
       } catch (e) {
