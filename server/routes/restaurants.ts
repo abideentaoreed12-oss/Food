@@ -171,10 +171,6 @@ router.post('/calculate-distance', validateBody(CalculateDistanceSchema), async 
     }
 
     const deliveryFeeValue = targetRestaurant?.deliveryFee ?? targetRestaurant?.delivery_fee;
-    if (deliveryFeeValue === undefined || deliveryFeeValue === null ||
-        !Number.isFinite(Number(deliveryFeeValue)) || Number(deliveryFeeValue) < 0) {
-      return res.status(422).json({ success: false, error: 'This restaurant has no valid delivery fee configured.' });
-    }
 
     const userLoc =
       Number.isFinite(userLat) && Number.isFinite(userLng) &&
@@ -184,10 +180,12 @@ router.post('/calculate-distance', validateBody(CalculateDistanceSchema), async 
 
     const metrics = await calculateRestaurantDistanceMetrics(
       {
+        ...(targetRestaurant || {}),
         lat: Number(restLatValue),
         lng: Number(restLngValue),
         address: restAddr,
-        deliveryFee: Number(deliveryFeeValue)
+        deliveryFee: deliveryFeeValue == null ? undefined : Number(deliveryFeeValue),
+        delivery_fee: deliveryFeeValue == null ? undefined : Number(deliveryFeeValue)
       },
       userLoc
     );
