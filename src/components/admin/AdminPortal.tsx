@@ -222,6 +222,7 @@ export const AdminPortal: React.FC = () => {
   // Category & Addon Form States
   const [newCatName, setNewCatName] = useState('');
   const [newCatDesc, setNewCatDesc] = useState('');
+  const [newCatRestaurantId, setNewCatRestaurantId] = useState('');
   const [newAddonName, setNewAddonName] = useState('');
   const [newAddonPrice, setNewAddonPrice] = useState('');
 
@@ -798,7 +799,8 @@ export const AdminPortal: React.FC = () => {
     e.preventDefault();
     if (!newCatName.trim()) return;
     try {
-      await api.admin.createCategory({ name: newCatName, description: newCatDesc });
+      if (!newCatRestaurantId) { showActionFeedback('Select a restaurant for this category.'); return; }
+      await api.admin.createCategory({ name: newCatName, description: newCatDesc, restaurantId: newCatRestaurantId });
       showActionFeedback(`Category "${newCatName}" saved in Platform D1!`);
       setNewCatName('');
       setNewCatDesc('');
@@ -2705,6 +2707,13 @@ export const AdminPortal: React.FC = () => {
                         onChange={(e) => setNewCatName(e.target.value)}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
                       />
+                    </div>
+                    <div>
+                      <label htmlFor="admin-category-restaurant" className="text-[11px] font-semibold text-slate-600 block mb-1">Restaurant *</label>
+                      <select id="admin-category-restaurant" required value={newCatRestaurantId} onChange={(e) => setNewCatRestaurantId(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none">
+                        <option value="">Select a restaurant</option>
+                        {restaurants.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
+                      </select>
                     </div>
                     <div>
                       <label className="text-[11px] font-semibold text-slate-600 block mb-1">Description</label>
