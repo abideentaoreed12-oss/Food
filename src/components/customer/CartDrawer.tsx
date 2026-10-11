@@ -204,6 +204,12 @@ export const CartDrawer: React.FC = () => {
   const discount = appliedPromo ? appliedPromo.discountAmount : 0;
   const tip = fulfillmentType === 'pickup' ? 0 : selectedTipNGN;
 
+  const deliveryFeeLabel = fulfillmentType === 'pickup'
+    ? formatCurrency(0, currency)
+    : liveDistanceResult && !liveDistanceResult.isCalculating
+      ? formatCurrency(deliveryFee, currency)
+      : liveDistanceResult?.isCalculating ? 'Calculating…' : 'Enter address';
+
   const preWalletTotal = Math.max(0, subtotal + deliveryFee + serviceFee + tip - discount);
 
   const walletDeduction = Math.min(Math.max(0, Number(walletBalanceNGN) || 0), preWalletTotal);
@@ -670,7 +676,7 @@ export const CartDrawer: React.FC = () => {
 
               <div className="flex items-center justify-between text-slate-600">
                 <span>Delivery</span>
-                <span className="font-mono tabular-nums">{formatCurrency(deliveryFee, currency)}</span>
+                <span className="font-mono tabular-nums">{deliveryFeeLabel}</span>
               </div>
 
               <div className="flex items-center justify-between text-slate-600">
