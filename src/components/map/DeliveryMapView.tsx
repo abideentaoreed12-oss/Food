@@ -149,7 +149,7 @@ export const DeliveryMapView: React.FC<DeliveryMapViewProps> = ({
 
                         <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between">
                           <span className="text-[10px] text-slate-500 font-semibold">
-                            Fee: {formatCurrency(rest.deliveryFee, currency)}
+                            Fee: {rest.calculatedDeliveryFee != null ? formatCurrency(rest.calculatedDeliveryFee, currency) : 'After address'}
                           </span>
 
                           <button
