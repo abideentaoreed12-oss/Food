@@ -118,8 +118,12 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
       }
       try {
         if ((customerLat === undefined) !== (customerLng === undefined)) return res.status(400).json({ success: false, error: 'Customer latitude and longitude must be provided together.' });
-        // Re-geocode the entered address on the server for authoritative pricing; never trust client fee or coordinates.
-        distanceMetrics = await calculateRestaurantDistanceMetrics(restaurant, customerAddress);
+        // Use the validated live coordinate pair when available; otherwise geocode the supplied address.
+        // The server always recalculates the road route and fee; client-supplied fee/time are ignored.
+        const deliveryOrigin = customerLat !== undefined && customerLng !== undefined
+          ? { lat: customerLat, lng: customerLng }
+          : customerAddress;
+        distanceMetrics = await calculateRestaurantDistanceMetrics(restaurant, deliveryOrigin);
         if (!distanceMetrics.inDeliveryRadius) return res.status(400).json({ success: false, error: 'This address is outside the configured delivery radius for this restaurant.' });
         deliveryFee = distanceMetrics.estimatedDeliveryFee;
         estimatedArrivalMinutes = preparationMinutes + distanceMetrics.durationMinutes;
