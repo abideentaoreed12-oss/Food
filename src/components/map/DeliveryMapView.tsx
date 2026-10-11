@@ -3,7 +3,6 @@ import { Map, AdvancedMarker, InfoWindow, useApiIsLoaded } from '@vis.gl/react-g
 import { useDelivery } from '../../context/DeliveryContext';
 import { Store, Star, Clock, MapPin, Navigation, Bike, Compass, Loader2 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
-import { DEFAULT_MAP_CENTER } from '../../utils/googleMapsConfig';
 
 interface DeliveryMapViewProps {
   height?: string;
@@ -22,8 +21,13 @@ export const DeliveryMapView: React.FC<DeliveryMapViewProps> = ({
   const [activeMarkerId, setActiveMarkerId] = useState<string | null>(selectedRestaurantId || null);
   const apiIsLoaded = useApiIsLoaded();
 
-  // Default center: Victoria Island / Lekki Phase 1, Lagos
-  const defaultCenter = DEFAULT_MAP_CENTER;
+  const restaurantsWithCoordinates = (restaurants || []).filter((r) =>
+    r && typeof r.lat === 'number' && typeof r.lng === 'number' &&
+    Number.isFinite(r.lat) && Number.isFinite(r.lng) && r.lat >= -90 && r.lat <= 90 && r.lng >= -180 && r.lng <= 180
+  );
+  const defaultCenter = restaurantsWithCoordinates.length
+    ? { lat: restaurantsWithCoordinates[0].lat, lng: restaurantsWithCoordinates[0].lng }
+    : null;
 
   const handleMarkerClick = (id: string) => {
     setActiveMarkerId(id);
@@ -40,7 +44,7 @@ export const DeliveryMapView: React.FC<DeliveryMapViewProps> = ({
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
           <span className="font-display font-extrabold text-slate-900">Live Coverage</span>
           <span className="text-slate-300">·</span>
-          <span className="text-[#FF5500] font-mono">Lagos & Abuja Partners</span>
+          <span className="text-[#FF5500] font-mono">Verified Partner Locations</span>
         </div>
 
         <div className="bg-slate-900/90 backdrop-blur-md text-white px-3 py-1.5 rounded-2xl text-[11px] font-semibold border border-slate-700 shadow-md pointer-events-auto hidden sm:flex items-center gap-1.5">
@@ -50,7 +54,7 @@ export const DeliveryMapView: React.FC<DeliveryMapViewProps> = ({
       </div>
 
       <div style={{ height, width: '100%' }}>
-        {apiIsLoaded ? (
+        {apiIsLoaded && defaultCenter ? (
           <Map
             mapId="DEMO_MAP_ID"
             defaultCenter={defaultCenter}
@@ -175,7 +179,7 @@ export const DeliveryMapView: React.FC<DeliveryMapViewProps> = ({
                 Connecting Live Dispatch Radar
               </h3>
               <p className="text-xs text-slate-400">
-                Lekki Phase 1, Victoria Island, Ikeja & Abuja coverage network is active.
+                The map will appear when verified restaurant coordinates are available.
               </p>
               <div className="flex items-center justify-center gap-2 pt-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
