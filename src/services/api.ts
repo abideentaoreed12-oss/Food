@@ -470,6 +470,8 @@ export const api = {
     getMenuItems: async () => request('/api/admin/menu'),
     createMenuItem: async (data: any) =>
       request('/api/admin/menu', { method: 'POST', body: JSON.stringify(data) }),
+    updateMenuItem: async (id: string, data: any) =>
+      request(`/api/admin/menu/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) }),
     deleteMenuItem: async (id: string) =>
       request(`/api/admin/menu/${id}`, { method: 'DELETE' }),
     toggleMenuItem: async (id: string) =>
