@@ -590,7 +590,7 @@ export const AdminPortal: React.FC = () => {
     setEditMenuName(item.name || '');
     setEditMenuPrice(String(item.price || ''));
     setEditMenuDesc(item.description || '');
-    setEditMenuCategory(item.category_id || item.category || 'Main');
+    setEditMenuCategory(item.category_name || item.category || 'Main');
     setEditMenuRestaurantId(item.restaurant_id || '');
     setEditMenuImageUrl(item.image_url || item.image_r2_url || '');
     setIsEditMenuModalOpen(true);
@@ -598,7 +598,10 @@ export const AdminPortal: React.FC = () => {
 
   const handleSaveEditMenuItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingMenuItem || !editMenuName || !editMenuPrice) return;
+    if (!editingMenuItem || !editMenuName.trim() || !editMenuPrice || !editMenuRestaurantId) {
+      showActionFeedback('Enter a dish name and price, and select the restaurant that owns this dish.');
+      return;
+    }
     try {
       await api.admin.updateMenuItem(editingMenuItem.id, {
         name: editMenuName,
@@ -2006,6 +2009,13 @@ export const AdminPortal: React.FC = () => {
                           onChange={(e) => setEditMenuPrice(e.target.value)}
                           className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono"
                         />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-slate-600 font-semibold block mb-1">Restaurant / Kitchen *</label>
+                        <select required value={editMenuRestaurantId} onChange={(e) => setEditMenuRestaurantId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none">
+                          <option value="">Select restaurant</option>
+                          {restaurantsList.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
+                        </select>
                       </div>
                       <div>
                         <label className="text-[11px] text-slate-600 font-semibold block mb-1">Category</label>

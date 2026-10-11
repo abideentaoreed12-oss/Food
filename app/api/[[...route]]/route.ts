@@ -723,10 +723,10 @@ export async function GET(req: NextRequest) {
     if (user.role === 'restaurant') {
       const rid = user.restaurantId || (await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id])).results?.[0]?.restaurant_id;
       if (!rid) return NextResponse.json({ success: true, data: [] });
-      const d1Res = await d1.query('SELECT * FROM menu_items WHERE restaurant_id = ? ORDER BY created_at DESC LIMIT 500', [rid], { cache: false });
+      const d1Res = await d1.query('SELECT mi.*, mc.name AS category_name FROM menu_items mi LEFT JOIN menu_categories mc ON mc.id = mi.category_id WHERE mi.restaurant_id = ? ORDER BY mi.created_at DESC LIMIT 500', [rid], { cache: false });
       return NextResponse.json({ success: true, data: d1Res.results || [] });
     }
-    const d1Res = await d1.query('SELECT * FROM menu_items ORDER BY created_at DESC LIMIT 500', [], { cache: false });
+    const d1Res = await d1.query('SELECT mi.*, mc.name AS category_name FROM menu_items mi LEFT JOIN menu_categories mc ON mc.id = mi.category_id ORDER BY mi.created_at DESC LIMIT 500', [], { cache: false });
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
