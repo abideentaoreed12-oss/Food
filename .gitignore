@@ -45,3 +45,5 @@ src/data/mockData.ts
 .gmp_cache/
 .aistudio/
 *.tsbuildinfo
+bun.lock
+bun.lockb

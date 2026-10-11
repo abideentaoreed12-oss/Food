@@ -2,7 +2,6 @@
 
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(self)' },
   {
@@ -11,7 +10,6 @@ const securityHeaders = [
       "default-src 'self'",
       "base-uri 'self'",
       "object-src 'none'",
-      "frame-ancestors 'self'",
       "form-action 'self' https://checkout.paystack.com https://*.paystack.com",
       "img-src 'self' data: blob: https: https://*.r2.dev https://*.r2.cloudflarestorage.com https://*.googleapis.com https://*.gstatic.com",
       "font-src 'self' data: https://fonts.gstatic.com",
@@ -25,6 +23,7 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  output: 'standalone',
   serverExternalPackages: ['node:sqlite'],
   reactStrictMode: true,
   env: {
