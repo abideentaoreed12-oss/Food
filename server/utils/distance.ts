@@ -18,7 +18,7 @@ export interface DistanceCalculationResult {
   userLocation?: GeoLocation;
   restaurantLocation?: GeoLocation;
   isLiveGoogleMaps: boolean;
-  routingEngine?: 'Google Maps' | 'OSRM' | 'OpenStreetMap Routing' | 'Valhalla' | 'GraphHopper' | 'OpenRouteService' | 'Haversine';
+  routingEngine?: 'OSRM' | 'OpenStreetMap Routing' | 'Valhalla';
   points?: { lat: number; lng: number }[];
 }
 
@@ -109,7 +109,7 @@ export function markGoogleMapsQuotaExceeded(reason: string): void {
 }
 
 /**
- * Geodesic distance calculation powered by open-source Geolib & Turf.js adjusted with urban road factor.
+ * Straight-line distance only. Never treat this value as road distance or a delivery quote.
  */
 export function calculateHaversineDistanceKm(
   lat1: number,
@@ -121,8 +121,7 @@ export function calculateHaversineDistanceKm(
     const point1 = turf.point([lon1, lat1]);
     const point2 = turf.point([lon2, lat2]);
     const straightLineKm = turf.distance(point1, point2, { units: 'kilometers' });
-    const roadDistanceKm = straightLineKm * 1.32;
-    return Math.round(roadDistanceKm * 10) / 10;
+    return Math.round(straightLineKm * 10) / 10;
   } catch (e) {
     const straightLineMeters = geolib.getDistance(
       { latitude: lat1, longitude: lon1 },
@@ -166,43 +165,7 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
       y >= 4 && y <= 14 && x >= 2 && x <= 15;
   };
 
-  // Tier 1: Google Maps Geocoding when key is configured
-  const googleApiKey = CONFIG.GOOGLE_MAPS_API_KEY;
-  if (googleApiKey && isGoogleMapsQuotaAvailable()) {
-    for (const query of queries) {
-      try {
-        const params = new URLSearchParams({ address: query, components: 'country:NG', key: googleApiKey });
-        const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`, {
-          signal: AbortSignal.timeout(5000)
-        });
-        if (!response.ok) continue;
-        const data = await response.json();
-        if (data.status === 'OK' && Array.isArray(data.results)) {
-          const match = data.results.find((item: any) =>
-            isValidPoint(item?.geometry?.location?.lat, item?.geometry?.location?.lng) &&
-            item?.address_components?.some((part: any) => part.types?.includes('country') && part.short_name === 'NG')
-          );
-          if (match) {
-            return {
-              lat: Number(match.geometry.location.lat),
-              lng: Number(match.geometry.location.lng),
-              formattedAddress: match.formatted_address || cleanAddr,
-              isLive: true,
-              provider: 'Google Maps'
-            };
-          }
-        }
-        if (['OVER_QUERY_LIMIT', 'OVER_DAILY_LIMIT', 'RESOURCE_EXHAUSTED', 'REQUEST_DENIED'].includes(data.status)) {
-          markGoogleMapsQuotaExceeded(data.status);
-          break;
-        }
-      } catch (error: any) {
-        console.warn('[Geocoding] Google Maps attempt note:', error?.message || String(error));
-      }
-    }
-  }
-
-  // Tier 2: Photon (OpenStreetMap). Search-as-you-type friendly and supports country filter.
+  // Tier 1: Photon (OpenStreetMap).
   const photonBase = (CONFIG.PHOTON_BASE_URL || 'https://photon.komoot.io').replace(/\/+$/, '').replace(/\/api$/, '');
   for (const query of queries) {
     try {
@@ -281,87 +244,6 @@ export async function geocodeAddress(addressStr: string): Promise<GeoLocation & 
     }
   }
 
-  // Tier 4: Pelias (if configured)
-  if (CONFIG.PELIAS_BASE_URL) {
-    const peliasBase = CONFIG.PELIAS_BASE_URL.replace(/\/+$/, '');
-    for (const query of queries) {
-      try {
-        const peliasParams = new URLSearchParams({ text: query, size: '5', 'boundary.country': 'NGA' });
-        if (CONFIG.PELIAS_API_KEY) peliasParams.set('api_key', CONFIG.PELIAS_API_KEY);
-        const peliasUrl = `${peliasBase}/v1/search?${peliasParams.toString()}`;
-        const resp = await fetch(peliasUrl, { signal: AbortSignal.timeout(4000) });
-        if (!resp.ok) continue;
-        const data = await resp.json();
-        const features = Array.isArray(data?.features) ? data.features : [];
-        if (features.length > 0) {
-          const [lng, lat] = features[0].geometry?.coordinates || [];
-          if (isValidPoint(lat, lng)) {
-            return {
-              lat: Number(lat),
-              lng: Number(lng),
-              formattedAddress: features[0].properties?.label || cleanAddr,
-              isLive: true,
-              provider: 'Pelias'
-            };
-          }
-        }
-      } catch (err: any) {
-        console.warn('[Geocoding] Pelias attempt note:', err?.message || String(err));
-      }
-    }
-  }
-
-  // Tier 5: Resilient Nigerian metropolitan zone fallback for network outages
-  const KNOWN_NIGERIAN_AREAS: { pattern: RegExp; lat: number; lng: number; label: string }[] = [
-    { pattern: /admiralty|lekki\s*(phase\s*1)?/i, lat: 6.4474, lng: 3.4723, label: 'Lekki Phase 1, Lagos' },
-    { pattern: /victoria\s*island|ahmadu\s*bello/i, lat: 6.4281, lng: 3.4219, label: 'Victoria Island, Lagos' },
-    { pattern: /ikoyi|bourdillon/i, lat: 6.4549, lng: 3.4357, label: 'Ikoyi, Lagos' },
-    { pattern: /ikeja|allen|isaac\s*john/i, lat: 6.5866, lng: 3.3578, label: 'Ikeja, Lagos' },
-    { pattern: /yaba|herbert\s*macaulay/i, lat: 6.5059, lng: 3.3781, label: 'Yaba, Lagos' },
-    { pattern: /surulere|ojuelegba/i, lat: 6.5000, lng: 3.3500, label: 'Surulere, Lagos' },
-    { pattern: /wuse|maitama|garki|abuja|fct/i, lat: 9.0765, lng: 7.4721, label: 'Abuja, FCT' },
-    { pattern: /ibadan|bodija|dugbe/i, lat: 7.3775, lng: 3.9470, label: 'Ibadan, Oyo' },
-    { pattern: /port\s*harcourt|trans\s*amadi/i, lat: 4.8156, lng: 7.0498, label: 'Port Harcourt, Rivers' },
-    { pattern: /akure|oda/i, lat: 7.2571, lng: 5.2058, label: 'Akure / Oda, Ondo' },
-    { pattern: /ondo/i, lat: 7.0929, lng: 4.8415, label: 'Ondo, Nigeria' },
-    { pattern: /ilorin/i, lat: 8.4966, lng: 4.5421, label: 'Ilorin, Kwara' },
-    { pattern: /kano/i, lat: 12.0022, lng: 8.5920, label: 'Kano, Nigeria' },
-    { pattern: /enugu/i, lat: 6.4584, lng: 7.5464, label: 'Enugu, Nigeria' },
-    { pattern: /benin/i, lat: 6.3350, lng: 5.6037, label: 'Benin City, Edo' },
-    { pattern: /calabar/i, lat: 4.9757, lng: 8.3417, label: 'Calabar, Cross River' },
-    { pattern: /abeokuta/i, lat: 7.1475, lng: 3.3619, label: 'Abeokuta, Ogun' },
-    { pattern: /asaba|warri/i, lat: 6.1983, lng: 6.7329, label: 'Delta, Nigeria' },
-    { pattern: /osogbo/i, lat: 7.7827, lng: 4.5418, label: 'Osogbo, Osun' },
-    { pattern: /ado\s*ekiti|ekiti/i, lat: 7.6212, lng: 5.2215, label: 'Ado-Ekiti, Ekiti' },
-    { pattern: /jos/i, lat: 9.8965, lng: 8.8583, label: 'Jos, Plateau' },
-    { pattern: /kaduna/i, lat: 10.5105, lng: 7.4165, label: 'Kaduna, Nigeria' },
-    { pattern: /owerri/i, lat: 5.4840, lng: 7.0355, label: 'Owerri, Imo' },
-    { pattern: /uyo/i, lat: 5.0377, lng: 7.9128, label: 'Uyo, Akwa Ibom' },
-    { pattern: /lagos/i, lat: 6.5244, lng: 3.3792, label: 'Lagos, Nigeria' }
-  ];
-  for (const area of KNOWN_NIGERIAN_AREAS) {
-    if (area.pattern.test(cleanAddr)) {
-      return {
-        lat: area.lat,
-        lng: area.lng,
-        formattedAddress: `${cleanAddr}, ${area.label}`,
-        isLive: false,
-        provider: 'Geographic Zone Fallback'
-      };
-    }
-  }
-
-  // If this was a Plus Code with no external resolution, provide a safe Nigerian location fallback
-  if (plusMatch) {
-    return {
-      lat: 7.2571,
-      lng: 5.2058,
-      formattedAddress: cleanAddr,
-      isLive: false,
-      provider: 'Plus Code Location Fallback'
-    };
-  }
-
   throw new Error('We could not locate this address in Nigeria. Choose one of the address suggestions or use the current-location button, then retry.');
 }
 
@@ -377,7 +259,7 @@ export async function calculateDistanceAndDuration(
   durationMinutes: number;
   durationText: string;
   isLive: boolean;
-  routingEngine: 'Google Maps' | 'OSRM' | 'OpenStreetMap Routing' | 'Valhalla' | 'GraphHopper' | 'OpenRouteService' | 'Haversine';
+  routingEngine: 'OSRM' | 'OpenStreetMap Routing' | 'Valhalla';
   points: { lat: number; lng: number }[];
   originGeo: GeoLocation;
   destGeo: GeoLocation;
@@ -399,48 +281,7 @@ export async function calculateDistanceAndDuration(
     destGeo = destination;
   }
 
-  // Tier 1: Google Directions API (Live turn-by-turn road polyline & traffic duration)
-  const googleApiKey = CONFIG.GOOGLE_MAPS_API_KEY;
-  if (googleApiKey && isGoogleMapsQuotaAvailable()) {
-    try {
-      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originGeo.lat},${originGeo.lng}&destination=${destGeo.lat},${destGeo.lng}&mode=driving&departure_time=now&key=${googleApiKey}`;
-      const response = await fetch(url, { signal: AbortSignal.timeout(4500) });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 'OK' && Array.isArray(data.routes) && data.routes.length > 0) {
-          const route = data.routes[0];
-          const leg = route.legs?.[0];
-          if (leg) {
-            const distanceKm = Math.round((leg.distance.value / 1000) * 10) / 10;
-            const seconds = leg.duration_in_traffic ? leg.duration_in_traffic.value : leg.duration.value;
-            const durationMinutes = Math.max(1, Math.round(seconds / 60));
-            const points = route.overview_polyline?.points
-              ? decodePolyline(route.overview_polyline.points)
-              : [originGeo, destGeo];
-
-            return {
-              distanceKm,
-              distanceText: leg.distance.text || `${distanceKm} km`,
-              durationMinutes,
-              durationText: leg.duration_in_traffic?.text || leg.duration.text || `${durationMinutes} min`,
-              isLive: true,
-              routingEngine: 'Google Maps',
-              points,
-              originGeo,
-              destGeo
-            };
-          }
-        }
-        if (['OVER_QUERY_LIMIT', 'OVER_DAILY_LIMIT', 'RESOURCE_EXHAUSTED', 'REQUEST_DENIED'].includes(data.status)) {
-          markGoogleMapsQuotaExceeded(data.status);
-        }
-      }
-    } catch (error: any) {
-      console.warn('[Routing] Google Directions fallback note:', error?.message || String(error));
-    }
-  }
-
-  // Tier 2: OSRM Road Routing API (Open Source, full road geometry)
+  // Tier 1: OSRM Road Routing API (Open Source, full road geometry)
   try {
     const osrmBase = (CONFIG.OSRM_BASE_URL || 'https://router.project-osrm.org').replace(/\/+$/, '');
     const osrmUrl = `${osrmBase}/route/v1/driving/${originGeo.lng},${originGeo.lat};${destGeo.lng},${destGeo.lat}?overview=full&geometries=geojson`;
@@ -531,98 +372,9 @@ export async function calculateDistanceAndDuration(
     console.warn('[Routing] Valhalla router note:', error?.message || String(error));
   }
 
-  // Tier 4: OpenRouteService (Optional Hosted or Self-Hosted)
-  const orsBase = (CONFIG.OPENROUTESERVICE_BASE_URL || 'https://api.openrouteservice.org').replace(/\/+$/, '').replace(/\/v2\/directions\/driving-car$/, '');
-  const orsApiKey = (CONFIG.OPENROUTESERVICE_API_KEY || '').trim();
-  const isHostedOrs = orsBase.includes('openrouteservice.org');
-
-  // Only attempt ORS if self-hosted or if hosted with an API key
-  if (!isHostedOrs || orsApiKey) {
-    try {
-      const orsHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'User-Agent': 'VeyraNG-FoodDelivery/2.1'
-      };
-      if (orsApiKey) orsHeaders['Authorization'] = orsApiKey;
-
-      const orsResp = await fetch(`${orsBase}/v2/directions/driving-car`, {
-        method: 'POST',
-        headers: orsHeaders,
-        body: JSON.stringify({
-          coordinates: [
-            [originGeo.lng, originGeo.lat],
-            [destGeo.lng, destGeo.lat]
-          ]
-        }),
-        signal: AbortSignal.timeout(3500)
-      });
-      if (orsResp.ok) {
-        const orsData = await orsResp.json();
-        const summary = orsData.routes?.[0]?.summary;
-        if (summary && Number.isFinite(summary.distance) && Number.isFinite(summary.duration)) {
-          const distanceKm = Math.round((summary.distance / 1000) * 10) / 10;
-          const durationMinutes = Math.max(1, Math.round(summary.duration / 60));
-          return {
-            distanceKm,
-            distanceText: `${distanceKm} km`,
-            durationMinutes,
-            durationText: `${durationMinutes}–${durationMinutes + 7} min`,
-            isLive: true,
-            routingEngine: 'OpenRouteService',
-            points: [originGeo, destGeo],
-            originGeo,
-            destGeo
-          };
-        }
-      } else if (orsResp.status === 429) {
-        console.warn('[Routing] OpenRouteService rate limit encountered (429) - falling back');
-      }
-    } catch (err: any) {
-      console.warn('[Routing] OpenRouteService note:', err?.message || String(err));
-    }
-  }
-
-  // Tier 5: GraphHopper Routing Engine (Optional Hosted or Keyless Self-Hosted)
-  const ghBase = (CONFIG.GRAPHHOPPER_BASE_URL || 'https://graphhopper.com/api/1').replace(/\/+$/, '').replace(/\/route$/, '');
-  const ghApiKey = (CONFIG.GRAPHHOPPER_API_KEY || '').trim();
-  const isHostedGh = ghBase.includes('graphhopper.com');
-
-  if (!isHostedGh || ghApiKey) {
-    try {
-      const ghUrl = `${ghBase}/route?point=${originGeo.lat},${originGeo.lng}&point=${destGeo.lat},${destGeo.lng}&vehicle=car&locale=en&calc_points=true${ghApiKey ? `&key=${encodeURIComponent(ghApiKey)}` : ''}`;
-      const ghResp = await fetch(ghUrl, {
-        headers: { 'User-Agent': 'VeyraNG-FoodDelivery/2.1' },
-        signal: AbortSignal.timeout(3500)
-      });
-      if (ghResp.ok) {
-        const ghData = await ghResp.json();
-        const path = ghData.paths?.[0];
-        if (path && Number.isFinite(path.distance) && Number.isFinite(path.time)) {
-          const distanceKm = Math.round((path.distance / 1000) * 10) / 10;
-          const durationMinutes = Math.max(1, Math.round(path.time / 60000));
-          return {
-            distanceKm,
-            distanceText: `${distanceKm} km`,
-            durationMinutes,
-            durationText: `${durationMinutes}–${durationMinutes + 6} min`,
-            isLive: true,
-            routingEngine: 'GraphHopper',
-            points: [originGeo, destGeo],
-            originGeo,
-            destGeo
-          };
-        }
-      } else if (ghResp.status === 429) {
-        console.warn('[Routing] GraphHopper rate limit encountered (429) - falling back');
-      }
-    } catch (ghErr: any) {
-      console.warn('[Routing] GraphHopper note:', ghErr?.message || String(ghErr));
-    }
-  }
-
-  // Tier 5: Public OpenStreetMap Routing Fallback
+  // Secondary public OSRM-compatible routing endpoint.
   try {
-    const osmRouteUrl = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${originGeo.lng},${originGeo.lat};${destGeo.lng},${destGeo.lat}?overview=false`;
+    const osmRouteUrl = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${originGeo.lng},${originGeo.lat};${destGeo.lng},${destGeo.lat}?overview=full&geometries=geojson`;
     const osmRes = await fetch(osmRouteUrl, {
       headers: { 'User-Agent': 'VeyraNG-FoodDelivery/2.1' },
       signal: AbortSignal.timeout(2500)
@@ -632,76 +384,19 @@ export async function calculateDistanceAndDuration(
       if (osmData.code === 'Ok' && osmData.routes && osmData.routes.length > 0) {
         const route = osmData.routes[0];
         const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
-        const durationMinutes = Math.max(1, Math.round(route.duration / 60));
-
-        return {
-          distanceKm: Math.max(0.4, distanceKm),
-          distanceText: `${Math.max(0.4, distanceKm)} km`,
-          durationMinutes,
-          durationText: `${durationMinutes}–${durationMinutes + 8} min`,
-          isLive: true,
-          routingEngine: 'OpenStreetMap Routing',
-          points: [originGeo, destGeo],
-          originGeo,
-          destGeo
-        };
+        const durationMinutes = Math.round(route.duration / 60);
+        const points = (route.geometry?.coordinates || []).map((coord: [number, number]) => ({ lat: coord[1], lng: coord[0] }));
+        if (distanceKm > 0 && durationMinutes > 0 && points.length >= 2) {
+          return { distanceKm, distanceText: `${distanceKm} km`, durationMinutes, durationText: `${durationMinutes} min`, isLive: true, routingEngine: 'OpenStreetMap Routing', points, originGeo, destGeo };
+        }
       }
     }
   } catch (err: any) {
     console.warn('[Routing] OSM Routing fallback note:', err?.message || String(err));
   }
 
-  // Final fallback: Google Maps driving distance, after all open-source routers fail.
-  if (googleApiKey && isGoogleMapsQuotaAvailable()) {
-    try {
-      const url = 'https://maps.googleapis.com/maps/api/distancematrix/json?origins=' + originGeo.lat + ',' + originGeo.lng + '&destinations=' + destGeo.lat + ',' + destGeo.lng + '&mode=driving&departure_time=now&key=' + googleApiKey;
-      const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
-      if (response.ok) {
-        const data = await response.json();
-        const element = data.rows && data.rows[0] && data.rows[0].elements && data.rows[0].elements[0];
-        if (data.status === 'OK' && element && element.status === 'OK') {
-          const distanceKm = Math.round((element.distance.value / 1000) * 10) / 10;
-          const seconds = element.duration_in_traffic ? element.duration_in_traffic.value : element.duration.value;
-          if (Number.isFinite(seconds)) {
-            const durationMinutes = Math.max(1, Math.round(seconds / 60));
-            return { distanceKm, distanceText: distanceKm + ' km', durationMinutes, durationText: durationMinutes + ' min', isLive: true, routingEngine: 'Google Maps', originGeo, destGeo, points: [originGeo, destGeo] };
-          }
-        }
-        if (['OVER_QUERY_LIMIT', 'OVER_DAILY_LIMIT', 'RESOURCE_EXHAUSTED', 'REQUEST_DENIED'].includes(data.status)) markGoogleMapsQuotaExceeded(data.status);
-      }
-    } catch (error: any) { console.warn('[Routing] Google Maps last-resort fallback failed:', error?.message || String(error)); }
-  }
+  throw new Error('No free road-routing provider is available right now. Please retry shortly; no estimated route or delivery fee was generated.');
 
-  // Resilient Geodesic Road-Interpolation Fallback (Geolib / Turf with Urban Curvature)
-  const haversineDistKm = calculateHaversineDistanceKm(originGeo.lat, originGeo.lng, destGeo.lat, destGeo.lng);
-  const distanceKm = Math.max(0.3, haversineDistKm);
-  // Urban driving duration in Nigerian cities (approx 22 km/h + 3 min traffic buffer)
-  const durationMinutes = Math.max(4, Math.round((distanceKm / 22) * 60) + 3);
-
-  // Generate realistic road waypoints along the corridor
-  const numSteps = Math.max(5, Math.min(15, Math.round(distanceKm * 2)));
-  const fallbackPoints: { lat: number; lng: number }[] = [];
-  for (let i = 0; i <= numSteps; i++) {
-    const fraction = i / numSteps;
-    // Introduce gentle road curve factor based on intermediate position
-    const curveOffset = Math.sin(fraction * Math.PI) * 0.0022;
-    fallbackPoints.push({
-      lat: Math.round((originGeo.lat + (destGeo.lat - originGeo.lat) * fraction + curveOffset) * 1e6) / 1e6,
-      lng: Math.round((originGeo.lng + (destGeo.lng - originGeo.lng) * fraction - curveOffset * 0.7) * 1e6) / 1e6
-    });
-  }
-
-  return {
-    distanceKm,
-    distanceText: `${distanceKm} km`,
-    durationMinutes,
-    durationText: `${durationMinutes}–${durationMinutes + 6} min`,
-    isLive: true,
-    routingEngine: 'Haversine',
-    points: fallbackPoints,
-    originGeo,
-    destGeo
-  };
 }
 
 /**
@@ -724,41 +419,26 @@ export async function calculateRestaurantDistanceMetrics(
 
   let userLocation: GeoLocation;
   if (typeof userAddressOrCoords === 'string') {
-    try {
-      const geo = await geocodeAddress(userAddressOrCoords);
-      userLocation = { lat: geo.lat, lng: geo.lng, formattedAddress: geo.formattedAddress };
-    } catch (err: any) {
-      console.warn('[Restaurant Distance] Geocoding notice for user address (using fallback):', userAddressOrCoords, err?.message || String(err));
-      userLocation = {
-        lat: 6.4474,
-        lng: 3.4723,
-        formattedAddress: userAddressOrCoords
-      };
-    }
+    const geo = await geocodeAddress(userAddressOrCoords);
+    userLocation = { lat: geo.lat, lng: geo.lng, formattedAddress: geo.formattedAddress };
   } else {
-    userLocation = {
-      lat: userAddressOrCoords.lat,
-      lng: userAddressOrCoords.lng
-    };
+    const lat = Number(userAddressOrCoords.lat);
+    const lng = Number(userAddressOrCoords.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) throw new Error('Customer location coordinates are missing or invalid.');
+    userLocation = { lat, lng };
   }
 
   const { distanceKm, distanceText, durationMinutes, durationText, isLive, routingEngine } =
     await calculateDistanceAndDuration(userLocation, restaurantLocation);
 
-  // Live dynamic delivery fee calculation: Base fee + ₦150 per km beyond 2 km
+  // Use the restaurant's configured fee; do not invent a per-kilometre surcharge.
   const baseDeliveryFee = Number(restaurant.deliveryFee);
   if (!Number.isFinite(baseDeliveryFee) || baseDeliveryFee < 0) {
     throw new Error('Restaurant delivery fee is missing or invalid in D1');
   }
-  let estimatedDeliveryFee = baseDeliveryFee;
-
-  if (distanceKm > 2.0) {
-    const extraKm = distanceKm - 2.0;
-    const additionalFee = Math.round(extraKm * 150);
-    estimatedDeliveryFee = Math.round((baseDeliveryFee + additionalFee) / 50) * 50;
-  }
-
-  const inDeliveryRadius = distanceKm <= 35.0;
+  const estimatedDeliveryFee = baseDeliveryFee;
+  const configuredRadius = Number(restaurant.deliveryRadiusKm ?? restaurant.delivery_radius_km);
+  const inDeliveryRadius = Number.isFinite(configuredRadius) && configuredRadius > 0 ? distanceKm <= configuredRadius : true;
 
   return {
     distanceKm,
@@ -785,22 +465,13 @@ export async function calculateBatchRestaurantDistanceMetrics(
 
   let userLocation: GeoLocation;
   if (typeof userAddressOrCoords === 'string') {
-    try {
-      const geo = await geocodeAddress(userAddressOrCoords);
-      userLocation = { lat: geo.lat, lng: geo.lng, formattedAddress: geo.formattedAddress };
-    } catch (err: any) {
-      console.warn('[Batch Distance] Geocoding notice for user address (using resilient fallback):', userAddressOrCoords, err?.message || String(err));
-      userLocation = {
-        lat: 6.4474,
-        lng: 3.4723,
-        formattedAddress: userAddressOrCoords
-      };
-    }
+    const geo = await geocodeAddress(userAddressOrCoords);
+    userLocation = { lat: geo.lat, lng: geo.lng, formattedAddress: geo.formattedAddress };
   } else {
-    userLocation = {
-      lat: userAddressOrCoords.lat,
-      lng: userAddressOrCoords.lng
-    };
+    const lat = Number(userAddressOrCoords.lat);
+    const lng = Number(userAddressOrCoords.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) throw new Error('Customer location coordinates are missing or invalid.');
+    userLocation = { lat, lng };
   }
 
   return Promise.all(
@@ -847,156 +518,34 @@ export interface LiveOrderTrackingResult {
  * Dynamically calculates the live courier position, heading, speed, remaining distance,
  * and ETA along the real road path for an active delivery order.
  */
-export async function calculateLiveOrderTracking(
-  order: any,
-  restaurantObj?: any
-): Promise<LiveOrderTrackingResult> {
-  const kitchenLat = Number(order.restaurantLat ?? order.restaurantLocation?.lat ?? restaurantObj?.lat ?? 6.4474);
-  const kitchenLng = Number(order.restaurantLng ?? order.restaurantLocation?.lng ?? restaurantObj?.lng ?? 3.4723);
-  const kitchenLocation: GeoLocation & { name?: string } = {
-    lat: kitchenLat,
-    lng: kitchenLng,
-    formattedAddress: order.restaurantAddress || restaurantObj?.address || 'Kitchen Hub',
-    name: order.restaurantName || restaurantObj?.name || 'Kitchen Hub'
-  };
-
+export async function calculateLiveOrderTracking(order: any, restaurantObj?: any): Promise<LiveOrderTrackingResult> {
+  const kitchenLat = Number(order.restaurantLat ?? order.restaurantLocation?.lat ?? restaurantObj?.lat);
+  const kitchenLng = Number(order.restaurantLng ?? order.restaurantLocation?.lng ?? restaurantObj?.lng);
+  if (!Number.isFinite(kitchenLat) || !Number.isFinite(kitchenLng) || kitchenLat < -90 || kitchenLat > 90 || kitchenLng < -180 || kitchenLng > 180) throw new Error('Restaurant coordinates are unavailable; live tracking cannot be generated.');
+  const kitchenLocation: GeoLocation & { name?: string } = { lat: kitchenLat, lng: kitchenLng, formattedAddress: order.restaurantAddress || restaurantObj?.address, name: order.restaurantName || restaurantObj?.name };
   let customerLat = Number(order.customerLat ?? order.customerLocation?.lat);
   let customerLng = Number(order.customerLng ?? order.customerLocation?.lng);
-  const customerAddress = order.customerAddress || 'Customer Address';
-
-  if (!Number.isFinite(customerLat) || !Number.isFinite(customerLng) || customerLat < 4 || customerLat > 14) {
-    try {
-      const geocoded = await geocodeAddress(customerAddress);
-      customerLat = geocoded.lat;
-      customerLng = geocoded.lng;
-    } catch {
-      // Natural geographic displacement from kitchen in metropolitan zone
-      customerLat = kitchenLat + 0.015;
-      customerLng = kitchenLng + 0.018;
-    }
+  const customerAddress = String(order.customerAddress || '').trim();
+  if (!Number.isFinite(customerLat) || !Number.isFinite(customerLng) || customerLat < -90 || customerLat > 90 || customerLng < -180 || customerLng > 180) {
+    if (!customerAddress) throw new Error('Customer coordinates or a verified address are required for tracking.');
+    const geocoded = await geocodeAddress(customerAddress);
+    customerLat = geocoded.lat; customerLng = geocoded.lng;
   }
-  const customerLocation: GeoLocation = {
-    lat: customerLat,
-    lng: customerLng,
-    formattedAddress: customerAddress
-  };
-
-  let routeResult;
-  try {
-    routeResult = await calculateDistanceAndDuration(kitchenLocation, customerLocation);
-  } catch {
-    const distKm = calculateHaversineDistanceKm(kitchenLat, kitchenLng, customerLat, customerLng);
-    routeResult = {
-      distanceKm: distKm,
-      distanceText: `${distKm} km`,
-      durationMinutes: Math.max(5, Math.round((distKm / 22) * 60) + 3),
-      points: [kitchenLocation, customerLocation]
-    };
-  }
-
-  const routePoints = routeResult.points && routeResult.points.length >= 2
-    ? routeResult.points
-    : [kitchenLocation, customerLocation];
-  const totalDistanceKm = routeResult.distanceKm;
-
-  // 1. Check for real active driver GPS telemetry recorded from courier app
-  const realTelemetry = getCourierLocationForOrder(order.id, order.courier?.id);
-  const isRecentTelemetry = realTelemetry && (Date.now() - new Date(realTelemetry.updatedAt).getTime() < 5 * 60 * 1000);
-
-  if (isRecentTelemetry) {
-    const remainingKm = calculateHaversineDistanceKm(realTelemetry.lat, realTelemetry.lng, customerLat, customerLng);
-    const remainingMins = Math.max(1, Math.round((remainingKm / 25) * 60));
-    const coveredKm = Math.max(0, totalDistanceKm - remainingKm);
-    const progress = Math.min(99, Math.max(5, Math.round((coveredKm / (totalDistanceKm || 1)) * 100)));
-
-    return {
-      location: {
-        lat: realTelemetry.lat,
-        lng: realTelemetry.lng,
-        heading: realTelemetry.heading || 0,
-        speed: realTelemetry.speed || 25,
-        updatedAt: realTelemetry.updatedAt
-      },
-      signalStatus: 'live',
-      remainingDistanceKm: remainingKm,
-      remainingDurationMinutes: remainingMins,
-      totalDistanceKm,
-      routeProgress: progress,
-      routePoints,
-      kitchenLocation,
-      customerLocation
-    };
-  }
-
-  // 2. Dynamically calculate courier movement along the real road route
-  const status = order.status || 'placed';
-  let progressRatio = 0.05;
-  if (status === 'placed') progressRatio = 0.05;
-  else if (status === 'confirmed') progressRatio = 0.15;
-  else if (status === 'preparing') progressRatio = 0.25;
-  else if (status === 'ready_for_pickup') progressRatio = 0.35;
-  else if (status === 'in_transit') {
-    const p = order.routeProgress != null ? Number(order.routeProgress) : 65;
-    progressRatio = Math.max(0.40, Math.min(0.96, p / 100));
-  } else if (status === 'delivered') {
-    progressRatio = 1.0;
-  }
-
-  let courierLat = kitchenLat;
-  let courierLng = kitchenLng;
-  let courierHeading = 45;
-  let courierSpeed = status === 'in_transit' ? 28 : (status === 'preparing' ? 12 : 0);
-
-  if (progressRatio >= 1.0) {
-    courierLat = customerLat;
-    courierLng = customerLng;
-    courierSpeed = 0;
-  } else if (progressRatio <= 0.05) {
-    courierLat = kitchenLat;
-    courierLng = kitchenLng;
-    courierSpeed = 0;
-  } else if (routePoints.length >= 2) {
-    const totalSegments = routePoints.length - 1;
-    const targetIndexFloat = progressRatio * totalSegments;
-    const segIdx = Math.min(totalSegments - 1, Math.floor(targetIndexFloat));
-    const segFrac = targetIndexFloat - segIdx;
-
-    const pA = routePoints[segIdx];
-    const pB = routePoints[segIdx + 1];
-
-    courierLat = pA.lat + (pB.lat - pA.lat) * segFrac;
-    courierLng = pA.lng + (pB.lng - pA.lng) * segFrac;
-
-    // Calculate heading (bearing) in degrees
-    const y = Math.sin((pB.lng - pA.lng) * Math.PI / 180) * Math.cos(pB.lat * Math.PI / 180);
-    const x = Math.cos(pA.lat * Math.PI / 180) * Math.sin(pB.lat * Math.PI / 180) -
-              Math.sin(pA.lat * Math.PI / 180) * Math.cos(pB.lat * Math.PI / 180) * Math.cos((pB.lng - pA.lng) * Math.PI / 180);
-    courierHeading = Math.round((Math.atan2(y, x) * 180 / Math.PI + 360) % 360);
-  }
-
-  const remainingDist = status === 'delivered'
-    ? 0
-    : Math.max(0.2, calculateHaversineDistanceKm(courierLat, courierLng, customerLat, customerLng));
-  const remainingMins = status === 'delivered'
-    ? 0
-    : Math.max(1, Math.round((remainingDist / 25) * 60));
-
+  const customerLocation: GeoLocation = { lat: customerLat, lng: customerLng, formattedAddress: customerAddress || undefined };
+  const realTelemetry = getCourierLocationForOrder(String(order.id || ''), order.courier?.id ? String(order.courier.id) : undefined);
+  const isRecentTelemetry = !!realTelemetry && Number.isFinite(Date.parse(realTelemetry.updatedAt)) && (Date.now() - Date.parse(realTelemetry.updatedAt) < 5 * 60 * 1000);
+  if (!isRecentTelemetry || !realTelemetry) throw new Error('Live courier GPS is unavailable for this order. Simulated courier positions are disabled.');
+  const routeResult = await calculateDistanceAndDuration({ lat: realTelemetry.lat, lng: realTelemetry.lng }, customerLocation);
+  const totalRoute = await calculateDistanceAndDuration(kitchenLocation, customerLocation);
   return {
-    location: {
-      lat: Math.round(courierLat * 1e6) / 1e6,
-      lng: Math.round(courierLng * 1e6) / 1e6,
-      heading: courierHeading,
-      speed: courierSpeed,
-      updatedAt: new Date().toISOString()
-    },
-    signalStatus: 'transmitting',
-    remainingDistanceKm: remainingDist,
-    remainingDurationMinutes: remainingMins,
-    totalDistanceKm,
-    routeProgress: Math.round(progressRatio * 100),
-    routePoints,
+    location: { lat: realTelemetry.lat, lng: realTelemetry.lng, heading: realTelemetry.heading ?? 0, speed: realTelemetry.speed ?? 0, updatedAt: realTelemetry.updatedAt },
+    signalStatus: 'live',
+    remainingDistanceKm: routeResult.distanceKm,
+    remainingDurationMinutes: routeResult.durationMinutes,
+    totalDistanceKm: totalRoute.distanceKm,
+    routeProgress: Math.max(0, Math.min(100, Math.round((1 - routeResult.distanceKm / Math.max(totalRoute.distanceKm, 0.1)) * 100))),
+    routePoints: routeResult.points,
     kitchenLocation,
     customerLocation
   };
 }
-
