@@ -582,6 +582,11 @@ export const CartDrawer: React.FC = () => {
                         </span>
                       </div>
                     )}
+                    {promoMessage?.isError && checkoutStep === 'checkout' && (
+                      <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700" role="alert">
+                        {promoMessage.text}
+                      </div>
+                    )}
                     {distanceError && fulfillmentType !== 'pickup' && (
                       <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700" role="alert">
                         <p>{distanceError}</p>
