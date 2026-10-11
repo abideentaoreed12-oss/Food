@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "engines": {
-    "node": "22.x"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "next dev -p 3000 -H 0.0.0.0",
@@ -28,7 +28,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "@vis.gl/react-google-maps": "^1.10.1",
-    "@zxing/browser": "^0.2.1",
+    "@zxing/browser": "0.1.5",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
