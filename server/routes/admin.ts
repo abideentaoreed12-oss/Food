@@ -758,8 +758,12 @@ router.get('/delivery-zones', async (req: AuthRequest, res: Response) => {
 router.post('/delivery-zones', async (req: AuthRequest, res: Response) => {
   try {
     const { name, code, city, country, currency, baseFee, perKmFee, radiusKm, surgeMultiplier, centerLat, centerLng, mapImageR2Url } = req.body;
-    if (!name || !code) {
-      return res.status(400).json({ success: false, error: 'Zone name and code are required' });
+    const numericFields = [baseFee, perKmFee, radiusKm, surgeMultiplier, centerLat, centerLng].map(Number);
+    if (!name || !code || !city || numericFields.some(value => !Number.isFinite(value)) ||
+        Number(baseFee) < 0 || Number(perKmFee) < 0 || Number(radiusKm) <= 0 ||
+        Number(surgeMultiplier) < 0 || Number(centerLat) < -90 || Number(centerLat) > 90 ||
+        Number(centerLng) < -180 || Number(centerLng) > 180) {
+      return res.status(400).json({ success: false, error: 'Provide zone name, code, city, valid fees, centre coordinates, radius and surge multiplier.' });
     }
 
     const id = `zone-${Date.now()}`;
@@ -775,15 +779,15 @@ router.post('/delivery-zones', async (req: AuthRequest, res: Response) => {
         id,
         name,
         code.toUpperCase().trim(),
-        city || 'Lagos',
-        country || 'Nigeria',
+        city,
+        country || '',
         currency || 'NGN',
-        Number(centerLat || 6.5244),
-        Number(centerLng || 3.3792),
-        Number(radiusKm || 10),
-        Number(baseFee || 1000),
-        Number(perKmFee || 200),
-        Number(surgeMultiplier || 1.0),
+        Number(centerLat),
+        Number(centerLng),
+        Number(radiusKm),
+        Number(baseFee),
+        Number(perKmFee),
+        Number(surgeMultiplier),
         mapImageR2Url || null,
         now
       ]
