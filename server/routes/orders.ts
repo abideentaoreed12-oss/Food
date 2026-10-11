@@ -112,10 +112,6 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
     if (fulfillmentType === 'pickup') {
       deliveryFee = 0;
     } else {
-      const preparationMinutes = Number(restaurant.deliveryTimeMin);
-      if (!Number.isFinite(preparationMinutes) || preparationMinutes < 0) {
-        return res.status(503).json({ success: false, error: 'Restaurant preparation time is not configured.' });
-      }
       try {
         if ((customerLat === undefined) !== (customerLng === undefined)) return res.status(400).json({ success: false, error: 'Customer latitude and longitude must be provided together.' });
         // Use the validated live coordinate pair when available; otherwise geocode the supplied address.
@@ -126,7 +122,7 @@ router.post('/', validateBody(CreateOrderSchema), async (req: AuthRequest, res: 
         distanceMetrics = await calculateRestaurantDistanceMetrics(restaurant, deliveryOrigin);
         if (!distanceMetrics.inDeliveryRadius) return res.status(400).json({ success: false, error: 'This address is outside the configured delivery radius for this restaurant.' });
         deliveryFee = distanceMetrics.estimatedDeliveryFee;
-        estimatedArrivalMinutes = preparationMinutes + distanceMetrics.durationMinutes;
+        estimatedArrivalMinutes = distanceMetrics.durationMinutes + 15;
       } catch (error) {
         console.error('[Order pricing] Delivery fee calculation failed:', error);
         return res.status(503).json({ success: false, error: 'Delivery pricing is temporarily unavailable. Please try again.' });
