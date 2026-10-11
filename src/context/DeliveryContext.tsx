@@ -1170,63 +1170,20 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   };
 
   const advanceOrderStatus = async (orderId: string, newStatus: OrderStatus, note?: string) => {
+    // Persist first. Do not display a status as successful if the API rejects it.
     const progressMap: Record<OrderStatus, number> = {
-      awaiting_payment: 0,
-      placed: 5,
-      confirmed: 15,
-      preparing: 30,
-      ready_for_pickup: 55,
-      in_transit: 80,
-      delivered: 100,
-      cancelled: 0
+      awaiting_payment: 0, placed: 5, confirmed: 15, preparing: 30,
+      ready_for_pickup: 55, in_transit: 80, delivered: 100, cancelled: 0
     };
     const etaMap: Record<OrderStatus, number> = {
-      awaiting_payment: 0,
-      placed: 35,
-      confirmed: 30,
-      preparing: 22,
-      ready_for_pickup: 15,
-      in_transit: 8,
-      delivered: 0,
-      cancelled: 0
+      awaiting_payment: 0, placed: 35, confirmed: 30, preparing: 22,
+      ready_for_pickup: 15, in_transit: 8, delivered: 0, cancelled: 0
     };
-
-    setOrders((prev) =>
-      prev.map((ord) => {
-        if (ord.id === orderId) {
-          const nowStr = formatOrderTime(new Date());
-          const descMap: Record<OrderStatus, string> = {
-            awaiting_payment: 'Awaiting payment confirmation',
-            placed: 'Order placed by customer',
-            confirmed: 'Restaurant accepted ticket',
-            preparing: 'Kitchen started cooking meal',
-            ready_for_pickup: 'Packaged & waiting for dispatch rider',
-            in_transit: 'Rider picked up meal & is en route',
-            delivered: 'Handover PIN verified & delivered to doorstep',
-            cancelled: 'Order was cancelled'
-          };
-          const nextHistory = [
-            ...(ord.statusHistory || []),
-            { status: newStatus, timestamp: nowStr, note: note || descMap[newStatus] }
-          ];
-
-          return {
-            ...ord,
-            status: newStatus,
-            routeProgress: progressMap[newStatus] ?? ord.routeProgress,
-            estimatedArrivalMinutes: etaMap[newStatus] ?? ord.estimatedArrivalMinutes,
-            statusHistory: nextHistory
-          };
-        }
-        return ord;
-      })
-    );
-
     await api.orders.updateStatus(orderId, newStatus, note, {
       routeProgress: progressMap[newStatus],
       estimatedArrivalMinutes: etaMap[newStatus]
-    } as any).catch(() => {});
-    await refreshData().catch(() => {});
+    } as any);
+    await refreshData();
   };
 
   const verifyOrderHandover = async (orderId: string, enteredPin: string): Promise<boolean> => {
