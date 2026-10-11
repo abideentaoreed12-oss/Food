@@ -139,7 +139,7 @@ export const LandingPage: React.FC = () => {
                 <div className="flex items-center gap-1">
                   <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                   <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
-                    {platformSettings['cms_hero_stat_rating'] || '4.8'}
+                    {platformSettings['cms_hero_stat_rating'] || '—'}
                   </span>
                   <span className="text-slate-500">(3,200+ reviews)</span>
                 </div>
@@ -445,7 +445,7 @@ export const LandingPage: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
             {(deliveryZones || []).map((zone: any) => {
               const zoneId = zone.id || zone.code;
-              const fee = zone.base_delivery_fee ?? zone.deliveryFee ?? 500;
+              const fee = zone.base_delivery_fee ?? zone.deliveryFee;
               return (
                 <div
                   key={zoneId}
@@ -461,7 +461,7 @@ export const LandingPage: React.FC = () => {
                     <MapPin className="w-4 h-4" />
                   </div>
                   <h4 className="text-xs font-bold text-slate-900 truncate">{zone.name}</h4>
-                  <p className="text-[11px] text-slate-400">{zone.city || 'Lagos'}</p>
+                  <p className="text-[11px] text-slate-400">{zone.city || 'City not configured'}</p>
                   <p className="text-[11px] font-mono font-bold text-[#FF5500] pt-1">{fee !== undefined && Number.isFinite(Number(fee)) ? `${currency === 'USD' ? ' Fee</p>
                 </div>
               );
@@ -473,7 +473,7 @@ export const LandingPage: React.FC = () => {
     </div>
   );
 };
- : '₦'}${Number(fee).toLocaleString()} Fee` : 'Fee unavailable'}
+ : '₦'}${Number.isFinite(Number(fee)) ? Number(fee).toLocaleString() : 'Fee unavailable'} Fee` : 'Fee unavailable'}
                           </option>
                         );
                       })}
@@ -516,7 +516,7 @@ export const LandingPage: React.FC = () => {
                 <div className="flex items-center gap-1">
                   <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                   <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
-                    {platformSettings['cms_hero_stat_rating'] || '4.8'}
+                    {platformSettings['cms_hero_stat_rating'] || '—'}
                   </span>
                   <span className="text-slate-500">(3,200+ reviews)</span>
                 </div>
@@ -783,7 +783,7 @@ export const LandingPage: React.FC = () => {
                   </div>
 
                   <p className="text-xs text-slate-500 truncate">
-                    {restaurant.cuisine || restaurant.tags?.[0] || 'Kitchen'} · {restaurant.address || 'Lagos'}
+                    {restaurant.cuisine || restaurant.tags?.[0] || 'Kitchen'} · {restaurant.address || 'Address unavailable'}
                   </p>
 
                   <div className="pt-2 flex items-center justify-between text-xs text-slate-600 border-t border-slate-100">
@@ -822,7 +822,7 @@ export const LandingPage: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
             {(deliveryZones || []).map((zone: any) => {
               const zoneId = zone.id || zone.code;
-              const fee = zone.base_delivery_fee ?? zone.deliveryFee ?? 500;
+              const fee = zone.base_delivery_fee ?? zone.deliveryFee;
               return (
                 <div
                   key={zoneId}
@@ -838,8 +838,8 @@ export const LandingPage: React.FC = () => {
                     <MapPin className="w-4 h-4" />
                   </div>
                   <h4 className="text-xs font-bold text-slate-900 truncate">{zone.name}</h4>
-                  <p className="text-[11px] text-slate-400">{zone.city || 'Lagos'}</p>
-                  <p className="text-[11px] font-mono font-bold text-[#FF5500] pt-1">{currency === 'USD' ? '$' : '₦'}{Number(fee).toLocaleString()} Fee</p>
+                  <p className="text-[11px] text-slate-400">{zone.city || 'City not configured'}</p>
+                  <p className="text-[11px] font-mono font-bold text-[#FF5500] pt-1">{currency === 'USD' ? '$' : '₦'}{Number.isFinite(Number(fee)) ? Number(fee).toLocaleString() : 'Fee unavailable'} Fee</p>
                 </div>
               );
             })}
@@ -850,7 +850,7 @@ export const LandingPage: React.FC = () => {
     </div>
   );
 };
- : '₦'}${Number(fee).toLocaleString()}` : 'Fee unavailable'} Fee</p>
+ : '₦'}${Number.isFinite(Number(fee)) ? Number(fee).toLocaleString() : 'Fee unavailable'}` : 'Fee unavailable'} Fee</p>
                 </div>
               );
             })}
@@ -861,7 +861,7 @@ export const LandingPage: React.FC = () => {
     </div>
   );
 };
- : '₦'}${Number(fee).toLocaleString()} Fee` : 'Fee unavailable'}
+ : '₦'}${Number.isFinite(Number(fee)) ? Number(fee).toLocaleString() : 'Fee unavailable'} Fee` : 'Fee unavailable'}
                           </option>
                         );
                       })}
@@ -904,7 +904,7 @@ export const LandingPage: React.FC = () => {
                 <div className="flex items-center gap-1">
                   <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                   <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
-                    {platformSettings['cms_hero_stat_rating'] || '4.8'}
+                    {platformSettings['cms_hero_stat_rating'] || '—'}
                   </span>
                   <span className="text-slate-500">(3,200+ reviews)</span>
                 </div>
@@ -1171,7 +1171,7 @@ export const LandingPage: React.FC = () => {
                   </div>
 
                   <p className="text-xs text-slate-500 truncate">
-                    {restaurant.cuisine || restaurant.tags?.[0] || 'Kitchen'} · {restaurant.address || 'Lagos'}
+                    {restaurant.cuisine || restaurant.tags?.[0] || 'Kitchen'} · {restaurant.address || 'Address unavailable'}
                   </p>
 
                   <div className="pt-2 flex items-center justify-between text-xs text-slate-600 border-t border-slate-100">
@@ -1210,7 +1210,7 @@ export const LandingPage: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
             {(deliveryZones || []).map((zone: any) => {
               const zoneId = zone.id || zone.code;
-              const fee = zone.base_delivery_fee ?? zone.deliveryFee ?? 500;
+              const fee = zone.base_delivery_fee ?? zone.deliveryFee;
               return (
                 <div
                   key={zoneId}
@@ -1226,8 +1226,8 @@ export const LandingPage: React.FC = () => {
                     <MapPin className="w-4 h-4" />
                   </div>
                   <h4 className="text-xs font-bold text-slate-900 truncate">{zone.name}</h4>
-                  <p className="text-[11px] text-slate-400">{zone.city || 'Lagos'}</p>
-                  <p className="text-[11px] font-mono font-bold text-[#FF5500] pt-1">{currency === 'USD' ? '$' : '₦'}{Number(fee).toLocaleString()} Fee</p>
+                  <p className="text-[11px] text-slate-400">{zone.city || 'City not configured'}</p>
+                  <p className="text-[11px] font-mono font-bold text-[#FF5500] pt-1">{currency === 'USD' ? '$' : '₦'}{Number.isFinite(Number(fee)) ? Number(fee).toLocaleString() : 'Fee unavailable'} Fee</p>
                 </div>
               );
             })}
