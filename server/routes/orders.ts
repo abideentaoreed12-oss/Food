@@ -6,6 +6,7 @@ import { d1Client } from '../db/d1Client.ts';
 import { AuthRequest, requireAuth } from '../middleware/auth.ts';
 import { validateBody } from '../middleware/validate.ts';
 import { calculateRestaurantDistanceMetrics } from '../utils/distance.ts';
+import { siteDataManager } from '../../lib/siteDataSnapshot.ts';
 
 const router = Router();
 router.use(requireAuth);

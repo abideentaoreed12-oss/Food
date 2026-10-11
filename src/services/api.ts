@@ -525,8 +525,6 @@ export const api = {
       request(`/api/admin/restaurants/${restaurantId}/toggle`, { method: 'PATCH' }),
     toggleBranchStatus: async (restaurantId: string) =>
       request(`/api/admin/restaurants/${restaurantId}/toggle`, { method: 'PATCH' }),
-    updateMenuItem: async (id: string, data: any) =>
-      request(`/api/admin/menu/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     createRestaurant: async (data: any) =>
       request('/api/admin/restaurants', { method: 'POST', body: JSON.stringify(data) }),
     assignRestaurant: async (restaurantId: string, ownerUserId: string | null) =>
