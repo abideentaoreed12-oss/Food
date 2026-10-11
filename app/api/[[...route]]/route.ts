@@ -1574,6 +1574,62 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: restaurant }, { status: 201 });
   }
 
+  // 15b. Admin Staff Creation
+  if (pathname === '/admin/staff') {
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 403 });
+    }
+    if (user.role === 'sub_admin') {
+      return NextResponse.json({ success: false, error: 'Sub Admins are not permitted to add or create staff members.' }, { status: 403 });
+    }
+    const { name, email, role, phone, password, restaurantId } = body;
+    if (!name || !email || !role) {
+      return NextResponse.json({ success: false, error: 'Name, email, and role are required' }, { status: 400 });
+    }
+    if (!['admin', 'restaurant', 'courier', 'sub_admin'].includes(role)) {
+      return NextResponse.json({ success: false, error: 'Unsupported staff role' }, { status: 400 });
+    }
+    if (role === 'restaurant' && !restaurantId) {
+      return NextResponse.json({ success: false, error: 'Select an existing restaurant or create the restaurant before assigning its account' }, { status: 400 });
+    }
+    if (role === 'restaurant') {
+      const restaurantCheck = await d1.query('SELECT id FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+      if (!restaurantCheck.success) return NextResponse.json({ success: false, error: 'Restaurant database is unavailable' }, { status: 503 });
+      if (!restaurantCheck.results?.length) return NextResponse.json({ success: false, error: 'Selected restaurant does not exist' }, { status: 404 });
+    }
+
+    const userId = `usr-staff-${Date.now()}`;
+    const now = new Date().toISOString();
+    const salt = bcrypt.genSaltSync(10);
+    const passwordHash = bcrypt.hashSync(password || 'StaffPass2026!', salt);
+
+    const d1Insert = await d1.query(
+      'INSERT INTO users (id, email, password_hash, name, role, phone, restaurant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        userId,
+        String(email).toLowerCase().trim(),
+        passwordHash,
+        String(name).trim(),
+        role,
+        phone || null,
+        role === 'restaurant' ? restaurantId : null,
+        now,
+        now
+      ]
+    );
+    if (!d1Insert.success) {
+      return NextResponse.json({ success: false, error: 'Staff account could not be saved to the authoritative database' }, { status: 503 });
+    }
+
+    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+    return NextResponse.json({
+      success: true,
+      message: `Staff member "${name}" registered permanently as ${role}`,
+      data: { id: userId, email: String(email).toLowerCase().trim(), name, role, restaurantId: role === 'restaurant' ? restaurantId : null }
+    }, { status: 201 });
+  }
+
   // 16. Admin Categories
   if (pathname === '/admin/categories') {
     const user = await getUser(req);
@@ -2396,6 +2452,59 @@ export async function PATCH(req: NextRequest) {
     siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
     return NextResponse.json({ success: true, message: 'Restaurant status toggled' });
   }
+
+  // 16b. Restaurant Assign to Merchant
+  const restAssignMatch = pathname.match(/^\/admin\/restaurants\/([^/]+)\/assign$/);
+  if (restAssignMatch) {
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    if (user.role === 'sub_admin') {
+      return NextResponse.json({ success: false, error: 'Only Super Admins can assign restaurants to merchants.' }, { status: 403 });
+    }
+    try {
+      const restaurantId = decodeURIComponent(restAssignMatch[1] || '').trim();
+      const ownerUserId = typeof body?.ownerUserId === 'string' && body.ownerUserId.trim() ? body.ownerUserId.trim() : null;
+      const restaurantRes = await d1.query('SELECT id, name, raw_json FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+      if (!restaurantRes.success) return NextResponse.json({ success: false, error: 'Restaurant database is unavailable' }, { status: 503 });
+      if (!restaurantRes.results?.length) return NextResponse.json({ success: false, error: 'Restaurant not found' }, { status: 404 });
+      let owner: any = null;
+      if (ownerUserId) {
+        const ownerRes = await d1.query('SELECT id, name, email, role, restaurant_id FROM users WHERE id = ? LIMIT 1', [ownerUserId]);
+        if (!ownerRes.success) return NextResponse.json({ success: false, error: 'User database is unavailable' }, { status: 503 });
+        owner = ownerRes.results?.[0];
+        if (!owner) return NextResponse.json({ success: false, error: 'Merchant account not found' }, { status: 404 });
+        if (owner.role !== 'restaurant') return NextResponse.json({ success: false, error: 'Selected user must have the Restaurant Merchant role first' }, { status: 400 });
+      }
+      const now = new Date().toISOString();
+      const restaurant = restaurantRes.results[0];
+      let rawJson: any = {};
+      try { rawJson = restaurant.raw_json ? JSON.parse(restaurant.raw_json) : {}; } catch { rawJson = {}; }
+      rawJson.ownerId = ownerUserId;
+      await d1.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(rawJson), restaurantId]);
+      if (!ownerUserId) {
+        await d1.query('UPDATE users SET restaurant_id = NULL, updated_at = ? WHERE role = ? AND restaurant_id = ?', [now, 'restaurant', restaurantId]);
+      } else {
+        if (owner.restaurant_id && owner.restaurant_id !== restaurantId) {
+          const previous = await d1.query('SELECT raw_json FROM restaurants WHERE id = ? LIMIT 1', [owner.restaurant_id]);
+          if (previous.results?.[0]) {
+            let previousJson: any = {};
+            try { previousJson = previous.results[0].raw_json ? JSON.parse(previous.results[0].raw_json) : {}; } catch { previousJson = {}; }
+            previousJson.ownerId = null;
+            await d1.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(previousJson), owner.restaurant_id]);
+          }
+        }
+        await d1.query('UPDATE users SET restaurant_id = ?, updated_at = ? WHERE id = ?', [restaurantId, now, ownerUserId]);
+        await d1.query('UPDATE users SET restaurant_id = NULL, updated_at = ? WHERE role = ? AND restaurant_id = ? AND id <> ?', [now, 'restaurant', restaurantId, ownerUserId]);
+      }
+      siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+      return NextResponse.json({ success: true, data: { restaurantId, ownerUserId }, message: ownerUserId ? 'Restaurant assigned to merchant' : 'Restaurant unassigned' });
+    } catch (error: any) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+  }
+
+
 
   // 17. Restaurant Item Update
   const restItemMatch = pathname.match(/^\/restaurants\/([^/]+)\/items\/([^/]+)$/);
