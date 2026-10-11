@@ -31,3 +31,11 @@ pnpm-debug.log*
 # System Files
 .DS_Store
 Thumbs.db
+
+# Local / generated data — never commit mock or snapshot JSON as source of truth
+data/
+**/last-known-good-site-data.json
+**/veyrang_db.json
+src/data/mockData.ts
+**/mockData.ts
+**/INITIAL_RESTAURANTS*

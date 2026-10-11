@@ -704,21 +704,33 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
-  // 24. Admin Categories
+  // 24. Admin Categories — normalized menu_categories only (auth required)
   if (pathname === '/admin/categories') {
-    const d1Res = await d1.query('SELECT * FROM menu_categories ORDER BY sort_order ASC');
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin' && user.role !== 'restaurant')) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+    const d1Res = await d1.query('SELECT * FROM menu_categories ORDER BY sort_order ASC', [], { cache: false });
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
-  // 25. Admin Menu
+  // 25. Admin Menu — normalized menu_items only (auth required, never mock/JSON embed)
   if (pathname === '/admin/menu') {
-    const d1Res = await d1.query('SELECT * FROM menu_items ORDER BY created_at DESC LIMIT 200');
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin' && user.role !== 'restaurant')) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+    const d1Res = await d1.query('SELECT * FROM menu_items ORDER BY created_at DESC LIMIT 500', [], { cache: false });
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
-  // 26. Admin Addons
+  // 26. Admin Addons — auth required
   if (pathname === '/admin/addons') {
-    const d1Res = await d1.query('SELECT * FROM addons ORDER BY created_at DESC');
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin' && user.role !== 'restaurant')) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+    const d1Res = await d1.query('SELECT * FROM addons ORDER BY created_at DESC', [], { cache: false });
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
