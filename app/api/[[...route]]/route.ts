@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
   if (pathname.startsWith('/admin/')) {
     const user = await getUser(req);
-    const restaurantReadPath = pathname === '/admin/menu' || pathname === '/admin/categories' || pathname === '/admin/addons';
+    const restaurantReadPath = pathname === '/admin/menu' || pathname === '/admin/categories' || pathname === '/admin/addons' || pathname === '/admin/orders';
     if (!user || (user.role !== 'admin' && user.role !== 'sub_admin' && !(user.role === 'restaurant' && restaurantReadPath))) {
       return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 401 });
     }
@@ -484,7 +484,7 @@ export async function GET(req: NextRequest) {
     const isAdmin = user.role === 'admin' || user.role === 'sub_admin';
     const isCourier = user.role === 'courier';
     let d1Res;
-    if (pathname === '/admin/orders' && !isAdmin) {
+    if (pathname === '/admin/orders' && !isAdmin && user.role !== 'restaurant') {
       return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 403 });
     }
     if (isAdmin) {
@@ -2189,11 +2189,12 @@ export async function PATCH(req: NextRequest) {
   const user = await getUser(req);
   if (pathname.startsWith('/admin/')) {
     const menuPath = pathname.startsWith('/admin/menu') || pathname.startsWith('/admin/categories') || pathname.startsWith('/admin/addons');
+    const restaurantOrderAction = /^\/admin\/orders\/[^/]+\/(?:assign|status)$/.test(pathname);
     const allowed =
       user &&
       (user.role === 'admin' ||
         user.role === 'sub_admin' ||
-        (user.role === 'restaurant' && menuPath));
+        (user.role === 'restaurant' && (menuPath || pathname === '/admin/orders' || restaurantOrderAction)));
     if (!allowed) {
       return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     }
@@ -2225,12 +2226,19 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Courier not found' }, { status: 404 });
     }
     const now = new Date().toISOString();
+    const previousStatus = String(order.status || '');
+    const nextStatus = previousStatus === 'ready_for_pickup' || previousStatus === 'confirmed' ? 'in_transit' : previousStatus;
     const upd = await d1.query(
-      'UPDATE orders SET courier_id = ?, status = CASE WHEN status = ? OR status = ? THEN ? ELSE status END, updated_at = ? WHERE id = ?',
-      [courierId, 'ready_for_pickup', 'confirmed', 'in_transit', now, order.id]
+      'UPDATE orders SET courier_id = ?, status = ?, updated_at = ? WHERE id = ?',
+      [courierId, nextStatus, now, order.id]
     );
-    if (!upd.success) return NextResponse.json({ success: false, error: 'Assignment failed in D1' }, { status: 503 });
-    return NextResponse.json({ success: true, data: { orderId: order.id, courierId, assignedAt: now } });
+    if (!upd || upd.success === false) return NextResponse.json({ success: false, error: 'Assignment failed in D1' }, { status: 503 });
+    const audit = await d1.query(
+      'INSERT INTO order_status_history (id, order_id, status, note, created_at) VALUES (?, ?, ?, ?, ?)',
+      [randomUUID(), order.id, nextStatus, 'Courier assigned: ' + courierId, now]
+    );
+    if (!audit || audit.success === false) return NextResponse.json({ success: false, error: 'Courier assigned, but the audit record could not be saved.' }, { status: 503 });
+    return NextResponse.json({ success: true, data: { orderId: order.id, courierId, status: nextStatus, assignedAt: now } });
   }
 
   // 1. Order Status Update
@@ -2265,11 +2273,12 @@ export async function PATCH(req: NextRequest) {
     const now = new Date().toISOString();
     const updateRes = await d1.query('UPDATE orders SET status = ?, updated_at = ? WHERE id = ?', [status, now, order.id]);
     if (!updateRes.success) return NextResponse.json({ success: false, error: 'Order status update failed' }, { status: 503 });
-    await d1.query(
+    const auditRes = await d1.query(
       'INSERT INTO order_status_history (id, order_id, status, note, created_at) VALUES (?, ?, ?, ?, ?)',
-      [`hist-${Date.now()}`, orderId, status, note || `Status changed to ${status}`, now]
-    ).catch(() => {});
-    return NextResponse.json({ success: true, data: { orderId, status, updatedAt: now } });
+      [randomUUID(), order.id, status, note || `Status changed to ${status}`, now]
+    );
+    if (!auditRes || auditRes.success === false) return NextResponse.json({ success: false, error: 'Status updated, but the audit record could not be saved.' }, { status: 503 });
+    return NextResponse.json({ success: true, data: { orderId: order.id, status, updatedAt: now } });
   }
 
   // 2. Settings Single Update
