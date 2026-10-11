@@ -495,16 +495,22 @@ const handleUpdateRestaurant = async (req: AuthRequest, res: Response) => {
       cuisine: updates.cuisine !== undefined ? updates.cuisine : (rawData.cuisine || current.cuisine),
       address: updates.address !== undefined ? updates.address : (rawData.address || current.address),
       tagline: updates.tagline !== undefined ? updates.tagline : (rawData.tagline || ''),
-      deliveryFee: updates.deliveryFee !== undefined ? Number(updates.deliveryFee) : (rawData.deliveryFee ?? current.delivery_fee ?? 1000),
-      deliveryTimeMin: updates.deliveryTimeMin !== undefined ? Number(updates.deliveryTimeMin) : (rawData.deliveryTimeMin ?? current.delivery_time_min ?? 20),
-      deliveryTimeMax: updates.deliveryTimeMax !== undefined ? Number(updates.deliveryTimeMax) : (rawData.deliveryTimeMax ?? current.delivery_time_max ?? 40),
-      rating: updates.rating !== undefined ? Number(updates.rating) : (rawData.rating ?? current.rating ?? 4.8),
+      deliveryFee: updates.deliveryFee !== undefined ? Number(updates.deliveryFee) : (rawData.deliveryFee ?? current.delivery_fee),
+      deliveryTimeMin: updates.deliveryTimeMin !== undefined ? Number(updates.deliveryTimeMin) : (rawData.deliveryTimeMin ?? current.delivery_time_min),
+      deliveryTimeMax: updates.deliveryTimeMax !== undefined ? Number(updates.deliveryTimeMax) : (rawData.deliveryTimeMax ?? current.delivery_time_max),
+      rating: updates.rating !== undefined ? Number(updates.rating) : (rawData.rating ?? current.rating ?? 0),
       bannerUrl: updates.bannerUrl !== undefined ? updates.bannerUrl : (updates.banner_r2_url || rawData.bannerUrl || rawData.banner_r2_url || current.banner_r2_url || ''),
       logoUrl: updates.logoUrl !== undefined ? updates.logoUrl : (rawData.logoUrl || ''),
       isOpen: updates.isOpen !== undefined ? Boolean(updates.isOpen) : (rawData.isOpen ?? (current.is_open === 1)),
       isBusyPaused: updates.isBusyPaused !== undefined ? Boolean(updates.isBusyPaused) : (rawData.isBusyPaused ?? (current.is_busy_paused === 1)),
-      zone: updates.zone !== undefined ? updates.zone : (rawData.zone || current.zone || 'Lekki Phase 1')
+      zone: updates.zone !== undefined ? updates.zone : (rawData.zone || current.zone || '')
     };
+
+    if (!Number.isFinite(Number(mergedData.deliveryFee)) || Number(mergedData.deliveryFee) < 0 ||
+        !Number.isFinite(Number(mergedData.deliveryTimeMin)) || Number(mergedData.deliveryTimeMin) < 0 ||
+        !Number.isFinite(Number(mergedData.deliveryTimeMax)) || Number(mergedData.deliveryTimeMax) < Number(mergedData.deliveryTimeMin)) {
+      return res.status(400).json({ success: false, error: 'Restaurant delivery fee and valid preparation times must be configured before saving.' });
+    }
 
     await d1Client.query(
       `UPDATE restaurants SET
