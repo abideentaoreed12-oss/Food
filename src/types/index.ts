@@ -243,6 +243,6 @@ export interface Order {
   statusHistory: OrderStatusEvent[];
   courier?: CourierInfo;
   routeProgress: number; // 0 to 100 percentage
-  estimatedArrivalMinutes: number;
+  estimatedArrivalMinutes: number | null;
   messages: ChatMessage[];
 }
