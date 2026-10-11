@@ -202,7 +202,7 @@ export const CustomerView: React.FC = () => {
                 <span className="text-xs font-mono font-bold text-orange-100">{activeOrder.shortId}</span>
               </div>
               <p className="text-xs text-white/90 font-medium mt-1">
-                Estimated arrival: <span className="font-bold font-mono text-white text-sm">{activeOrder.estimatedArrivalMinutes} min ETA</span>
+                Estimated arrival: <span className="font-bold font-mono text-white text-sm">{activeOrder.estimatedArrivalMinutes == null ? 'ETA unavailable' : `${activeOrder.estimatedArrivalMinutes} min ETA`}</span>
                 {' · '}{activeOrder.customerAddress}
               </p>
             </div>
