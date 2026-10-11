@@ -917,13 +917,15 @@ export async function GET(req: NextRequest) {
     const destLat = destLatStr ? parseFloat(destLatStr) : NaN;
     const destLng = destLngStr ? parseFloat(destLngStr) : NaN;
 
-    const origin = (!isNaN(originLat) && !isNaN(originLng))
-      ? { lat: originLat, lng: originLng }
-      : (originAddr || 'Lekki Phase 1, Lagos');
-
-    const destination = (!isNaN(destLat) && !isNaN(destLng))
-      ? { lat: destLat, lng: destLng }
-      : (destAddr || 'Victoria Island, Lagos');
+    const validPair = (lat: number, lng: number) => Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+    if (!validPair(originLat, originLng) && !originAddr?.trim()) {
+      return NextResponse.json({ success: false, error: 'Provide a valid origin coordinate pair or origin address.' }, { status: 400 });
+    }
+    if (!validPair(destLat, destLng) && !destAddr?.trim()) {
+      return NextResponse.json({ success: false, error: 'Provide a valid destination coordinate pair or destination address.' }, { status: 400 });
+    }
+    const origin = validPair(originLat, originLng) ? { lat: originLat, lng: originLng } : originAddr!.trim();
+    const destination = validPair(destLat, destLng) ? { lat: destLat, lng: destLng } : destAddr!.trim();
 
     try {
       const data = await calculateDistanceAndDuration(origin, destination);
