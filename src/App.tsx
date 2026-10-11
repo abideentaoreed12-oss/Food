@@ -126,31 +126,6 @@ const AppContent: React.FC = () => {
   );
 };
 
-class MapsErrorBoundary extends React.Component<
-  { children: React.ReactNode; fallback: React.ReactNode },
-  { hasError: boolean }
-> {
-  constructor(props: { children: React.ReactNode; fallback: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: any) {
-    console.warn('MapsErrorBoundary captured Google Maps error, rendering fallback:', error);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback;
-    }
-    return this.props.children;
-  }
-}
-
 export default function App({ initialRole }: { initialRole?: UserRole } = {}) {
   const [mounted, setMounted] = React.useState(false);
 
@@ -167,22 +142,5 @@ export default function App({ initialRole }: { initialRole?: UserRole } = {}) {
     </AuthProvider>
   );
 
-  // During SSR and initial client hydration render content directly so server and client match 100%
-  if (!mounted || !GOOGLE_MAPS_API_KEY) {
-    return content;
-  }
-
-  return (
-    <MapsErrorBoundary fallback={content}>
-      <APIProvider
-        apiKey={GOOGLE_MAPS_API_KEY}
-        libraries={['places', 'geometry']}
-        onError={(error) => {
-          console.warn('Google Maps APIProvider error:', error);
-        }}
-      >
-        {content}
-      </APIProvider>
-    </MapsErrorBoundary>
-  );
+  return content;
 }
