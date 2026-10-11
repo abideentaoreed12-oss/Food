@@ -404,17 +404,25 @@ export async function calculateRestaurantDistanceMetrics(
   // per-kilometre price, radius, or surge multiplier in application code.
   let matchedZone: any = null;
   const zoneRef = String(restaurant.zoneId ?? restaurant.deliveryZoneId ?? restaurant.zone ?? restaurant.delivery_zone ?? '').trim();
-  if (zoneRef) {
-    try {
-      const { d1Client } = await import('../db/d1Client.ts');
+  try {
+    const { d1Client } = await import('../db/d1Client.ts');
+    if (zoneRef) {
       const zoneResult = await d1Client.query(
         'SELECT * FROM delivery_zones WHERE is_active = 1 AND (id = ? OR code = ? OR name = ?) LIMIT 1',
         [zoneRef, zoneRef.toUpperCase(), zoneRef]
       );
       matchedZone = zoneResult.results?.[0] ?? null;
-    } catch (error) {
-      console.warn('[Restaurant Distance] Configured zone lookup failed:', error instanceof Error ? error.message : String(error));
     }
+    // If a restaurant has no explicit zone assignment, use a city match only when exactly one active zone exists there.
+    if (!matchedZone && !zoneRef && String(restaurant.city || '').trim()) {
+      const cityZones = await d1Client.query(
+        'SELECT * FROM delivery_zones WHERE is_active = 1 AND city = ?',
+        [String(restaurant.city).trim()]
+      );
+      if (cityZones.results?.length === 1) matchedZone = cityZones.results[0];
+    }
+  } catch (error) {
+    console.warn('[Restaurant Distance] Configured zone lookup failed:', error instanceof Error ? error.message : String(error));
   }
 
   let configuredRadius = Number(matchedZone?.radius_km ?? matchedZone?.max_radius_km ?? restaurant.deliveryRadiusKm ?? restaurant.delivery_radius_km);
