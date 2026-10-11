@@ -2385,13 +2385,31 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const itemId = decodeURIComponent(menuPatchMatch[1]);
+    const existingRes = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [itemId], { cache: false });
+    const existingItem = existingRes.results?.[0];
+    if (!existingItem) return NextResponse.json({ success: false, error: 'Menu item not found.' }, { status: 404 });
+    if (user.role === 'restaurant') {
+      const assigned = await d1.query('SELECT restaurant_id FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+      const rid = assigned.results?.[0]?.restaurant_id || user.restaurantId;
+      if (!rid || String(rid) !== String(existingItem.restaurant_id)) return NextResponse.json({ success: false, error: 'You can only edit your own dishes.' }, { status: 403 });
+    }
     const { name, price, categoryId, category, restaurantId, description, isAvailable, popular, imageR2Url, imageUrl } = body;
+    if (name !== undefined && (typeof name !== 'string' || !name.trim())) return NextResponse.json({ success: false, error: 'Dish name cannot be empty.' }, { status: 400 });
+    if (price !== undefined && (!Number.isFinite(Number(price)) || Number(price) <= 0)) return NextResponse.json({ success: false, error: 'Price must be greater than zero.' }, { status: 400 });
+    const targetRestaurantId = user.role === 'restaurant' ? String(existingItem.restaurant_id) : String(restaurantId ?? existingItem.restaurant_id);
+    const nextCategory = categoryId !== undefined ? String(categoryId) : category !== undefined ? String(category) : String(existingItem.category_id || '');
+    const categoryCheck = await d1.query('SELECT id FROM menu_categories WHERE id = ? AND restaurant_id = ? LIMIT 1', [nextCategory, targetRestaurantId], { cache: false });
+    if ((categoryId !== undefined || category !== undefined) && !categoryCheck.results?.[0]) return NextResponse.json({ success: false, error: 'Selected category does not belong to this restaurant.' }, { status: 400 });
+    if (restaurantId !== undefined && user.role !== 'restaurant') {
+      const restaurantCheck = await d1.query('SELECT id FROM restaurants WHERE id = ? LIMIT 1', [targetRestaurantId], { cache: false });
+      if (!restaurantCheck.results?.[0]) return NextResponse.json({ success: false, error: 'Restaurant not found.' }, { status: 404 });
+    }
     const updates: string[] = [];
     const values: any[] = [];
-    if (name !== undefined) { updates.push('name = ?'); values.push(name); }
+    if (name !== undefined) { updates.push('name = ?'); values.push(name.trim()); }
     if (price !== undefined) { updates.push('price = ?'); values.push(Number(price)); }
-    if (categoryId !== undefined || category !== undefined) { updates.push('category_id = ?'); values.push(categoryId ?? category); }
-    if (restaurantId !== undefined) { updates.push('restaurant_id = ?'); values.push(restaurantId); }
+    if (categoryId !== undefined || category !== undefined) { updates.push('category_id = ?'); values.push(nextCategory); }
+    if (restaurantId !== undefined && user.role !== 'restaurant') { updates.push('restaurant_id = ?'); values.push(targetRestaurantId); }
     if (description !== undefined) { updates.push('description = ?'); values.push(description); }
     if (isAvailable !== undefined) { updates.push('is_available = ?'); values.push(isAvailable ? 1 : 0); }
     if (popular !== undefined) { updates.push('popular = ?'); values.push(popular ? 1 : 0); }
