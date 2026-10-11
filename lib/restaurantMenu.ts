@@ -233,6 +233,9 @@ export function stripRestaurantDocument(parsed: any, row: any) {
   delete base.categories;
   delete base.menuItems;
   delete base.menu_items;
+  delete base.ownerId;
+  delete base.owner_id;
+  delete base.ownerUserId;
   return {
     ...base,
     id: String(row.id || base.id || ''),
