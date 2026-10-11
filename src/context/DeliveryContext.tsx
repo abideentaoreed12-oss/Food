@@ -497,11 +497,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
           setDeliveryZones([]);
         }
       } catch (snapshotError) {
-        // Do not keep showing a stale catalogue during an authoritative-data outage.
-        // The next scheduled poll will repopulate state once D1 is reachable again.
-        setRestaurants([]);
-        setDeliveryZones([]);
-        console.warn('Unable to refresh authoritative site data; clearing stale catalogue:', snapshotError);
+        // Keep the last successfully loaded authoritative snapshot during a temporary
+        // transport/API outage. Never replace it with fabricated data or clear the UI.
+        console.warn('Unable to refresh authoritative site data; preserving last successful snapshot:', snapshotError);
       }
 
       // Validate cart against fresh restaurant data
@@ -538,7 +536,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         if (serverOrders && Array.isArray(serverOrders)) {
           setOrders(serverOrders);
         } else {
-          setOrders([]);
+          // Preserve the last successful order list when the API is temporarily unavailable.
+          console.warn('Unable to refresh orders; preserving the last successful order list.');
         }
         const rawTxs = Array.isArray(txRes) ? txRes : (txRes?.data && Array.isArray(txRes.data) ? txRes.data : []);
         if (Array.isArray(rawTxs)) {
