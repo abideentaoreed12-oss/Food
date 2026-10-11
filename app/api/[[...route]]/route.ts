@@ -121,7 +121,10 @@ export async function GET(req: NextRequest) {
   if (pathname === '/site-data/public' || pathname === '/restaurants') {
     const snapshot = await siteDataManager.servePublicCatalogue();
     if (!snapshot) {
-      return NextResponse.json({ success: false, error: 'Catalogue is warming up. Please retry.', data: null }, { status: 503 });
+      return NextResponse.json(
+        { success: false, error: 'Catalogue is warming up. Please retry.', data: null },
+        { status: 503 }
+      );
     }
     if (pathname === '/restaurants') {
       return NextResponse.json({ success: true, data: snapshot.restaurants || [] });
@@ -143,11 +146,17 @@ export async function GET(req: NextRequest) {
     const user = await getUser(req);
     const isAdmin = user && (user.role === 'admin' || user.role === 'sub_admin');
     let d1Res: any = { results: [] };
-    try { d1Res = await d1.query('SELECT key, value FROM platform_settings'); } catch {}
+    try {
+      d1Res = await d1.query('SELECT key, value FROM platform_settings');
+    } catch {}
     const settingsMap: Record<string, any> = {};
     for (const row of d1Res.results || []) {
       if (!isAdmin && !PUBLIC_SETTINGS_WHITELIST.has(row.key)) continue;
-      try { settingsMap[row.key] = JSON.parse(row.value); } catch { settingsMap[row.key] = row.value; }
+      try {
+        settingsMap[row.key] = JSON.parse(row.value);
+      } catch {
+        settingsMap[row.key] = row.value;
+      }
     }
     return NextResponse.json({ success: true, data: settingsMap, settings: settingsMap });
   }
@@ -158,19 +167,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: { user } });
   }
 
-  // Delegate remaining GET routes to full handler module when present
-  try {
-    const mod = await import('../../../lib/apiCatchAllGet');
-    if (typeof mod.GET === 'function') return mod.GET(req);
-  } catch {}
-
   return NextResponse.json({ success: false, error: `Route not found: ${pathname}` }, { status: 404 });
 }
 
 export async function POST(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
   let body: any = {};
-  try { body = await req.json(); } catch { body = {}; }
+  try {
+    body = await req.json();
+  } catch {
+    body = {};
+  }
 
   if (pathname === '/auth/login') {
     const email = String(body.email || '').toLowerCase().trim();
@@ -219,38 +226,18 @@ export async function POST(req: NextRequest) {
     return res;
   }
 
-  try {
-    const mod = await import('../../../lib/apiCatchAllPost');
-    if (typeof mod.POST === 'function') {
-      // Re-create request with body already consumed - pass via clone is hard; modules expect full req
-      return mod.POST(req);
-    }
-  } catch {}
-
   return NextResponse.json({ success: false, error: `Route not found: ${pathname}` }, { status: 404 });
 }
 
-export async function PUT(req: NextRequest) {
-  try {
-    const mod = await import('../../../lib/apiCatchAllMutations');
-    if (typeof mod.PUT === 'function') return mod.PUT(req);
-  } catch {}
+export async function PUT() {
   return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
 }
 
-export async function PATCH(req: NextRequest) {
-  try {
-    const mod = await import('../../../lib/apiCatchAllMutations');
-    if (typeof mod.PATCH === 'function') return mod.PATCH(req);
-  } catch {}
+export async function PATCH() {
   return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
 }
 
-export async function DELETE(req: NextRequest) {
-  try {
-    const mod = await import('../../../lib/apiCatchAllMutations');
-    if (typeof mod.DELETE === 'function') return mod.DELETE(req);
-  } catch {}
+export async function DELETE() {
   return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
 }
 
