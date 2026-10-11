@@ -152,7 +152,8 @@ export async function GET(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
   if (pathname.startsWith('/admin/')) {
     const user = await getUser(req);
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+    const restaurantReadPath = pathname === '/admin/menu' || pathname === '/admin/categories' || pathname === '/admin/addons';
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin' && !(user.role === 'restaurant' && restaurantReadPath))) {
       return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 401 });
     }
   }
@@ -2202,6 +2203,7 @@ export async function PATCH(req: NextRequest) {
   const orderAssignMatch = pathname.match(/^\/(?:admin\/)?orders\/([^/]+)\/assign$/);
   if (orderAssignMatch) {
     if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (!['admin', 'sub_admin', 'restaurant'].includes(user.role)) return NextResponse.json({ success: false, error: 'Not authorized to assign couriers' }, { status: 403 });
     const orderId = decodeURIComponent(orderAssignMatch[1]);
     const courierId = String(body.courierId || body.courier_id || '').trim();
     if (!courierId) return NextResponse.json({ success: false, error: 'courierId is required' }, { status: 400 });
@@ -2235,9 +2237,11 @@ export async function PATCH(req: NextRequest) {
   const orderStatusMatch = pathname.match(/^\/(?:admin\/)?orders\/([^/]+)\/status$/);
   if (orderStatusMatch) {
     if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (!['admin', 'sub_admin', 'restaurant', 'courier'].includes(user.role)) return NextResponse.json({ success: false, error: 'Not authorized to update order status' }, { status: 403 });
     const orderId = decodeURIComponent(orderStatusMatch[1]);
     const { status, note } = body;
-    if (!status) return NextResponse.json({ success: false, error: 'status required' }, { status: 400 });
+    const allowedStatuses = ['placed', 'confirmed', 'preparing', 'ready_for_pickup', 'in_transit', 'delivered', 'cancelled'];
+    if (typeof status !== 'string' || !allowedStatuses.includes(status)) return NextResponse.json({ success: false, error: 'A valid order status is required.' }, { status: 400 });
     const isAdmin = user.role === 'admin' || user.role === 'sub_admin';
     const orderRes = await d1.query('SELECT id, restaurant_id, courier_id, status FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
     if (!orderRes.success) return NextResponse.json({ success: false, error: 'Order authorization could not be verified' }, { status: 503 });
@@ -2386,8 +2390,8 @@ export async function PATCH(req: NextRequest) {
   // 10. Menu Item Update
   const menuPatchMatch = pathname.match(/^\/admin\/menu\/([^/]+)$/);
   if (menuPatchMatch) {
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    if (!user || !['admin', 'sub_admin', 'restaurant'].includes(user.role)) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     }
     const itemId = decodeURIComponent(menuPatchMatch[1]);
     const existingRes = await d1.query('SELECT * FROM menu_items WHERE id = ? LIMIT 1', [itemId], { cache: false });
