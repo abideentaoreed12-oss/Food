@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
+import { randomUUID } from 'crypto';
 import { db } from '../db/index.ts';
 import { d1Client } from '../db/d1Client.ts';
 import { AuthRequest, requireAuth } from '../middleware/auth.ts';
@@ -354,4 +355,58 @@ router.post('/validate-promo', async (req: AuthRequest, res: Response) => {
   }
 });
 
+router.patch('/:id/status', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status, note } = req.body;
+    
+    // Auth: Admin or Restaurant Owner
+    const orderRes = await d1Client.query('SELECT restaurant_id FROM orders WHERE id = ? LIMIT 1', [id]);
+    const order = orderRes.results?.[0];
+    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+    
+    if (req.user!.role !== 'admin' && req.user!.role !== 'sub_admin') {
+      if (req.user!.role === 'restaurant' && req.user!.restaurantId !== order.restaurant_id) {
+        return res.status(403).json({ success: false, error: 'Not authorized' });
+      }
+    }
+    
+    const now = new Date().toISOString();
+    await d1Client.query('UPDATE orders SET status = ?, updated_at = ? WHERE id = ?', [status, now, id]);
+    
+    // Log history (simplified, needs better implementation)
+    await d1Client.query('INSERT INTO audit_logs (id, user_id, action, resource, resourceId, created_at) VALUES (?, ?, ?, ?, ?, ?)', [randomUUID(), req.user!.id, 'ORDER_STATUS_UPDATED', 'ORDER', id, now]);
+    
+    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+    return res.json({ success: true, message: 'Status updated' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.patch('/:id/courier', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { courierId } = req.body;
+    
+    // Auth: Admin or Restaurant Owner
+    const orderRes = await d1Client.query('SELECT restaurant_id FROM orders WHERE id = ? LIMIT 1', [id]);
+    const order = orderRes.results?.[0];
+    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+    
+    if (req.user!.role !== 'admin' && req.user!.role !== 'sub_admin') {
+      if (req.user!.role === 'restaurant' && req.user!.restaurantId !== order.restaurant_id) {
+        return res.status(403).json({ success: false, error: 'Not authorized' });
+      }
+    }
+    
+    await d1Client.query('UPDATE orders SET courier_id = ?, updated_at = ? WHERE id = ?', [courierId, new Date().toISOString(), id]);
+    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+    return res.json({ success: true, message: 'Courier assigned' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
+

@@ -2238,54 +2238,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Driver approved successfully' });
   }
 
-  // Admin Restaurant Assign to Merchant
-  const restAssignMatch = pathname.match(/^\/admin\/restaurants\/([^/]+)\/assign$/);
-  if (restAssignMatch) {
-    if (user.role === 'sub_admin') {
-      return NextResponse.json({ success: false, error: 'Only Super Admins can assign restaurants to merchants.' }, { status: 403 });
-    }
-    const restaurantId = decodeURIComponent(restAssignMatch[1]);
-    const ownerUserId = typeof body?.ownerUserId === 'string' && body.ownerUserId.trim() ? body.ownerUserId.trim() : null;
-    const restaurantRes = await d1.query('SELECT id, name, raw_json FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
-    if (!restaurantRes.success || !restaurantRes.results?.length) {
-      return NextResponse.json({ success: false, error: 'Restaurant not found' }, { status: 404 });
-    }
-    let owner: any = null;
-    if (ownerUserId) {
-      const ownerRes = await d1.query('SELECT id, name, email, role, restaurant_id FROM users WHERE id = ? LIMIT 1', [ownerUserId]);
-      owner = ownerRes.results?.[0];
-      if (!owner) return NextResponse.json({ success: false, error: 'Merchant account not found' }, { status: 404 });
-      if (owner.role !== 'restaurant') {
-        return NextResponse.json({ success: false, error: 'Selected user must have the Restaurant Merchant role first' }, { status: 400 });
-      }
-    }
-    const now = new Date().toISOString();
-    const restaurant = restaurantRes.results[0];
-    let rawJson: any = {};
-    try { rawJson = restaurant.raw_json ? JSON.parse(restaurant.raw_json) : {}; } catch { rawJson = {}; }
-    rawJson.ownerId = ownerUserId;
-    await d1.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(rawJson), restaurantId]);
-    if (!ownerUserId) {
-      await d1.query('UPDATE users SET restaurant_id = NULL, updated_at = ? WHERE role = ? AND restaurant_id = ?', [now, 'restaurant', restaurantId]);
-    } else {
-      if (owner.restaurant_id && owner.restaurant_id !== restaurantId) {
-        const previous = await d1.query('SELECT raw_json FROM restaurants WHERE id = ? LIMIT 1', [owner.restaurant_id]);
-        if (previous.results?.[0]) {
-          let previousJson: any = {};
-          try { previousJson = previous.results[0].raw_json ? JSON.parse(previous.results[0].raw_json) : {}; } catch { previousJson = {}; }
-          previousJson.ownerId = null;
-          await d1.query('UPDATE restaurants SET raw_json = ? WHERE id = ?', [JSON.stringify(previousJson), owner.restaurant_id]);
-        }
-      }
-      await d1.query('UPDATE users SET restaurant_id = ?, updated_at = ? WHERE id = ?', [restaurantId, now, ownerUserId]);
-      await d1.query('UPDATE users SET restaurant_id = NULL, updated_at = ? WHERE role = ? AND restaurant_id = ? AND id <> ?', [now, 'restaurant', restaurantId, ownerUserId]);
-    }
-    await d1.query(
-      'INSERT INTO audit_logs (id, user_id, user_email, user_role, action, resource, resource_id, details, ip, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [randomUUID(), user.id, user.email, user.role, ownerUserId ? 'ADMIN_RESTAURANT_ASSIGNED' : 'ADMIN_RESTAURANT_UNASSIGNED', 'RESTAURANT', restaurantId, JSON.stringify({ restaurantName: restaurant.name, ownerUserId }), req.headers.get('x-forwarded-for') || '127.0.0.1', now]
-    ).catch(() => {});
-    return NextResponse.json({ success: true, data: { restaurantId, ownerUserId }, message: ownerUserId ? 'Restaurant assigned to merchant' : 'Restaurant unassigned' });
-  }
+
 
   // 8. Restaurant Busy Mode Toggle
   const busyMatch = pathname.match(/^\/(?:admin\/)?restaurants\/([^/]+)\/busy-mode$/);

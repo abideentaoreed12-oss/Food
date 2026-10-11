@@ -196,6 +196,98 @@ router.post('/calculate-distance', validateBody(CalculateDistanceSchema), async 
   }
 });
 
+// Merchant-only: Add/Update/Delete food items
+router.post('/menu', requireAuth, async (req: AuthRequest, res: Response) => {
+  if (req.user?.role !== 'restaurant' && req.user?.role !== 'admin' && req.user?.role !== 'sub_admin') {
+    return res.status(403).json({ success: false, error: 'Unauthorized' });
+  }
+  
+  try {
+    const { restaurantId, name, price, description, category, imageUrl, prepTimeMin, calories } = req.body;
+    
+    // Authorization check for merchants
+    if (req.user.role === 'restaurant' && req.user.restaurantId !== restaurantId) {
+      return res.status(403).json({ success: false, error: 'Cannot manage another restaurant’s menu' });
+    }
+
+    const itemId = `m-${Date.now()}`;
+    const now = new Date().toISOString();
+    
+    await d1Client.query(
+      `INSERT INTO menu_items (id, restaurant_id, category_id, name, description, price, is_available, image_r2_url, created_at, prep_time_min, calories)
+       VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
+      [itemId, restaurantId, category || 'Main', name, description || '', Number(price), imageUrl || '', now, prepTimeMin || 20, calories || 450]
+    );
+
+    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+    return res.status(201).json({ success: true, data: { id: itemId } });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.patch('/menu/:itemId', requireAuth, async (req: AuthRequest, res: Response) => {
+  if (req.user?.role !== 'restaurant' && req.user?.role !== 'admin' && req.user?.role !== 'sub_admin') {
+    return res.status(403).json({ success: false, error: 'Unauthorized' });
+  }
+
+  try {
+    const { itemId } = req.params;
+    const { name, price, description, isAvailable, imageUrl, prepTimeMin, calories } = req.body;
+    
+    const itemRes = await d1Client.query('SELECT restaurant_id FROM menu_items WHERE id = ? LIMIT 1', [itemId]);
+    const item = itemRes.results?.[0];
+    if (!item) return res.status(404).json({ success: false, error: 'Item not found' });
+    
+    if (req.user.role === 'restaurant' && req.user.restaurantId !== item.restaurant_id) {
+      return res.status(403).json({ success: false, error: 'Cannot manage another restaurant’s menu' });
+    }
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    if (name !== undefined) { updates.push('name = ?'); values.push(name); }
+    if (price !== undefined) { updates.push('price = ?'); values.push(Number(price)); }
+    if (description !== undefined) { updates.push('description = ?'); values.push(description); }
+    if (isAvailable !== undefined) { updates.push('is_available = ?'); values.push(isAvailable ? 1 : 0); }
+    if (imageUrl !== undefined) { updates.push('image_r2_url = ?'); values.push(imageUrl); }
+    if (prepTimeMin !== undefined) { updates.push('prep_time_min = ?'); values.push(Number(prepTimeMin)); }
+    if (calories !== undefined) { updates.push('calories = ?'); values.push(Number(calories)); }
+
+    if (updates.length > 0) {
+      values.push(itemId);
+      await d1Client.query(`UPDATE menu_items SET ${updates.join(', ')} WHERE id = ?`, values);
+      siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+    }
+    return res.json({ success: true, message: 'Menu item updated' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete('/menu/:itemId', requireAuth, async (req: AuthRequest, res: Response) => {
+  if (req.user?.role !== 'restaurant' && req.user?.role !== 'admin' && req.user?.role !== 'sub_admin') {
+    return res.status(403).json({ success: false, error: 'Unauthorized' });
+  }
+
+  try {
+    const { itemId } = req.params;
+    const itemRes = await d1Client.query('SELECT restaurant_id FROM menu_items WHERE id = ? LIMIT 1', [itemId]);
+    const item = itemRes.results?.[0];
+    if (!item) return res.status(404).json({ success: false, error: 'Item not found' });
+    
+    if (req.user.role === 'restaurant' && req.user.restaurantId !== item.restaurant_id) {
+      return res.status(403).json({ success: false, error: 'Cannot manage another restaurant’s menu' });
+    }
+
+    await d1Client.query('DELETE FROM menu_items WHERE id = ?', [itemId]);
+    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+    return res.json({ success: true, message: 'Menu item deleted' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
