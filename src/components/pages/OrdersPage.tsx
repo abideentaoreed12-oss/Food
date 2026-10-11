@@ -52,45 +52,93 @@ export const OrdersPage: React.FC = () => {
   const [handoverBusy, setHandoverBusy] = useState(false);
   const [handoverUrl, setHandoverUrl] = useState('');
   const [handoverNotice, setHandoverNotice] = useState('');
+  const [scanTab, setScanTab] = useState<'qr' | 'camera'>('qr');
+  const [manualCode, setManualCode] = useState('');
+  const [manualBusy, setManualBusy] = useState(false);
+  const [manualSuccess, setManualSuccess] = useState('');
 
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
-  const scanTimerRef = React.useRef<number | null>(null);
+  const zxingControlsRef = React.useRef<any>(null);
+  const qrContainerRef = React.useRef<HTMLDivElement | null>(null);
 
   const stopScanner = () => {
-    if (scanTimerRef.current !== null) {
-      window.clearInterval(scanTimerRef.current);
-      scanTimerRef.current = null;
+    if (zxingControlsRef.current) {
+      try { zxingControlsRef.current.stop(); } catch {}
+      zxingControlsRef.current = null;
     }
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     setCameraReady(false);
   };
 
-  const openScanner = async (order: Order) => {
-    setScanOrder(order);
-    setCameraError('');
-    setScanValue('');
-    setHandoverUrl('');
-    setHandoverNotice('');
-    const paymentConfirmed = String(order.paymentStatus || '').toLowerCase() === 'paid';
-    if (!paymentConfirmed) {
-      setHandoverNotice('QR handover is locked until payment is confirmed by the server.');
-      setHandoverBusy(false);
+  // Render QR SVG whenever handoverUrl is generated
+  useEffect(() => {
+    if (handoverUrl && qrContainerRef.current) {
+      import('@zxing/browser').then(({ BrowserQRCodeSvgWriter }) => {
+        try {
+          const writer = new BrowserQRCodeSvgWriter();
+          const svg = writer.write(handoverUrl, 200, 200);
+          if (qrContainerRef.current) {
+            qrContainerRef.current.innerHTML = '';
+            qrContainerRef.current.appendChild(svg);
+          }
+        } catch (e) {
+          console.error('Failed to generate QR SVG', e);
+        }
+      }).catch(() => {});
+    }
+  }, [handoverUrl, scanTab]);
+
+  const handleScannedResult = (raw: string) => {
+    if (!raw) return;
+    setScanValue(raw);
+    stopScanner();
+
+    // 1. Extract handover token from URL or raw string
+    const match = raw.match(/\/handover\/([A-Za-z0-9_-]{30,100})/);
+    if (match && match[1]) {
+      window.location.assign(`/handover/${encodeURIComponent(match[1])}`);
       return;
     }
-    setHandoverBusy(true);
-    try {
-      const issued: any = await (await import('../../services/api')).api.orders.issueHandoverQr(order.id);
-      const data = issued?.data || issued;
-      if (data?.url) setHandoverUrl(String(data.url));
-    } catch (error: any) {
-      setHandoverNotice(error?.message || 'Could not create a secure QR for this order. Try again later.');
-    } finally {
-      setHandoverBusy(false);
+
+    // 2. Direct token string
+    if (/^[A-Za-z0-9_-]{30,100}$/.test(raw.trim())) {
+      window.location.assign(`/handover/${encodeURIComponent(raw.trim())}`);
+      return;
     }
+
+    // 3. Numeric Handover PIN (4-8 digits)
+    if (scanOrder && /^\d{4,8}$/.test(raw.trim())) {
+      setManualBusy(true);
+      import('../../services/api').then(({ api }) => {
+        api.orders.verifyHandover(scanOrder.id, raw.trim()).then((res: any) => {
+          if (res?.success) {
+            setManualSuccess('Delivery verified and confirmed!');
+            setTimeout(() => {
+              setScanOrder(null);
+              window.location.reload();
+            }, 1200);
+          } else {
+            setCameraError(res?.error || 'Invalid handover code.');
+          }
+        }).catch((err: any) => {
+          setCameraError(err?.message || 'Handover verification failed.');
+        }).finally(() => {
+          setManualBusy(false);
+        });
+      });
+      return;
+    }
+
+    setCameraError('Scanned code not recognized. Please scan a valid Veyrang handover QR or enter the 4-digit PIN below.');
+  };
+
+  const startCamera = async () => {
+    setCameraError('');
+    setScanValue('');
     if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError('Camera access requires HTTPS and a supported browser. Open VeyraNG in Safari or Chrome over a secure connection.');
+      setCameraError('Camera access requires a supported browser and HTTPS.');
       return;
     }
     try {
@@ -99,56 +147,121 @@ export const OrdersPage: React.FC = () => {
         video: { facingMode: { ideal: 'environment' } }
       });
       streamRef.current = stream;
-      window.requestAnimationFrame(() => {
-        if (!videoRef.current || !streamRef.current) return;
-        videoRef.current.srcObject = streamRef.current;
-        void videoRef.current.play().then(async () => {
-          setCameraReady(true);
-          // ZXing supports iOS Safari and browsers without BarcodeDetector.
-          const { BrowserMultiFormatReader } = await import('@zxing/browser');
-          const reader = new BrowserMultiFormatReader();
-          scanTimerRef.current = window.setInterval(async () => {
-            if (!videoRef.current || videoRef.current.readyState < 2 || !streamRef.current) return;
+      if (!videoRef.current) return;
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
+      setCameraReady(true);
+
+      // Preferred: Native BarcodeDetector if available
+      if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
+        try {
+          const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+          const intervalId = window.setInterval(async () => {
+            if (!videoRef.current || videoRef.current.readyState < 2) return;
             try {
-              const result = await reader.decodeOnceFromVideoElement(videoRef.current);
-              const raw = String(result.getText() || '');
-              if (!raw) return;
-              let scannedToken = '';
-              try {
-                const parsed = new URL(raw);
-                if (parsed.host === window.location.host && /^\/handover\/[A-Za-z0-9_-]{30,100}\/?$/.test(parsed.pathname)) {
-                  scannedToken = parsed.pathname.split('/').filter(Boolean)[1] || '';
-                }
-              } catch { /* not a URL */ }
-              setScanValue(raw);
-              if (scanTimerRef.current !== null) window.clearInterval(scanTimerRef.current);
-              scanTimerRef.current = null;
-              streamRef.current?.getTracks().forEach((track) => track.stop());
-              streamRef.current = null;
-              setCameraReady(false);
-              if (scannedToken) {
-                window.location.assign(`/handover/${encodeURIComponent(scannedToken)}`);
-              } else {
-                setCameraError('This QR is not a valid VeyraNG handover link. Check that you are scanning the QR generated for this order.');
+              const barcodes = await detector.detect(videoRef.current);
+              if (barcodes.length > 0 && barcodes[0].rawValue) {
+                window.clearInterval(intervalId);
+                handleScannedResult(barcodes[0].rawValue);
               }
-            } catch {
-              // No QR in this frame yet; keep scanning.
-            }
-          }, 500);
-        }).catch(() => setCameraError('Could not start the camera preview. Check camera permission and try again.'));
+            } catch {}
+          }, 350);
+          zxingControlsRef.current = { stop: () => window.clearInterval(intervalId) };
+          return;
+        } catch {}
+      }
+
+      // Universal Fallback: @zxing/browser continuous decoder
+      const { BrowserQRCodeReader } = await import('@zxing/browser');
+      const reader = new BrowserQRCodeReader();
+      const controls = await reader.decodeFromVideoElement(videoRef.current, (result) => {
+        if (result) {
+          controls.stop();
+          handleScannedResult(result.getText());
+        }
       });
-    } catch (error) {
-      const name = (error as { name?: string })?.name;
+      zxingControlsRef.current = controls;
+    } catch (error: any) {
+      const name = error?.name;
       setCameraError(name === 'NotAllowedError'
-        ? 'Camera permission was denied. Allow camera access in your browser settings and try again.'
-        : 'Unable to access the camera. Check that no other app is using it, then try again.');
+        ? 'Camera permission denied. Allow camera access in settings or enter the code manually below.'
+        : 'Unable to access camera. Check device permissions or enter code manually.');
       stopScanner();
     }
   };
 
+  const openScanner = async (order: Order) => {
+    setScanOrder(order);
+    setCameraError('');
+    setScanValue('');
+    setHandoverUrl('');
+    setHandoverNotice('');
+    setManualCode('');
+    setManualSuccess('');
+    setScanTab('qr'); // Default to showing the QR code and PIN first
+
+    const isPaid = ['paid', 'completed'].includes(String(order.paymentStatus || '').toLowerCase());
+    if (!isPaid) {
+      setHandoverNotice('QR handover is unlocked after payment is confirmed.');
+      setHandoverBusy(false);
+      return;
+    }
+
+    setHandoverBusy(true);
+    try {
+      const { api } = await import('../../services/api');
+      const issued: any = await api.orders.issueHandoverQr(order.id);
+      const data = issued?.data || issued;
+      if (data?.url) setHandoverUrl(String(data.url));
+    } catch (error: any) {
+      setHandoverNotice(error?.message || 'Could not load secure QR link. You can use your 4-digit PIN below.');
+    } finally {
+      setHandoverBusy(false);
+    }
+  };
+
+  const handleManualVerify = async () => {
+    if (!scanOrder || !manualCode.trim()) return;
+    setManualBusy(true);
+    setCameraError('');
+    setManualSuccess('');
+    try {
+      const trimmed = manualCode.trim();
+      const tokenMatch = trimmed.match(/\/handover\/([A-Za-z0-9_-]{30,100})/);
+      if (tokenMatch && tokenMatch[1]) {
+        window.location.assign(`/handover/${encodeURIComponent(tokenMatch[1])}`);
+        return;
+      }
+      if (/^[A-Za-z0-9_-]{30,100}$/.test(trimmed)) {
+        window.location.assign(`/handover/${encodeURIComponent(trimmed)}`);
+        return;
+      }
+      if (/^\d{4,8}$/.test(trimmed)) {
+        const { api } = await import('../../services/api');
+        const res: any = await api.orders.verifyHandover(scanOrder.id, trimmed);
+        if (res?.success) {
+          setManualSuccess('Delivery verified and confirmed!');
+          setTimeout(() => {
+            stopScanner();
+            setScanOrder(null);
+            window.location.reload();
+          }, 1200);
+          return;
+        } else {
+          setCameraError(res?.error || 'Invalid handover code.');
+        }
+        return;
+      }
+      setCameraError('Enter a valid 4-digit PIN or paste the handover link.');
+    } catch (err: any) {
+      setCameraError(err?.message || 'Handover verification failed. Check code and retry.');
+    } finally {
+      setManualBusy(false);
+    }
+  };
+
   useEffect(() => () => {
-    if (scanTimerRef.current !== null) window.clearInterval(scanTimerRef.current);
-    streamRef.current?.getTracks().forEach((track) => track.stop());
+    stopScanner();
   }, []);
 
   // Receipt/order ETA is a countdown from the server-created order timestamp,
@@ -440,8 +553,8 @@ export const OrdersPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => void openScanner(order)}
-                    disabled={String(order.paymentStatus || '').toLowerCase() !== 'paid'}
-                    title={String(order.paymentStatus || '').toLowerCase() !== 'paid' ? 'QR handover is available only after payment is confirmed' : 'Scan QR code for this order'}
+                    disabled={!['paid', 'completed'].includes(String(order.paymentStatus || '').toLowerCase())}
+                    title={!['paid', 'completed'].includes(String(order.paymentStatus || '').toLowerCase()) ? 'Handover QR is available once payment is confirmed' : 'Scan or view QR code for this order'}
                     className="py-2.5 px-3 rounded-xl border border-orange-200 bg-orange-50 text-[#FF5500] text-xs font-bold hover:bg-orange-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label={`Scan QR code for order ${order.shortId}`}
                   >
@@ -791,37 +904,219 @@ export const OrdersPage: React.FC = () => {
 
       {scanOrder && (
         <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="food-qr-title">
-          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-2xl">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-2xl flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 bg-orange-50/70 px-5 py-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#FF5500] text-white"><QrCode className="h-5 w-5" /></div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#FF5500] text-white">
+                  <QrCode className="h-5 w-5" />
+                </div>
                 <div>
-                  <h2 id="food-qr-title" className="font-extrabold text-slate-900">Scan Your Food</h2>
-                  <p className="text-xs text-slate-500">Order {scanOrder.shortId}</p>
+                  <h2 id="food-qr-title" className="font-extrabold text-slate-900">Scan & Handover</h2>
+                  <p className="text-xs text-slate-500 font-mono">Order {scanOrder.shortId}</p>
                 </div>
               </div>
-              <button type="button" onClick={() => { stopScanner(); setScanOrder(null); }} className="rounded-xl p-2 text-slate-500 hover:bg-white" aria-label="Close scanner"><X className="h-5 w-5" /></button>
+              <button
+                type="button"
+                onClick={() => {
+                  stopScanner();
+                  setScanOrder(null);
+                }}
+                className="rounded-xl p-2 text-slate-500 hover:bg-white cursor-pointer"
+                aria-label="Close scanner"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <div className="space-y-4 p-5">
-              <div className="relative aspect-square overflow-hidden rounded-2xl bg-slate-950">
-                <video ref={videoRef} className="h-full w-full object-cover" playsInline muted aria-label="Camera QR scanner" />
-                {!cameraReady && !cameraError && !scanValue && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white">
-                    <Camera className="h-10 w-10 text-orange-300" />
-                    <p className="text-sm font-semibold">Starting camera…</p>
+
+            {/* Mode Switch Tabs */}
+            <div className="grid grid-cols-2 p-1.5 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700">
+              <button
+                type="button"
+                onClick={() => {
+                  stopScanner();
+                  setScanTab('qr');
+                }}
+                className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  scanTab === 'qr'
+                    ? 'bg-white text-[#FF5500] shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <QrCode className="w-4 h-4" />
+                <span>Show Order QR & PIN</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setScanTab('camera');
+                  startCamera();
+                }}
+                className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  scanTab === 'camera'
+                    ? 'bg-white text-[#FF5500] shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Camera className="w-4 h-4" />
+                <span>Scan Camera</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="space-y-4 p-5 overflow-y-auto">
+              {/* TAB 1: Display Order QR & PIN (To be shown to delivery courier or scanned) */}
+              {scanTab === 'qr' && (
+                <div className="space-y-4 text-center">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                    <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Official Delivery Handover Code
+                    </p>
+
+                    {/* SVG QR Code Container */}
+                    <div className="flex justify-center items-center py-2">
+                      {handoverBusy ? (
+                        <div className="h-48 w-48 flex items-center justify-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
+                          Generating QR code…
+                        </div>
+                      ) : (
+                        <div
+                          ref={qrContainerRef}
+                          className="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs flex items-center justify-center"
+                        />
+                      )}
+                    </div>
+
+                    {/* 4-digit Handover PIN Display */}
+                    <div className="p-3 bg-white rounded-xl border border-orange-200/80 inline-block w-full text-center">
+                      <span className="text-xs text-slate-500 block mb-0.5 font-medium">Security Handover PIN</span>
+                      <span className="font-mono text-2xl font-black tracking-widest text-[#FF5500]">
+                        {scanOrder.handoverPin || '— — — —'}
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Show this QR code or 4-digit PIN to your rider upon arrival to confirm food handover.
+                    </p>
                   </div>
-                )}
-                {cameraReady && <div className="pointer-events-none absolute inset-8 rounded-2xl border-2 border-[#FF5500] shadow-[0_0_0_999px_rgba(0,0,0,0.15)]"><span className="absolute -top-1 -left-1 h-5 w-5 border-l-4 border-t-4 border-orange-400" /><span className="absolute -top-1 -right-1 h-5 w-5 border-r-4 border-t-4 border-orange-400" /><span className="absolute -bottom-1 -left-1 h-5 w-5 border-b-4 border-l-4 border-orange-400" /><span className="absolute -bottom-1 -right-1 h-5 w-5 border-b-4 border-r-4 border-orange-400" /></div>}
+
+                  {handoverUrl && (
+                    <div className="flex items-center justify-between gap-2 p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-900">
+                      <span className="truncate text-left text-[11px] font-mono">{handoverUrl}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(handoverUrl);
+                          setHandoverNotice('Link copied! Valid for 30 minutes.');
+                        }}
+                        className="px-2.5 py-1 bg-white text-emerald-800 font-bold rounded-lg border border-emerald-300 text-[11px] shrink-0 cursor-pointer hover:bg-emerald-100"
+                      >
+                        Copy Link
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: Camera Scanner */}
+              {scanTab === 'camera' && (
+                <div className="space-y-3">
+                  <div className="relative aspect-square overflow-hidden rounded-2xl bg-slate-950">
+                    <video
+                      ref={videoRef}
+                      className="h-full w-full object-cover"
+                      playsInline
+                      muted
+                      aria-label="Camera QR scanner"
+                    />
+                    {!cameraReady && !cameraError && !scanValue && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white">
+                        <Camera className="h-10 w-10 text-orange-300 animate-pulse" />
+                        <p className="text-sm font-semibold">Starting camera feed…</p>
+                      </div>
+                    )}
+                    {cameraReady && (
+                      <div className="pointer-events-none absolute inset-8 rounded-2xl border-2 border-[#FF5500] shadow-[0_0_0_999px_rgba(0,0,0,0.25)]">
+                        <span className="absolute -top-1 -left-1 h-5 w-5 border-l-4 border-t-4 border-orange-400" />
+                        <span className="absolute -top-1 -right-1 h-5 w-5 border-r-4 border-t-4 border-orange-400" />
+                        <span className="absolute -bottom-1 -left-1 h-5 w-5 border-b-4 border-l-4 border-orange-400" />
+                        <span className="absolute -bottom-1 -right-1 h-5 w-5 border-b-4 border-r-4 border-orange-400" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 text-center">
+                    Point camera at rider's handover QR code to scan automatically.
+                  </p>
+                </div>
+              )}
+
+              {/* Status and Error Messages */}
+              {handoverNotice && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">
+                  {handoverNotice}
+                </div>
+              )}
+              {cameraError && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">
+                  {cameraError}
+                </div>
+              )}
+              {manualSuccess && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5 text-xs font-bold text-emerald-800">
+                  ✓ {manualSuccess}
+                </div>
+              )}
+
+              {/* Manual PIN / Code Verification Form (Always available) */}
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <label className="text-[11px] font-bold text-slate-700 block">
+                  Or enter 4-digit PIN or handover code manually:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={manualCode}
+                    onChange={(e) => setManualCode(e.target.value)}
+                    placeholder="e.g. 5821 or token"
+                    className="flex-1 bg-white border border-slate-200 text-xs rounded-xl px-3 py-2 text-slate-900 font-mono placeholder:text-slate-400 focus:outline-none focus:border-[#FF5500]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleManualVerify}
+                    disabled={manualBusy || !manualCode.trim()}
+                    className="px-4 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                  >
+                    {manualBusy ? 'Verifying…' : 'Confirm'}
+                  </button>
+                </div>
               </div>
-              {handoverBusy && <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900">Preparing a secure QR link for order {scanOrder.shortId}…</div>}
-              {handoverNotice && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{handoverNotice}</div>}
-              {handoverUrl && <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3"><p className="text-sm font-bold text-emerald-800">Secure handover link ready</p><p className="break-all text-xs text-slate-700">{handoverUrl}</p><button type="button" onClick={() => { void navigator.clipboard?.writeText(handoverUrl); setHandoverNotice('Handover link copied. It expires in 30 minutes and should only be shared with the intended recipient.'); }} className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-emerald-800 border border-emerald-200">Copy handover link</button><p className="text-xs text-emerald-800">Link expires in 30 minutes. Confirmation requires the signed-in order customer.</p></div>}
-              {cameraError && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{cameraError}</div>}
-              {scanValue && <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3"><p className="text-sm font-bold text-slate-800">QR code detected</p><p className="break-all text-xs text-slate-700">{scanValue}</p><p className="text-xs text-slate-600">VeyraNG will only open a handover link on this same official host. The server validates the token before confirmation.</p></div>}
-              <p className="text-xs leading-relaxed text-slate-500">Allow camera access and place the VeyraNG handover QR inside the frame. Camera access requires HTTPS. If your browser cannot scan QR codes, use the secure link provided above.</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => { stopScanner(); setScanOrder(null); }} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">Close</button>
-                <button type="button" onClick={() => void openScanner(scanOrder)} className="rounded-xl bg-[#FF5500] px-4 py-3 text-sm font-bold text-white hover:bg-[#EA4C00]"><Camera className="mr-1.5 inline h-4 w-4" />Scan again</button>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    stopScanner();
+                    setScanOrder(null);
+                  }}
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (scanTab === 'camera') {
+                      startCamera();
+                    } else {
+                      openScanner(scanOrder);
+                    }
+                  }}
+                  className="rounded-xl bg-[#FF5500] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#EA4C00] cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                  <span>{scanTab === 'camera' ? 'Restart Camera' : 'Refresh QR'}</span>
+                </button>
               </div>
             </div>
           </div>

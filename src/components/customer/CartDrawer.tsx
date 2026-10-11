@@ -170,7 +170,20 @@ export const CartDrawer: React.FC = () => {
   }, [restaurantId, customAddress, user?.address, selectedAddress?.address, customCoords, calculateDistanceNow]);
 
   const [selectedTipNGN, setSelectedTipNGN] = useState<number>(0);
-  const [paymentMethod] = useState<string>('Debit Card');
+  const hasWalletBalance = (Number(walletBalanceNGN) || 0) > 0;
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<'balance' | 'card'>(
+    (Number(walletBalanceNGN) || 0) > 0 ? 'balance' : 'card'
+  );
+
+  // Auto-select balance first if funds exist, otherwise select card
+  useEffect(() => {
+    if ((Number(walletBalanceNGN) || 0) > 0) {
+      setSelectedPaymentMode('balance');
+    } else {
+      setSelectedPaymentMode('card');
+    }
+  }, [walletBalanceNGN]);
+
   const [promoInput, setPromoInput] = useState<string>('');
   const [promoMessage, setPromoMessage] = useState<{ text: string; isError: boolean } | null>(null);
   const [promoPlaceholder, setPromoPlaceholder] = useState<string>('Enter a promo code');
@@ -244,6 +257,13 @@ export const CartDrawer: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      const effectivePaymentMethod =
+        selectedPaymentMode === 'balance' && walletDeduction >= preWalletTotal
+          ? 'Veyrang Wallet'
+          : selectedPaymentMode === 'balance' && walletDeduction > 0
+          ? 'Veyrang Wallet + Debit Card'
+          : 'Debit Card';
+
       await placeOrder({
         customerName: customerName || user?.name || 'Customer',
         customerPhone: customerPhone || user?.phone || '+234 800 000 0000',
@@ -255,7 +275,7 @@ export const CartDrawer: React.FC = () => {
         tip,
         deliveryFee: fulfillmentType === 'pickup' ? 0 : liveDistanceResult?.estimatedDeliveryFee,
         drivingMinutes: fulfillmentType === 'pickup' ? 0 : liveDistanceResult?.durationMinutes,
-        paymentMethod: walletDeduction >= preWalletTotal ? 'Veyrang Wallet' : paymentMethod
+        paymentMethod: effectivePaymentMethod
       });
       setCheckoutStep('cart');
     } catch (err: any) {
@@ -620,49 +640,120 @@ export const CartDrawer: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Wallet-first payment: debit card is the only fallback method. */}
+                {/* Balance-first payment selection: Balance first, and if no money in balance select card */}
                 <div className="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-2.5">
-                  <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                    <CreditCard className="w-4 h-4 text-orange-600" />
-                    <span>Payment Method</span>
-                  </span>
-                  <div className="flex items-center justify-between p-2.5 rounded-xl border border-orange-500 bg-orange-50/50 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-4 h-4 rounded-full border-[5px] border-blue-500 bg-white shrink-0" />
-                      <span className="font-bold text-slate-900">Debit Card</span>
-                    </div>
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">Fallback</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <CreditCard className="w-4 h-4 text-orange-600" />
+                      <span>Payment Method</span>
+                    </span>
+                    {hasWalletBalance && (
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        Balance First
+                      </span>
+                    )}
                   </div>
-                  <p className="text-[11px] text-slate-500">Your Veyrang Wallet is charged first. Debit Card is used only for any remaining amount.</p>
-                </div>
 
-                {/* Wallet is automatically applied whenever there is a positive balance. */}
-                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <Wallet className="w-4 h-4 text-emerald-600" />
-                      <div>
-                        <div className="text-xs font-bold text-slate-900">Veyrang Wallet · Primary</div>
-                        <div className="text-[11px] text-slate-500 font-mono">
-                          Balance: {formatCurrency(walletBalanceNGN, currency)}
+                  <div className="space-y-2">
+                    {/* Option 1: Veyrang Wallet Balance (Selected first whenever there is a balance) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (hasWalletBalance) setSelectedPaymentMode('balance');
+                      }}
+                      disabled={!hasWalletBalance}
+                      className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-xs transition-colors cursor-pointer text-left ${
+                        selectedPaymentMode === 'balance' && hasWalletBalance
+                          ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500/20'
+                          : hasWalletBalance
+                          ? 'border-slate-200 hover:border-slate-300 bg-white'
+                          : 'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className={`w-4 h-4 rounded-full border-[5px] shrink-0 transition-colors ${
+                            selectedPaymentMode === 'balance' && hasWalletBalance
+                              ? 'border-emerald-600 bg-white'
+                              : 'border-slate-300 bg-white'
+                          }`}
+                        />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="font-bold text-slate-900">Veyrang Wallet Balance</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                            Available: {formatCurrency(walletBalanceNGN, currency)}
+                          </p>
                         </div>
                       </div>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">
-                      {walletBalanceNGN > 0 ? 'Auto-applied' : 'Empty'}
-                    </span>
+                      <div className="text-right">
+                        {hasWalletBalance ? (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                            {walletDeduction >= preWalletTotal
+                              ? 'Covers 100%'
+                              : `Covers ${formatCurrency(walletDeduction, currency)}`}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">
+                            Empty
+                          </span>
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Option 2: Debit Card (Selected when balance is empty or for remaining charge) */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMode('card')}
+                      className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-xs transition-colors cursor-pointer text-left ${
+                        selectedPaymentMode === 'card' || (!hasWalletBalance)
+                          ? 'border-orange-500 bg-orange-50/60 ring-1 ring-orange-500/20'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className={`w-4 h-4 rounded-full border-[5px] shrink-0 transition-colors ${
+                            selectedPaymentMode === 'card' || (!hasWalletBalance)
+                              ? 'border-orange-600 bg-white'
+                              : 'border-slate-300 bg-white'
+                          }`}
+                        />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <CreditCard className="w-3.5 h-3.5 text-orange-600" />
+                            <span className="font-bold text-slate-900">Debit Card (Paystack)</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            {!hasWalletBalance
+                              ? 'Selected automatically because wallet balance is empty'
+                              : finalCardCharge > 0
+                              ? `Covers remaining ${formatCurrency(finalCardCharge, currency)}`
+                              : 'Instant card payment'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                          {!hasWalletBalance ? 'Selected' : selectedPaymentMode === 'card' ? 'Selected' : 'Card'}
+                        </span>
+                      </div>
+                    </button>
                   </div>
-                  {walletBalanceNGN > 0 ? (
-                    <div className="text-[11px] text-emerald-800 bg-emerald-50 p-2 rounded-xl border border-emerald-200 font-medium">
+
+                  {hasWalletBalance && selectedPaymentMode === 'balance' ? (
+                    <div className="text-[11px] text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 font-medium">
                       {walletDeduction >= preWalletTotal
-                        ? 'Your wallet covers the full order. No card payment is needed.'
-                        : `Wallet pays ${formatCurrency(walletDeduction, currency)} first; the remaining ${formatCurrency(finalCardCharge, currency)} is charged to your debit card.`}
+                        ? '✓ Wallet balance covers the full order. No card payment required.'
+                        : `✓ Wallet pays ${formatCurrency(walletDeduction, currency)} first; remaining ${formatCurrency(finalCardCharge, currency)} charged to Debit Card.`}
                     </div>
-                  ) : (
-                    <div className="text-[11px] text-slate-600 bg-white p-2 rounded-xl border border-slate-200">
-                      Your wallet has no available balance. Debit Card will be used for the order.
+                  ) : !hasWalletBalance ? (
+                    <div className="text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                      Your wallet has no available balance. Debit Card is selected to complete the order.
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )}
@@ -756,7 +847,13 @@ export const CartDrawer: React.FC = () => {
                 ) : (
                   <>
                     <span>Place Order ·</span>
-                    <span className="font-mono tabular-nums">{formatCurrency(finalCardCharge, currency)}</span>
+                    <span className="font-mono tabular-nums">
+                      {selectedPaymentMode === 'balance' && walletDeduction >= preWalletTotal
+                        ? `${formatCurrency(preWalletTotal, currency)} (Balance)`
+                        : selectedPaymentMode === 'balance' && walletDeduction > 0
+                        ? `${formatCurrency(finalCardCharge, currency)} Card (${formatCurrency(walletDeduction, currency)} Balance)`
+                        : formatCurrency(preWalletTotal, currency)}
+                    </span>
                   </>
                 )}
               </button>

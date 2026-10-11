@@ -1,6 +1,8 @@
 import type { MetadataRoute } from 'next';
 import { d1 } from '../lib/d1';
 
+export const dynamic = 'force-dynamic';
+
 const SITE = 'https://www.veyrang.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
