@@ -176,16 +176,16 @@ export const AdminPortal: React.FC = () => {
   const [editingZone, setEditingZone] = useState<any | null>(null);
   const [newZoneName, setNewZoneName] = useState('');
   const [newZoneCode, setNewZoneCode] = useState('');
-  const [newZoneCity, setNewZoneCity] = useState('Lagos');
-  const [newZoneCountry, setNewZoneCountry] = useState('Nigeria');
+  const [newZoneCity, setNewZoneCity] = useState('');
+  const [newZoneCountry, setNewZoneCountry] = useState('');
   const [newZoneCurrency, setNewZoneCurrency] = useState('NGN');
-  const [newZoneBaseFee, setNewZoneBaseFee] = useState('1000');
-  const [newZonePerKmFee, setNewZonePerKmFee] = useState('200');
-  const [newZoneRadius, setNewZoneRadius] = useState('10');
-  const [newZoneSurge, setNewZoneSurge] = useState('1.0');
+  const [newZoneBaseFee, setNewZoneBaseFee] = useState('');
+  const [newZonePerKmFee, setNewZonePerKmFee] = useState('');
+  const [newZoneRadius, setNewZoneRadius] = useState('');
+  const [newZoneSurge, setNewZoneSurge] = useState('');
   const [newZoneMapR2Url, setNewZoneMapR2Url] = useState('');
-  const [newZoneCenterLat, setNewZoneCenterLat] = useState('6.5244');
-  const [newZoneCenterLng, setNewZoneCenterLng] = useState('3.3792');
+  const [newZoneCenterLat, setNewZoneCenterLat] = useState('');
+  const [newZoneCenterLng, setNewZoneCenterLng] = useState('');
 
   // Edit Delivery Zone State
   const [editZoneName, setEditZoneName] = useState('');
@@ -617,7 +617,10 @@ export const AdminPortal: React.FC = () => {
   // Delivery zone actions
   const handleCreateZone = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newZoneName || !newZoneCode) return;
+    if (!newZoneName.trim() || !newZoneCode.trim() || !newZoneCity.trim() || [newZoneBaseFee, newZonePerKmFee, newZoneRadius, newZoneSurge, newZoneCenterLat, newZoneCenterLng].some(value => value.trim() === '' || !Number.isFinite(Number(value)))) {
+      showActionFeedback('Enter the zone city, base fee, per-kilometre fee, radius, surge multiplier and centre coordinates.');
+      return;
+    }
     try {
       await deliveryService.createZone({
         name: newZoneName,
@@ -625,12 +628,12 @@ export const AdminPortal: React.FC = () => {
         city: newZoneCity,
         country: newZoneCountry,
         currency: newZoneCurrency,
-        baseFee: Number(newZoneBaseFee || 1000),
-        perKmFee: Number(newZonePerKmFee || 200),
-        radiusKm: Number(newZoneRadius || 10),
-        surgeMultiplier: Number(newZoneSurge || 1.0),
-        centerLat: Number(newZoneCenterLat || 6.5244),
-        centerLng: Number(newZoneCenterLng || 3.3792),
+        baseFee: Number(newZoneBaseFee),
+        perKmFee: Number(newZonePerKmFee),
+        radiusKm: Number(newZoneRadius),
+        surgeMultiplier: Number(newZoneSurge),
+        centerLat: Number(newZoneCenterLat),
+        centerLng: Number(newZoneCenterLng),
         mapImageR2Url: newZoneMapR2Url || undefined
       });
       showActionFeedback(`Delivery zone "${newZoneName}" created in Platform D1!`);
@@ -2228,6 +2231,7 @@ export const AdminPortal: React.FC = () => {
                       <label className="text-[11px] text-slate-600 font-semibold block mb-1">City</label>
                       <input
                         type="text"
+                        required
                         value={newZoneCity}
                         onChange={(e) => setNewZoneCity(e.target.value)}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
@@ -2237,6 +2241,8 @@ export const AdminPortal: React.FC = () => {
                       <label className="text-[11px] text-slate-600 font-semibold block mb-1">Base Fee (NGN)</label>
                       <input
                         type="number"
+                        required
+                        min="0"
                         value={newZoneBaseFee}
                         onChange={(e) => setNewZoneBaseFee(e.target.value)}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono"
@@ -2246,6 +2252,8 @@ export const AdminPortal: React.FC = () => {
                       <label className="text-[11px] text-slate-600 font-semibold block mb-1">Per KM Fee (NGN)</label>
                       <input
                         type="number"
+                        required
+                        min="0"
                         value={newZonePerKmFee}
                         onChange={(e) => setNewZonePerKmFee(e.target.value)}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono"
@@ -2255,11 +2263,25 @@ export const AdminPortal: React.FC = () => {
                       <label className="text-[11px] text-slate-600 font-semibold block mb-1">Surge Multiplier</label>
                       <input
                         type="number"
+                        required
+                        min="0"
                         step="0.1"
                         value={newZoneSurge}
                         onChange={(e) => setNewZoneSurge(e.target.value)}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono"
                       />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-slate-600 font-semibold block mb-1">Delivery Radius (km) *</label>
+                      <input type="number" required min="0.1" step="0.1" value={newZoneRadius} onChange={(e) => setNewZoneRadius(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-slate-600 font-semibold block mb-1">Centre Latitude *</label>
+                      <input type="number" required min="-90" max="90" step="any" value={newZoneCenterLat} onChange={(e) => setNewZoneCenterLat(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-slate-600 font-semibold block mb-1">Centre Longitude *</label>
+                      <input type="number" required min="-180" max="180" step="any" value={newZoneCenterLng} onChange={(e) => setNewZoneCenterLng(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono" />
                     </div>
                     <div className="sm:col-span-3 flex justify-end gap-2 pt-2 border-t border-slate-100">
                       <button
