@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { d1 } from '../../../lib/d1';
 import { buildPublicRestaurant } from '../../../lib/restaurantMenu';
+import { siteDataManager } from '../../../lib/siteDataSnapshot';
 
 export const revalidate = 300;
 
@@ -31,10 +32,19 @@ type RestaurantData = {
 async function getRestaurant(id: string): Promise<RestaurantData | null> {
   if (!id || id.length > 160 || /[/?#]/.test(id)) return null;
   try {
+    let built: any = null;
     const result = await d1.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id], { cache: false });
     const row = result?.results?.[0];
-    if (!result?.success || !row) return null;
-    const built = await buildPublicRestaurant(row, { includeMenu: true });
+    if (result?.success && row) {
+      built = await buildPublicRestaurant(row, { includeMenu: true });
+    } else {
+      const snapshot = await siteDataManager.servePublicCatalogue();
+      const fromSnapshot = snapshot?.restaurants?.find((r: any) => String(r?.id) === String(id));
+      if (fromSnapshot) {
+        built = fromSnapshot;
+      }
+    }
+    if (!built) return null;
     return {
       id: String(built.id),
       name: typeof built.name === 'string' ? built.name : undefined,

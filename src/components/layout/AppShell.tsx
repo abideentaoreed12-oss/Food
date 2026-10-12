@@ -11,6 +11,7 @@ import { OrderTrackingModal } from '../tracking/OrderTrackingModal';
 import { DishCustomizationModal } from '../customer/DishCustomizationModal';
 import { MultiRestaurantConflictModal } from '../customer/MultiRestaurantConflictModal';
 import { DeliveryAddressModal } from '../common/DeliveryAddressModal';
+import { RestaurantDetailModal } from '../customer/RestaurantDetailModal';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -29,6 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <DishCustomizationModal />
       <MultiRestaurantConflictModal />
       <DeliveryAddressModal />
+      <RestaurantDetailModal />
     </div>
   );
 }
