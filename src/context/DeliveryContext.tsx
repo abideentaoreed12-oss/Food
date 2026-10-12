@@ -139,7 +139,7 @@ const EMPTY_ADDRESS: SavedAddress = {
 };
 
 export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole?: UserRole }> = ({ children, initialRole }) => {
-  const { user, setIsAuthModalOpen, refreshUser, openAuthModalForPortal } = useAuth();
+  const { user, loading: authLoading, setIsAuthModalOpen, refreshUser, openAuthModalForPortal } = useAuth();
 
   const [activeRole, setActiveRoleState] = useState<UserRole>(initialRole || 'customer');
 
@@ -196,13 +196,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
 
   const [activePage, setActivePageState] = useState<ActivePage>('landing');
 
-  // Restore saved active page on client mount after hydration
+  // Resolve navigation only after the auth session has been checked.
+  // Guests always start on the public landing page; authenticated users keep their last page.
   useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      setActivePageState('landing');
+      try { localStorage.setItem('veyrang_active_page', 'landing'); } catch {}
+      return;
+    }
+
     try {
       const savedPage = localStorage.getItem('veyrang_active_page');
       if (savedPage) setActivePageState(savedPage as ActivePage);
     } catch {}
-  }, []);
+  }, [authLoading]);
 
   const setActivePage = useCallback((page: ActivePage) => {
     setActivePageState(page);
