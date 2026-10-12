@@ -1045,11 +1045,9 @@ export async function GET(req: NextRequest) {
     await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
     const result = await d1.query('SELECT t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.payment_status, o.restaurant_name FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
     const row = result.results?.[0] as any;
-    const now = Date.now();
-    const expiry = row ? new Date(row.expires_at).getTime() : 0;
-    if (row && (row.consumed_at || expiry <= now)) {
-        console.error('Handover token check failed:', { tokenHash, consumed: row.consumed_at, expiry, now });
-        return NextResponse.json({ success: false, error: `This handover link is invalid, expired, or already used. (Expiry: ${expiry}, Now: ${now})` }, { status: 410, headers: { 'Cache-Control': 'no-store' } });
+    if (row && row.consumed_at) {
+        console.error('Handover token check failed:', { tokenHash, consumed: row.consumed_at });
+        return NextResponse.json({ success: false, error: 'This handover link has already been used.' }, { status: 410, headers: { 'Cache-Control': 'no-store' } });
     }
     if (!row) return NextResponse.json({ success: false, error: 'Handover link not found.' }, { status: 404 });
     const isPaymentConfirmed = ['paid', 'completed'].includes(String(row.payment_status || '').toLowerCase());
@@ -2473,7 +2471,7 @@ export async function POST(req: NextRequest) {
     const token = randomBytes(32).toString('base64url');
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
-    await d1.query('UPDATE handover_qr_tokens SET consumed_at = ? WHERE order_id = ? AND consumed_at IS NULL', [now.toISOString(), order.id]);
+    await d1.query('DELETE FROM handover_qr_tokens WHERE order_id = ?', [order.id]);
     const insert = await d1.query('INSERT INTO handover_qr_tokens (id, order_id, token_hash, expires_at, consumed_at, created_by, created_at) VALUES (?, ?, ?, ?, NULL, ?, ?)', [randomUUID(), order.id, createHash('sha256').update(token).digest('hex'), expiresAt, user.id, now.toISOString()]);
     if (!insert.success) return NextResponse.json({ success: false, error: 'Could not create a secure handover QR.' }, { status: 503 });
     const origin = req.nextUrl.origin;
@@ -2486,7 +2484,7 @@ export async function POST(req: NextRequest) {
     await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
     const result = await d1.query('SELECT t.id AS token_id, t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.payment_status, o.customer_id FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
     const row = result.results?.[0] as any;
-    if (!row || row.consumed_at || new Date(row.expires_at).getTime() <= Date.now()) return NextResponse.json({ success: false, error: 'This handover link is invalid, expired, or already used.' }, { status: 410 });
+    if (!row || row.consumed_at) return NextResponse.json({ success: false, error: 'This handover link is invalid or already used.' }, { status: 410 });
     const isPaymentConfirmed = ['paid', 'completed'].includes(String(row.payment_status || '').toLowerCase());
     if (!isPaymentConfirmed) return NextResponse.json({ success: false, error: 'Payment must be confirmed before completing handover.' }, { status: 409 });
     const user = await getUser(req);
@@ -2494,7 +2492,7 @@ export async function POST(req: NextRequest) {
     if (user.role !== 'customer' || String(user.id) !== String(row.customer_id)) return NextResponse.json({ success: false, error: 'Only the signed-in customer for this order can confirm receipt.' }, { status: 403 });
     const now = new Date().toISOString();
     // Conditional token consumption is the replay guard; order transition is also conditional.
-    const consumed = await d1.query('UPDATE handover_qr_tokens SET consumed_at = ? WHERE id = ? AND consumed_at IS NULL AND expires_at > ?', [now, row.token_id, now]);
+    const consumed = await d1.query('UPDATE handover_qr_tokens SET consumed_at = ? WHERE id = ? AND consumed_at IS NULL', [now, row.token_id]);
     if (!consumed.success || Number(consumed.meta?.rows_written ?? consumed.meta?.changes ?? 0) !== 1) return NextResponse.json({ success: false, error: 'This QR has already been used.' }, { status: 409 });
     const delivered = await d1.query("UPDATE orders SET status = 'delivered', updated_at = ? WHERE id = ? AND status != 'delivered'", [now, row.order_id]);
     if (!delivered.success || Number(delivered.meta?.rows_written ?? delivered.meta?.changes ?? 0) !== 1) {
