@@ -7,8 +7,8 @@ import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
 function PaymentCallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const reference = searchParams.get('reference') || searchParams.get('trxref');
-  const orderId = searchParams.get('order_id');
+  const reference = searchParams?.get('reference') || searchParams?.get('trxref');
+  const orderId = searchParams?.get('order_id');
 
   const [status, setStatus] = useState<'verifying' | 'success' | 'failed'>('verifying');
   const [errorMessage, setErrorMessage] = useState('');

@@ -360,7 +360,7 @@ export const api = {
       return request('/api/site-data/snapshot');
     },
     refresh: async () => {
-      return request('/api/site-data/refresh', { method: 'POST' });
+      return request('/api/admin/site-data/sync', { method: 'POST' });
     }
   },
 
@@ -435,17 +435,18 @@ export const api = {
       });
     },
 
-    updateGPS: async (orderId: string, progress: number) => {
-      return request(`/api/orders/${orderId}/gps`, {
-        method: 'PATCH',
-        body: JSON.stringify({ progress })
+    updateGPS: async (orderId: string, progressOrPayload: number | { lat: number; lng: number; progress?: number; heading?: number; speedKmh?: number; accuracyMeters?: number }) => {
+      const payload = typeof progressOrPayload === 'number' ? { progress: progressOrPayload } : progressOrPayload;
+      return request(`/api/orders/${encodeURIComponent(orderId)}/gps`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
       });
     },
 
-    sendMessage: async (orderId: string, sender: 'customer' | 'courier', text: string) => {
-      return request(`/api/orders/${orderId}/messages`, {
+    sendMessage: async (orderId: string, sender: 'customer' | 'courier', text: string, senderName?: string) => {
+      return request(`/api/orders/${encodeURIComponent(orderId)}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ sender, text })
+        body: JSON.stringify({ senderRole: sender, senderName: senderName || (sender === 'courier' ? 'Courier' : 'Customer'), text })
       });
     },
 
@@ -517,14 +518,14 @@ export const api = {
     replySupportTicket: async (id: string, reply: string) =>
       request(`/api/admin/support/${id}/reply`, { method: 'POST', body: JSON.stringify({ reply }) }),
     updateSupportTicket: async (id: string, status: string) =>
-      request(`/api/admin/support/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+      request(`/api/admin/support/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
     broadcastNotification: async (data: { title: string; message: string; targetRole?: string }) =>
       request('/api/admin/notifications/broadcast', { method: 'POST', body: JSON.stringify(data) }),
     getAuditLogs: async () => request('/api/admin/audit-logs'),
     getTransactions: async () => request('/api/admin/transactions'),
     getRestaurants: async () => request('/api/restaurants'),
     updateRestaurant: async (restaurantId: string, updates: Partial<Restaurant>) =>
-      request(`/api/restaurants/${restaurantId}`, { method: 'PUT', body: JSON.stringify(updates) }),
+      request(`/api/admin/restaurants/${encodeURIComponent(restaurantId)}`, { method: 'PATCH', body: JSON.stringify(updates) }),
 
     toggleBranchStatus: async (restaurantId: string) =>
       request(`/api/admin/restaurants/${restaurantId}/toggle`, { method: 'PATCH' }),
@@ -546,11 +547,11 @@ export const api = {
     updateDriver: async (userId: string, data: any) =>
       request(`/api/admin/drivers/${userId}`, { method: 'PATCH', body: JSON.stringify(data) }),
     verifyDriverKYC: async (userId: string, status: string) =>
-      request(`/api/admin/drivers/${userId}/verify`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+      request(`/api/admin/drivers/${encodeURIComponent(userId)}`, { method: 'PATCH', body: JSON.stringify({ verification_status: status }) }),
     getCMS: async () => {
       const res: any = await request('/api/settings');
       if (res && typeof res === 'object') {
-        if (res.settings && typeof res.settings === 'object') return res.settings;
+        if (res.settings && typeof res === 'object') return res.settings;
         if (res.data?.settings && typeof res.data.settings === 'object') return res.data.settings;
         return res;
       }
@@ -560,7 +561,7 @@ export const api = {
       request('/api/settings/update', { method: 'PUT', body: JSON.stringify({ key, value }) }),
     getSettings: async () => request('/api/admin/settings'),
     updateSettings: async (data: any) =>
-      request('/api/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
+      request('/api/admin/settings', { method: 'POST', body: JSON.stringify(data) }),
     purgeCache: async () =>
       request('/api/admin/cache/purge', { method: 'POST' }),
     createStaff: async (data: any) =>
@@ -570,7 +571,7 @@ export const api = {
     adjustUserWallet: async (userId: string, amount: number, reason?: string) =>
       request(`/api/admin/users/${userId}/wallet`, { method: 'POST', body: JSON.stringify({ amount, reason }) }),
     deleteDriver: async (userId: string) =>
-      request(`/api/admin/drivers/${userId}`, { method: 'DELETE' }),
+      request(`/api/admin/drivers/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
     uploadAsset: async (key: string, dataBase64: string, contentType?: string) =>
       request('/api/storage/upload', { method: 'POST', body: JSON.stringify({ key, dataBase64, contentType }) }),
     deleteAsset: async (key: string) =>
@@ -578,7 +579,14 @@ export const api = {
     bulkUpdateCMS: async (settings: Record<string, string>) =>
       request('/api/settings/bulk', { method: 'POST', body: JSON.stringify({ settings }) }),
     saveSeoTags: async (data: { title: string; description: string; keywords: string }) =>
-      request('/api/admin/seo', { method: 'POST', body: JSON.stringify(data) }),
+      request('/api/admin/settings', {
+        method: 'POST',
+        body: JSON.stringify({
+          seo_title: data.title,
+          seo_description: data.description,
+          seo_keywords: data.keywords
+        })
+      }),
     runDeveloperQuery: async (sql: string) =>
       request('/api/admin/developer/query', { method: 'POST', body: JSON.stringify({ sql }) }),
     purgeEdgeCache: async () =>
@@ -608,9 +616,9 @@ export const api = {
   support: {
     createTicket: async (payload: any) =>
       request('/api/support/tickets', { method: 'POST', body: JSON.stringify(payload) }),
-    getTickets: async () => request('/api/support/tickets'),
+    getTickets: async () => request('/api/admin/support'),
     replyTicket: async (id: string, message: string) =>
-      request(`/api/support/tickets/${id}/reply`, { method: 'POST', body: JSON.stringify({ message }) })
+      request(`/api/admin/support/${encodeURIComponent(id)}/reply`, { method: 'POST', body: JSON.stringify({ reply: message }) })
   },
 
   geocode: {

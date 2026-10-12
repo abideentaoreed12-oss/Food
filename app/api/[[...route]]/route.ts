@@ -152,6 +152,22 @@ function isAllowedOrigin(origin: string | null): boolean {
   );
 }
 
+function isOrderParticipant(
+  user: NonNullable<Awaited<ReturnType<typeof getUser>>>,
+  orderRow: any,
+  options?: { allowRestaurant?: boolean }
+): boolean {
+  const isAdmin = user.role === 'admin' || user.role === 'sub_admin';
+  const isOrderCustomer = String(orderRow.customer_id || '') === String(user.id);
+  const isAssignedCourier = Boolean(orderRow.courier_id) && String(orderRow.courier_id) === String(user.id);
+  const isAssignedRestaurant =
+    options?.allowRestaurant !== false &&
+    user.role === 'restaurant' &&
+    Boolean(user.restaurantId) &&
+    String(user.restaurantId) === String(orderRow.restaurant_id || '');
+  return isAdmin || isOrderCustomer || isAssignedCourier || isAssignedRestaurant;
+}
+
 export async function GET(req: NextRequest) {
   const pathname = req.nextUrl.pathname.replace(/^\/api/, '') || '/';
   if (pathname.startsWith('/admin/')) {
@@ -220,7 +236,7 @@ export async function GET(req: NextRequest) {
   if (pathname === '/storage/status') {
     const storageUser = await getUser(req);
     if (!storageUser || (storageUser.role !== 'admin' && storageUser.role !== 'sub_admin')) {
-      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+      return NextResponse.json({ status: 'ok' }, { headers: { 'Cache-Control': 'no-store' } });
     }
     return NextResponse.json({
       success: true,
@@ -293,6 +309,27 @@ export async function GET(req: NextRequest) {
       try { settingsMap[row.key] = JSON.parse(row.value); } catch { settingsMap[row.key] = row.value; }
     }
     return NextResponse.json({ success: true, data: settingsMap, settings: settingsMap });
+  }
+
+  // 8b. Public SEO Settings (used by SeoMetaUpdater & Admin SEO Tab)
+  if (pathname === '/settings/seo') {
+    let d1Res: any = { results: [] };
+    try {
+      d1Res = await d1.query('SELECT key, value FROM platform_settings WHERE key LIKE \'seo_%\'');
+    } catch {}
+    const seoMap: Record<string, any> = {};
+    for (const row of d1Res.results || []) {
+      try { seoMap[row.key] = JSON.parse(row.value); } catch { seoMap[row.key] = row.value; }
+    }
+    return NextResponse.json({
+      success: true,
+      data: {
+        title: seoMap.seo_title || 'VeyraNG — Order Food Online from Top Restaurants in Nigeria',
+        description: seoMap.seo_description || 'Order authentic Nigerian and continental meals delivered fast from verified local kitchens.',
+        keywords: seoMap.seo_keywords || 'food delivery Nigeria, Lagos restaurants, order food online, VeyraNG',
+        ogImage: seoMap.seo_og_image || ''
+      }
+    });
   }
 
   // Public delivery zones from live D1 (admin-managed — no hardcoded sample streets).
@@ -403,6 +440,13 @@ export async function GET(req: NextRequest) {
   }
 
   if (pathname === '/site-data/snapshot' || pathname === '/admin/site-data/status') {
+    const snapshotUser = await getUser(req);
+    if (!snapshotUser) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+    if (snapshotUser.role !== 'admin' && snapshotUser.role !== 'sub_admin') {
+      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    }
     const status = siteDataManager.getStatus();
     const snapshot = siteDataManager.getLastKnownGood();
     return NextResponse.json({
@@ -542,7 +586,9 @@ export async function GET(req: NextRequest) {
           paymentMethod: o.payment_method,
           paymentStatus: o.payment_status,
           status: o.status,
-          handoverPin: o.handover_pin,
+          ...(isAdmin || String(o.customer_id || '') === String(user.id)
+            ? { handoverPin: o.handover_pin ?? parsed?.handoverPin }
+            : { handoverPin: undefined, handover_pin: undefined }),
           prepTimeAdjustmentMin: o.prep_time_adjustment_min || 0,
           routeProgress: o.route_progress || (o.status === 'delivered' ? 100 : 0),
           estimatedArrivalMinutes: o.estimated_arrival_minutes || 25,
@@ -564,7 +610,9 @@ export async function GET(req: NextRequest) {
     const orderId = decodeURIComponent(trackingMatch[1]);
     const orderRes = await d1.query('SELECT * FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
     const orderRow = orderRes.results?.[0];
-    if (!orderRow) return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    if (!orderRow || !isOrderParticipant(user, orderRow)) {
+      return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    }
     const locRes = await d1.query('SELECT * FROM courier_locations WHERE order_id = ? ORDER BY updated_at DESC LIMIT 1', [orderRow.id]);
     const loc = locRes.results?.[0] || null;
     const isLive = loc ? Date.now() - new Date(loc.updated_at).getTime() < 60000 : false;
@@ -587,23 +635,33 @@ export async function GET(req: NextRequest) {
     const orderId = decodeURIComponent(singleOrderMatch[1]);
     const orderRes = await d1.query('SELECT * FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
     const o = orderRes.results?.[0];
-    if (!o) return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    if (!o || !isOrderParticipant(user, o)) {
+      return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    }
     let items = [];
     try { items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []); } catch {}
     const parsed = o.raw_json ? JSON.parse(o.raw_json) : {};
+    const canSeeHandoverPin =
+      user.role === 'admin' ||
+      user.role === 'sub_admin' ||
+      String(o.customer_id || '') === String(user.id);
+    const { handoverPin: _parsedPin, handover_pin: _parsedSnakePin, ...safeParsed } = parsed || {};
+    const orderData: Record<string, any> = {
+      ...safeParsed,
+      id: o.id,
+      shortId: o.short_id,
+      status: o.status,
+      total: o.total,
+      items: items.length > 0 ? items : parsed.items,
+      paymentStatus: o.payment_status,
+      createdAt: o.created_at
+    };
+    if (canSeeHandoverPin) {
+      orderData.handoverPin = o.handover_pin ?? parsed?.handoverPin;
+    }
     return NextResponse.json({
       success: true,
-      data: {
-        ...parsed,
-        id: o.id,
-        shortId: o.short_id,
-        status: o.status,
-        total: o.total,
-        items: items.length > 0 ? items : parsed.items,
-        handoverPin: o.handover_pin,
-        paymentStatus: o.payment_status,
-        createdAt: o.created_at
-      }
+      data: orderData
     });
   }
 
@@ -629,7 +687,7 @@ export async function GET(req: NextRequest) {
   }
 
   // 18. Support Tickets (User and Admin)
-  if (pathname === '/admin/support') {
+  if (pathname === '/admin/support' || pathname === '/admin/support/tickets') {
     const user = await getUser(req);
     if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
       return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
@@ -638,12 +696,33 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
+  if (pathname === '/support/tickets') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    const isAdmin = user.role === 'admin' || user.role === 'sub_admin';
+    const d1Res = isAdmin
+      ? await d1.query('SELECT * FROM support_tickets ORDER BY created_at DESC LIMIT 100')
+      : await d1.query('SELECT * FROM support_tickets WHERE customer_id = ? OR user_id = ? OR LOWER(customer_email) = LOWER(?) ORDER BY created_at DESC LIMIT 50', [user.id, user.id, user.email]);
+    return NextResponse.json({ success: true, data: d1Res.results || [] });
+  }
+
   const singleTicketMatch = pathname.match(/^\/support\/tickets\/([^/]+)$/);
   if (singleTicketMatch) {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     const ticketId = decodeURIComponent(singleTicketMatch[1]);
     const d1Res = await d1.query('SELECT * FROM support_tickets WHERE id = ? LIMIT 1', [ticketId]);
-    if (!d1Res.results?.length) return NextResponse.json({ success: false, error: 'Ticket not found' }, { status: 404 });
-    return NextResponse.json({ success: true, data: d1Res.results[0] });
+    const ticket = d1Res.results?.[0];
+    if (!ticket) return NextResponse.json({ success: false, error: 'Ticket not found' }, { status: 404 });
+    const isAdmin = user.role === 'admin' || user.role === 'sub_admin';
+    const isOwner =
+      String(ticket.customer_id || '') === String(user.id) ||
+      String(ticket.user_id || '') === String(user.id) ||
+      (Boolean(user.email) && String(ticket.customer_email || '').toLowerCase() === String(user.email).toLowerCase());
+    if (!isAdmin && !isOwner) {
+      return NextResponse.json({ success: false, error: 'Ticket not found' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, data: ticket });
   }
 
   // 19. Admin Users
@@ -770,40 +849,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: courierRes.results || [] }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
-  // 27. Admin Drivers / Couriers
-  if (pathname === '/admin/drivers') {
-    const user = await getUser(req);
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-    const d1Res = await d1.query(
-      `SELECT u.id, u.name, u.email, u.phone, u.role, u.is_approved, u.created_at,
-              cp.vehicle_type, cp.vehicle_plate, cp.is_verified, cp.is_online, cp.rating
-       FROM users u
-       LEFT JOIN courier_profiles cp ON u.id = cp.user_id
-       WHERE u.role = 'courier'
-       ORDER BY u.created_at DESC`
-    );
-    return NextResponse.json({ success: true, data: d1Res.results || [] });
-  }
-
-  // 28. Admin Support Tickets
-  if (pathname === '/admin/support') {
-    const user = await getUser(req);
-    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-    const d1Res = await d1.query('SELECT * FROM support_tickets ORDER BY created_at DESC');
-    return NextResponse.json({ success: true, data: d1Res.results || [] });
-  }
-
-
-
-  // 30. Order Messages
+  // 30. Order Messages (Authenticated order participants or Admin only)
   const orderMsgMatch = pathname.match(/^\/orders\/([^/]+)\/messages$/);
   if (orderMsgMatch) {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     const orderId = decodeURIComponent(orderMsgMatch[1]);
-    const d1Res = await d1.query('SELECT * FROM order_chats WHERE order_id = ? ORDER BY created_at ASC', [orderId]);
+    const orderRes = await d1.query('SELECT id, customer_id, courier_id, restaurant_id FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
+    const orderRow = orderRes.results?.[0];
+    if (!orderRow) return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    if (!isOrderParticipant(user, orderRow)) {
+      return NextResponse.json({ success: false, error: 'Not authorized to view messages for this order' }, { status: 403 });
+    }
+    const d1Res = await d1.query('SELECT * FROM order_chats WHERE order_id = ? ORDER BY created_at ASC', [orderRow.id]);
     return NextResponse.json({ success: true, data: d1Res.results || [] });
   }
 
@@ -816,10 +874,7 @@ export async function GET(req: NextRequest) {
     const orderRes = await d1.query('SELECT id, customer_id, courier_id FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
     const orderRow = orderRes.results?.[0];
     if (!orderRow) return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
-    const isAdmin = user.role === 'admin' || user.role === 'sub_admin';
-    const isOrderCustomer = String(orderRow.customer_id || '') === String(user.id);
-    const isAssignedCourier = Boolean(orderRow.courier_id) && String(orderRow.courier_id) === String(user.id);
-    if (!isAdmin && !isOrderCustomer && !isAssignedCourier) {
+    if (!isOrderParticipant(user, orderRow, { allowRestaurant: false })) {
       return NextResponse.json({ success: false, error: 'Not authorized to access GPS tracking for this order' }, { status: 403 });
     }
     const d1Res = await d1.query('SELECT * FROM courier_locations WHERE order_id = ? ORDER BY updated_at DESC LIMIT 1', [orderRow.id]);
@@ -1021,6 +1076,11 @@ export async function POST(req: NextRequest) {
 
   // 2. D1 Ping
   if (pathname === '/health/d1/ping') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    if (user.role !== 'admin' && user.role !== 'sub_admin') {
+      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    }
     const ping = await d1.ping();
     return NextResponse.json({ success: ping.connected, ...ping });
   }
@@ -1239,19 +1299,110 @@ export async function POST(req: NextRequest) {
   if (pathname === '/auth/wallet/topup') {
     const user = await getUser(req);
     if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
-    const amount = Number(body.amount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return NextResponse.json({ success: false, error: 'Valid amount required' }, { status: 400 });
+    const ref = typeof body.reference === 'string' ? body.reference.trim() : '';
+    if (!ref) {
+      return NextResponse.json({ success: false, error: 'Valid payment reference required' }, { status: 400 });
     }
-    const now = new Date().toISOString();
-    const ref = body.reference || `REF-TOPUP-${Date.now()}`;
-    await d1.query('UPDATE users SET wallet_balance_ngn = COALESCE(wallet_balance_ngn, 0) + ?, updated_at = ? WHERE id = ?', [amount, now, user.id]);
-    await d1.query(
-      `INSERT INTO wallet_transactions (id, user_id, type, amount, currency, description, status, created_at, reference, payment_method)
-       VALUES (?, ?, 'deposit', ?, 'NGN', 'Wallet Top-up', 'completed', ?, ?, ?)`,
-      [`tx-${Date.now()}`, user.id, amount, now, ref, body.paymentMethod || 'Paystack']
+
+    const existingTx = await d1.query(
+      'SELECT id FROM wallet_transactions WHERE reference = ? LIMIT 1',
+      [ref],
+      { cache: false }
     );
-    return NextResponse.json({ success: true, message: 'Wallet credited successfully', newBalance: user.walletBalanceNGN + amount });
+    if (existingTx.results && existingTx.results.length > 0) {
+      const balRes = await d1.query('SELECT wallet_balance_ngn FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+      const currentBalance = Number(balRes.results?.[0]?.wallet_balance_ngn ?? user.walletBalanceNGN ?? 0);
+      return NextResponse.json({
+        success: true,
+        message: 'Wallet credited successfully',
+        newBalance: currentBalance,
+        alreadyProcessed: true
+      });
+    }
+
+    const verified = await paymentGateway.verifyPayment(ref);
+    const verifiedCurrency = String(verified.currency || 'NGN').toUpperCase();
+    const verifiedAmount = Number(verified.amountNGN || 0);
+    if (!verified.success || !verified.isPaid || verifiedCurrency !== 'NGN' || !Number.isFinite(verifiedAmount) || verifiedAmount <= 0) {
+      return NextResponse.json({ success: false, error: verified.error || 'Payment verification failed or unpaid' }, { status: 400 });
+    }
+
+    const meta = verified.metadata || {};
+    const metaUserId = meta.userId ?? meta.user_id;
+    if (!metaUserId || String(metaUserId) !== String(user.id)) {
+      return NextResponse.json({ success: false, error: 'Payment transaction does not belong to the authenticated user' }, { status: 400 });
+    }
+    if (meta.orderId || meta.order_id || (meta.type && meta.type !== 'wallet_topup') || (meta.channel && meta.channel !== 'wallet_topup' && meta.channel !== 'bank_transfer')) {
+      return NextResponse.json({ success: false, error: 'Transaction is not a wallet top-up' }, { status: 400 });
+    }
+
+    const now = new Date().toISOString();
+    const txId = `tx-${Date.now()}-${randomUUID().slice(0, 8)}`;
+    try {
+      const recheckTx = await d1.query(
+        'SELECT id FROM wallet_transactions WHERE reference = ? LIMIT 1',
+        [ref],
+        { cache: false }
+      );
+      if (recheckTx.results && recheckTx.results.length > 0) {
+        const balRes = await d1.query('SELECT wallet_balance_ngn FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+        const currentBalance = Number(balRes.results?.[0]?.wallet_balance_ngn ?? user.walletBalanceNGN ?? 0);
+        return NextResponse.json({
+          success: true,
+          message: 'Wallet credited successfully',
+          newBalance: currentBalance,
+          alreadyProcessed: true
+        });
+      }
+
+      const insertRes = await d1.query(
+        `INSERT INTO wallet_transactions (id, user_id, type, amount, currency, description, status, created_at, reference, payment_method)
+         VALUES (?, ?, 'deposit', ?, 'NGN', 'Wallet Top-up', 'completed', ?, ?, ?)`,
+        [txId, user.id, verifiedAmount, now, ref, body.paymentMethod || 'Paystack']
+      );
+      if (!insertRes || !insertRes.success) {
+        const dupCheck = await d1.query('SELECT id FROM wallet_transactions WHERE reference = ? LIMIT 1', [ref], { cache: false });
+        if (dupCheck.results && dupCheck.results.length > 0) {
+          const balRes = await d1.query('SELECT wallet_balance_ngn FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+          const currentBalance = Number(balRes.results?.[0]?.wallet_balance_ngn ?? user.walletBalanceNGN ?? 0);
+          return NextResponse.json({
+            success: true,
+            message: 'Wallet credited successfully',
+            newBalance: currentBalance,
+            alreadyProcessed: true
+          });
+        }
+        return NextResponse.json({ success: false, error: 'Could not record wallet transaction' }, { status: 500 });
+      }
+    } catch {
+      const balRes = await d1.query('SELECT wallet_balance_ngn FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+      const currentBalance = Number(balRes.results?.[0]?.wallet_balance_ngn ?? user.walletBalanceNGN ?? 0);
+      return NextResponse.json({
+        success: true,
+        message: 'Wallet credited successfully',
+        newBalance: currentBalance,
+        alreadyProcessed: true
+      });
+    }
+
+    try {
+      const updateRes = await d1.query(
+        'UPDATE users SET wallet_balance_ngn = COALESCE(wallet_balance_ngn, 0) + ?, updated_at = ? WHERE id = ?',
+        [verifiedAmount, now, user.id]
+      );
+      const changed = Number(updateRes?.meta?.rows_written ?? updateRes?.meta?.changes ?? 0);
+      if (!updateRes || !updateRes.success || changed !== 1) {
+        await d1.query('DELETE FROM wallet_transactions WHERE id = ?', [txId]).catch(() => {});
+        return NextResponse.json({ success: false, error: 'Failed to update wallet balance' }, { status: 500 });
+      }
+    } catch {
+      await d1.query('DELETE FROM wallet_transactions WHERE id = ?', [txId]).catch(() => {});
+      return NextResponse.json({ success: false, error: 'Failed to update wallet balance' }, { status: 500 });
+    }
+
+    const updatedBalRes = await d1.query('SELECT wallet_balance_ngn FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+    const newBalance = Number(updatedBalRes.results?.[0]?.wallet_balance_ngn ?? (user.walletBalanceNGN + verifiedAmount));
+    return NextResponse.json({ success: true, message: 'Wallet credited successfully', newBalance });
   }
 
   // 8. Order Placement (Direct D1 persistence)
@@ -1341,12 +1492,11 @@ export async function POST(req: NextRequest) {
     }
     const serviceFee = configuredServiceFee;
     const preWalletTotal = Math.max(0, verifiedSubtotal + deliveryFee + serviceFee + (Number(tip) || 0) - discountAmount);
-    const verifiedWalletDeduction = Math.min(preWalletTotal, Math.max(0, Number(walletDeduction) || 0));
-    const fullyPaidByWallet = verifiedWalletDeduction >= preWalletTotal;
 
-    if (verifiedWalletDeduction > 0) {
-      await d1.query('UPDATE users SET wallet_balance_ngn = MAX(0, COALESCE(wallet_balance_ngn, 0) - ?) WHERE id = ?', [verifiedWalletDeduction, user.id]);
-    }
+    const requestedWalletDeduction = Math.max(0, Number(walletDeduction) || 0);
+    const balRes = await d1.query('SELECT wallet_balance_ngn FROM users WHERE id = ? LIMIT 1', [user.id], { cache: false });
+    const realWalletBalance = Math.max(0, Number(balRes.results?.[0]?.wallet_balance_ngn || 0));
+    const verifiedWalletDeduction = Math.min(preWalletTotal, requestedWalletDeduction, realWalletBalance);
 
     const shortNum = Math.floor(1000 + Math.random() * 9000);
     const orderId = `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -1354,6 +1504,26 @@ export async function POST(req: NextRequest) {
     const handoverPin = String(Math.floor(1000 + Math.random() * 9000));
     const now = new Date().toISOString();
     const txnRef = `txn_${Date.now()}_${shortNum}`;
+
+    let walletDeducted = false;
+    if (verifiedWalletDeduction > 0) {
+      const deductRes = await d1.query(
+        'UPDATE users SET wallet_balance_ngn = COALESCE(wallet_balance_ngn, 0) - ?, updated_at = ? WHERE id = ? AND COALESCE(wallet_balance_ngn, 0) >= ?',
+        [verifiedWalletDeduction, now, user.id, verifiedWalletDeduction]
+      );
+      const changed = Number(deductRes?.meta?.rows_written ?? deductRes?.meta?.changes ?? 0);
+      if (!deductRes || !deductRes.success || changed !== 1) {
+        return NextResponse.json({ success: false, error: 'Insufficient wallet balance' }, { status: 400 });
+      }
+      walletDeducted = true;
+      await d1.query(
+        `INSERT INTO wallet_transactions (id, user_id, type, amount, currency, description, status, created_at, reference, payment_method)
+         VALUES (?, ?, 'order', ?, ?, ?, 'completed', ?, ?, 'Wallet Balance')`,
+        [`wtx-ord-${orderId}`, user.id, -verifiedWalletDeduction, currency || 'NGN', `Order ${shortId}`, now, orderId]
+      );
+    }
+
+    const fullyPaidByWallet = preWalletTotal === 0 || (walletDeducted && verifiedWalletDeduction >= preWalletTotal);
 
     const orderRecord = {
       id: orderId,
@@ -1448,6 +1618,43 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       data: { subtotal: cleanSubtotal, deliveryFee, serviceFee, discountAmount, total }
+    });
+  }
+
+  // 9b. Validate Promo Code at Checkout
+  if (pathname === '/orders/validate-promo') {
+    const codeUpper = String(body.code || '').trim().toUpperCase();
+    const orderSubtotal = Number(body.subtotal || 0);
+    if (!codeUpper) {
+      return NextResponse.json({ success: false, error: 'Promo code is required' }, { status: 400 });
+    }
+    const promoRes = await d1.query('SELECT * FROM promo_codes WHERE UPPER(code) = ? AND is_active = 1 LIMIT 1', [codeUpper]);
+    const promo = promoRes.results?.[0];
+    if (!promo) {
+      return NextResponse.json({ success: false, error: 'Invalid or expired promo code' }, { status: 404 });
+    }
+    const minOrder = Number(promo.min_order_amount || promo.min_order || 0);
+    if (orderSubtotal > 0 && orderSubtotal < minOrder) {
+      return NextResponse.json({
+        success: false,
+        error: `Minimum order of ₦${minOrder.toLocaleString()} required for code ${codeUpper}`
+      }, { status: 400 });
+    }
+    const val = Number(promo.value || 0);
+    let discountAmount = promo.discount_type === 'percentage' ? Math.round(orderSubtotal * (val / 100)) : val;
+    if (promo.max_discount_cap) {
+      discountAmount = Math.min(discountAmount, Number(promo.max_discount_cap));
+    }
+    return NextResponse.json({
+      success: true,
+      data: {
+        code: promo.code,
+        discount_type: promo.discount_type,
+        value: val,
+        min_order: minOrder,
+        max_cap: Number(promo.max_discount_cap || 0),
+        discountAmount
+      }
     });
   }
 
@@ -1630,7 +1837,86 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: { id, courierId: resolvedCourierId, updatedAt: now } });
   }
 
-  // 13. Payment Verify
+  // 13. Payment Initialize, Virtual Account, Webhook, and Verify
+  if (pathname === '/payment/initialize' || pathname === '/payments/initialize') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    const email = String(body.email || user.email || '').trim();
+    const amountNGN = Number(body.amountNGN ?? body.amount ?? 0);
+    const reference = String(body.reference || `VEY-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`).trim();
+    if (!email || !Number.isFinite(amountNGN) || amountNGN <= 0) {
+      return NextResponse.json({ success: false, error: 'Valid email and positive amount are required' }, { status: 400 });
+    }
+    const origin = req.nextUrl.origin;
+    const callbackUrl = body.callbackUrl || `${origin}/?trxref=${encodeURIComponent(reference)}&reference=${encodeURIComponent(reference)}`;
+    const initRes = await paymentGateway.initializePayment({
+      email,
+      amountNGN,
+      reference,
+      callbackUrl,
+      metadata: body.metadata || { userId: user.id }
+    });
+    if (!initRes.success) {
+      return NextResponse.json({ success: false, error: initRes.error || 'Could not initialize payment' }, { status: 502 });
+    }
+    return NextResponse.json({ success: true, data: initRes });
+  }
+
+  if (pathname === '/payment/virtual-account' || pathname === '/payments/virtual-account') {
+    const user = await getUser(req);
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    const email = String(body.email || user.email || '').trim();
+    const amountNGN = Number(body.amountNGN ?? body.amount ?? 0);
+    const reference = String(body.reference || `VA-${Date.now()}`).trim();
+    if (!email || !Number.isFinite(amountNGN) || amountNGN <= 0) {
+      return NextResponse.json({ success: false, error: 'Valid email and amount required' }, { status: 400 });
+    }
+    const origin = req.nextUrl.origin;
+    const initRes = await paymentGateway.initializePayment({
+      email,
+      amountNGN,
+      reference,
+      callbackUrl: `${origin}/?trxref=${encodeURIComponent(reference)}&reference=${encodeURIComponent(reference)}`,
+      metadata: { channel: 'bank_transfer', userId: user.id }
+    });
+    if (!initRes.success) {
+      return NextResponse.json({ success: false, error: initRes.error || 'Dynamic virtual account unavailable' }, { status: 502 });
+    }
+    return NextResponse.json({ success: true, data: initRes });
+  }
+
+  if (pathname === '/webhooks/paystack') {
+    const signature = (req.headers.get('x-paystack-signature') || '').trim();
+    const secret = (process.env.PAYSTACK_SECRET_KEY || '').trim();
+    if (!secret || !signature) {
+      return NextResponse.json({ success: false, error: 'Invalid Paystack signature' }, { status: 401 });
+    }
+    const rawPayload = JSON.stringify(body);
+    const computedHash = createHash('sha512').update(secret + rawPayload).digest('hex');
+    const hmacMatch = (() => {
+      try {
+        const crypto = require('crypto');
+        return crypto.createHmac('sha512', secret).update(rawPayload).digest('hex') === signature;
+      } catch {
+        return computedHash === signature;
+      }
+    })();
+    if (!hmacMatch) {
+      return NextResponse.json({ success: false, error: 'Invalid Paystack signature' }, { status: 401 });
+    }
+    if (body?.event === 'charge.success' && body?.data?.reference) {
+      const ref = String(body.data.reference).trim();
+      const verified = await paymentGateway.verifyPayment(ref);
+      if (verified.success && verified.isPaid) {
+        const now = new Date().toISOString();
+        await d1.query("UPDATE transactions SET status = 'completed' WHERE reference = ?", [ref]).catch(() => {});
+        await d1.query("UPDATE orders SET payment_status = 'paid', updated_at = ? WHERE transaction_ref = ?", [now, ref]).catch(() => {});
+        d1.clearCache();
+      }
+    }
+    return NextResponse.json({ received: true });
+  }
+
   if (pathname === '/payment/verify' || pathname === '/payments/verify') {
     const reference = String(
       body.reference ||
@@ -1679,8 +1965,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Settings updated' });
   }
 
+  // 15a. Admin Site Data Manual Sync
+  if (pathname === '/admin/site-data/sync' || pathname === '/site-data/sync') {
+    const user = await getUser(req);
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 403 });
+    }
+    const snapshot = await siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true });
+    return NextResponse.json({
+      success: Boolean(snapshot),
+      data: snapshot ? {
+        version: snapshot.version,
+        updatedAt: snapshot.updatedAt,
+        syncStatus: snapshot.syncStatus,
+        restaurantsCount: snapshot.restaurants?.length || 0
+      } : null
+    });
+  }
+
   // Create a restaurant record for admin-managed restaurant account onboarding.
-  if (pathname === '/admin/restaurants/create') {
+  if (pathname === '/admin/restaurants/create' || pathname === '/admin/restaurants') {
     const user = await getUser(req);
     if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
       return NextResponse.json({ success: false, error: 'Administrator access required' }, { status: 403 });
@@ -2044,13 +2348,18 @@ export async function POST(req: NextRequest) {
     const user = await getUser(req);
     if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     const orderId = decodeURIComponent(orderChatPostMatch[1]);
+    const orderRes = await d1.query('SELECT id, customer_id, courier_id, restaurant_id FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
+    const orderRow = orderRes.results?.[0];
+    if (!orderRow || !isOrderParticipant(user, orderRow)) {
+      return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    }
     const { message } = body;
     if (!message) return NextResponse.json({ success: false, error: 'Message required' }, { status: 400 });
     const id = `msg-${Date.now()}`;
     const now = new Date().toISOString();
     await d1.query(
       'INSERT INTO order_chats (id, order_id, sender_id, sender_role, message, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, orderId, user.id, user.role, message, now]
+      [id, orderRow.id, user.id, user.role, message, now]
     );
     return NextResponse.json({ success: true, data: { id, message, senderId: user.id, createdAt: now } });
   }
@@ -2423,8 +2732,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true, data: { orderId: order.id, status, updatedAt: now } });
   }
 
-  // 2. Settings Single Update
-  if (pathname === '/settings/update') {
+  // 2. Settings Single Update & SEO Update
+  if (pathname === '/settings/update' || pathname === '/admin/settings/update') {
     if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
@@ -2437,6 +2746,29 @@ export async function PATCH(req: NextRequest) {
       [key, String(value), now]
     );
     return NextResponse.json({ success: true, data: { key, value } });
+  }
+
+  if (pathname === '/settings/seo' || pathname === '/admin/settings/seo') {
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const now = new Date().toISOString();
+    const seoFields: Record<string, any> = {
+      seo_title: body.title,
+      seo_description: body.description,
+      seo_keywords: body.keywords,
+      seo_og_image: body.ogImage
+    };
+    for (const [k, v] of Object.entries(seoFields)) {
+      if (v !== undefined) {
+        await d1.query(
+          `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, ?)
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+          [k, String(v), now]
+        );
+      }
+    }
+    return NextResponse.json({ success: true, message: 'SEO settings updated' });
   }
 
   // 3. Admin Delivery Zones Toggle
@@ -2510,7 +2842,13 @@ export async function PATCH(req: NextRequest) {
   // 8. Restaurant Busy Mode Toggle
   const busyMatch = pathname.match(/^\/(?:admin\/)?restaurants\/([^/]+)\/busy-mode$/);
   if (busyMatch) {
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     const restId = decodeURIComponent(busyMatch[1]);
+    const isAdmin = user.role === 'admin' || user.role === 'sub_admin';
+    const isOwningRestaurant = user.role === 'restaurant' && Boolean(user.restaurantId) && String(user.restaurantId) === String(restId);
+    if (!isAdmin && !isOwningRestaurant) {
+      return NextResponse.json({ success: false, error: 'Restaurant not found' }, { status: 404 });
+    }
     const isBusyPaused = body.isBusyPaused ? 1 : 0;
     await d1.query('UPDATE restaurants SET is_busy_paused = ? WHERE id = ?', [isBusyPaused, restId]);
     return NextResponse.json({ success: true, data: { restaurantId: restId, isBusyPaused: Boolean(isBusyPaused) } });
@@ -2772,6 +3110,80 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
+  // 16c. Admin Driver Profile Update
+  const driverPatchMatch = pathname.match(/^\/admin\/drivers\/([^/]+)$/);
+  if (driverPatchMatch) {
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const driverId = decodeURIComponent(driverPatchMatch[1]);
+    const { name, phone, vehicleType, licenseNumber, isApproved } = body;
+    const now = new Date().toISOString();
+    await d1.query(
+      `UPDATE users SET
+         name = COALESCE(?, name),
+         phone = COALESCE(?, phone),
+         vehicle_type = COALESCE(?, vehicle_type),
+         license_number = COALESCE(?, license_number),
+         is_approved = COALESCE(?, is_approved),
+         updated_at = ?
+       WHERE id = ?`,
+      [name ?? null, phone ?? null, vehicleType ?? null, licenseNumber ?? null, isApproved !== undefined ? (isApproved ? 1 : 0) : null, now, driverId]
+    );
+    return NextResponse.json({ success: true, message: 'Driver updated' });
+  }
+
+  // 16d. Admin Restaurant Details Update
+  const restPatchMatch = pathname.match(/^\/admin\/restaurants\/([^/]+)$/);
+  if (restPatchMatch) {
+    if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const restId = decodeURIComponent(restPatchMatch[1]);
+    const existingRes = await d1.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [restId]);
+    const existing = existingRes.results?.[0];
+    if (!existing) return NextResponse.json({ success: false, error: 'Restaurant not found' }, { status: 404 });
+    let rawJson: any = {};
+    try { rawJson = existing.raw_json ? JSON.parse(existing.raw_json) : {}; } catch { rawJson = {}; }
+    const { name, cuisine, address, deliveryFee, deliveryTimeMin, deliveryTimeMax, minOrder, commissionPercent, isOpen, zone, imageR2Url } = body;
+    if (name !== undefined) rawJson.name = String(name).trim();
+    if (cuisine !== undefined) rawJson.cuisine = String(cuisine).trim();
+    if (address !== undefined) rawJson.address = String(address).trim();
+    if (deliveryFee !== undefined) rawJson.deliveryFee = Number(deliveryFee);
+    if (imageR2Url !== undefined) rawJson.image = imageR2Url;
+    await d1.query(
+      `UPDATE restaurants SET
+         name = COALESCE(?, name),
+         cuisine = COALESCE(?, cuisine),
+         address = COALESCE(?, address),
+         delivery_fee = COALESCE(?, delivery_fee),
+         delivery_time_min = COALESCE(?, delivery_time_min),
+         delivery_time_max = COALESCE(?, delivery_time_max),
+         min_order = COALESCE(?, min_order),
+         commission_percent = COALESCE(?, commission_percent),
+         is_open = COALESCE(?, is_open),
+         zone = COALESCE(?, zone),
+         raw_json = ?
+       WHERE id = ?`,
+      [
+        name !== undefined ? String(name).trim() : null,
+        cuisine !== undefined ? String(cuisine).trim() : null,
+        address !== undefined ? String(address).trim() : null,
+        deliveryFee !== undefined ? Number(deliveryFee) : null,
+        deliveryTimeMin !== undefined ? Number(deliveryTimeMin) : null,
+        deliveryTimeMax !== undefined ? Number(deliveryTimeMax) : null,
+        minOrder !== undefined ? Number(minOrder) : null,
+        commissionPercent !== undefined ? Number(commissionPercent) : null,
+        isOpen !== undefined ? (isOpen ? 1 : 0) : null,
+        zone !== undefined ? String(zone).trim() : null,
+        JSON.stringify(rawJson),
+        restId
+      ]
+    );
+    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+    return NextResponse.json({ success: true, message: 'Restaurant updated' });
+  }
+
 
 
   // 17. Restaurant Item Update
@@ -2796,17 +3208,19 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Item updated' });
   }
 
-  // 18. Support Ticket Status
-  const supportStatusMatch = pathname.match(/^\/admin\/support\/([^/]+)\/status$/);
+  // 18. Support Ticket Status & Patch
+  const supportStatusMatch = pathname.match(/^\/admin\/support\/(?:tickets\/)?([^/]+)\/status$/) || pathname.match(/^\/support\/tickets\/([^/]+)$/);
   if (supportStatusMatch) {
     if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const ticketId = decodeURIComponent(supportStatusMatch[1]);
-    const { status } = body;
-    if (!status) return NextResponse.json({ success: false, error: 'Status required' }, { status: 400 });
+    const { status, adminNotes } = body;
+    if (!status && adminNotes === undefined) return NextResponse.json({ success: false, error: 'Status or notes required' }, { status: 400 });
     const now = new Date().toISOString();
-    await d1.query('UPDATE support_tickets SET status = ?, updated_at = ? WHERE id = ?', [status, now, ticketId]);
+    if (status) {
+      await d1.query('UPDATE support_tickets SET status = ?, updated_at = ? WHERE id = ?', [status, now, ticketId]);
+    }
     return NextResponse.json({ success: true, message: 'Ticket status updated' });
   }
 
@@ -2822,7 +3236,19 @@ export async function PATCH(req: NextRequest) {
   // 20. Order Prep Time Update
   const prepTimeMatch = pathname.match(/^\/orders\/([^/]+)\/prep-time$/);
   if (prepTimeMatch) {
+    if (!user) return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     const orderId = decodeURIComponent(prepTimeMatch[1]);
+    const orderRes = await d1.query('SELECT id, restaurant_id FROM orders WHERE id = ? OR short_id = ? LIMIT 1', [orderId, orderId]);
+    const orderRow = orderRes.results?.[0];
+    const isAdmin = user.role === 'admin' || user.role === 'sub_admin';
+    const isOwningRestaurant =
+      user.role === 'restaurant' &&
+      Boolean(user.restaurantId) &&
+      Boolean(orderRow) &&
+      String(user.restaurantId) === String(orderRow.restaurant_id || '');
+    if (!orderRow || (!isAdmin && !isOwningRestaurant)) {
+      return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    }
     const { prepTimeMinutes } = body;
     const now = new Date().toISOString();
     await d1.query('UPDATE orders SET updated_at = ? WHERE id = ? OR short_id = ?', [now, orderId, orderId]);
@@ -2867,15 +3293,16 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: true, message: 'Address deleted' });
   }
 
-  // 3. Admin Delete User
-  const userMatch = pathname.match(/^\/admin\/users\/([^/]+)$/);
+  // 3. Admin Delete User or Driver
+  const userMatch = pathname.match(/^\/admin\/(?:users|drivers)\/([^/]+)$/);
   if (userMatch) {
     if (!user || (user.role !== 'admin' && user.role !== 'sub_admin')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const targetId = decodeURIComponent(userMatch[1]);
+    await d1.query('DELETE FROM courier_profiles WHERE user_id = ?', [targetId]).catch(() => {});
     await d1.query('DELETE FROM users WHERE id = ?', [targetId]);
-    return NextResponse.json({ success: true, message: 'User deleted' });
+    return NextResponse.json({ success: true, message: 'Account deleted' });
   }
 
   // 4. Admin Delete Promo
