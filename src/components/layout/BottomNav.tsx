@@ -1,6 +1,7 @@
 import React from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
-import { Home, Utensils, Receipt, ShoppingCart } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { Home, Utensils, LayoutGrid, Receipt, ShoppingCart } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
   const {
@@ -13,6 +14,8 @@ export const BottomNav: React.FC = () => {
     setIsCartOpen,
     setIsRightDrawerOpen
   } = useDelivery();
+
+  const { isAuthenticated, setIsAuthModalOpen } = useAuth();
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -30,6 +33,11 @@ export const BottomNav: React.FC = () => {
       setIsCartOpen(false);
       setActivePage('offers');
     } else if (tabId === 'history') {
+      // Orders/history is private — require a real session
+      if (!isAuthenticated) {
+        setIsAuthModalOpen(true);
+        return;
+      }
       setIsCartOpen(false);
       setActivePage('orders');
     } else if (tabId === 'cart') {
@@ -42,15 +50,19 @@ export const BottomNav: React.FC = () => {
   // Only render when in customer storefront view
   if (activeRole !== 'customer') return null;
 
+  // Guests: Home · Food · Express · Cart (4)
+  // Logged-in: Home · Food · Express · History · Cart (5)
+  const gridCols = isAuthenticated ? 'grid-cols-5' : 'grid-cols-4';
+
   return (
     <nav
       aria-label="Bottom Navigation Bar"
       className="fixed bottom-0 left-0 right-0 z-30 bg-white/98 backdrop-blur-lg border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-1.5 px-2 pointer-events-auto"
     >
-      <div className="max-w-md mx-auto grid grid-cols-5 items-center">
-        
+      <div className={`max-w-md mx-auto grid ${gridCols} items-center`}>
         {/* Tab 1: Home */}
         <button
+          type="button"
           onClick={() => handleTabClick('home')}
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors"
           aria-label="Home Page"
@@ -75,9 +87,10 @@ export const BottomNav: React.FC = () => {
 
         {/* Tab 2: Food */}
         <button
+          type="button"
           onClick={() => handleTabClick('food')}
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors"
-          aria-label="Food Categories & Menus"
+          aria-label="Food / Restaurants"
         >
           <div
             className={`p-1.5 rounded-xl transition-all ${
@@ -97,30 +110,21 @@ export const BottomNav: React.FC = () => {
           </span>
         </button>
 
-        {/* Tab 3: Express */}
+        {/* Tab 3: Express (offers) */}
         <button
+          type="button"
           onClick={() => handleTabClick('express')}
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors relative"
-          aria-label="Express Hot Deals & Fast Orders"
+          aria-label="Express Offers"
         >
           <div
-            className={`p-1.5 rounded-xl transition-all relative ${
+            className={`p-1.5 rounded-xl transition-all ${
               activePage === 'offers' && !isCartOpen
                 ? 'bg-orange-50 text-[#FF5500]'
                 : 'text-slate-500 group-hover:text-slate-800'
             }`}
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="7" rx="2" />
-              <rect x="14" y="3" width="7" height="7" rx="2" />
-              <rect x="3" y="14" width="7" height="7" rx="2" />
-              <rect x="14" y="14" width="7" height="7" rx="2" />
-            </svg>
-            {totalCartCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF5500] text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
-                {totalCartCount}
-              </span>
-            )}
+            <LayoutGrid className="w-5 h-5 stroke-[2]" />
           </div>
           <span
             className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors ${
@@ -131,32 +135,36 @@ export const BottomNav: React.FC = () => {
           </span>
         </button>
 
-        {/* Tab 4: History */}
-        <button
-          onClick={() => handleTabClick('history')}
-          className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors"
-          aria-label="Order History"
-        >
-          <div
-            className={`p-1.5 rounded-xl transition-all ${
-              activePage === 'orders' && !isCartOpen
-                ? 'bg-orange-50 text-[#FF5500]'
-                : 'text-slate-500 group-hover:text-slate-800'
-            }`}
+        {/* Tab 4: History — logged-in customers only */}
+        {isAuthenticated && (
+          <button
+            type="button"
+            onClick={() => handleTabClick('history')}
+            className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors"
+            aria-label="Order History"
           >
-            <Receipt className="w-5 h-5 stroke-[2]" />
-          </div>
-          <span
-            className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors ${
-              activePage === 'orders' && !isCartOpen ? 'text-[#FF5500] font-bold' : 'text-slate-500'
-            }`}
-          >
-            History
-          </span>
-        </button>
+            <div
+              className={`p-1.5 rounded-xl transition-all ${
+                activePage === 'orders' && !isCartOpen
+                  ? 'bg-orange-50 text-[#FF5500]'
+                  : 'text-slate-500 group-hover:text-slate-800'
+              }`}
+            >
+              <Receipt className="w-5 h-5 stroke-[2]" />
+            </div>
+            <span
+              className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors ${
+                activePage === 'orders' && !isCartOpen ? 'text-[#FF5500] font-bold' : 'text-slate-500'
+              }`}
+            >
+              History
+            </span>
+          </button>
+        )}
 
-        {/* Tab 5: Cart */}
+        {/* Tab last: Cart */}
         <button
+          type="button"
           onClick={() => handleTabClick('cart')}
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors relative"
           aria-label="Shopping Cart"
@@ -171,7 +179,7 @@ export const BottomNav: React.FC = () => {
             <ShoppingCart className="w-5 h-5 stroke-[2]" />
             {totalCartCount > 0 && (
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF5500] text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
-                {totalCartCount}
+                {totalCartCount > 99 ? '99+' : totalCartCount}
               </span>
             )}
           </div>
@@ -183,7 +191,6 @@ export const BottomNav: React.FC = () => {
             Cart
           </span>
         </button>
-
       </div>
     </nav>
   );
