@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { d1 } from '../../../lib/d1';
 import { buildPublicRestaurant } from '../../../lib/restaurantMenu';
+import App from '../../../src/App';
 
 export const revalidate = 300;
 
@@ -129,6 +130,7 @@ export default async function RestaurantSeoPage({ params }: Props) {
   };
 
   return (
+    <>
     <main className="mx-auto w-full max-w-5xl px-5 py-10 text-slate-900">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       <nav aria-label="Breadcrumb" className="mb-5 text-sm text-slate-500">
@@ -174,5 +176,7 @@ export default async function RestaurantSeoPage({ params }: Props) {
         )}
       </section>
     </main>
+    <App initialPage="restaurants" />
+    </>
   );
 }

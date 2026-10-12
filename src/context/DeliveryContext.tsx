@@ -526,6 +526,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
 
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
+
+  // Resolve a direct restaurant URL once the public snapshot has loaded.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const match = window.location.pathname.match(/^\/restaurants\/([^/]+)\/?$/);
+    if (!match || restaurants.length === 0) return;
+    let restaurantId = match[1];
+    try { restaurantId = decodeURIComponent(restaurantId); } catch {}
+    if (restaurants.some((restaurant) => restaurant.id === restaurantId)) {
+      setSelectedRestaurantId(restaurantId);
+    }
+  }, [restaurants]);
   const [selectedRestaurantForPortal, setSelectedRestaurantForPortal] = useState<string>('rest-1');
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
   const [isCartOpen, setIsCartOpenState] = useState<boolean>(false);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
@@ -17,6 +18,8 @@ import {
 } from 'lucide-react';
 
 export const RestaurantDetailModal: React.FC = () => {
+  const router = useRouter();
+  const pathname = usePathname();
   const {
     restaurants,
     selectedRestaurantId,
@@ -103,7 +106,7 @@ export const RestaurantDetailModal: React.FC = () => {
         {/* Restaurant Header */}
         <div className="relative p-5 sm:p-6 border-b border-slate-100 bg-linear-to-b from-[#E8F5EF]/60 to-white">
           <button
-            onClick={() => setSelectedRestaurantId(null)}
+            onClick={() => { setSelectedRestaurantId(null); if (pathname?.startsWith('/restaurants/')) router.push('/restaurants'); }}
             aria-label="Close restaurant menu"
             className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/90 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors shadow-xs flex items-center justify-center cursor-pointer z-10"
           >
@@ -277,7 +280,7 @@ export const RestaurantDetailModal: React.FC = () => {
             <button
               onClick={() => {
                 setIsCartOpen(true);
-                setSelectedRestaurantId(null);
+                if (!pathname?.startsWith('/restaurants/')) setSelectedRestaurantId(null);
               }}
               className="w-full py-3.5 px-4 rounded-2xl bg-[#E8C547] hover:bg-[#D4B23A] active:scale-[0.99] text-[#0D4F3C] font-bold text-sm transition-all shadow-md cursor-pointer flex items-center justify-between"
             >
