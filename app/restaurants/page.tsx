@@ -41,15 +41,16 @@ async function getRestaurants(): Promise<RestaurantCard[]> {
   try {
     const result = await d1.query('SELECT * FROM restaurants ORDER BY name ASC', [], { cache: false });
     if (!result?.success || !Array.isArray(result.results)) return [];
-    const restaurants = await Promise.all(result.results.map(async (row: any) => {
+    const cards: RestaurantCard[] = [];
+    for (const row of result.results as any[]) {
       try {
         const item = await buildPublicRestaurant(row, { includeMenu: false });
         const id = String(item?.id || row?.id || '');
         const name = String(item?.name || row?.name || '').trim();
-        if (!id || !name) return null;
+        if (!id || !name) continue;
         const image = item?.imageUrl || item?.bannerUrl || item?.image || item?.logoUrl || item?.logo;
         const rating = Number(item?.rating);
-        return {
+        cards.push({
           id,
           name,
           description: typeof item?.description === 'string' ? item.description : (typeof item?.tagline === 'string' ? item.tagline : undefined),
@@ -60,12 +61,12 @@ async function getRestaurants(): Promise<RestaurantCard[]> {
           isOpen: item?.isOpen === true,
           deliveryTimeMin: Number.isFinite(Number(item?.deliveryTimeMin)) && Number(item?.deliveryTimeMin) > 0 ? Number(item.deliveryTimeMin) : undefined,
           deliveryFee: Number.isFinite(Number(item?.calculatedDeliveryFee ?? item?.deliveryFee)) && Number(item?.calculatedDeliveryFee ?? item?.deliveryFee) >= 0 ? Number(item?.calculatedDeliveryFee ?? item?.deliveryFee) : undefined
-        } satisfies RestaurantCard;
+        });
       } catch {
-        return null;
+        // skip invalid rows
       }
-    }));
-    return restaurants.filter((item) => item !== null) as RestaurantCard[];
+    }
+    return cards;
   } catch (error) {
     console.error('Failed to load restaurant listing:', error);
     return [];
