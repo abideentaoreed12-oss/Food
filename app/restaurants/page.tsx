@@ -33,6 +33,8 @@ type RestaurantCard = {
   image?: string;
   rating?: number;
   isOpen?: boolean;
+  deliveryTimeMin?: number;
+  deliveryFee?: number;
 };
 
 async function getRestaurants(): Promise<RestaurantCard[]> {
@@ -55,7 +57,9 @@ async function getRestaurants(): Promise<RestaurantCard[]> {
           city: typeof item?.city === 'string' ? item.city : undefined,
           image: typeof image === 'string' ? image : undefined,
           rating: Number.isFinite(rating) && rating > 0 ? rating : undefined,
-          isOpen: item?.isOpen === true
+          isOpen: item?.isOpen === true,
+          deliveryTimeMin: Number.isFinite(Number(item?.deliveryTimeMin)) && Number(item?.deliveryTimeMin) > 0 ? Number(item.deliveryTimeMin) : undefined,
+          deliveryFee: Number.isFinite(Number(item?.calculatedDeliveryFee ?? item?.deliveryFee)) && Number(item?.calculatedDeliveryFee ?? item?.deliveryFee) >= 0 ? Number(item?.calculatedDeliveryFee ?? item?.deliveryFee) : undefined
         } satisfies RestaurantCard;
       } catch {
         return null;
