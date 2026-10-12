@@ -28,7 +28,10 @@ import {
   Bike,
   ShieldAlert,
   ExternalLink,
-  MessageSquare
+  MessageSquare,
+  Truck,
+  Utensils,
+  ChevronDown
 } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {
@@ -56,235 +59,336 @@ export const LandingPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const activeFee = activeZoneConfig?.base_delivery_fee ?? activeZoneConfig?.deliveryFee;
+  const activeFeeText = (activeFee !== undefined && activeFee !== null && Number.isFinite(Number(activeFee)))
+    ? ` - ₦${Number(activeFee).toLocaleString('en-NG')} Fee`
+    : '';
+  const activeZoneDisplay = activeZoneConfig
+    ? `${activeZoneConfig.name}${activeZoneConfig.city ? ` (${activeZoneConfig.city})` : ''}${activeFeeText}`
+    : 'Select Delivery Zone';
+
   return (
     <div className="min-h-screen bg-[#F6F3EE] text-slate-900 flex flex-col font-sans selection:bg-[#0D4F3C] selection:text-white">
       {/* ─────────────────────────────────────────────────────────────
-          2. HERO SECTION WITH PROMOTIONAL STATS
+          2. HERO SECTION (RICH FOREST GREEN WITH HIGH-FIDELITY DISH)
       ───────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#F7F3E8]/50 via-white to-[#F6F3EE] pt-12 pb-16 sm:pt-20 sm:pb-24 border-b border-slate-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Left Hero Copy & Actions */}
-            <div className="lg:col-span-7 space-y-6 text-center lg:text-left flex flex-col items-center lg:items-start">
-              <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#E6F0E9] border border-[#D8E5DC] text-[#0D4F3C] text-xs font-bold tracking-tight">
-                <span>{platformSettings['cms_hero_badge'] || 'Global Express Food & Cloud Kitchen Network'}</span>
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#0D4F3C] via-[#0A4333] to-[#08382B] text-white pt-2 sm:pt-6 pb-12 sm:pb-24">
+        {/* Subtle ambient lighting / texture */}
+        <div className="absolute -top-16 -right-16 w-96 h-96 bg-radial from-[#188B67]/25 to-transparent blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="relative flex flex-col md:grid md:grid-cols-12 gap-4 md:gap-8 items-start md:items-center">
+            {/* Copy / Tag Area */}
+            <div className="w-full md:col-span-7 pr-28 sm:pr-40 md:pr-0 space-y-2.5 sm:space-y-4 text-left">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#147A5A]/50 border border-[#20B486]/40 text-emerald-100 text-[11px] sm:text-xs font-semibold backdrop-blur-xs">
+                <Utensils className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#E8C547]" />
+                <span className="truncate max-w-[220px] sm:max-w-none">{platformSettings['cms_hero_badge'] || 'Global Express Food & Cloud Kitchen Network'}</span>
               </div>
 
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 font-display tracking-tight leading-[1.12]">
-                {platformSettings['cms_hero_title'] || 'Hot, Delicious Meals Delivered to Your Door in 25 Minutes.'}
+              {/* Headline */}
+              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold font-display tracking-tight leading-[1.15]">
+                <span className="block text-white">Hot, Delicious Meals</span>
+                <span className="block text-[#E8C547]">Delivered to Your Door</span>
+                <span className="block text-white">in 25 Minutes.</span>
               </h1>
 
-              <p className="text-sm sm:text-base text-slate-600 max-w-xl leading-relaxed">
+              {/* Subtitle */}
+              <p className="text-[11px] sm:text-xs md:text-sm text-emerald-100/80 max-w-md sm:max-w-xl leading-relaxed">
                 {platformSettings['cms_hero_subtitle'] || 'Order authentic specialties, artisanal pizzas, gourmet burgers, and delicious dishes from top-rated restaurants across your city. Verified kitchen tracking, 4-digit handover PIN protection, and zero payment failures with your in-app Naira wallet.'}
               </p>
-
-              {/* Delivery Zone Selector & Quick Storefront CTA */}
-              <div className="p-2 sm:p-2.5 bg-white border border-slate-200 rounded-3xl shadow-lg shadow-slate-200/50 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full max-w-xl">
-                <div className="flex-1 flex items-center gap-2.5 px-3 py-2 bg-slate-50 rounded-2xl border border-slate-100 text-left">
-                  <MapPin className="w-4 h-4 text-[#0D4F3C] shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Your Delivery Zone
-                    </span>
-                    <select
-                      value={selectedZone}
-                      onChange={(e) => setSelectedZone(e.target.value as DeliveryZone)}
-                      className="w-full bg-transparent text-xs font-bold text-slate-900 focus:outline-none cursor-pointer"
-                    >
-                      {deliveryZones.map((zone: any) => {
-                        const zoneId = zone.id || zone.code;
-                        const fee = zone.base_delivery_fee ?? zone.deliveryFee;
-                        return (
-                          <option key={zoneId} value={zoneId}>
-                            {zone.name}{zone.city ? ` (${zone.city})` : ''} · {fee !== undefined && Number.isFinite(Number(fee)) ? `${currency === 'USD' ? '$' : '₦'}${Number(fee).toLocaleString()} Fee` : 'Fee unavailable'}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleExploreStorefront}
-                  className="px-6 py-3.5 bg-[#E8C547] hover:bg-[#D4B23A] text-[#0D4F3C] rounded-2xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-[#E8C547]/25 cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
-                >
-                  <span>{platformSettings['cms_hero_cta_text'] || 'Find Kitchens'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Dynamic Metadata Stats from Cloudflare D1 CMS */}
-              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-y-2 gap-x-4 sm:gap-x-6 text-xs text-slate-600 font-medium">
-                <div>
-                  <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
-                    {platformSettings['cms_hero_stat_time'] || '25–35 min'}
-                  </span>
-                  <span className="ml-1 text-slate-500">average delivery</span>
-                </div>
-                <span className="text-slate-300 font-bold" aria-hidden="true">·</span>
-                <div>
-                  <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
-                    {platformSettings['cms_hero_stat_fee'] || '₦500'}
-                  </span>
-                  <span className="ml-1 text-slate-500">{platformSettings['cms_hero_stat_fee_desc'] || 'flat delivery in active zones'}</span>
-                </div>
-                <span className="text-slate-300 font-bold" aria-hidden="true">·</span>
-                <div>
-                  <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
-                    {platformSettings['cms_hero_stat_orders'] || '45,000+'}
-                  </span>
-                  <span className="ml-1 text-slate-500">meals fulfilled</span>
-                </div>
-                <span className="text-slate-300 font-bold" aria-hidden="true">·</span>
-                <div className="flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                  <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
-                    {platformSettings['cms_hero_stat_rating'] || '4.8'}
-                  </span>
-                  <span className="text-slate-500">(3,200+ reviews)</span>
-                </div>
-              </div>
             </div>
 
-            {/* Right Hero Visual Card Showcase */}
-            <div className="lg:col-span-5 relative">
-              <div className="relative mx-auto max-w-md bg-white border border-slate-200/90 rounded-3xl p-5 shadow-2xl space-y-4">
-                {/* Showcase Top Bar */}
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-xs font-bold text-slate-900">Live Kitchen Dispatch</span>
-                  </div>
-                  <span className="text-[11px] font-mono font-bold text-[#0D4F3C] bg-[#E6F0E9] px-2 py-0.5 rounded-lg">
-                    {activeZoneConfig?.name || 'Active Delivery Hub'}
-                  </span>
-                </div>
-
-                {/* Hero Featured Dish 1 */}
-                <div
-                  onClick={handleExploreStorefront}
-                  className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-[#C6A536] hover:bg-[#F7F3E8]/30 transition-all cursor-pointer"
-                >
-                  {platformSettings['cms_hero_dish1_image'] ? (
-                    <img
-                      src={platformSettings['cms_hero_dish1_image']}
-                      alt={platformSettings['cms_hero_dish1_title'] || 'Featured Dish 1'}
-                      className="w-16 h-16 rounded-xl object-cover shrink-0"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-xl bg-[#F7F3E8] border border-[#D8E5DC] flex items-center justify-center shrink-0 text-[#093A2D]">
-                      <ChefHat className="w-6 h-6" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#0D4F3C] truncate">
-                        {platformSettings['cms_hero_dish1_title'] || 'Jollof Party Special'}
-                      </h4>
-                      <span className="text-xs font-bold font-mono text-slate-900">
-                        ₦{Number(platformSettings['cms_hero_dish1_price'] || 4500).toLocaleString('en-NG')}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                      {platformSettings['cms_hero_dish1_restaurant'] || 'Mega Chicken'} · 20–30 min
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-600">
-                      <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                      <span className="font-bold">4.9</span>
-                      <span>·</span>
-                      <span className="text-emerald-600 font-semibold">Chef Signature</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hero Featured Dish 2 */}
-                <div
-                  onClick={handleExploreStorefront}
-                  className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-[#C6A536] hover:bg-[#F7F3E8]/30 transition-all cursor-pointer"
-                >
-                  {platformSettings['cms_hero_dish2_image'] ? (
-                    <img
-                      src={platformSettings['cms_hero_dish2_image']}
-                      alt={platformSettings['cms_hero_dish2_title'] || 'Classic Smash Cheese Burger'}
-                      className="w-16 h-16 rounded-xl object-cover shrink-0"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-xl bg-[#F7F3E8] border border-[#D8E5DC] flex items-center justify-center shrink-0 text-[#093A2D]">
-                      <ChefHat className="w-6 h-6" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#0D4F3C] truncate">
-                        {platformSettings['cms_hero_dish2_title'] || 'Classic Smash Cheese Burger'}
-                      </h4>
-                      <span className="text-xs font-bold font-mono text-slate-900">
-                        ₦{Number(platformSettings['cms_hero_dish2_price'] || 3800).toLocaleString('en-NG')}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                      {platformSettings['cms_hero_dish2_restaurant'] || 'Burgers & Co.'} · 25–35 min
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-600">
-                      <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                      <span className="font-bold">4.8</span>
-                      <span>·</span>
-                      <span className="text-[#093A2D] font-semibold">Bestseller</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hero Featured Dish 3 */}
-                <div
-                  onClick={handleExploreStorefront}
-                  className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-[#C6A536] hover:bg-[#F7F3E8]/30 transition-all cursor-pointer"
-                >
-                  {platformSettings['cms_hero_dish3_image'] ? (
-                    <img
-                      src={platformSettings['cms_hero_dish3_image']}
-                      alt={platformSettings['cms_hero_dish3_title'] || 'Suya Beef Skewers'}
-                      className="w-16 h-16 rounded-xl object-cover shrink-0"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-xl bg-[#F7F3E8] border border-[#D8E5DC] flex items-center justify-center shrink-0 text-[#093A2D]">
-                      <ChefHat className="w-6 h-6" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#0D4F3C] truncate">
-                        {platformSettings['cms_hero_dish3_title'] || ''}
-                      </h4>
-                      <span className="text-xs font-bold font-mono text-slate-900">
-                        ₦{Number(platformSettings['cms_hero_dish3_price'] || 0).toLocaleString('en-NG')}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                      {platformSettings['cms_hero_dish3_restaurant'] || ''} · 15–25 min
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-600">
-                      <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                      <span className="font-bold">4.7</span>
-                      <span>·</span>
-                      <span className="text-rose-600 font-semibold">Wood-fired Charcoal</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Instant Order Trigger */}
-                <button
-                  onClick={handleExploreStorefront}
-                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-xs"
-                >
-                  <ShoppingBag className="w-4 h-4 text-[#126B54]" />
-                  <span>Start Ordering Now</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+            {/* Mobile / Tablet / Desktop Dish Visual */}
+            {/* Mobile: Anchored at top right with natural crop & steam aura */}
+            <div className="absolute -top-1 -right-6 sm:-right-8 md:static md:col-span-5 md:flex md:justify-end pointer-events-none z-10">
+              <div className="relative w-36 h-36 sm:w-56 sm:h-56 md:w-80 md:h-80 lg:w-96 lg:h-96 rounded-full overflow-hidden shadow-2xl border-2 sm:border-4 border-[#147A5A]/60 ring-2 sm:ring-4 ring-[#E8C547]/25 shrink-0">
+                <img
+                  src="/hero_jollof_bowl.jpg"
+                  alt="Authentic Nigerian Jollof Rice with grilled chicken and fried plantains"
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                />
               </div>
             </div>
           </div>
         </div>
+
+        {/* Decorative subtle wavy bottom separator */}
+        <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-black/5 to-transparent pointer-events-none" />
       </section>
+
+      {/* ─────────────────────────────────────────────────────────────
+          FLOATING DELIVERY ZONE CARD (OVERLAPPING HERO BOUNDARY)
+      ───────────────────────────────────────────────────────────── */}
+      <div className="-mt-6 sm:-mt-10 relative z-20 px-4 max-w-xl mx-auto w-full">
+        <div className="bg-white rounded-3xl shadow-xl shadow-slate-900/10 border border-slate-100 p-3 sm:p-4 space-y-2 sm:space-y-2.5">
+          {/* Zone Selector Box */}
+          <div className="relative flex items-center justify-between p-2.5 sm:p-3 bg-slate-50/90 hover:bg-slate-100/80 rounded-2xl border border-slate-200/80 transition-colors cursor-pointer group">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <MapPin className="w-5 h-5 text-[#0D4F3C] shrink-0" />
+              <div className="min-w-0 flex-1 text-left">
+                <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                  YOUR DELIVERY ZONE
+                </span>
+                <span className="block text-xs sm:text-sm font-bold text-slate-900 truncate">
+                  {activeZoneDisplay}
+                </span>
+              </div>
+            </div>
+            <ChevronDown className="w-4 h-4 text-slate-700 stroke-[2.5] shrink-0 ml-2" />
+            <select
+              value={selectedZone || ''}
+              onChange={(e) => setSelectedZone(e.target.value as DeliveryZone)}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              aria-label="Select delivery zone"
+            >
+              {deliveryZones && deliveryZones.length > 0 ? (
+                deliveryZones.map((zone: any) => {
+                  const zoneId = zone.id || zone.code;
+                  const fee = zone.base_delivery_fee ?? zone.deliveryFee;
+                  const feeText = (fee !== undefined && fee !== null && Number.isFinite(Number(fee)))
+                    ? ` - ₦${Number(fee).toLocaleString('en-NG')} Fee`
+                    : '';
+                  return (
+                    <option key={zoneId} value={zoneId}>
+                      {zone.name}{zone.city ? ` (${zone.city})` : ''}{feeText}
+                    </option>
+                  );
+                })
+              ) : (
+                <option value="">Select Delivery Zone</option>
+              )}
+            </select>
+          </div>
+
+          {/* Find Kitchens Button */}
+          <button
+            onClick={handleExploreStorefront}
+            className="w-full py-3 sm:py-3.5 px-6 bg-[#F5D179] hover:bg-[#E8C547] text-[#0D4F3C] rounded-2xl text-xs sm:text-sm font-extrabold transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+          >
+            <span>{platformSettings['cms_hero_cta_text'] || 'Find Kitchens'}</span>
+            <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+          </button>
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          PROMOTIONAL METRIC STATS ROW (4 COLUMNS WITH DIVIDERS)
+      ───────────────────────────────────────────────────────────── */}
+      <div className="max-w-xl mx-auto px-4 pt-5 pb-5 w-full">
+        <div className="grid grid-cols-4 gap-1 sm:gap-3 text-center items-start divide-x divide-slate-200/70">
+          <div className="px-1">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#E8F5EF] text-[#0D4F3C] flex items-center justify-center mx-auto mb-1.5 shadow-2xs">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+            </div>
+            <div className="font-extrabold text-[11px] sm:text-sm text-slate-900 font-mono tabular-nums leading-tight">
+              {platformSettings['cms_hero_stat_time'] || '25 – 35 min'}
+            </div>
+            <div className="text-[9px] sm:text-xs text-slate-500 font-medium leading-tight mt-0.5">
+              average delivery
+            </div>
+          </div>
+
+          <div className="px-1">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#E8F5EF] text-[#0D4F3C] flex items-center justify-center mx-auto mb-1.5 shadow-2xs">
+              <Truck className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+            </div>
+            <div className="font-extrabold text-[11px] sm:text-sm text-slate-900 font-mono tabular-nums leading-tight">
+              {platformSettings['cms_hero_stat_fee'] || '₦500'}
+            </div>
+            <div className="text-[9px] sm:text-xs text-slate-500 font-medium leading-tight mt-0.5">
+              {platformSettings['cms_hero_stat_fee_desc'] || 'flat delivery in active zones'}
+            </div>
+          </div>
+
+          <div className="px-1">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#E8F5EF] text-[#0D4F3C] flex items-center justify-center mx-auto mb-1.5 shadow-2xs">
+              <Utensils className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
+            </div>
+            <div className="font-extrabold text-[11px] sm:text-sm text-slate-900 font-mono tabular-nums leading-tight">
+              {platformSettings['cms_hero_stat_orders'] || '45,000+'}
+            </div>
+            <div className="text-[9px] sm:text-xs text-slate-500 font-medium leading-tight mt-0.5">
+              meals fulfilled
+            </div>
+          </div>
+
+          <div className="px-1">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#E8F5EF] text-[#0D4F3C] flex items-center justify-center mx-auto mb-1.5 shadow-2xs">
+              <Star className="w-4 h-4 sm:w-5 sm:h-5 text-[#0D4F3C] stroke-[2.2]" />
+            </div>
+            <div className="font-extrabold text-[11px] sm:text-sm text-slate-900 font-mono tabular-nums leading-tight">
+              {platformSettings['cms_hero_stat_rating'] || '4.8'}
+            </div>
+            <div className="text-[9px] sm:text-xs text-slate-500 font-medium leading-tight mt-0.5">
+              (3,200+ reviews)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          LIVE KITCHEN DISPATCH
+      ───────────────────────────────────────────────────────────── */}
+      <div className="max-w-xl mx-auto px-4 pb-12 w-full">
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
+          {/* Live Kitchen Dispatch Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse" />
+              <span className="text-xs sm:text-sm font-bold text-slate-900">Live Kitchen Dispatch</span>
+            </div>
+            <div className="relative">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E8F5EF] text-[#0D4F3C] text-xs font-bold cursor-pointer border border-[#A7F3D0]/50">
+                <span>{activeZoneConfig?.name || 'All Zones'}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-[#0D4F3C] stroke-[2.5]" />
+              </div>
+              <select
+                value={selectedZone || ''}
+                onChange={(e) => setSelectedZone(e.target.value as DeliveryZone)}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                aria-label="Filter live kitchen dispatch by zone"
+              >
+                {deliveryZones && deliveryZones.length > 0 ? (
+                  deliveryZones.map((zone: any) => {
+                    const zoneId = zone.id || zone.code;
+                    return (
+                      <option key={zoneId} value={zoneId}>
+                        {zone.name}{zone.city ? ` (${zone.city})` : ''}
+                      </option>
+                    );
+                  })
+                ) : (
+                  <option value="">All Zones</option>
+                )}
+              </select>
+            </div>
+          </div>
+
+          {/* Hero Featured Dish 1 */}
+          <div
+            onClick={handleExploreStorefront}
+            className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-[#C6A536] hover:bg-[#F7F3E8]/30 transition-all cursor-pointer"
+          >
+            {platformSettings['cms_hero_dish1_image'] ? (
+              <img
+                src={platformSettings['cms_hero_dish1_image']}
+                alt={platformSettings['cms_hero_dish1_title'] || 'Featured Dish 1'}
+                className="w-16 h-16 rounded-xl object-cover shrink-0"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-xl bg-[#F7F3E8] border border-[#D8E5DC] flex items-center justify-center shrink-0 text-[#093A2D]">
+                <ChefHat className="w-6 h-6" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#0D4F3C] truncate">
+                  {platformSettings['cms_hero_dish1_title'] || 'Jollof Party Special'}
+                </h4>
+                <span className="text-xs font-bold font-mono text-slate-900">
+                  ₦{Number(platformSettings['cms_hero_dish1_price'] || 4500).toLocaleString('en-NG')}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                {platformSettings['cms_hero_dish1_restaurant'] || 'Mega Chicken'} · 20–30 min
+              </p>
+              <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-600">
+                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                <span className="font-bold">4.9</span>
+                <span>·</span>
+                <span className="text-emerald-600 font-semibold">Chef Signature</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Hero Featured Dish 2 */}
+          <div
+            onClick={handleExploreStorefront}
+            className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-[#C6A536] hover:bg-[#F7F3E8]/30 transition-all cursor-pointer"
+          >
+            {platformSettings['cms_hero_dish2_image'] ? (
+              <img
+                src={platformSettings['cms_hero_dish2_image']}
+                alt={platformSettings['cms_hero_dish2_title'] || 'Classic Smash Cheese Burger'}
+                className="w-16 h-16 rounded-xl object-cover shrink-0"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-xl bg-[#F7F3E8] border border-[#D8E5DC] flex items-center justify-center shrink-0 text-[#093A2D]">
+                <ChefHat className="w-6 h-6" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#0D4F3C] truncate">
+                  {platformSettings['cms_hero_dish2_title'] || 'Classic Smash Cheese Burger'}
+                </h4>
+                <span className="text-xs font-bold font-mono text-slate-900">
+                  ₦{Number(platformSettings['cms_hero_dish2_price'] || 3800).toLocaleString('en-NG')}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                {platformSettings['cms_hero_dish2_restaurant'] || 'Burgers & Co.'} · 25–35 min
+              </p>
+              <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-600">
+                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                <span className="font-bold">4.8</span>
+                <span>·</span>
+                <span className="text-[#093A2D] font-semibold">Bestseller</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Hero Featured Dish 3 */}
+          <div
+            onClick={handleExploreStorefront}
+            className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-[#C6A536] hover:bg-[#F7F3E8]/30 transition-all cursor-pointer"
+          >
+            {platformSettings['cms_hero_dish3_image'] ? (
+              <img
+                src={platformSettings['cms_hero_dish3_image']}
+                alt={platformSettings['cms_hero_dish3_title'] || 'Suya Beef Skewers'}
+                className="w-16 h-16 rounded-xl object-cover shrink-0"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-xl bg-[#F7F3E8] border border-[#D8E5DC] flex items-center justify-center shrink-0 text-[#093A2D]">
+                <ChefHat className="w-6 h-6" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#0D4F3C] truncate">
+                  {platformSettings['cms_hero_dish3_title'] || 'Suya Beef Skewers'}
+                </h4>
+                <span className="text-xs font-bold font-mono text-slate-900">
+                  ₦{Number(platformSettings['cms_hero_dish3_price'] || 2500).toLocaleString('en-NG')}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                {platformSettings['cms_hero_dish3_restaurant'] || 'Wood-fired Charcoal'} · 15–25 min
+              </p>
+              <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-600">
+                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                <span className="font-bold">4.7</span>
+                <span>·</span>
+                <span className="text-rose-600 font-semibold">Wood-fired Charcoal</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Instant Order Trigger */}
+          <button
+            onClick={handleExploreStorefront}
+            className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs sm:text-sm font-bold transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+          >
+            <ShoppingBag className="w-4 h-4 text-[#E8C547]" />
+            <span>Start Ordering Now</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
 
       {/* ─────────────────────────────────────────────────────────────
           3. HOW VEYRANG WORKS (3-STEP VISUAL JOURNEY)
@@ -442,31 +546,41 @@ export const LandingPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-            {(deliveryZones || []).map((zone: any) => {
-              const zoneId = zone.id || zone.code;
-              const fee = zone.base_delivery_fee ?? zone.deliveryFee ?? 500;
-              return (
-                <div
-                  key={zoneId}
-                  onClick={() => {
-                    setSelectedZone(zoneId as DeliveryZone);
-                    handleExploreStorefront();
-                  }}
-                  className={`p-4 rounded-3xl bg-white border transition-all cursor-pointer text-center space-y-1 shadow-2xs hover:shadow-md hover:border-[#C6A536] ${
-                    selectedZone === zoneId ? 'border-[#0D4F3C] ring-2 ring-[#0D4F3C]/10' : 'border-slate-200/90'
-                  }`}
-                >
-                  <div className="w-9 h-9 rounded-2xl bg-[#F7F3E8] text-[#0D4F3C] flex items-center justify-center mx-auto mb-2">
-                    <MapPin className="w-4 h-4" />
+          {deliveryZones && deliveryZones.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+              {deliveryZones.map((zone: any) => {
+                const zoneId = zone.id || zone.code;
+                const fee = zone.base_delivery_fee ?? zone.deliveryFee;
+                return (
+                  <div
+                    key={zoneId}
+                    onClick={() => {
+                      setSelectedZone(zoneId as DeliveryZone);
+                      handleExploreStorefront();
+                    }}
+                    className={`p-4 rounded-3xl bg-white border transition-all cursor-pointer text-center space-y-1 shadow-2xs hover:shadow-md hover:border-[#C6A536] ${
+                      selectedZone === zoneId ? 'border-[#0D4F3C] ring-2 ring-[#0D4F3C]/10' : 'border-slate-200/90'
+                    }`}
+                  >
+                    <div className="w-9 h-9 rounded-2xl bg-[#F7F3E8] text-[#0D4F3C] flex items-center justify-center mx-auto mb-2">
+                      <MapPin className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-900 truncate">{zone.name}</h4>
+                    <p className="text-[11px] text-slate-400">{zone.city || 'Service Area'}</p>
+                    <p className="text-[11px] font-mono font-bold text-[#0D4F3C] pt-1">
+                      {fee !== undefined && fee !== null && Number.isFinite(Number(fee))
+                        ? `${currency === 'USD' ? '$' : '₦'}${Number(fee).toLocaleString()} Fee`
+                        : 'Fee calculated at checkout'}
+                    </p>
                   </div>
-                  <h4 className="text-xs font-bold text-slate-900 truncate">{zone.name}</h4>
-                  <p className="text-[11px] text-slate-400">{zone.city || 'Service Area'}</p>
-                  <p className="text-[11px] font-mono font-bold text-[#0D4F3C] pt-1">{fee !== undefined && Number.isFinite(Number(fee)) ? `${currency === 'USD' ? '$' : '₦'}${Number(fee).toLocaleString()} Fee` : 'Fee unavailable'}</p>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-xs sm:text-sm text-slate-400 font-medium bg-white/60 rounded-3xl border border-dashed border-slate-200">
+              Delivery zones will be loaded dynamically from your connected database.
+            </div>
+          )}
         </div>
       </section>
 

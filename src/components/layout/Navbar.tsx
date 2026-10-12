@@ -79,8 +79,14 @@ export const Navbar: React.FC = () => {
     setIsUserDropdownOpen((prev) => !prev);
   };
 
+  const isLanding = activeRole === 'customer' && activePage === 'landing';
+
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-slate-100 shadow-xs">
+    <header className={`sticky top-0 z-40 transition-colors duration-200 ${
+      isLanding
+        ? 'bg-[#0D4F3C] text-white border-b border-[#0D4F3C]'
+        : 'bg-white border-b border-slate-100 shadow-xs'
+    }`}>
       {isUserDropdownOpen && (
         <div onClick={closeDropdowns} className="fixed inset-0 z-40 bg-black/5 pointer-events-auto" aria-hidden="true" />
       )}
@@ -143,43 +149,63 @@ export const Navbar: React.FC = () => {
           <>
             <div className="h-14 sm:h-16 flex items-center justify-between gap-3">
               <div className="flex items-center gap-4">
-                <button onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="focus-visible:outline-none focus:outline-none border-none outline-none active:scale-95 transition-transform">
-                  <VeyrangLogo iconSize="md" textSize="md" />
+                <button onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('landing'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="focus-visible:outline-none focus:outline-none border-none outline-none active:scale-95 transition-transform">
+                  <VeyrangLogo iconSize="md" textSize="md" lightMode={isLanding} />
                 </button>
                 <nav className="hidden md:flex items-center gap-1 pl-2">
-                  {(['home', 'restaurants', 'offers', 'orders'] as const).map((page) => (
+                  {(['landing', 'restaurants', 'offers', 'orders'] as const).map((page) => (
                     <button
                       key={page}
-                      onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage(page); }}
+                      onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage(page === 'landing' ? 'landing' : page); }}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                        activeRole === 'customer' && activePage === page
+                        isLanding
+                          ? activePage === page
+                            ? 'bg-white/20 text-white'
+                            : 'text-emerald-100 hover:text-white hover:bg-white/10'
+                          : activeRole === 'customer' && activePage === page
                           ? 'bg-[#E8F5EF] text-[#0D4F3C]'
                           : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      {page === 'home' ? 'Home' : page === 'restaurants' ? 'Restaurants' : page === 'offers' ? 'Offers' : 'My Orders'}
+                      {page === 'landing' ? 'Home' : page === 'restaurants' ? 'Restaurants' : page === 'offers' ? 'Offers' : 'My Orders'}
                     </button>
                   ))}
                 </nav>
               </div>
-              <div className="flex items-center gap-2 sm:gap-3">
-                <button onClick={() => { closeDropdowns(); setIsCartOpen(true); }} aria-label={`Cart with ${totalCartCount} items`} className="relative p-2 text-slate-900 hover:text-[#0D4F3C] hover:bg-[#E8F5EF]/70 rounded-full transition-colors cursor-pointer flex items-center justify-center">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <button
+                  onClick={() => { closeDropdowns(); setIsCartOpen(true); }}
+                  aria-label={`Cart with ${totalCartCount} items`}
+                  className={`relative p-1.5 transition-colors cursor-pointer flex items-center justify-center ${
+                    isLanding
+                      ? 'text-white hover:text-emerald-200'
+                      : 'text-slate-900 hover:text-[#0D4F3C]'
+                  }`}
+                >
                   <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2]" />
                   {totalCartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-[#0D4F3C] text-white text-[11px] font-extrabold rounded-full flex items-center justify-center shadow-xs">{totalCartCount}</span>
+                    <span className={`absolute -top-1 -right-1 min-w-[18px] h-4.5 px-1 text-[10px] font-extrabold rounded-full flex items-center justify-center shadow-xs ${
+                      isLanding ? 'bg-[#E8C547] text-[#0D4F3C]' : 'bg-[#0D4F3C] text-white'
+                    }`}>{totalCartCount}</span>
                   )}
                 </button>
                 <div className="relative">
                   <button onClick={() => { if (user) toggleUserDropdown(); else { closeDropdowns(); setIsAuthModalOpen(true); } }} className="flex items-center gap-1.5 focus:outline-none cursor-pointer active:scale-95 transition-all">
                     {user ? (
-                      <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-emerald-200 bg-[#E8F5EF]/80 hover:bg-[#E8F5EF] text-slate-900 transition-all shadow-2xs">
-                        <div className="w-6 h-6 rounded-full font-extrabold text-[11px] flex items-center justify-center shrink-0 bg-[#0D4F3C] text-white shadow-2xs">{initials}</div>
-                        <span className="text-xs sm:text-sm font-bold text-slate-900 truncate max-w-[80px] sm:max-w-none">Hi, {firstName}</span>
-                        <ChevronDown className="w-3.5 h-3.5 text-[#0D4F3C] stroke-[2.5] shrink-0" />
+                      <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full transition-all shadow-2xs ${
+                        isLanding
+                          ? 'border border-emerald-400/30 bg-white/15 text-white hover:bg-white/25'
+                          : 'border border-emerald-200 bg-[#E8F5EF]/80 hover:bg-[#E8F5EF] text-slate-900'
+                      }`}>
+                        <div className={`w-6 h-6 rounded-full font-extrabold text-[11px] flex items-center justify-center shrink-0 ${
+                          isLanding ? 'bg-[#E8C547] text-[#0D4F3C]' : 'bg-[#0D4F3C] text-white shadow-2xs'
+                        }`}>{initials}</div>
+                        <span className="text-xs sm:text-sm font-bold truncate max-w-[80px] sm:max-w-none">Hi, {firstName}</span>
+                        <ChevronDown className={`w-3.5 h-3.5 stroke-[2.5] shrink-0 ${isLanding ? 'text-emerald-200' : 'text-[#0D4F3C]'}`} />
                       </div>
                     ) : (
-                      <div className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#0D4F3C] hover:bg-[#0A3F30] text-white text-xs sm:text-sm font-bold transition-all shadow-xs hover:shadow-md cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95">
-                        <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" /><span>Sign In</span>
+                      <div className="px-3.5 py-1.5 rounded-full bg-[#F5D179] hover:bg-[#E8C547] text-[#0D4F3C] text-xs sm:text-sm font-extrabold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95">
+                        <User className="w-3.5 h-3.5 stroke-[2.5]" /><span>Sign In</span>
                       </div>
                     )}
                   </button>
@@ -210,11 +236,26 @@ export const Navbar: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <button onClick={() => { closeDropdowns(); setIsRightDrawerOpen(true); }} aria-label="Open navigation menu" className="group relative p-2 text-slate-900 hover:text-[#0D4F3C] hover:bg-[#E8F5EF]/70 rounded-full transition-colors cursor-pointer flex items-center justify-center" title="Open Menu">
-                  <div className="flex flex-col justify-center items-center gap-1 w-5 h-4.5">
-                    <span className="w-5 h-[2.5px] bg-slate-900 group-hover:bg-[#0D4F3C] rounded-full transition-colors" />
-                    <span className="w-5 h-[2.5px] bg-slate-900 group-hover:bg-[#0D4F3C] rounded-full transition-colors" />
-                    <span className="w-5 h-[2.5px] bg-slate-900 group-hover:bg-[#0D4F3C] rounded-full transition-colors" />
+                <button
+                  onClick={() => { closeDropdowns(); setIsRightDrawerOpen(true); }}
+                  aria-label="Open navigation menu"
+                  className={`group relative p-1.5 rounded-lg transition-colors cursor-pointer flex items-center justify-center ${
+                    isLanding
+                      ? 'text-white hover:text-[#E8C547]'
+                      : 'text-slate-900 hover:text-[#0D4F3C]'
+                  }`}
+                  title="Open Menu"
+                >
+                  <div className="flex flex-col justify-center items-center gap-1 w-5 h-4">
+                    <span className={`w-5 h-[2px] rounded-full transition-colors ${
+                      isLanding ? 'bg-white group-hover:bg-[#E8C547]' : 'bg-slate-900 group-hover:bg-[#0D4F3C]'
+                    }`} />
+                    <span className={`w-5 h-[2px] rounded-full transition-colors ${
+                      isLanding ? 'bg-white group-hover:bg-[#E8C547]' : 'bg-slate-900 group-hover:bg-[#0D4F3C]'
+                    }`} />
+                    <span className={`w-5 h-[2px] rounded-full transition-colors ${
+                      isLanding ? 'bg-white group-hover:bg-[#E8C547]' : 'bg-slate-900 group-hover:bg-[#0D4F3C]'
+                    }`} />
                   </div>
                 </button>
               </div>

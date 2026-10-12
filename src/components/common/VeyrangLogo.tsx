@@ -32,77 +32,44 @@ export const VeyrangLogo: React.FC<VeyrangLogoProps> = ({
   }[textSize];
 
   return (
-    <div className={`flex items-center gap-2 sm:gap-2.5 select-none ${className}`}>
-      {/* 🚀 Dynamic Premium SVG Logo Icon (Dual-tone tech boomerang merged with speed wing) */}
+    <div className={`flex items-center gap-2 select-none ${className}`}>
+      {/* 🚀 Dynamic Premium SVG Logo Icon Matching Reference Design */}
       <div className={`relative flex-shrink-0 transition-transform duration-300 hover:scale-105 active:scale-95 ${iconDimensions}`}>
         <svg
           viewBox="0 0 100 100"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full filter drop-shadow-[0_2px_8px_rgba(13,79,60,0.2)]"
+          className="w-full h-full filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.15)]"
         >
-          {/* Background Ambient Glow */}
-          <circle cx="50" cy="50" r="45" fill="url(#logoGlow)" opacity="0.08" />
-
-          {/* Left Wing / Boomerang Core (Veyrang Velocity Slate Wing) */}
+          {/* Circular dot above/left */}
+          <circle cx="28" cy="24" r="8" fill={lightMode ? "#FFFFFF" : "#0D4F3C"} />
+          
+          {/* Main leaf / droplet curved shape */}
           <path
-            d="M20 25C20 22.2386 22.2386 20 25 20H45C52.1797 20 58 25.8203 58 33V47C58 49.7614 55.7614 52 53 52H33C25.8203 52 20 46.1797 20 39V25Z"
-            fill={lightMode ? '#FFFFFF' : '#0F172A'}
-            className="transition-colors duration-300"
+            d="M26 44C26 36 34 30 46 30C58 30 68 38 72 50C76 62 70 76 56 78C42 80 26 70 26 56V44Z"
+            fill={lightMode ? "#F3EBD3" : "#0D4F3C"}
           />
-
-          {/* Dynamic Core Forward Boomerang (Veyrang Forest Green Speed Slash) */}
+          {/* Folded leaf slice highlight */}
           <path
-            d="M40 38C35.5817 38 32 41.5817 32 46V70C32 75.5228 36.4772 80 42 80H66C70.4183 80 74 76.4183 74 72V48C74 42.4772 69.5228 38 64 38H40Z"
-            fill="url(#brandGreenGradient)"
-          />
-
-          {/* Fast-forward Chevron Spark (Tech cut-out for Speed) */}
-          <path
-            d="M48 48L58 54L48 60V48Z"
-            fill="#FFFFFF"
-            className="animate-pulse"
+            d="M48 30C56 36 64 46 64 58C64 68 56 76 46 78C56 72 60 58 56 46C52 38 48 32 48 30Z"
+            fill="#E8C547"
           />
         </svg>
-
-        {/* Definition and gradients */}
-        <svg className="hidden">
-          <defs>
-            <linearGradient id="brandGreenGradient" x1="32" y1="38" x2="74" y2="80" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#147A5A" />
-              <stop offset="50%" stopColor="#0D4F3C" />
-              <stop offset="100%" stopColor="#0A3F30" />
-            </linearGradient>
-            <radialGradient id="logoGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#0D4F3C" />
-              <stop offset="100%" stopColor="#0D4F3C" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-        </svg>
-
-        {/* Small Active Pulse Indicator */}
-        <span className="absolute top-0 right-0 flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E8C547] opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#E8C547]"></span>
-        </span>
       </div>
 
-      {/* 📝 Stylized Wordmark */}
+      {/* 📝 Stylized Wordmark Matching Reference Image */}
       {showText && (
-        <div className="flex flex-col justify-center leading-none">
-          <div className={`${textStyles} font-display flex items-center`}>
-            {/* Vey part: bold corporate slate */}
-            <span className={`${lightMode ? 'text-white' : 'text-slate-800 font-extrabold'} transition-colors duration-300`}>
-              Vey
+        <div className="flex flex-col justify-center leading-tight">
+          <div className="flex items-baseline tracking-tight font-display">
+            <span className={`text-xl sm:text-2xl font-black ${lightMode ? 'text-white' : 'text-slate-900'}`}>
+              Veyra
             </span>
-            {/* raNG part: ultra-black brand gradient */}
-            <span className="font-black text-transparent bg-clip-text bg-gradient-to-r from-[#0D4F3C] via-[#147A5A] to-[#E8C547] tracking-normal">
-              raNG
+            <span className="text-xl sm:text-2xl font-black text-[#E8C547]">
+              NG
             </span>
           </div>
-          {/* Subtle micro-sublabel */}
-          <span className={`text-[9px] font-mono tracking-widest uppercase font-bold text-left ml-0.5 mt-0.5 ${lightMode ? 'text-emerald-300' : 'text-slate-600'}`}>
-            Delivery pro
+          <span className={`text-[9px] font-mono tracking-[0.2em] uppercase font-bold text-left ${lightMode ? 'text-emerald-100/90' : 'text-slate-600'}`}>
+            DELIVERY PRO
           </span>
         </div>
       )}

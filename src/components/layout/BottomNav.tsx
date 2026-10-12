@@ -48,36 +48,37 @@ export const BottomNav: React.FC = () => {
 
   if (activeRole !== 'customer') return null;
 
+  const isHomeActive = (activePage === 'home' || activePage === 'landing') && !isCartOpen;
+  const isFoodActive = activePage === 'restaurants' && !isCartOpen;
+  const isExpressActive = activePage === 'offers' && !isCartOpen;
+  const isHistoryActive = activePage === 'orders' && !isCartOpen;
+  const isCartActive = isCartOpen;
+
   const gridCols = isAuthenticated ? 'grid-cols-5' : 'grid-cols-4';
 
   return (
     <nav
       aria-label="Bottom Navigation Bar"
-      className="fixed bottom-0 left-0 right-0 z-30 bg-white/98 backdrop-blur-lg border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-1.5 px-2 pointer-events-auto"
+      className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md rounded-t-3xl border-t border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.06)] py-1.5 px-4 pointer-events-auto"
     >
-      <div className={`max-w-md mx-auto grid ${gridCols} items-center`}>
+      <div className="max-w-md mx-auto grid grid-cols-4 items-center">
         <button
           type="button"
           onClick={() => handleTabClick('home')}
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors"
           aria-label="Home Page"
         >
-          <div
-            className={`p-1.5 rounded-xl transition-all ${
-              activePage === 'home' && !isCartOpen
-                ? 'bg-[#E8F5EF] text-[#0D4F3C]'
-                : 'text-slate-500 group-hover:text-slate-800'
-            }`}
-          >
-            <Home className="w-5 h-5 stroke-[2]" />
+          <div className={`transition-all ${isHomeActive ? 'text-[#0D4F3C]' : 'text-slate-400 group-hover:text-slate-700'}`}>
+            <Home className="w-5 h-5 stroke-[2.2]" />
           </div>
           <span
             className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors ${
-              activePage === 'home' && !isCartOpen ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
+              isHomeActive ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
             }`}
           >
             Home
           </span>
+          <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all ${isHomeActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
         </button>
 
         <button
@@ -86,22 +87,17 @@ export const BottomNav: React.FC = () => {
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors"
           aria-label="Food / Restaurants"
         >
-          <div
-            className={`p-1.5 rounded-xl transition-all ${
-              activePage === 'restaurants' && !isCartOpen
-                ? 'bg-[#E8F5EF] text-[#0D4F3C]'
-                : 'text-slate-500 group-hover:text-slate-800'
-            }`}
-          >
-            <Utensils className="w-5 h-5 stroke-[2]" />
+          <div className={`transition-all ${isFoodActive ? 'text-[#0D4F3C]' : 'text-slate-400 group-hover:text-slate-700'}`}>
+            <Utensils className="w-5 h-5 stroke-[2.2]" />
           </div>
           <span
             className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors ${
-              activePage === 'restaurants' && !isCartOpen ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
+              isFoodActive ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
             }`}
           >
             Food
           </span>
+          <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all ${isFoodActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
         </button>
 
         <button
@@ -110,49 +106,18 @@ export const BottomNav: React.FC = () => {
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors relative"
           aria-label="Express Offers"
         >
-          <div
-            className={`p-1.5 rounded-xl transition-all ${
-              activePage === 'offers' && !isCartOpen
-                ? 'bg-[#E8F5EF] text-[#0D4F3C]'
-                : 'text-slate-500 group-hover:text-slate-800'
-            }`}
-          >
-            <LayoutGrid className="w-5 h-5 stroke-[2]" />
+          <div className={`transition-all ${isExpressActive ? 'text-[#0D4F3C]' : 'text-slate-400 group-hover:text-slate-700'}`}>
+            <LayoutGrid className="w-5 h-5 stroke-[2.2]" />
           </div>
           <span
             className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors ${
-              activePage === 'offers' && !isCartOpen ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
+              isExpressActive ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
             }`}
           >
             Express
           </span>
+          <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all ${isExpressActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
         </button>
-
-        {isAuthenticated && (
-          <button
-            type="button"
-            onClick={() => handleTabClick('history')}
-            className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors"
-            aria-label="Order History"
-          >
-            <div
-              className={`p-1.5 rounded-xl transition-all ${
-                activePage === 'orders' && !isCartOpen
-                  ? 'bg-[#E8F5EF] text-[#0D4F3C]'
-                  : 'text-slate-500 group-hover:text-slate-800'
-              }`}
-            >
-              <Receipt className="w-5 h-5 stroke-[2]" />
-            </div>
-            <span
-              className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors ${
-                activePage === 'orders' && !isCartOpen ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
-              }`}
-            >
-              History
-            </span>
-          </button>
-        )}
 
         <button
           type="button"
@@ -160,27 +125,22 @@ export const BottomNav: React.FC = () => {
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors relative"
           aria-label="Shopping Cart"
         >
-          <div
-            className={`p-1.5 rounded-xl transition-all ${
-              isCartOpen
-                ? 'bg-[#E8F5EF] text-[#0D4F3C]'
-                : 'text-slate-500 group-hover:text-slate-800'
-            }`}
-          >
-            <ShoppingCart className="w-5 h-5 stroke-[2]" />
+          <div className={`transition-all relative ${isCartActive ? 'text-[#0D4F3C]' : 'text-slate-400 group-hover:text-slate-700'}`}>
+            <ShoppingCart className="w-5 h-5 stroke-[2.2]" />
             {totalCartCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#0D4F3C] text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -right-2 min-w-[16px] h-4 px-1 bg-[#0D4F3C] text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
                 {totalCartCount > 99 ? '99+' : totalCartCount}
               </span>
             )}
           </div>
           <span
             className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors ${
-              isCartOpen ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
+              isCartActive ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
             }`}
           >
             Cart
           </span>
+          <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all ${isCartActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
         </button>
       </div>
     </nav>
