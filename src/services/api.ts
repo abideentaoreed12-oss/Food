@@ -2,7 +2,7 @@ import { STORAGE_KEYS, safeGet, safeSet, safeRemove, clearAuthStorage } from '..
 import { Restaurant, Order, OrderStatus, UserRole } from '../types';
 
 const BASE_URL =
-  (typeof process !== 'undefined' && (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.VITE_API_BASE_URL)) ||
+  (typeof process !== 'undefined' && (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.VITE_API_BASE_URL)) ||
   (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_API_BASE_URL) ||
   '';
 

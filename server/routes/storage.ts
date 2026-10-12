@@ -6,7 +6,7 @@ const router = Router();
 
 function getCloudflareHeaders(contentType?: string): Record<string, string> {
   const token = CONFIG.CLOUDFLARE_API_TOKEN;
-  const email = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || 'abideentaoreed12@gmail.com';
+  const email = process.env.CLOUDFLARE_AUTH_EMAIL || CONFIG.CLOUDFLARE_AUTH_EMAIL || '';
   const isKey = token.startsWith('cfk_') || token.length < 55;
   const headers: Record<string, string> = isKey
     ? {

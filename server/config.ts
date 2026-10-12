@@ -48,7 +48,7 @@ export const CONFIG = {
   CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN || '',
   CLOUDFLARE_D1_API_TOKEN: process.env.CLOUDFLARE_D1_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '',
   CLOUDFLARE_R2_API_TOKEN: process.env.CLOUDFLARE_R2_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '',
-  CLOUDFLARE_AUTH_EMAIL: process.env.CLOUDFLARE_AUTH_EMAIL || process.env.ADMIN_EMAIL || 'abideentaoreed12@gmail.com',
+  CLOUDFLARE_AUTH_EMAIL: process.env.CLOUDFLARE_AUTH_EMAIL || process.env.ADMIN_EMAIL || '',
   CLOUDFLARE_WORKER_URL: (process.env.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, ''),
   CLOUDFLARE_ZONE_ID: process.env.CLOUDFLARE_ZONE_ID || '',
 
@@ -64,9 +64,11 @@ export const CONFIG = {
   // Email Configuration with Automatic Gmail SMTP Fallback
   SMTP_HOST: (process.env.SMTP_HOST || 'smtp.gmail.com').trim(),
   SMTP_PORT: parseInt(process.env.SMTP_PORT || '465', 10),
+  SMTP_USER: (process.env.SMTP_USER || process.env.GMAIL_USER || '').trim(),
+  SMTP_PASS: (process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || '').trim(),
   SMTP_SECURE: true,
   EMAIL_SENDER_NAME: (process.env.EMAIL_SENDER_NAME || 'Veyrang Support').trim(),
-  RESEND_API_KEY: process.env.RESEND_API_KEY || '',
+  RESEND_API_KEY: (process.env.RESEND_API_KEY || '').trim(),
   RESEND_WEBHOOK_SECRET: (process.env.RESEND_WEBHOOK_SECRET || process.env.RESEND_WEBHOOK_SIGNING_SECRET || '').trim(),
 
   NOMINATIM_BASE_URL: sanitizeBaseUrl(process.env.NOMINATIM_BASE_URL || process.env.NOMINATIM_URL, 'https://nominatim.openstreetmap.org'),

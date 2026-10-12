@@ -29,7 +29,7 @@ export class R2Client {
       CONFIG.CLOUDFLARE_AUTH_EMAIL ||
       process.env.ADMIN_EMAIL ||
       CONFIG.ADMIN_EMAIL ||
-      'abideentaoreed12@gmail.com';
+      '';
     this.bucketName = process.env.CLOUDFLARE_R2_BUCKET || CONFIG.CLOUDFLARE_R2_BUCKET || '';
     this.publicCdnUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || CONFIG.CLOUDFLARE_R2_PUBLIC_URL || '').replace(/\/$/, '');
     this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || CONFIG.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, '');

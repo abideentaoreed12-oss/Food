@@ -973,6 +973,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: result.success && result.isPaid, isPaid: result.isPaid, data: result });
   }
 
+  // Handover QR Details (GET)
+  const qrDetailsMatch = pathname.match(/^\/handover\/([A-Za-z0-9_-]{30,100})$/);
+  if (qrDetailsMatch) {
+    const tokenHash = createHash('sha256').update(qrDetailsMatch[1]).digest('hex');
+    await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
+    const result = await d1.query('SELECT t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.payment_status, o.restaurant_name FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
+    const row = result.results?.[0] as any;
+    if (!row || row.consumed_at || new Date(row.expires_at).getTime() <= Date.now()) return NextResponse.json({ success: false, error: 'This handover link is invalid, expired, or already used.' }, { status: 410, headers: { 'Cache-Control': 'no-store' } });
+    const isPaymentConfirmed = ['paid', 'completed'].includes(String(row.payment_status || '').toLowerCase());
+    if (!isPaymentConfirmed) return NextResponse.json({ success: false, error: 'Payment is not confirmed. This handover QR is locked.' }, { status: 409, headers: { 'Cache-Control': 'no-store' } });
+    const viewer = await getUser(req);
+    if (!viewer || viewer.role !== 'customer') return NextResponse.json({ success: false, error: 'Sign in to VeyraNG with your customer account to view this handover.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
+    const owner = await d1.query('SELECT customer_id FROM orders WHERE id = ? LIMIT 1', [row.order_id]);
+    if (String(owner.results?.[0]?.customer_id || '') !== String(viewer.id)) return NextResponse.json({ success: false, error: 'This handover belongs to a different customer account.' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ success: true, data: { orderReference: row.short_id, restaurantName: row.restaurant_name, status: row.status, expiresAt: row.expires_at } }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
   return NextResponse.json({ success: false, error: `API route GET /api${pathname} not found.` }, { status: 404 });
 }
 
@@ -2103,22 +2120,6 @@ export async function POST(req: NextRequest) {
     if (!insert.success) return NextResponse.json({ success: false, error: 'Could not create a secure handover QR.' }, { status: 503 });
     const origin = req.nextUrl.origin;
     return NextResponse.json({ success: true, data: { url: `${origin}/handover/${token}`, expiresAt, orderReference: order.short_id } }, { headers: { 'Cache-Control': 'no-store' } });
-  }
-
-  const qrDetailsMatch = pathname.match(/^\/handover\/([A-Za-z0-9_-]{30,100})$/);
-  if (qrDetailsMatch && req.method === 'GET') {
-    const tokenHash = createHash('sha256').update(qrDetailsMatch[1]).digest('hex');
-    await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
-    const result = await d1.query('SELECT t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.payment_status, o.restaurant_name FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
-    const row = result.results?.[0] as any;
-    if (!row || row.consumed_at || new Date(row.expires_at).getTime() <= Date.now()) return NextResponse.json({ success: false, error: 'This handover link is invalid, expired, or already used.' }, { status: 410, headers: { 'Cache-Control': 'no-store' } });
-    const isPaymentConfirmed = ['paid', 'completed'].includes(String(row.payment_status || '').toLowerCase());
-    if (!isPaymentConfirmed) return NextResponse.json({ success: false, error: 'Payment is not confirmed. This handover QR is locked.' }, { status: 409, headers: { 'Cache-Control': 'no-store' } });
-    const viewer = await getUser(req);
-    if (!viewer || viewer.role !== 'customer') return NextResponse.json({ success: false, error: 'Sign in to VeyraNG with your customer account to view this handover.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
-    const owner = await d1.query('SELECT customer_id FROM orders WHERE id = ? LIMIT 1', [row.order_id]);
-    if (String(owner.results?.[0]?.customer_id || '') !== String(viewer.id)) return NextResponse.json({ success: false, error: 'This handover belongs to a different customer account.' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
-    return NextResponse.json({ success: true, data: { orderReference: row.short_id, restaurantName: row.restaurant_name, status: row.status, expiresAt: row.expires_at } }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   const qrConfirmMatch = pathname.match(/^\/handover\/([A-Za-z0-9_-]{30,100})\/confirm$/);
