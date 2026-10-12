@@ -32,9 +32,9 @@ export const SpecialActionButton: React.FC = () => {
       <button
         onClick={handleSync}
         disabled={isSyncing}
-        className="fixed bottom-6 right-6 px-4 py-3 bg-slate-900 border border-slate-700 hover:border-orange-500 text-white rounded-2xl shadow-2xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer z-50 select-none group"
+        className="fixed bottom-6 right-6 px-4 py-3 bg-slate-900 border border-slate-700 hover:border-[#0D4F3C] text-white rounded-2xl shadow-2xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer z-50 select-none group"
       >
-        <RefreshCw className={`w-4 h-4 text-orange-500 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+        <RefreshCw className={`w-4 h-4 text-emerald-500 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
         <span>{isSyncing ? 'Syncing D1 Database...' : 'Force Live Sync'}</span>
       </button>
 
