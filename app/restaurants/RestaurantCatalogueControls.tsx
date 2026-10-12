@@ -12,25 +12,43 @@ export type RestaurantCatalogueItem = {
   image?: string;
   rating?: number;
   isOpen?: boolean;
+  deliveryTimeMin?: number;
+  deliveryFee?: number;
 };
 
 export default function RestaurantCatalogueControls({ restaurants }: { restaurants: RestaurantCatalogueItem[] }) {
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<'name' | 'rating'>('name');
+  const [sort, setSort] = useState<'name' | 'rating' | 'time' | 'fee'>('name');
+  const [topRatedOnly, setTopRatedOnly] = useState(false);
+  const [fastOnly, setFastOnly] = useState(false);
+  const [lowFeeOnly, setLowFeeOnly] = useState(false);
   const visible = useMemo(() => {
     const q = query.trim().toLocaleLowerCase();
-    return restaurants.filter((restaurant) => !q ||
-      restaurant.name.toLocaleLowerCase().includes(q) ||
-      (restaurant.cuisine || '').toLocaleLowerCase().includes(q) ||
-      (restaurant.city || '').toLocaleLowerCase().includes(q) ||
-      (restaurant.description || '').toLocaleLowerCase().includes(q)
-    ).slice().sort((a, b) => sort === 'rating'
-      ? (b.rating || 0) - (a.rating || 0)
-      : a.name.localeCompare(b.name));
-  }, [restaurants, query, sort]);
+    return restaurants.filter((restaurant) => {
+      const matchesQuery = !q || restaurant.name.toLocaleLowerCase().includes(q) ||
+        (restaurant.cuisine || '').toLocaleLowerCase().includes(q) ||
+        (restaurant.city || '').toLocaleLowerCase().includes(q) ||
+        (restaurant.description || '').toLocaleLowerCase().includes(q);
+      if (!matchesQuery) return false;
+      if (topRatedOnly && (restaurant.rating === undefined || restaurant.rating < 4.7)) return false;
+      if (fastOnly && (restaurant.deliveryTimeMin === undefined || restaurant.deliveryTimeMin > 30)) return false;
+      if (lowFeeOnly && (restaurant.deliveryFee === undefined || restaurant.deliveryFee > 500)) return false;
+      return true;
+    }).slice().sort((a, b) => {
+      if (sort === 'rating') return (b.rating || 0) - (a.rating || 0);
+      if (sort === 'time') return (a.deliveryTimeMin ?? Number.POSITIVE_INFINITY) - (b.deliveryTimeMin ?? Number.POSITIVE_INFINITY);
+      if (sort === 'fee') return (a.deliveryFee ?? Number.POSITIVE_INFINITY) - (b.deliveryFee ?? Number.POSITIVE_INFINITY);
+      return a.name.localeCompare(b.name);
+    });
+  }, [restaurants, query, sort, topRatedOnly, fastOnly, lowFeeOnly]);
 
   return (
     <>
+      <div className="mb-3 flex flex-wrap gap-2">
+        <button type="button" aria-pressed={fastOnly} onClick={() => setFastOnly((value) => !value)} className={fastOnly ? 'rounded-xl border border-[#0D4F3C] bg-[#0D4F3C] px-3 py-2 text-sm font-semibold text-white' : 'rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700'}>⚡ Under 30 mins</button>
+        <button type="button" aria-pressed={topRatedOnly} onClick={() => setTopRatedOnly((value) => !value)} className={topRatedOnly ? 'rounded-xl border border-[#0D4F3C] bg-[#0D4F3C] px-3 py-2 text-sm font-semibold text-white' : 'rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700'}>★ 4.7+ rating</button>
+        <button type="button" aria-pressed={lowFeeOnly} onClick={() => setLowFeeOnly((value) => !value)} className={lowFeeOnly ? 'rounded-xl border border-[#0D4F3C] bg-[#0D4F3C] px-3 py-2 text-sm font-semibold text-white' : 'rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700'}>₦ Fee ≤ 500</button>
+      </div>
       <div className="mb-6 grid gap-3 sm:grid-cols-[1fr_auto]">
         <label className="block">
           <span className="sr-only">Search restaurants</span>
@@ -41,6 +59,8 @@ export default function RestaurantCatalogueControls({ restaurants }: { restauran
           <select value={sort} onChange={(event) => setSort(event.target.value as 'name' | 'rating')} className="bg-transparent py-3 font-semibold outline-none">
             <option value="name">Name</option>
             <option value="rating">Rating</option>
+            <option value="time">Delivery time</option>
+            <option value="fee">Delivery fee</option>
           </select>
         </label>
       </div>
@@ -62,6 +82,8 @@ export default function RestaurantCatalogueControls({ restaurants }: { restauran
                     <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
                       <span className={restaurant.isOpen ? 'rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800' : 'rounded-full bg-slate-100 px-2.5 py-1 text-slate-600'}>{restaurant.isOpen ? 'Open now' : 'Hours unavailable'}</span>
                       {restaurant.rating !== undefined ? <span className="text-slate-600">★ {restaurant.rating.toFixed(1)}</span> : null}
+                      {restaurant.deliveryTimeMin !== undefined ? <span className="text-slate-600">{restaurant.deliveryTimeMin} min</span> : null}
+                      {restaurant.deliveryFee !== undefined ? <span className="text-slate-600">₦{restaurant.deliveryFee.toLocaleString('en-NG')} delivery</span> : null}
                     </div>
                     <h2 className="text-xl font-bold">{restaurant.name}</h2>
                     {restaurant.cuisine ? <p className="mt-1 text-sm text-slate-600">{restaurant.cuisine}</p> : null}
