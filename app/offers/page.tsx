@@ -1,25 +1,26 @@
 import type { Metadata } from 'next';
 import App from '../../src/App';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
-  title: 'Offers & Promo Codes | Veyrang Food Delivery',
-  description: 'Verified promo codes, meal discounts, and exclusive food delivery offers across top restaurants on Veyrang.',
+  title: 'Special Offers & Promo Codes | Veyrang',
+  description: 'Discover active promo codes, restaurant discounts, and cashback deals on Veyrang.',
   alternates: { canonical: '/offers' },
   openGraph: {
-    title: 'Offers & Promo Codes | Veyrang Food Delivery',
-    description: 'Verified promo codes, meal discounts, and exclusive food delivery offers across top restaurants on Veyrang.',
+    title: 'Special Offers & Promo Codes | Veyrang',
+    description: 'Discover active promo codes, restaurant discounts, and cashback deals on Veyrang.',
     url: 'https://www.veyrang.com/offers',
-    siteName: 'Veyrang Food Delivery',
-    type: 'website',
-    locale: 'en_NG'
+    siteName: 'Veyrang',
+    type: 'website'
   },
   twitter: {
-    card: 'summary_large_image',
-    title: 'Offers & Promo Codes | Veyrang Food Delivery',
-    description: 'Verified promo codes, meal discounts, and exclusive food delivery offers on Veyrang.'
+    card: 'summary',
+    title: 'Special Offers & Promo Codes | Veyrang',
+    description: 'Discover active promo codes and restaurant discounts.'
   }
 };
 
-export default function OffersRoutePage() {
+export default function OffersRoute() {
   return <App initialPage="offers" />;
 }

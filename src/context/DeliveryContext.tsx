@@ -147,28 +147,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
 
   // Check URL pathname for /admin on client mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      if (window.location.pathname.startsWith('/admin')) {
-        setActiveRoleState('admin');
-      } else if (window.location.pathname === '/offers') {
-        setActivePageState('offers');
-      }
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+      setActiveRoleState('admin');
     }
   }, []);
-
-  // Listen to popstate (browser back/forward) to keep activePage synchronized
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handlePopState = () => {
-      if (window.location.pathname === '/offers') {
-        setActivePageState('offers');
-      } else if (window.location.pathname === '/') {
-        setActivePageState(user ? 'home' : 'landing');
-      }
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [user]);
 
   // Automatically lock and synchronize activeRole to user's authenticated role
   useEffect(() => {
@@ -216,9 +198,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
 
   const [activePage, setActivePageState] = useState<ActivePage>(() => {
     if (initialPage) return initialPage;
-    if (typeof window !== 'undefined' && window.location.pathname === '/offers') {
-      return 'offers';
-    }
     try {
       const hasJwt = typeof window !== 'undefined' && localStorage.getItem('veyrang_jwt');
       if (!hasJwt) return 'landing';
@@ -230,25 +209,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   });
 
   // Resolve navigation only after the auth session has been checked.
-  // Guests always start on the public landing page unless visiting /offers; authenticated users keep their last page.
+  // Guests always start on the public landing page; authenticated users keep their last page.
   useEffect(() => {
     if (authLoading) return;
+    if (initialPage) return;
 
     if (!user) {
-      if (initialPage === 'offers' || (typeof window !== 'undefined' && window.location.pathname === '/offers')) {
-        setActivePageState('offers');
-        return;
-      }
       setActivePageState('landing');
       try { localStorage.setItem('veyrang_active_page', 'landing'); } catch {}
       return;
     }
 
     try {
-      if (initialPage) {
-        setActivePageState(initialPage);
-        return;
-      }
       const savedPage = localStorage.getItem('veyrang_active_page');
       if (savedPage) {
         setActivePageState(savedPage as ActivePage);
@@ -259,13 +231,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const setActivePage = useCallback((page: ActivePage) => {
     setActivePageState(page);
     try { localStorage.setItem('veyrang_active_page', page); } catch {}
-    if (typeof window !== 'undefined') {
-      if (page === 'offers' && window.location.pathname !== '/offers') {
-        window.history.pushState({ page: 'offers' }, '', '/offers');
-      } else if (page !== 'offers' && window.location.pathname === '/offers') {
-        window.history.pushState({ page }, '', '/');
-      }
-    }
   }, []);
 
   const [isRightDrawerOpen, setIsRightDrawerOpen] = useState<boolean>(false);
@@ -1031,19 +996,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
 
     try {
       const res = await api.orders.validatePromo(codeClean, subtotal);
-      const isValid = Boolean(res?.valid || res?.discountAmount !== undefined || res?.data?.valid || res?.data?.discountAmount !== undefined);
-      if (res && isValid) {
-        const discountAmount = Number(res.discountAmount ?? res.data?.discountAmount ?? 0);
-        const description = res.description ?? res.data?.description ?? 'Promo discount';
+      if (res && res.valid) {
         setAppliedPromo({
           code: codeClean,
-          discountAmount,
-          description
+          discountAmount: res.discountAmount,
+          description: res.description
         });
-        return { success: true, message: `Promo applied: ₦${discountAmount.toLocaleString('en-NG')} discount!` };
+        return { success: true, message: `Promo applied: ₦${res.discountAmount.toLocaleString('en-NG')} discount!` };
       } else {
         setAppliedPromo(null);
-        return { success: false, message: res?.error || res?.data?.error || `Promo code "${codeClean}" is invalid or expired.` };
+        return { success: false, message: res?.error || `Promo code "${codeClean}" is invalid or expired.` };
       }
     } catch (err: any) {
       setAppliedPromo(null);

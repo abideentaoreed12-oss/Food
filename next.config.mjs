@@ -23,7 +23,7 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
-  output: 'standalone',
+  // output: 'standalone',
   serverExternalPackages: ['node:sqlite'],
   reactStrictMode: true,
   env: {
