@@ -46,6 +46,8 @@ const AppContent: React.FC = () => {
 
   const renderCustomerPage = () => {
     switch (activePage) {
+      case 'landing':
+        return <LandingPage />;
       case 'home':
         return <CustomerView />;
       case 'restaurants':
@@ -81,7 +83,7 @@ const AppContent: React.FC = () => {
       <Navbar />
 
       {/* Main Content Area */}
-      <main className={`flex-1 w-full ${activeRole === 'admin' ? 'max-w-none px-0 pt-0 pb-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-36'}`}>
+      <main className={`flex-1 w-full ${activeRole === 'admin' || (activeRole === 'customer' && activePage === 'landing') ? 'max-w-none px-0 pt-0 pb-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-36'}`}>
         {activeRole === 'customer' && renderCustomerPage()}
         {activeRole === 'restaurant' && (
           <PortalAuthGuard requiredRole="restaurant">
