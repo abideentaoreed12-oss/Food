@@ -126,6 +126,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
   }, []);
 
+  // Customer sessions are checked periodically so a replaced session is signed out
+  // promptly in the old browser. The server remains the authority for every API request.
+  useEffect(() => {
+    if (loading || user?.role !== 'customer' || typeof window === 'undefined') return;
+
+    let checking = false;
+    const checkSession = async () => {
+      if (checking || document.visibilityState === 'hidden') return;
+      checking = true;
+      try {
+        const res = await api.auth.getMe();
+        if (res?.invalidSession) {
+          setUser(null);
+          safeRemove(STORAGE_KEYS.JWT);
+          safeRemove(STORAGE_KEYS.USER_SHELL);
+          safeRemove(STORAGE_KEYS.USER_CACHE_LEGACY);
+          window.dispatchEvent(new CustomEvent('veyrang-user-logout'));
+        }
+      } catch {
+        // Network interruptions are transient; do not log out on an unconfirmed failure.
+      } finally {
+        checking = false;
+      }
+    };
+
+    const intervalId = window.setInterval(checkSession, 20000);
+    document.addEventListener('visibilitychange', checkSession);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', checkSession);
+    };
+  }, [loading, user?.id, user?.role]);
+
   const login = async (email: string, password: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> => {
     try {
       const res = await api.auth.login(email, password);
