@@ -1045,7 +1045,13 @@ export async function GET(req: NextRequest) {
     await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
     const result = await d1.query('SELECT t.order_id, t.expires_at, t.consumed_at, o.short_id, o.status, o.payment_status, o.restaurant_name FROM handover_qr_tokens t JOIN orders o ON o.id = t.order_id WHERE t.token_hash = ? LIMIT 1', [tokenHash]);
     const row = result.results?.[0] as any;
-    if (!row || row.consumed_at || new Date(row.expires_at).getTime() <= Date.now()) return NextResponse.json({ success: false, error: 'This handover link is invalid, expired, or already used.' }, { status: 410, headers: { 'Cache-Control': 'no-store' } });
+    const now = Date.now();
+    const expiry = row ? new Date(row.expires_at).getTime() : 0;
+    if (row && (row.consumed_at || expiry <= now)) {
+        console.error('Handover token check failed:', { tokenHash, consumed: row.consumed_at, expiry, now });
+        return NextResponse.json({ success: false, error: `This handover link is invalid, expired, or already used. (Expiry: ${expiry}, Now: ${now})` }, { status: 410, headers: { 'Cache-Control': 'no-store' } });
+    }
+    if (!row) return NextResponse.json({ success: false, error: 'Handover link not found.' }, { status: 404 });
     const isPaymentConfirmed = ['paid', 'completed'].includes(String(row.payment_status || '').toLowerCase());
     if (!isPaymentConfirmed) return NextResponse.json({ success: false, error: 'Payment is not confirmed. This handover QR is locked.' }, { status: 409, headers: { 'Cache-Control': 'no-store' } });
     const viewer = await getUser(req);

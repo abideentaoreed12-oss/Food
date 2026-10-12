@@ -117,7 +117,11 @@ export const RightDrawer: React.FC = () => {
 
   const handleNavigatePage = (page: ActivePage) => {
     setActiveRole('customer');
-    setActivePage(page);
+    if (page === 'home' && !user) {
+      setActivePage('landing');
+    } else {
+      setActivePage(page);
+    }
     setIsRightDrawerOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

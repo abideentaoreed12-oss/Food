@@ -25,7 +25,7 @@ export const BottomNav: React.FC = () => {
 
     if (tabId === 'home') {
       setIsCartOpen(false);
-      setActivePage('home');
+      setActivePage(isAuthenticated ? 'home' : 'landing');
     } else if (tabId === 'food') {
       setIsCartOpen(false);
       setActivePage('restaurants');

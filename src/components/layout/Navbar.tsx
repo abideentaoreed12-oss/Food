@@ -137,14 +137,14 @@ export const Navbar: React.FC = () => {
           <>
             <div className="h-14 sm:h-16 flex items-center justify-between gap-3">
               <div className="flex items-center gap-4">
-                <button onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('landing'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="focus-visible:outline-none focus:outline-none border-none outline-none active:scale-95 transition-transform">
+                <button onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage(user ? 'home' : 'landing'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="focus-visible:outline-none focus:outline-none border-none outline-none active:scale-95 transition-transform">
                   <VeyrangLogo iconSize="md" textSize="md" lightMode={isLanding} />
                 </button>
                 <nav className="hidden md:flex items-center gap-1 pl-2">
                   {(['landing', 'restaurants', 'offers', 'orders'] as const).map((page) => (
                     <button
                       key={page}
-                      onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage(page === 'landing' ? 'landing' : page); }}
+                      onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage(page === 'landing' ? (user ? 'home' : 'landing') : page); }}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                         isLanding
                           ? activePage === page
