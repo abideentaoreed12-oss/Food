@@ -3,8 +3,8 @@ import { ZoneConfig } from '../types';
 
 export const deliveryService = {
   /**
-   * Fetches all delivery zones live from Cloudflare D1 database table `delivery_zones`.
-   * Never hardcoded — all updates made in Admin portal reflect immediately in D1 and across the app.
+   * Fetches all delivery zones live from Veyrang Cloud Database table `delivery_zones`.
+   * Never hardcoded — all updates made in Admin portal reflect immediately across the app.
    */
   getDeliveryZones: async (): Promise<ZoneConfig[]> => {
     try {
@@ -46,7 +46,7 @@ export const deliveryService = {
   },
 
   /**
-   * Creates a new delivery zone in Cloudflare D1.
+   * Creates a new delivery zone in Veyrang Cloud Database.
    */
   createZone: async (zoneData: {
     name: string;
@@ -66,21 +66,21 @@ export const deliveryService = {
   },
 
   /**
-   * Updates an existing zone in Cloudflare D1.
+   * Updates an existing zone in Veyrang Cloud Database.
    */
   updateZone: async (id: string, updates: any) => {
     return api.admin.updateDeliveryZone(id, updates);
   },
 
   /**
-   * Toggles active status of a zone in Cloudflare D1.
+   * Toggles active status of a zone in Veyrang Cloud Database.
    */
   toggleZoneStatus: async (id: string) => {
     return api.admin.toggleDeliveryZone(id);
   },
 
   /**
-   * Deletes a zone permanently from Cloudflare D1.
+   * Deletes a zone permanently from Veyrang Cloud Database.
    */
   deleteZone: async (id: string) => {
     return api.admin.deleteDeliveryZone(id);

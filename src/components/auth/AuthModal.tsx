@@ -750,22 +750,6 @@ export const AuthModal: React.FC = () => {
               )}
             </button>
 
-            {/* Quick Staff / Admin Switcher */}
-            {tab === 'login' && intendedPortal !== 'admin' && (
-              <div className="pt-1 text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIntendedPortal('admin');
-                    setError(null);
-                  }}
-                  className="text-xs text-slate-500 hover:text-slate-900 font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Authorized Staff or Admin? Access Operations Console →</span>
-                </button>
-              </div>
-            )}
           </form>
         )}
 
