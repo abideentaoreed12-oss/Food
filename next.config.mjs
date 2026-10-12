@@ -64,9 +64,6 @@ const nextConfig = {
     formats: ['image/avif', 'image/webp']
   },
   typedRoutes: false,
-  experimental: {
-    optimizePackageImports: ['lucide-react'],
-  },
   productionBrowserSourceMaps: false,
   compress: true,
   poweredByHeader: false,
