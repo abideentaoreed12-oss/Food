@@ -2470,7 +2470,7 @@ export async function POST(req: NextRequest) {
     await d1.query(`CREATE TABLE IF NOT EXISTS handover_qr_tokens (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL, consumed_at TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL)`);
     const token = randomBytes(32).toString('base64url');
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
     await d1.query('DELETE FROM handover_qr_tokens WHERE order_id = ?', [order.id]);
     const insert = await d1.query('INSERT INTO handover_qr_tokens (id, order_id, token_hash, expires_at, consumed_at, created_by, created_at) VALUES (?, ?, ?, ?, NULL, ?, ?)', [randomUUID(), order.id, createHash('sha256').update(token).digest('hex'), expiresAt, user.id, now.toISOString()]);
     if (!insert.success) return NextResponse.json({ success: false, error: 'Could not create a secure handover QR.' }, { status: 503 });

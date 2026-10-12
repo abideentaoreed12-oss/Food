@@ -140,7 +140,7 @@ const EMPTY_ADDRESS: SavedAddress = {
   isDefault: false
 };
 
-export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole?: UserRole; initialPage?: ActivePage }> = ({ children, initialRole, initialPage }) => {
+export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole?: UserRole; initialPage?: ActivePage; initialRestaurantId?: string }> = ({ children, initialRole, initialPage, initialRestaurantId }) => {
   const { user, loading: authLoading, setIsAuthModalOpen, refreshUser, openAuthModalForPortal } = useAuth();
 
   const [activeRole, setActiveRoleState] = useState<UserRole>(initialRole || 'customer');
@@ -525,7 +525,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const [useWalletCredit, setUseWalletCredit] = useState<boolean>(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
 
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(initialRestaurantId || null);
   const [selectedRestaurantForPortal, setSelectedRestaurantForPortal] = useState<string>('rest-1');
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
   const [isCartOpen, setIsCartOpenState] = useState<boolean>(false);
