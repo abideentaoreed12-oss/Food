@@ -15,6 +15,7 @@ import {
   reverseGeocodeCoordinates
 } from '../../../server/utils/distance';
 import { buildPublicRestaurant, buildPublicRestaurantList } from '../../../lib/restaurantMenu';
+import { issueCustomerSession, isCurrentCustomerSession, revokeCustomerSession } from '../../../lib/customerSessions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -96,12 +97,15 @@ function verifyToken(req: NextRequest): any | null {
 async function getUser(req: NextRequest) {
   const decoded = verifyToken(req);
   if (!decoded) return null;
+
   const d1Res = await d1
     .query(
       'SELECT id, email, role, name, phone, address, restaurant_id, wallet_balance_ngn, wallet_balance_usd, saved_addresses, is_approved FROM users WHERE id = ? OR LOWER(email) = LOWER(?) LIMIT 1',
       [decoded.id, decoded.email || '']
     )
     .catch(() => ({ results: [] as any[] }));
+
+  let user: any;
   if (d1Res.results?.[0]) {
     const u = d1Res.results[0];
     let savedAddresses: any[] = [];
@@ -113,7 +117,7 @@ async function getUser(req: NextRequest) {
     } catch {
       savedAddresses = [];
     }
-    return {
+    user = {
       id: u.id,
       email: u.email,
       role: u.role || decoded.role || 'customer',
@@ -126,21 +130,26 @@ async function getUser(req: NextRequest) {
       walletBalanceUSD: Number(u.wallet_balance_usd || 0),
       savedAddresses
     };
+  } else {
+    user = {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role || 'customer',
+      name: decoded.name || (decoded.email ? decoded.email.split('@')[0] : 'User'),
+      phone: '',
+      address: '',
+      isApproved: true,
+      walletBalanceNGN: 0,
+      walletBalanceUSD: 0,
+      savedAddresses: []
+    };
   }
-  return {
-    id: decoded.id,
-    email: decoded.email,
-    role: decoded.role || 'customer',
-    name: decoded.name || (decoded.email ? decoded.email.split('@')[0] : 'User'),
-    phone: '',
-    address: '',
-    isApproved: true,
-    walletBalanceNGN: 0,
-    walletBalanceUSD: 0,
-    savedAddresses: []
-  };
-}
 
+  if (user.role === 'customer' && !(await isCurrentCustomerSession(String(user.id), decoded.sid))) {
+    return null;
+  }
+  return user;
+}
 function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return false;
   return (
@@ -1137,8 +1146,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const role = u.role || 'customer';
+    let sessionId: string | undefined;
+    if (role === 'customer') {
+      try {
+        sessionId = await issueCustomerSession(String(u.id));
+      } catch {
+        return NextResponse.json({ success: false, error: 'Sign-in is temporarily unavailable. Please try again.' }, { status: 503 });
+      }
+    }
     const token = jwt.sign(
-      { id: u.id, email: u.email, role: u.role || 'customer', name: u.name },
+      { id: u.id, email: u.email, role, name: u.name, ...(sessionId ? { sid: sessionId } : {}) },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -1234,7 +1252,15 @@ export async function POST(req: NextRequest) {
       ).catch(() => {});
     }
 
-    const token = jwt.sign({ id, email, role, name }, JWT_SECRET, { expiresIn: '7d' });
+    let sessionId: string | undefined;
+    if (role === 'customer') {
+      try {
+        sessionId = await issueCustomerSession(id);
+      } catch {
+        return NextResponse.json({ success: false, error: 'Your account was created, but sign-in is temporarily unavailable. Please sign in again.' }, { status: 503 });
+      }
+    }
+    const token = jwt.sign({ id, email, role, name, ...(sessionId ? { sid: sessionId } : {}) }, JWT_SECRET, { expiresIn: '7d' });
     const response = NextResponse.json({
       success: true,
       data: {
@@ -1258,6 +1284,10 @@ export async function POST(req: NextRequest) {
 
   // 5. Auth Logout
   if (pathname === '/auth/logout') {
+    const decoded = verifyToken(req);
+    if (decoded?.role === 'customer' && decoded?.sid && decoded?.id) {
+      await revokeCustomerSession(String(decoded.id), String(decoded.sid)).catch(() => {});
+    }
     const response = NextResponse.json({ success: true, message: 'Logged out successfully' });
     const expiredOptions = {
       path: '/',
