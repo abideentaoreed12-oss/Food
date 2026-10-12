@@ -3,6 +3,7 @@
 import React, { type ReactNode } from 'react';
 import { AuthProvider, useAuth } from '../../context/AuthContext';
 import { DeliveryProvider, useDelivery } from '../../context/DeliveryContext';
+import type { ActivePage } from '../../types';
 import { Navbar } from './Navbar';
 import { RightDrawer } from './RightDrawer';
 import { DishCustomizationModal } from '../customer/DishCustomizationModal';
@@ -49,9 +50,24 @@ function CustomerRouteFrame({ children }: { children: ReactNode }) {
   );
 }
 
-export function CustomerRouteShell({ children, initialPage }: { children: ReactNode; initialPage: 'offers' | 'search' }) {
+export type CustomerShellPage = Extract<
+  ActivePage,
+  'offers' | 'search' | 'orders' | 'favourites' | 'account' | 'help' | 'partner' | 'contact' | 'home' | 'restaurants'
+>;
+
+export function CustomerRouteShell({
+  children,
+  initialPage
+}: {
+  children: ReactNode;
+  initialPage: CustomerShellPage;
+}) {
   return (
-    <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={['places', 'geometry']} onError={(error) => console.warn('Optional map display unavailable:', error)}>
+    <APIProvider
+      apiKey={GOOGLE_MAPS_API_KEY}
+      libraries={['places', 'geometry']}
+      onError={(error) => console.warn('Optional map display unavailable:', error)}
+    >
       <AuthProvider>
         <DeliveryProvider initialRole="customer" initialPage={initialPage}>
           <CustomerRouteFrame>{children}</CustomerRouteFrame>
