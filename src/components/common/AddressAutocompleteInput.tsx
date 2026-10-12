@@ -224,12 +224,9 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
         if (items.length === 0) {
           try {
             const params = new URLSearchParams({
-              q: /\b(nigeria|lagos|ibadan|abuja|oyo|ogun|rivers|enugu|kano)\b/i.test(trimmed)
-                ? trimmed
-                : `${trimmed}, Nigeria`,
+              q: trimmed,
               limit: '5',
-              lang: 'en',
-              countrycode: 'ng'
+              lang: 'en'
             });
             const resp = await fetch(
               `https://photon.komoot.io/api/?${params.toString()}`
@@ -238,17 +235,15 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
               const data = await resp.json();
               if (data?.features?.length > 0) {
                 items = data.features.filter((f: any) => {
-                  const country = String(f?.properties?.country || '');
                   const coords = f?.geometry?.coordinates || [];
-                  return (!country || /nigeria/i.test(country)) &&
-                    Number.isFinite(Number(coords[0])) && Number.isFinite(Number(coords[1])) &&
-                    Number(coords[1]) >= 4 && Number(coords[1]) <= 14 &&
-                    Number(coords[0]) >= 2 && Number(coords[0]) <= 15;
+                  return Number.isFinite(Number(coords[0])) && Number.isFinite(Number(coords[1])) &&
+                    Number(coords[1]) >= -90 && Number(coords[1]) <= 90 &&
+                    Number(coords[0]) >= -180 && Number(coords[0]) <= 180;
                 }).map((f: any, i: number) => {
                   const props = f.properties || {};
                   const main = [props.housenumber, props.street || props.name].filter(Boolean).join(' ') || props.name || trimmed;
                   const secParts = [props.district, props.city, props.state, props.country].filter(Boolean);
-                  const sec = secParts.join(', ') || 'Nigeria';
+                  const sec = secParts.join(', ');
                   return {
                     id: `geo-${i}-${props.osm_id || Math.random()}`,
                     mainText: main,
@@ -303,26 +298,21 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
       setIsOpen(false);
 
       let streetAddr = item.mainText;
-      let city = 'Lagos';
-      let state = 'Lagos';
+      let city = '';
+      let state = '';
       let formatted = item.fullText;
       let lat = item.lat;
       let lng = item.lng;
 
-      // Extract City/State from secondary text
-      const secLower = (item.secondaryText || '').toLowerCase();
-      if (secLower.includes('abuja')) {
-        city = 'Abuja';
-        state = 'FCT';
-      } else if (secLower.includes('ibadan')) {
-        city = 'Ibadan';
-        state = 'Oyo';
-      } else if (secLower.includes('port harcourt')) {
-        city = 'Port Harcourt';
-        state = 'Rivers';
-      } else if (secLower.includes('lagos') || secLower.includes('lekki') || secLower.includes('ikeja')) {
-        city = 'Lagos';
-        state = 'Lagos';
+      // Dynamically extract City/State from secondary text
+      if (item.secondaryText) {
+        const parts = item.secondaryText.split(',').map((p) => p.trim()).filter(Boolean);
+        if (parts.length >= 2) {
+          city = parts[0];
+          state = parts[1];
+        } else if (parts.length === 1) {
+          city = parts[0];
+        }
       }
 
       // If Google Place ID exists, fetch detailed place fields
@@ -587,7 +577,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
             {value.trim().length < 2 && (
               <div className="p-2 space-y-1">
                 <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Quick Select Hubs (Lagos & Abuja)
+                  Popular Service Areas & Delivery Hubs
                 </p>
                 {popularZones.map((zone, idx) => (
                   <button

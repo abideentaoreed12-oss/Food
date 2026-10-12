@@ -343,7 +343,7 @@ export const CartDrawer: React.FC = () => {
             </div>
             <h3 className="text-base font-bold text-slate-800">Your cart is empty</h3>
             <p className="text-xs text-slate-500 mt-1 max-w-xs">
-              Explore restaurants in Lekki, VI & Ikeja and add your favorite meals to start ordering.
+              Explore top-rated restaurants near you and add your favorite meals to start ordering.
             </p>
             <button
               onClick={() => setIsCartOpen(false)}

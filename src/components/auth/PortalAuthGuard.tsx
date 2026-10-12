@@ -35,7 +35,7 @@ export const PortalAuthGuard: React.FC<PortalAuthGuardProps> = ({ requiredRole, 
         return {
           title: 'Merchant Kitchen KDS Portal',
           badge: 'Restricted to Restaurant Partners',
-          desc: 'Manage live incoming ticket orders, prep times, kitchen status toggles, and food catalog inventory across Lagos & Abuja.',
+          desc: 'Manage live incoming ticket orders, prep times, kitchen status toggles, and food catalog inventory across all active delivery zones.',
           icon: ChefHat
         };
       case 'courier':

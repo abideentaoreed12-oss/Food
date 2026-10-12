@@ -49,7 +49,7 @@ export const FavouritesPage: React.FC = () => {
             Sign In Required
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-            Please sign in to view, save, and manage your private list of favourite Lagos and Abuja restaurants.
+            Please sign in to view, save, and manage your private list of favourite restaurants.
           </p>
         </div>
 

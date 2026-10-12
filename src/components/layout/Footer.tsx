@@ -63,7 +63,7 @@ export const Footer: React.FC = () => {
                 {platformSettings['cms_footer_newsletter_title'] || 'Get ₦1,500 off your first food order'}
               </h3>
               <p className="text-sm text-slate-400 max-w-xl">
-                {platformSettings['cms_footer_newsletter_desc'] || 'Subscribe to our weekly foodie newsletter for exclusive promo codes, new restaurant launches in Lagos & Abuja, and flash discounts!'}
+                {platformSettings['cms_footer_newsletter_desc'] || 'Subscribe to our weekly foodie newsletter for exclusive promo codes, new restaurant launches, and flash discounts!'}
               </p>
             </div>
 
@@ -311,7 +311,7 @@ export const Footer: React.FC = () => {
             <span>·</span>
             <span>Bank Transfer, Cards & Veyrang Wallet</span>
             <span>·</span>
-            <span>Lagos & Abuja Dispatch Hubs</span>
+            <span>Global Express Dispatch Hubs</span>
           </div>
 
           <div className="text-center md:text-right">
@@ -319,7 +319,7 @@ export const Footer: React.FC = () => {
               © {new Date().getFullYear()} <span className="text-white font-bold">{platformSettings['cms_copyright_text'] || 'Veyrang Technologies Limited'}</span>. All rights reserved.
             </div>
             <div className="text-[11px] text-slate-400 mt-0.5">
-              {platformSettings['cms_footer_tagline'] || 'Designed for ultra-fast food delivery in Nigeria.'}
+              {platformSettings['cms_footer_tagline'] || 'Designed for ultra-fast food delivery.'}
             </div>
           </div>
 

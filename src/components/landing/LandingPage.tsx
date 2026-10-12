@@ -126,7 +126,7 @@ export const LandingPage: React.FC = () => {
                   <span className="font-extrabold text-slate-900 font-mono tabular-nums text-sm">
                     {platformSettings['cms_hero_stat_fee'] || '₦500'}
                   </span>
-                  <span className="ml-1 text-slate-500">flat delivery in Lekki/VI</span>
+                  <span className="ml-1 text-slate-500">{platformSettings['cms_hero_stat_fee_desc'] || 'flat delivery in active zones'}</span>
                 </div>
                 <span className="text-slate-300 font-bold" aria-hidden="true">·</span>
                 <div>
@@ -156,7 +156,7 @@ export const LandingPage: React.FC = () => {
                     <span className="text-xs font-bold text-slate-900">Live Kitchen Dispatch</span>
                   </div>
                   <span className="text-[11px] font-mono font-bold text-[#FF5500] bg-[#FFF1E8] px-2 py-0.5 rounded-lg">
-                    Lekki Phase 1
+                    {activeZoneConfig?.name || 'Active Delivery Hub'}
                   </span>
                 </div>
 
@@ -461,7 +461,7 @@ export const LandingPage: React.FC = () => {
                     <MapPin className="w-4 h-4" />
                   </div>
                   <h4 className="text-xs font-bold text-slate-900 truncate">{zone.name}</h4>
-                  <p className="text-[11px] text-slate-400">{zone.city || 'Lagos'}</p>
+                  <p className="text-[11px] text-slate-400">{zone.city || 'Service Area'}</p>
                   <p className="text-[11px] font-mono font-bold text-[#FF5500] pt-1">{fee !== undefined && Number.isFinite(Number(fee)) ? `${currency === 'USD' ? '$' : '₦'}${Number(fee).toLocaleString()} Fee` : 'Fee unavailable'}</p>
                 </div>
               );

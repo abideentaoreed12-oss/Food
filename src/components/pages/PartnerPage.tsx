@@ -3,13 +3,13 @@ import { Store, CheckCircle2, TrendingUp, Users, DollarSign } from 'lucide-react
 import { useDelivery } from '../../context/DeliveryContext';
 
 export const PartnerPage: React.FC = () => {
-  const { platformSettings } = useDelivery();
+  const { platformSettings, deliveryZones } = useDelivery();
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     businessName: '',
-    cuisineType: 'Nigerian Delicacies',
+    cuisineType: 'Local & International Cuisine',
     address: '',
-    city: 'Lagos (Lekki / Island)',
+    city: '',
     contactName: '',
     phone: '',
     email: '',
@@ -56,7 +56,7 @@ export const PartnerPage: React.FC = () => {
             {platformSettings['cms_partner_benefit2_title'] || 'New Customers'}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            {platformSettings['cms_partner_benefit2_desc'] || 'Reach corporate workers and residents across Lekki, VI & Ikeja.'}
+            {platformSettings['cms_partner_benefit2_desc'] || 'Reach corporate clients and diners across all active delivery zones.'}
           </p>
         </div>
 
@@ -107,7 +107,7 @@ export const PartnerPage: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Lagos Suya Grill"
+                  placeholder="e.g. Gourmet Grill & Kitchen"
                   value={formData.businessName}
                   onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
@@ -141,10 +141,13 @@ export const PartnerPage: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-orange-500 bg-white"
                 >
-                  <option value="Lagos (Lekki / Island)">Lagos — Lekki Phase 1 / Victoria Island</option>
-                  <option value="Lagos (Ikeja / Mainland)">Lagos — Ikeja GRA / Yaba</option>
-                  <option value="Abuja (Maitama / Wuse 2)">Abuja — Maitama / Wuse 2</option>
-                  <option value="Port Harcourt (GRA)">Port Harcourt — GRA</option>
+                  <option value="">Select operating city or zone...</option>
+                  {deliveryZones.map((z: any) => (
+                    <option key={z.id || z.code} value={z.name}>
+                      {z.name}{z.city ? ` (${z.city})` : ''}
+                    </option>
+                  ))}
+                  <option value="Metropolitan Hub">General Metropolitan Area</option>
                 </select>
               </div>
 
@@ -155,7 +158,7 @@ export const PartnerPage: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. 25 Admiralty Way, Lekki"
+                  placeholder="e.g. 12 Commercial Way or High Street"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"

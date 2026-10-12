@@ -61,7 +61,7 @@ export function parseAddressText(raw: string) {
   let address = '';
   let buildingEstate = '';
   let apartment = '';
-  let city = 'Lagos';
+  let city = '';
   let deliveryNotes = '';
 
   // 1. Explicit Key-Value Matches (Name:, Phone:, Address:, Flat:, etc.)
@@ -156,9 +156,9 @@ export function parseAddressText(raw: string) {
   }
 
   // 6. City inline pattern
-  const cityRegex = /\b(Lagos|Abuja|Ibadan|Port Harcourt|Enugu|Kano|Kaduna|Benin City|Calabar|Asaba|Warri|Uyo|Owerri|Akure|Abeokuta|Ilorin|Jos|London|Dubai|Toronto|New York)\b/i;
+  const cityRegex = /\b(Lagos|Abuja|Ibadan|Port Harcourt|Enugu|Kano|Kaduna|Benin City|Calabar|Asaba|Warri|Uyo|Owerri|Akure|Abeokuta|Ilorin|Jos|London|Dubai|Toronto|New York|Paris|Berlin|Nairobi|Accra|Johannesburg|Cape Town)\b/i;
   const inlineCity = text.match(cityRegex);
-  if (inlineCity && city === 'Lagos') {
+  if (inlineCity) {
     city = inlineCity[1].trim();
     text = text.replace(inlineCity[0], ' ');
   }
@@ -226,7 +226,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
   const [address, setAddress] = useState<string>(initialData?.address || '');
   const [buildingEstate, setBuildingEstate] = useState<string>(initialData?.buildingEstate || '');
   const [apartment, setApartment] = useState<string>(initialData?.apartment || '');
-  const [city, setCity] = useState<string>(initialData?.city || 'Lagos');
+  const [city, setCity] = useState<string>(initialData?.city || '');
   const [deliveryNotes, setDeliveryNotes] = useState<string>(initialData?.deliveryNotes || '');
   const [dropoffPreference, setDropoffPreference] = useState<'hand' | 'gatehouse' | 'lobby'>(
     initialData?.dropoffPreference || 'hand'
@@ -409,7 +409,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
         address: fullAddressString,
         buildingEstate: buildingEstate.trim(),
         apartment: apartment.trim(),
-        city: city.trim() || 'Lagos',
+        city: city.trim(),
         deliveryNotes: deliveryNotes.trim(),
         dropoffPreference,
         isDefault,
@@ -472,7 +472,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
                 handleAutoFillFromText();
               }
             }}
-            placeholder='e.g. "Amina Bello, 08012345678, 14 Admiralty Way, Lekki, Flat 4B"'
+            placeholder='e.g. "Amina Bello, +1234567890, 14 Main Street, Flat 4B"'
             className="flex-1 bg-white border border-slate-200 text-xs rounded-xl px-3 py-2 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#FF5500]"
           />
           <button
