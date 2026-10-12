@@ -6,7 +6,6 @@
     --font-display: 'Outfit', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
-    /* Brand — forest green + gold (UI theme only; no content) */
     --brand-primary: #0D4F3C;
     --brand-primary-hover: #0A3F30;
     --brand-primary-soft: #E8F5EF;
@@ -15,8 +14,10 @@
     --brand-accent-hover: #D4B23A;
     --brand-accent-text: #0D4F3C;
     --neutral-canvas: #F6F3EE;
+    --text-primary: #0F172A;
+    --text-secondary: #334155;
+    --text-muted: #475569;
 
-    /* Legacy aliases so older class references still resolve if any remain */
     --brand-orange: var(--brand-primary);
     --brand-orange-hover: var(--brand-primary-hover);
     --brand-peach-active: var(--brand-primary-soft);
@@ -24,20 +25,33 @@
 
   html, body {
     -webkit-text-size-adjust: 100%;
-    -moz-text-size-adjust: 100%;
-    -ms-text-size-adjust: 100%;
     text-size-adjust: 100%;
     touch-action: manipulation;
     font-family: var(--font-sans);
     background-color: var(--neutral-canvas);
-    color: #0F172A;
+    color: var(--text-primary);
     overflow-x: hidden;
     max-width: 100vw;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
+    color: var(--text-primary);
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
+
+  input, textarea, select, button { color: inherit; }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #64748b;
+    opacity: 1;
+  }
+
+  a { color: var(--brand-primary); }
 }
 
 button, a, input, select, textarea, [role="button"], label, div {
@@ -49,8 +63,8 @@ button, a, input, select, textarea, [role="button"], label, div {
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #F1F5F9; }
-::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #64748B; }
 
 @media screen and (max-width: 768px) {
   input, textarea, select,
@@ -58,6 +72,17 @@ button, a, input, select, textarea, [role="button"], label, div {
   input[type="number"], input[type="search"], input[type="tel"] {
     font-size: 16px !important;
   }
+}
+
+.brand-panel {
+  background-color: var(--brand-primary);
+  color: #ffffff;
+}
+.brand-panel * { color: inherit; }
+.brand-cta {
+  background-color: var(--brand-accent);
+  color: var(--brand-accent-text);
+  font-weight: 700;
 }
 
 nextjs-portal,
