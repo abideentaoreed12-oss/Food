@@ -101,7 +101,7 @@ router.post('/register', otpLimiter, validateBody(RegisterSchema), async (req: A
       createdAt: now,
       updatedAt: now
     });
-    const sessionId = newUser.role === 'customer' ? await issueCustomerSession(String(newUser.id)) : undefined;
+    const sessionId = await issueCustomerSession(String(newUser.id));
     const token = generateToken(newUser, sessionId);
     res.cookie('veyrang_token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.cookie('veyrang_auth_token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
@@ -159,7 +159,7 @@ router.post('/login', loginLimiter, validateBody(LoginSchema), async (req: AuthR
       return res.status(401).json({ success: false, error: 'Invalid email or password.' });
     }
 
-    const sessionId = user.role === 'customer' ? await issueCustomerSession(String(user.id)) : undefined;
+    const sessionId = await issueCustomerSession(String(user.id));
     const token = generateToken(user, sessionId);
     res.cookie('veyrang_token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.cookie('veyrang_auth_token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
