@@ -4,6 +4,7 @@ import { db } from '../db/index.ts';
 import { User, UserRole } from '../db/schema.ts';
 
 import { CONFIG } from '../config.ts';
+import { isCurrentCustomerSession } from '../../lib/customerSessions';
 
 const JWT_SECRET = CONFIG.JWT_SECRET;
 const TOKEN_EXPIRY = '7d';
@@ -12,14 +13,15 @@ export interface AuthRequest extends Request {
   user?: User;
 }
 
-export function generateToken(user: User): string {
+export function generateToken(user: User, sessionId?: string): string {
   return jwt.sign(
     {
       id: user.id,
       email: user.email,
       role: user.role,
       name: user.name,
-      restaurantId: user.restaurantId
+      restaurantId: user.restaurantId,
+      ...(sessionId ? { sid: sessionId } : {})
     },
     JWT_SECRET,
     { expiresIn: TOKEN_EXPIRY }
@@ -51,7 +53,7 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; sid?: string; role?: string };
     let user = await db.findUserById(decoded.id);
     if (!user) {
       const { d1Client } = await import('../db/d1Client.ts');
@@ -76,6 +78,13 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
       }
     }
     if (user) {
+      if (user.role === 'customer' && !(await isCurrentCustomerSession(String(user.id), decoded.sid))) {
+        return res.status(401).json({
+          success: false,
+          error: 'This customer session has been replaced by a newer sign-in. Please sign in again.',
+          invalidSession: true
+        });
+      }
       req.user = user;
     }
   } catch (err) {
