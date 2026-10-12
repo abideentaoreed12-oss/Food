@@ -196,17 +196,22 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     setActiveRoleState('customer');
   }, [user, openAuthModalForPortal]);
 
-  const [activePage, setActivePageState] = useState<ActivePage>(() => {
-    if (initialPage) return initialPage;
+  const [activePage, setActivePageState] = useState<ActivePage>(initialPage || 'landing');
+
+  // Load state from localStorage on client-side only to prevent hydration mismatch
+  useEffect(() => {
     try {
-      const hasJwt = typeof window !== 'undefined' && localStorage.getItem('veyrang_jwt');
-      if (!hasJwt) return 'landing';
-      const savedPage = localStorage.getItem('veyrang_active_page');
-      return (savedPage as ActivePage) || 'landing';
-    } catch {
-      return 'landing';
+      const hasJwt = localStorage.getItem('veyrang_jwt');
+      if (hasJwt) {
+        const savedPage = localStorage.getItem('veyrang_active_page');
+        if (savedPage) setActivePageState(savedPage as ActivePage);
+      } else {
+        setActivePageState('landing');
+      }
+    } catch (e) {
+      console.error('Failed to load active page from localStorage:', e);
     }
-  });
+  }, []);
 
   // Resolve navigation only after the auth session has been checked.
   // Guests always start on the public landing page; authenticated users keep their last page.
@@ -526,18 +531,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
 
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
-
-  // Resolve a direct restaurant URL once the public snapshot has loaded.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const match = window.location.pathname.match(/^\/restaurants\/([^/]+)\/?$/);
-    if (!match || restaurants.length === 0) return;
-    let restaurantId = match[1];
-    try { restaurantId = decodeURIComponent(restaurantId); } catch {}
-    if (restaurants.some((restaurant) => restaurant.id === restaurantId)) {
-      setSelectedRestaurantId(restaurantId);
-    }
-  }, [restaurants]);
   const [selectedRestaurantForPortal, setSelectedRestaurantForPortal] = useState<string>('rest-1');
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
   const [isCartOpen, setIsCartOpenState] = useState<boolean>(false);

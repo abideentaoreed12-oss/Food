@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
-import { CustomerRouteShell } from '../../src/components/layout/CustomerRouteShell';
-import { OffersPage } from '../../src/components/pages/OffersPage';
+import App from '../../src/App';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,9 +22,5 @@ export const metadata: Metadata = {
 };
 
 export default function OffersRoute() {
-  return (
-    <CustomerRouteShell initialPage="offers">
-      <OffersPage />
-    </CustomerRouteShell>
-  );
+  return <App initialPage="offers" />;
 }

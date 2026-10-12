@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useDelivery } from '../../context/DeliveryContext';
 import { formatCurrency } from '../../utils/format';
 import { Star, Clock, Search, Filter, Heart, ArrowUpDown, MapPin } from 'lucide-react';
 
 export const RestaurantsPage: React.FC = () => {
-  const router = useRouter();
   const {
     restaurants,
     setSelectedRestaurantId,
@@ -133,7 +131,7 @@ export const RestaurantsPage: React.FC = () => {
           return (
             <article
               key={restaurant.id}
-              onClick={() => router.push(`/restaurants/${encodeURIComponent(restaurant.id)}`)}
+              onClick={() => setSelectedRestaurantId(restaurant.id)}
               className="group relative rounded-3xl bg-white border border-slate-200/80 overflow-hidden shadow-2xs hover:shadow-md hover:border-[#0D4F3C]/40 transition-all cursor-pointer flex flex-col justify-between"
             >
               <div>
