@@ -132,10 +132,10 @@ const AppContent: React.FC = () => {
   );
 };
 
-export default function App({ initialRole, initialPage }: { initialRole?: UserRole; initialPage?: ActivePage } = {}) {
+export default function App({ initialRole, initialPage, initialRestaurantId }: { initialRole?: UserRole; initialPage?: ActivePage; initialRestaurantId?: string } = {}) {
   const content = (
     <AuthProvider>
-      <DeliveryProvider initialRole={initialRole} initialPage={initialPage}>
+      <DeliveryProvider initialRole={initialRole} initialPage={initialPage} initialRestaurantId={initialRestaurantId}>
         <AppContent />
         <Analytics />
       </DeliveryProvider>

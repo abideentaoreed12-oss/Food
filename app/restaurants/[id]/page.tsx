@@ -132,7 +132,7 @@ export default async function RestaurantSeoPage({ params }: Props) {
     <main className="mx-auto w-full max-w-5xl px-5 py-10 text-slate-900">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       <nav aria-label="Breadcrumb" className="mb-5 text-sm text-slate-500">
-        <a href="/" className="underline">Veyrang</a> <span aria-hidden="true">/</span> <a href="/#restaurants" className="underline">Restaurants</a> <span aria-hidden="true">/</span> <span>{restaurant.name}</span>
+        <a href="/" className="underline">Veyrang</a> <span aria-hidden="true">/</span> <a href="/restaurants" className="underline">Restaurants</a> <span aria-hidden="true">/</span> <span>{restaurant.name}</span>
       </nav>
       <header className="overflow-hidden rounded-2xl bg-slate-50">
         {restaurant.image ? <img src={restaurant.image} alt={restaurant.name || 'Restaurant'} className="h-56 w-full object-cover sm:h-80" /> : null}
@@ -146,7 +146,7 @@ export default async function RestaurantSeoPage({ params }: Props) {
             {restaurant.address ? <span>{restaurant.address}</span> : null}
             {restaurant.deliveryFee !== undefined ? <span>Delivery fee: ₦{restaurant.deliveryFee.toLocaleString('en-NG')}</span> : null}
           </div>
-          <a href={`/?restaurant=${encodeURIComponent(restaurant.id)}`} className="mt-6 inline-flex rounded-xl bg-[#0D4F3C] hover:bg-[#0A3F30] px-5 py-3 font-semibold text-white">Order from this restaurant</a>
+          <a href={`/restaurants?restaurant=${encodeURIComponent(restaurant.id)}`} className="mt-6 inline-flex rounded-xl bg-[#0D4F3C] hover:bg-[#0A3F30] px-5 py-3 font-semibold text-white">Order from this restaurant</a>
         </div>
       </header>
       <section className="mt-10" aria-labelledby="menu-heading">
@@ -163,7 +163,17 @@ export default async function RestaurantSeoPage({ params }: Props) {
                       {item.description ? <p className="mt-1 text-sm text-slate-600">{item.description}</p> : null}
                       <div className="mt-3 flex items-center justify-between gap-3">
                         {item.price !== undefined ? <span className="font-bold">₦{item.price.toLocaleString('en-NG')}</span> : <span />}
-                        <span className={item.isAvailable === false ? 'text-sm text-slate-500' : 'text-sm text-green-700'}>{item.isAvailable === false ? 'Unavailable' : 'Available'}</span>
+                        <div className="flex items-center gap-3">
+                          <span className={item.isAvailable === false ? 'text-sm text-slate-500' : 'text-sm text-green-700'}>{item.isAvailable === false ? 'Unavailable' : 'Available'}</span>
+                          {item.isAvailable !== false && (
+                            <a
+                              href={`/restaurants?restaurant=${encodeURIComponent(restaurant.id)}`}
+                              className="text-xs font-semibold text-[#0D4F3C] hover:underline"
+                            >
+                              Order Dish →
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </li>
                   ))}

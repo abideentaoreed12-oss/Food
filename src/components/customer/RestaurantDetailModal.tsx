@@ -39,7 +39,42 @@ export const RestaurantDetailModal: React.FC = () => {
     estimatedDeliveryFee: number;
   } | null>(null);
 
-  const restaurant = restaurants.find((r) => r.id === selectedRestaurantId);
+  const contextRestaurant = restaurants.find((r) => r.id === selectedRestaurantId);
+  const [fetchedRestaurant, setFetchedRestaurant] = useState<any | null>(null);
+  const [isLoadingRestaurant, setIsLoadingRestaurant] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!selectedRestaurantId) {
+      setFetchedRestaurant(null);
+      return;
+    }
+    if (!contextRestaurant) {
+      setIsLoadingRestaurant(true);
+      let isMounted = true;
+      api.restaurants
+        .getById(selectedRestaurantId)
+        .then((res: any) => {
+          if (isMounted) {
+            const data = res?.data || res;
+            if (data && data.id) {
+              setFetchedRestaurant(data);
+            }
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (isMounted) setIsLoadingRestaurant(false);
+        });
+      return () => {
+        isMounted = false;
+      };
+    } else {
+      setFetchedRestaurant(null);
+      setIsLoadingRestaurant(false);
+    }
+  }, [selectedRestaurantId, contextRestaurant]);
+
+  const restaurant = contextRestaurant || fetchedRestaurant;
 
   useEffect(() => {
     if (!selectedRestaurantId || !restaurant) return;
@@ -66,7 +101,21 @@ export const RestaurantDetailModal: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [selectedRestaurantId, user?.address, selectedAddress?.address]);
+  }, [selectedRestaurantId, user?.address, selectedAddress?.address, restaurant]);
+
+  if (!selectedRestaurantId) return null;
+
+  if (isLoadingRestaurant && !restaurant) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center space-y-4 shadow-2xl">
+          <div className="w-12 h-12 border-4 border-[#0D4F3C] border-t-transparent rounded-full animate-spin mx-auto" />
+          <h3 className="text-base font-bold text-slate-800">Loading restaurant details...</h3>
+        </div>
+      </div>
+    );
+  }
+
   if (!restaurant) return null;
 
   const allItems: MenuItem[] = (restaurant.categories || []).flatMap((cat) => cat?.items || []);

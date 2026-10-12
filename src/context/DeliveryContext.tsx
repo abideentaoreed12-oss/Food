@@ -196,22 +196,17 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     setActiveRoleState('customer');
   }, [user, openAuthModalForPortal]);
 
-  const [activePage, setActivePageState] = useState<ActivePage>(initialPage || 'landing');
-
-  // Load state from localStorage on client-side only to prevent hydration mismatch
-  useEffect(() => {
+  const [activePage, setActivePageState] = useState<ActivePage>(() => {
+    if (initialPage) return initialPage;
     try {
-      const hasJwt = localStorage.getItem('veyrang_jwt');
-      if (hasJwt) {
-        const savedPage = localStorage.getItem('veyrang_active_page');
-        if (savedPage) setActivePageState(savedPage as ActivePage);
-      } else {
-        setActivePageState('landing');
-      }
-    } catch (e) {
-      console.error('Failed to load active page from localStorage:', e);
+      const hasJwt = typeof window !== 'undefined' && localStorage.getItem('veyrang_jwt');
+      if (!hasJwt) return 'landing';
+      const savedPage = localStorage.getItem('veyrang_active_page');
+      return (savedPage as ActivePage) || 'landing';
+    } catch {
+      return 'landing';
     }
-  }, []);
+  });
 
   // Resolve navigation only after the auth session has been checked.
   // Guests always start on the public landing page; authenticated users keep their last page.

@@ -118,7 +118,30 @@ export const RestaurantsPage: React.FC = () => {
       </div>
 
       {/* Restaurant Grid View */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {sorted.length === 0 ? (
+        <div className="text-center py-16 px-4 bg-white rounded-3xl border border-dashed border-slate-200 shadow-2xs space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <Search className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-slate-800">No restaurants match your filters</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            Try adjusting your search query, or clear your filters to explore all available local kitchens.
+          </p>
+          <button
+            onClick={() => {
+              setQuery('');
+              setFilterFast(false);
+              setFilterTopRated(false);
+              setFilterLowFee(false);
+              setSortBy('rating');
+            }}
+            className="mt-2 px-4 py-2 rounded-xl bg-[#0D4F3C] text-white text-xs font-bold hover:bg-[#0A3F30] transition-colors cursor-pointer"
+          >
+            Reset Filters
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {sorted.map((restaurant) => {
           const imageUrl =
             restaurant.bannerUrl ||
