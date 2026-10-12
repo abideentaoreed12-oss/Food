@@ -33,7 +33,6 @@ export const BottomNav: React.FC = () => {
       setIsCartOpen(false);
       setActivePage('offers');
     } else if (tabId === 'history') {
-      // Orders/history is private — require a real session
       if (!isAuthenticated) {
         setIsAuthModalOpen(true);
         return;
@@ -47,11 +46,8 @@ export const BottomNav: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Only render when in customer storefront view
   if (activeRole !== 'customer') return null;
 
-  // Guests: Home · Food · Express · Cart (4)
-  // Logged-in: Home · Food · Express · History · Cart (5)
   const gridCols = isAuthenticated ? 'grid-cols-5' : 'grid-cols-4';
 
   return (
@@ -60,7 +56,6 @@ export const BottomNav: React.FC = () => {
       className="fixed bottom-0 left-0 right-0 z-30 bg-white/98 backdrop-blur-lg border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] py-1.5 px-2 pointer-events-auto"
     >
       <div className={`max-w-md mx-auto grid ${gridCols} items-center`}>
-        {/* Tab 1: Home */}
         <button
           type="button"
           onClick={() => handleTabClick('home')}
@@ -70,7 +65,7 @@ export const BottomNav: React.FC = () => {
           <div
             className={`p-1.5 rounded-xl transition-all ${
               activePage === 'home' && !isCartOpen
-                ? 'bg-orange-50 text-[#FF5500]'
+                ? 'bg-[#E8F5EF] text-[#0D4F3C]'
                 : 'text-slate-500 group-hover:text-slate-800'
             }`}
           >
@@ -78,14 +73,13 @@ export const BottomNav: React.FC = () => {
           </div>
           <span
             className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors ${
-              activePage === 'home' && !isCartOpen ? 'text-[#FF5500] font-bold' : 'text-slate-500'
+              activePage === 'home' && !isCartOpen ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
             }`}
           >
             Home
           </span>
         </button>
 
-        {/* Tab 2: Food */}
         <button
           type="button"
           onClick={() => handleTabClick('food')}
@@ -95,7 +89,7 @@ export const BottomNav: React.FC = () => {
           <div
             className={`p-1.5 rounded-xl transition-all ${
               activePage === 'restaurants' && !isCartOpen
-                ? 'bg-orange-50 text-[#FF5500]'
+                ? 'bg-[#E8F5EF] text-[#0D4F3C]'
                 : 'text-slate-500 group-hover:text-slate-800'
             }`}
           >
@@ -103,14 +97,13 @@ export const BottomNav: React.FC = () => {
           </div>
           <span
             className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors ${
-              activePage === 'restaurants' && !isCartOpen ? 'text-[#FF5500] font-bold' : 'text-slate-500'
+              activePage === 'restaurants' && !isCartOpen ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
             }`}
           >
             Food
           </span>
         </button>
 
-        {/* Tab 3: Express (offers) */}
         <button
           type="button"
           onClick={() => handleTabClick('express')}
@@ -120,7 +113,7 @@ export const BottomNav: React.FC = () => {
           <div
             className={`p-1.5 rounded-xl transition-all ${
               activePage === 'offers' && !isCartOpen
-                ? 'bg-orange-50 text-[#FF5500]'
+                ? 'bg-[#E8F5EF] text-[#0D4F3C]'
                 : 'text-slate-500 group-hover:text-slate-800'
             }`}
           >
@@ -128,14 +121,13 @@ export const BottomNav: React.FC = () => {
           </div>
           <span
             className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors ${
-              activePage === 'offers' && !isCartOpen ? 'text-[#FF5500] font-bold' : 'text-slate-500'
+              activePage === 'offers' && !isCartOpen ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
             }`}
           >
             Express
           </span>
         </button>
 
-        {/* Tab 4: History — logged-in customers only */}
         {isAuthenticated && (
           <button
             type="button"
@@ -146,7 +138,7 @@ export const BottomNav: React.FC = () => {
             <div
               className={`p-1.5 rounded-xl transition-all ${
                 activePage === 'orders' && !isCartOpen
-                  ? 'bg-orange-50 text-[#FF5500]'
+                  ? 'bg-[#E8F5EF] text-[#0D4F3C]'
                   : 'text-slate-500 group-hover:text-slate-800'
               }`}
             >
@@ -154,7 +146,7 @@ export const BottomNav: React.FC = () => {
             </div>
             <span
               className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors ${
-                activePage === 'orders' && !isCartOpen ? 'text-[#FF5500] font-bold' : 'text-slate-500'
+                activePage === 'orders' && !isCartOpen ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
               }`}
             >
               History
@@ -162,7 +154,6 @@ export const BottomNav: React.FC = () => {
           </button>
         )}
 
-        {/* Tab last: Cart */}
         <button
           type="button"
           onClick={() => handleTabClick('cart')}
@@ -172,20 +163,20 @@ export const BottomNav: React.FC = () => {
           <div
             className={`p-1.5 rounded-xl transition-all ${
               isCartOpen
-                ? 'bg-orange-50 text-[#FF5500]'
+                ? 'bg-[#E8F5EF] text-[#0D4F3C]'
                 : 'text-slate-500 group-hover:text-slate-800'
             }`}
           >
             <ShoppingCart className="w-5 h-5 stroke-[2]" />
             {totalCartCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF5500] text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#0D4F3C] text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
                 {totalCartCount > 99 ? '99+' : totalCartCount}
               </span>
             )}
           </div>
           <span
             className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors ${
-              isCartOpen ? 'text-[#FF5500] font-bold' : 'text-slate-500'
+              isCartOpen ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
             }`}
           >
             Cart
