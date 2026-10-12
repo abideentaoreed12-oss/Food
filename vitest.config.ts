@@ -6,5 +6,8 @@ export default defineConfig({
     globals: true,
     fileParallelism: false,
     testTimeout: 15000,
+    env: {
+      JWT_SECRET: 'test-only-secret-not-for-production',
+    },
   },
 });

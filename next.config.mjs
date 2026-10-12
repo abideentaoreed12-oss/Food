@@ -65,7 +65,7 @@ const nextConfig = {
   },
   typedRoutes: false,
   experimental: {
-    optimizePackageImports: ['lucide-react', 'motion/react'],
+    optimizePackageImports: ['lucide-react'],
   },
   productionBrowserSourceMaps: false,
   compress: true,
