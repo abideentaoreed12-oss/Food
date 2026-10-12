@@ -145,7 +145,7 @@ async function getUser(req: NextRequest) {
     };
   }
 
-  if (user.role === 'customer' && !(await isCurrentCustomerSession(String(user.id), decoded.sid))) {
+  if (!(await isCurrentCustomerSession(String(user.id), decoded.sid))) {
     return null;
   }
   return user;
@@ -1148,7 +1148,7 @@ export async function POST(req: NextRequest) {
 
     const role = u.role || 'customer';
     let sessionId: string | undefined;
-    if (role === 'customer') {
+    if (role) {
       try {
         sessionId = await issueCustomerSession(String(u.id));
       } catch {
@@ -1253,7 +1253,7 @@ export async function POST(req: NextRequest) {
     }
 
     let sessionId: string | undefined;
-    if (role === 'customer') {
+    if (role) {
       try {
         sessionId = await issueCustomerSession(id);
       } catch {
@@ -1285,7 +1285,7 @@ export async function POST(req: NextRequest) {
   // 5. Auth Logout
   if (pathname === '/auth/logout') {
     const decoded = verifyToken(req);
-    if (decoded?.role === 'customer' && decoded?.sid && decoded?.id) {
+    if (decoded?.sid && decoded?.id) {
       await revokeCustomerSession(String(decoded.id), String(decoded.sid)).catch(() => {});
     }
     const response = NextResponse.json({ success: true, message: 'Logged out successfully' });
