@@ -1,8 +1,24 @@
-import React from 'react';
+import type { Metadata } from 'next';
 
-export const metadata = {
-  title: 'Terms of Service | VeyraNG',
-  description: 'Terms governing use of VeyraNG food ordering and delivery services.'
+const title = 'Terms of Service | Veyrang';
+const description = 'Terms governing use of Veyrang food ordering and delivery services.';
+
+export const metadata: Metadata = {
+  title,
+  description,
+  alternates: { canonical: '/terms' },
+  openGraph: {
+    title,
+    description,
+    url: 'https://www.veyrang.com/terms',
+    siteName: 'Veyrang',
+    type: 'website'
+  },
+  twitter: {
+    card: 'summary',
+    title,
+    description
+  }
 };
 
 export default function TermsPage() {
@@ -10,7 +26,7 @@ export default function TermsPage() {
     <main className="mx-auto w-full max-w-3xl px-5 py-12 text-slate-800">
       <h1 className="mb-3 text-3xl font-bold">Terms of Service</h1>
       <p className="mb-8 text-sm text-slate-500">Effective date: 8 October 2026</p>
-      <p className="mb-5">These terms govern your use of VeyraNG. By using the service, you agree to these terms. If you do not agree, do not use the service.</p>
+      <p className="mb-5">These terms govern your use of Veyrang. By using the service, you agree to these terms. If you do not agree, do not use the service.</p>
       <h2 className="mb-2 mt-7 text-xl font-semibold">Orders and availability</h2>
       <p className="mb-4">Menus, prices, item availability, delivery areas, fees and estimated arrival times may change. An order is subject to acceptance by the relevant restaurant. Review your order total and delivery details before paying.</p>
       <h2 className="mb-2 mt-7 text-xl font-semibold">Payments, refunds and wallet</h2>
