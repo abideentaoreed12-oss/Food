@@ -49,7 +49,7 @@ export class D1Client {
       CONFIG.CLOUDFLARE_AUTH_EMAIL ||
       process.env.ADMIN_EMAIL ||
       CONFIG.ADMIN_EMAIL ||
-      'abideentaoreed12@gmail.com';
+      '';
     this.workerUrl = (process.env.CLOUDFLARE_WORKER_URL || CONFIG.CLOUDFLARE_WORKER_URL || '').replace(/\/$/, '');
   }
 
@@ -591,9 +591,15 @@ export class D1Client {
         try {
           result = await this.queryDirect<T>(sql, params);
         } catch (err: any) {
+          if (process.env.NODE_ENV === 'production') {
+            throw err;
+          }
           result = this.executeLocal<T>(sql, params);
         }
       } else {
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error('Cloudflare D1 is not configured in production environment (CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_DATABASE_ID, CLOUDFLARE_API_TOKEN required).');
+        }
         result = this.executeLocal<T>(sql, params);
       }
 
