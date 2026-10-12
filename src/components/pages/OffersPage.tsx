@@ -59,10 +59,30 @@ export const OffersPage: React.FC = () => {
 
   const promos = dynamicPromos;
 
-  const handleCopy = (code: string) => {
-    navigator.clipboard.writeText(code).catch(() => {});
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2500);
+  const handleCopy = async (code: string) => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(code);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = code;
+        textArea.setAttribute('readonly', '');
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (!copied) throw new Error('Clipboard copy was not available.');
+      }
+      setCopiedCode(code);
+      setApplyMessage(null);
+      window.setTimeout(() => setCopiedCode((current) => current === code ? null : current), 2500);
+    } catch {
+      setCopiedCode(null);
+      setApplyMessage({ text: 'Could not copy this code. Please select and copy it manually.', isError: true });
+      window.setTimeout(() => setApplyMessage((current) => current?.text === 'Could not copy this code. Please select and copy it manually.' ? null : current), 3500);
+    }
   };
 
   const handleApplyToCart = async (code: string) => {
