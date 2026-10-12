@@ -1,26 +1,114 @@
 import type { Metadata } from 'next';
-import App from '../../src/App';
+import Link from 'next/link';
+import { d1 } from '../../lib/d1';
+import { buildPublicRestaurant } from '../../lib/restaurantMenu';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: 'All Restaurants | Veyrang',
-  description: 'Order from trusted local kitchens across your city. Fast delivery and real-time tracking.',
+  title: 'Restaurants',
+  description: 'Explore restaurants on Veyrang, browse menus and find your next meal.',
   alternates: { canonical: '/restaurants' },
   openGraph: {
-    title: 'All Restaurants | Veyrang',
-    description: 'Order from trusted local kitchens across your city. Fast delivery and real-time tracking.',
+    title: 'Restaurants | Veyrang',
+    description: 'Explore restaurants on Veyrang, browse menus and find your next meal.',
     url: 'https://www.veyrang.com/restaurants',
     siteName: 'Veyrang',
     type: 'website'
   },
   twitter: {
     card: 'summary',
-    title: 'All Restaurants | Veyrang',
-    description: 'Order from trusted local kitchens across your city.'
+    title: 'Restaurants | Veyrang',
+    description: 'Explore restaurants on Veyrang, browse menus and find your next meal.'
   }
 };
 
-export default function RestaurantsRoute() {
-  return <App initialPage="restaurants" />;
+type RestaurantCard = {
+  id: string;
+  name: string;
+  description?: string;
+  cuisine?: string;
+  city?: string;
+  image?: string;
+  rating?: number;
+  isOpen?: boolean;
+};
+
+async function getRestaurants(): Promise<RestaurantCard[]> {
+  try {
+    const result = await d1.query('SELECT * FROM restaurants ORDER BY name ASC', [], { cache: false });
+    if (!result?.success || !Array.isArray(result.results)) return [];
+    const restaurants = await Promise.all(result.results.map(async (row: any) => {
+      try {
+        const item = await buildPublicRestaurant(row, { includeMenu: false });
+        const id = String(item?.id || row?.id || '');
+        const name = String(item?.name || row?.name || '').trim();
+        if (!id || !name) return null;
+        const image = item?.imageUrl || item?.bannerUrl || item?.image || item?.logoUrl || item?.logo;
+        const rating = Number(item?.rating);
+        return {
+          id,
+          name,
+          description: typeof item?.description === 'string' ? item.description : (typeof item?.tagline === 'string' ? item.tagline : undefined),
+          cuisine: typeof item?.cuisine === 'string' ? item.cuisine : undefined,
+          city: typeof item?.city === 'string' ? item.city : undefined,
+          image: typeof image === 'string' ? image : undefined,
+          rating: Number.isFinite(rating) && rating > 0 ? rating : undefined,
+          isOpen: item?.isOpen === true
+        } satisfies RestaurantCard;
+      } catch {
+        return null;
+      }
+    }));
+    return restaurants.filter((item): item is RestaurantCard => item !== null);
+  } catch (error) {
+    console.error('Failed to load restaurant listing:', error);
+    return [];
+  }
+}
+
+export default async function RestaurantsIndexPage() {
+  const restaurants = await getRestaurants();
+
+  return (
+    <main className="mx-auto w-full max-w-6xl px-5 py-10 text-slate-900">
+      <nav aria-label="Breadcrumb" className="mb-5 text-sm text-slate-500">
+        <Link href="/" className="underline">Veyrang</Link><span aria-hidden="true"> / </span><span>Restaurants</span>
+      </nav>
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold sm:text-4xl">Restaurants</h1>
+        <p className="mt-3 max-w-2xl text-slate-600">Explore restaurants, discover cuisines and browse menus before choosing where to order.</p>
+      </header>
+      {restaurants.length === 0 ? (
+        <section className="rounded-2xl border border-slate-200 bg-white p-6" aria-live="polite">
+          <h2 className="text-lg font-semibold">Restaurants are temporarily unavailable</h2>
+          <p className="mt-2 text-slate-600">We couldn’t load the restaurant catalogue right now. Please try again shortly.</p>
+          <Link href="/" className="mt-4 inline-flex rounded-xl bg-[#0D4F3C] px-4 py-2.5 font-semibold text-white">Return home</Link>
+        </section>
+      ) : (
+        <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {restaurants.map((restaurant) => (
+            <li key={restaurant.id}>
+              <article className="h-full overflow-hidden rounded-2xl border border-slate-200 bg-white transition-shadow hover:shadow-md">
+                <Link href={`/restaurants/${encodeURIComponent(restaurant.id)}`} className="block h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0D4F3C]">
+                  {restaurant.image ? <img src={restaurant.image} alt="" loading="lazy" className="h-48 w-full bg-slate-100 object-cover" /> : <div aria-hidden="true" className="flex h-48 items-center justify-center bg-slate-100 text-slate-500">Restaurant</div>}
+                  <div className="p-5">
+                    <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                      <span className={restaurant.isOpen ? 'rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800' : 'rounded-full bg-slate-100 px-2.5 py-1 text-slate-600'}>{restaurant.isOpen ? 'Open now' : 'Hours unavailable'}</span>
+                      {restaurant.rating !== undefined ? <span className="text-slate-600">★ {restaurant.rating.toFixed(1)}</span> : null}
+                    </div>
+                    <h2 className="text-xl font-bold">{restaurant.name}</h2>
+                    {restaurant.cuisine ? <p className="mt-1 text-sm text-slate-600">{restaurant.cuisine}</p> : null}
+                    {restaurant.city ? <p className="mt-1 text-sm text-slate-500">{restaurant.city}</p> : null}
+                    {restaurant.description ? <p className="mt-3 line-clamp-3 text-sm text-slate-600">{restaurant.description}</p> : null}
+                    <span className="mt-5 inline-flex font-semibold text-[#0D4F3C]">View menu <span aria-hidden="true" className="ml-1">→</span></span>
+                  </div>
+                </Link>
+              </article>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  );
 }
