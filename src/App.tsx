@@ -6,7 +6,7 @@ import { UserRole } from './types';
 function Analytics() {
   return null;
 }
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { DeliveryProvider, useDelivery } from './context/DeliveryContext';
 import { Navbar } from './components/layout/Navbar';
 import { RightDrawer } from './components/layout/RightDrawer';
@@ -42,11 +42,10 @@ import { GOOGLE_MAPS_API_KEY } from './utils/googleMapsConfig';
 
 const AppContent: React.FC = () => {
   const { activeRole, setActiveRole, activePage, setActivePage, isWalletModalOpen, setIsWalletModalOpen } = useDelivery();
+  const { isAuthenticated } = useAuth();
 
   const renderCustomerPage = () => {
     switch (activePage) {
-      case 'landing':
-        return <LandingPage />;
       case 'home':
         return <CustomerView />;
       case 'restaurants':
@@ -120,8 +119,8 @@ const AppContent: React.FC = () => {
       <AuthModal />
       <WalletModal isOpen={isWalletModalOpen} onClose={() => setIsWalletModalOpen(false)} />
 
-      {/* Corporate Multi-Column Footer */}
-      {activeRole === 'customer' && <Footer />}
+      {/* Corporate Multi-Column Footer — guests only (mobile app shell when logged in) */}
+      {activeRole === 'customer' && !isAuthenticated && <Footer />}
 
       {/* Floating Bottom Pill Navigation Bar */}
       {activeRole === 'customer' && <BottomNav />}
