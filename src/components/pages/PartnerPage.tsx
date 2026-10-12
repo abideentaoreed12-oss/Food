@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { Store, CheckCircle2, TrendingUp, Users, DollarSign } from 'lucide-react';
 import { useDelivery } from '../../context/DeliveryContext';

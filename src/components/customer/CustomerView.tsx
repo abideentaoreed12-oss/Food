@@ -28,8 +28,11 @@ import {
   CheckCircle2,
   AlertCircle
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ROUTES } from '../../routes';
 
 export const CustomerView: React.FC = () => {
+  const router = useRouter();
   const {
     restaurants,
     setSelectedRestaurantId,
@@ -294,7 +297,7 @@ export const CustomerView: React.FC = () => {
           </div>
         </div>
         <button
-          onClick={activePromo ? handleApplyWelcomePromo : () => setActivePage('offers')}
+          onClick={activePromo ? handleApplyWelcomePromo : () => { setActivePage('offers'); router.push(ROUTES.OFFERS); }}
           className="text-xs font-bold px-4 py-2 bg-[#E8C547] text-[#0D4F3C] hover:bg-[#D4B23A] rounded-full shrink-0 shadow-2xs transition-colors cursor-pointer flex items-center gap-1"
         >
           {promoCopied ? (
@@ -412,7 +415,7 @@ export const CustomerView: React.FC = () => {
           </h2>
           <button
             type="button"
-            onClick={() => setActivePage('restaurants')}
+            onClick={() => { setActivePage('restaurants'); router.push(ROUTES.RESTAURANTS); }}
             className="text-xs font-semibold text-[#0D4F3C] hover:underline"
           >
             See All

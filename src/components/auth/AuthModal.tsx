@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { useDelivery } from '../../context/DeliveryContext';
 import { UserRole } from '../../types';
+import { ROUTES } from '../../routes';
 import { AddressAutocompleteInput } from '../common/AddressAutocompleteInput';
 import {
   X,
@@ -24,6 +26,7 @@ import {
 } from 'lucide-react';
 
 export const AuthModal: React.FC = () => {
+  const router = useRouter();
   const {
     isAuthModalOpen,
     setIsAuthModalOpen,
@@ -174,15 +177,19 @@ export const AuthModal: React.FC = () => {
         const res = await login(email, password);
         if (res.success) {
           const loggedInUserRole = res.user?.role;
-          if (intendedPortal) {
-            setActiveRole(intendedPortal === 'sub_admin' ? 'admin' : intendedPortal);
-            setActivePage('home');
-          } else if (loggedInUserRole && ['admin', 'sub_admin'].includes(loggedInUserRole)) {
+          const targetRole = (intendedPortal || loggedInUserRole || 'customer') as string;
+          if (targetRole === 'admin' || targetRole === 'sub_admin') {
             setActiveRole('admin');
             setActivePage('home');
-          } else if (loggedInUserRole && ['restaurant', 'courier'].includes(loggedInUserRole)) {
-            setActiveRole(loggedInUserRole as any);
+            router.push(ROUTES.ADMIN_PORTAL);
+          } else if (targetRole === 'restaurant') {
+            setActiveRole('restaurant');
             setActivePage('home');
+            router.push(ROUTES.RESTAURANT_PORTAL);
+          } else if (targetRole === 'courier') {
+            setActiveRole('courier');
+            setActivePage('home');
+            router.push(ROUTES.COURIER_PORTAL);
           } else {
             setActiveRole('customer');
             setActivePage('home');
@@ -244,6 +251,13 @@ export const AuthModal: React.FC = () => {
           } else {
             setActiveRole(role);
             setActivePage('home');
+            if (role === 'restaurant') {
+              router.push(ROUTES.RESTAURANT_PORTAL);
+            } else if (role === 'courier') {
+              router.push(ROUTES.COURIER_PORTAL);
+            } else if (role === 'admin' || (role as string) === 'sub_admin') {
+              router.push(ROUTES.ADMIN_PORTAL);
+            }
             handleClose();
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }

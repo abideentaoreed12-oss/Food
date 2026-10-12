@@ -23,9 +23,12 @@ import {
   Twitter,
   Linkedin
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ROUTES } from '../../routes';
 import { VeyrangLogo } from '../common/VeyrangLogo';
 
 export const Footer: React.FC = () => {
+  const router = useRouter();
   const { setActiveRole, setActivePage, platformSettings, deliveryZones } = useDelivery();
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -41,6 +44,17 @@ export const Footer: React.FC = () => {
   const handleNavClick = (page: any, role: 'customer' | 'restaurant' | 'courier' | 'admin' = 'customer') => {
     setActiveRole(role);
     setActivePage(page);
+    if (page === 'restaurants') router.push(ROUTES.RESTAURANTS);
+    else if (page === 'search') router.push(ROUTES.SEARCH);
+    else if (page === 'partner') router.push(ROUTES.PARTNER);
+    else if (page === 'help') router.push(ROUTES.HELP);
+    else if (page === 'contact') router.push(ROUTES.CONTACT);
+    else if (page === 'terms') router.push(ROUTES.TERMS);
+    else if (page === 'privacy') router.push(ROUTES.PRIVACY);
+    else if (page === 'home' || page === 'landing') router.push(ROUTES.HOME);
+    else if (role === 'restaurant') router.push(ROUTES.RESTAURANT_PORTAL);
+    else if (role === 'courier') router.push(ROUTES.COURIER_PORTAL);
+    else if (role === 'admin') router.push(ROUTES.ADMIN_PORTAL);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AuthProvider } from '../../context/AuthContext';
-import { DeliveryProvider } from '../../context/DeliveryContext';
+import { AuthProvider } from '../../src/context/AuthContext';
+import { DeliveryProvider } from '../../src/context/DeliveryContext';
 import { APIProvider } from '@vis.gl/react-google-maps';
-import { GOOGLE_MAPS_API_KEY } from '../../utils/googleMapsConfig';
-import { AppShell } from './AppShell';
+import { GOOGLE_MAPS_API_KEY } from '../../src/utils/googleMapsConfig';
+import { AppShell } from '../../src/components/layout/AppShell';
+import { PaystackReturnHandler } from './PaystackReturnHandler';
 
-export function ClientProviders({ children }: { children: React.ReactNode }) {
+export function Providers({ children }: { children: React.ReactNode }) {
   const [quotaExceeded, setQuotaExceeded] = useState(false);
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
     <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={['places', 'geometry']}>
       <AuthProvider>
         <DeliveryProvider>
+          <PaystackReturnHandler />
           {quotaExceeded && (
             <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-2.5 text-xs md:text-sm text-center sticky top-0 z-50 shadow-sm">
               <span>

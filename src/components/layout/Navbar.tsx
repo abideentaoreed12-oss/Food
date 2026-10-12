@@ -1,9 +1,12 @@
 'use client';
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { SavedAddress } from '../../types';
+import { ROUTES } from '../../routes';
 import {
   ShoppingCart,
   MapPin,
@@ -53,6 +56,8 @@ export const Navbar: React.FC = () => {
   } = useDelivery();
 
   const { user, logout, setIsAuthModalOpen } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
   const displayName = user?.name || (user?.email ? user.email.split('@')[0] : 'User');
@@ -138,27 +143,59 @@ export const Navbar: React.FC = () => {
           <>
             <div className="h-14 sm:h-16 flex items-center justify-between gap-3">
               <div className="flex items-center gap-4">
-                <button onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage(user ? 'home' : 'landing'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="focus-visible:outline-none focus:outline-none border-none outline-none active:scale-95 transition-transform">
+                <button
+                  onClick={() => {
+                    closeDropdowns();
+                    setActiveRole('customer');
+                    setActivePage(user ? 'home' : 'landing');
+                    router.push(ROUTES.HOME);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="focus-visible:outline-none focus:outline-none border-none outline-none active:scale-95 transition-transform cursor-pointer"
+                >
                   <VeyrangLogo iconSize="md" textSize="md" lightMode={isLanding} />
                 </button>
                 <nav className="hidden md:flex items-center gap-1 pl-2">
-                  {(['landing', 'restaurants', 'offers', 'orders'] as const).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage(page === 'landing' ? (user ? 'home' : 'landing') : page); }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                        isLanding
-                          ? activePage === page
-                            ? 'bg-white/20 text-white'
-                            : 'text-emerald-100 hover:text-white hover:bg-white/10'
-                          : activeRole === 'customer' && activePage === page
-                          ? 'bg-[#E8F5EF] text-[#0D4F3C]'
-                          : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
-                      }`}
-                    >
-                      {page === 'landing' ? 'Home' : page === 'restaurants' ? 'Restaurants' : page === 'offers' ? 'Offers' : 'My Orders'}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage(user ? 'home' : 'landing'); router.push(ROUTES.HOME); }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                      pathname === ROUTES.HOME
+                        ? 'bg-[#E8F5EF] text-[#0D4F3C]'
+                        : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    Home
+                  </button>
+                  <button
+                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('restaurants'); router.push(ROUTES.RESTAURANTS); }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                      pathname === ROUTES.RESTAURANTS
+                        ? 'bg-[#E8F5EF] text-[#0D4F3C]'
+                        : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    Restaurants
+                  </button>
+                  <button
+                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('offers'); router.push(ROUTES.OFFERS); }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                      pathname === ROUTES.OFFERS
+                        ? 'bg-[#E8F5EF] text-[#0D4F3C]'
+                        : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    Offers
+                  </button>
+                  <button
+                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('orders'); router.push(ROUTES.ORDERS); }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                      pathname === ROUTES.ORDERS
+                        ? 'bg-[#E8F5EF] text-[#0D4F3C]'
+                        : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    My Orders
+                  </button>
                 </nav>
               </div>
               <div className="flex items-center gap-2.5 sm:gap-3">
@@ -210,15 +247,15 @@ export const Navbar: React.FC = () => {
                           <span className="flex items-center gap-2"><Wallet className="w-4 h-4 text-[#0D4F3C]" /><span>In-App Wallet</span></span>
                           <span className="font-bold font-mono text-emerald-700">₦{walletBalanceNGN.toLocaleString('en-NG')}</span>
                         </button>
-                        <button onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('orders'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="w-full text-left px-4 py-2 hover:bg-[#E8F5EF]/50 flex items-center gap-2 text-slate-800 cursor-pointer">
+                        <button onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('orders'); router.push(ROUTES.ORDERS); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="w-full text-left px-4 py-2 hover:bg-[#E8F5EF]/50 flex items-center gap-2 text-slate-800 cursor-pointer">
                           <ShoppingBag className="w-4 h-4 text-slate-600" /><span>My Past Orders</span>
                         </button>
-                        <button onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('account'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="w-full text-left px-4 py-2 hover:bg-[#E8F5EF]/50 flex items-center gap-2 text-slate-800 cursor-pointer">
+                        <button onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('account'); router.push(ROUTES.ACCOUNT); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="w-full text-left px-4 py-2 hover:bg-[#E8F5EF]/50 flex items-center gap-2 text-slate-800 cursor-pointer">
                           <User className="w-4 h-4 text-slate-600" /><span>Profile & Addresses</span>
                         </button>
                       </div>
                       <div className="border-t border-slate-100 pt-1 mt-1">
-                        <button onClick={async () => { closeDropdowns(); await logout(); setActiveRole('customer'); setActivePage('home'); }} className="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-semibold">
+                        <button onClick={async () => { closeDropdowns(); await logout(); setActiveRole('customer'); setActivePage('home'); router.push(ROUTES.HOME); }} className="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-semibold">
                           <LogOut className="w-4 h-4" /><span>Sign Out</span>
                         </button>
                       </div>

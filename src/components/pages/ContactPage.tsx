@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, CheckCircle2, Clock3, Mail, MessageCircle, Phone, Send, ShieldCheck, TicketCheck } from 'lucide-react';
 import { useDelivery } from '../../context/DeliveryContext';

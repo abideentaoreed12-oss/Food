@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { FileText, Clock, RefreshCw, ShieldAlert, ShoppingBag, CircleHelp } from 'lucide-react';
 import { useDelivery } from '../../context/DeliveryContext';

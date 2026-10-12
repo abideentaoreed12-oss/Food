@@ -44,6 +44,7 @@ src/data/mockData.ts
 # Internal SDK caches and development artifacts
 .gmp_cache/
 .aistudio/
+.removed/
 *.tsbuildinfo
 bun.lock
 bun.lockb

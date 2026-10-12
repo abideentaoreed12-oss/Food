@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { Shield, Database, Users, Clock, Mail } from 'lucide-react';
 import { useDelivery } from '../../context/DeliveryContext';

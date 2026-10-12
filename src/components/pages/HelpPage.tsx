@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useMemo, useState } from 'react';
 import { Search, ChevronDown, CircleHelp, MessageCircle, Phone, ShieldCheck, Truck, WalletCards } from 'lucide-react';
 import { useDelivery } from '../../context/DeliveryContext';

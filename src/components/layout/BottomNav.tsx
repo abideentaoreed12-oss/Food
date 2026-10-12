@@ -1,9 +1,13 @@
 import React from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
+import { ROUTES } from '../../routes';
 import { Home, Utensils, LayoutGrid, Receipt, ShoppingCart } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
+  const router = useRouter();
+  const pathname = usePathname();
   const {
     activePage,
     setActivePage,
@@ -26,12 +30,15 @@ export const BottomNav: React.FC = () => {
     if (tabId === 'home') {
       setIsCartOpen(false);
       setActivePage(isAuthenticated ? 'home' : 'landing');
+      router.push(ROUTES.HOME);
     } else if (tabId === 'food') {
       setIsCartOpen(false);
       setActivePage('restaurants');
+      router.push(ROUTES.RESTAURANTS);
     } else if (tabId === 'express') {
       setIsCartOpen(false);
       setActivePage('offers');
+      router.push(ROUTES.OFFERS);
     } else if (tabId === 'history') {
       if (!isAuthenticated) {
         setIsAuthModalOpen(true);
@@ -39,6 +46,7 @@ export const BottomNav: React.FC = () => {
       }
       setIsCartOpen(false);
       setActivePage('orders');
+      router.push(ROUTES.ORDERS);
     } else if (tabId === 'cart') {
       setIsCartOpen(true);
     }
@@ -48,10 +56,10 @@ export const BottomNav: React.FC = () => {
 
   if (activeRole !== 'customer') return null;
 
-  const isHomeActive = (activePage === 'home' || activePage === 'landing') && !isCartOpen;
-  const isFoodActive = activePage === 'restaurants' && !isCartOpen;
-  const isExpressActive = activePage === 'offers' && !isCartOpen;
-  const isHistoryActive = activePage === 'orders' && !isCartOpen;
+  const isHomeActive = (pathname === ROUTES.HOME || activePage === 'home' || activePage === 'landing') && !isCartOpen;
+  const isFoodActive = (pathname === ROUTES.RESTAURANTS || activePage === 'restaurants') && !isCartOpen;
+  const isExpressActive = (pathname === ROUTES.OFFERS || activePage === 'offers') && !isCartOpen;
+  const isHistoryActive = (pathname === ROUTES.ORDERS || activePage === 'orders') && !isCartOpen;
   const isCartActive = isCartOpen;
 
   const gridCols = isAuthenticated ? 'grid-cols-5' : 'grid-cols-3';

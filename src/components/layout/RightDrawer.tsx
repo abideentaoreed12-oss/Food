@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
-// import removed
+import { ROUTES } from '../../routes';
 import { ActivePage, DeliveryZone, UserRole, SavedAddress } from '../../types';
 import {
   X,
@@ -49,6 +50,7 @@ import {
 import { VeyrangLogo } from '../common/VeyrangLogo';
 
 export const RightDrawer: React.FC = () => {
+  const router = useRouter();
   const {
     isRightDrawerOpen,
     setIsRightDrawerOpen,
@@ -119,8 +121,21 @@ export const RightDrawer: React.FC = () => {
     setActiveRole('customer');
     if (page === 'home' && !user) {
       setActivePage('landing');
+      router.push(ROUTES.HOME);
     } else {
       setActivePage(page);
+      if (page === 'home' || page === 'landing') router.push(ROUTES.HOME);
+      else if (page === 'restaurants') router.push(ROUTES.RESTAURANTS);
+      else if (page === 'search') router.push(ROUTES.SEARCH);
+      else if (page === 'offers') router.push(ROUTES.OFFERS);
+      else if (page === 'orders') router.push(ROUTES.ORDERS);
+      else if (page === 'favourites') router.push(ROUTES.FAVOURITES);
+      else if (page === 'account') router.push(ROUTES.ACCOUNT);
+      else if (page === 'help') router.push(ROUTES.HELP);
+      else if (page === 'contact') router.push(ROUTES.CONTACT);
+      else if (page === 'partner') router.push(ROUTES.PARTNER);
+      else if (page === 'terms') router.push(ROUTES.TERMS);
+      else if (page === 'privacy') router.push(ROUTES.PRIVACY);
     }
     setIsRightDrawerOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -130,6 +145,7 @@ export const RightDrawer: React.FC = () => {
     setActiveRole('admin');
     setAdminActiveTab(tab);
     setIsRightDrawerOpen(false);
+    router.push(ROUTES.ADMIN_PORTAL);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

@@ -1,4 +1,5 @@
 .aistudio/
 .gmp_cache/
+.removed/
 bun.lock
 tests/
