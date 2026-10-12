@@ -81,11 +81,18 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
       if (!(await isCurrentCustomerSession(String(user.id), decoded.sid))) {
         return res.status(401).json({
           success: false,
-          error: 'This customer session has been replaced by a newer sign-in. Please sign in again.',
+          error: 'This session has been replaced by a newer sign-in. Please sign in again.',
           invalidSession: true
         });
       }
       req.user = user;
+    } else if (decoded.sid && decoded.role && !(await isCurrentCustomerSession(String(decoded.id), decoded.sid))) {
+      // Also protect environment-provisioned accounts that intentionally have no users row.
+      return res.status(401).json({
+        success: false,
+        error: 'This session has been replaced by a newer sign-in. Please sign in again.',
+        invalidSession: true
+      });
     }
   } catch (err) {
     // Expired or invalid token: user remains undefined
