@@ -30,9 +30,9 @@ export async function issueCustomerSession(userId: string): Promise<string> {
 }
 
 /**
- * Legacy customer JWTs without a session id remain valid only until the account
- * receives its first managed session. Once a session row exists, only its exact
- * session id is accepted. Managed sessions fail closed if D1 cannot be checked.
+ * Shared per-user session registry for every authenticated portal role.
+ * Legacy JWTs without a session id remain valid only until that account receives
+ * its first managed session. Managed sessions fail closed if D1 cannot be checked.
  */
 export async function isCurrentCustomerSession(userId: string, sessionId?: string): Promise<boolean> {
   try {
