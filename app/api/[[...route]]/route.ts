@@ -18,6 +18,7 @@ import { buildPublicRestaurant, buildPublicRestaurantList } from '../../../lib/r
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 /**
  * Keep the restaurant document (the public storefront's canonical menu source)

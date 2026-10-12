@@ -3,6 +3,7 @@ import { siteDataManager } from '../../../../lib/siteDataSnapshot';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 /**
  * Vercel Cron or administrator scheduled snapshot refresh.

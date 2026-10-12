@@ -13,6 +13,7 @@ import { d1 } from '../../../../lib/d1';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 type ResendWebhookEvent = {
   type: string;
