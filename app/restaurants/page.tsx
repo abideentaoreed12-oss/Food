@@ -65,7 +65,7 @@ async function getRestaurants(): Promise<RestaurantCard[]> {
         return null;
       }
     }));
-    return restaurants.filter((item): item is RestaurantCard => item !== null);
+    return restaurants.filter((item) => item !== null) as RestaurantCard[];
   } catch (error) {
     console.error('Failed to load restaurant listing:', error);
     return [];
