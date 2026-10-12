@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { UserRole } from './types';
+import { UserRole, ActivePage } from './types';
 
 function Analytics() {
   return null;
@@ -132,10 +132,10 @@ const AppContent: React.FC = () => {
   );
 };
 
-export default function App({ initialRole }: { initialRole?: UserRole } = {}) {
+export default function App({ initialRole, initialPage }: { initialRole?: UserRole; initialPage?: ActivePage } = {}) {
   const content = (
     <AuthProvider>
-      <DeliveryProvider initialRole={initialRole}>
+      <DeliveryProvider initialRole={initialRole} initialPage={initialPage}>
         <AppContent />
         <Analytics />
       </DeliveryProvider>

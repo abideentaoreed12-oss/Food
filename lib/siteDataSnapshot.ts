@@ -65,7 +65,11 @@ export const PUBLIC_SETTINGS_WHITELIST = new Set([
   'cms_hero_title',
   'cms_hero_subtitle',
   'cms_hero_badge',
-  'cms_announcement_banner'
+  'cms_announcement_banner',
+  'cms_offers_title',
+  'cms_offers_subtitle',
+  'cms_offers_member_title',
+  'cms_offers_member_desc'
 ]);
 
 export function isValidSiteData(

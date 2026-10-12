@@ -1503,10 +1503,18 @@ export async function POST(req: NextRequest) {
       const promoRes = await d1.query('SELECT * FROM promo_codes WHERE UPPER(code) = ? AND is_active = 1 LIMIT 1', [codeUpper]);
       if (promoRes.results?.[0]) {
         const p = promoRes.results[0];
+        if (p.expires_at && !Number.isNaN(new Date(p.expires_at).getTime()) && new Date(p.expires_at).getTime() < Date.now()) {
+          return NextResponse.json({ success: false, error: 'Promo code has expired' }, { status: 400 });
+        }
+        if (p.min_order_amount && verifiedSubtotal < Number(p.min_order_amount)) {
+          return NextResponse.json({ success: false, error: `Order does not meet the promo minimum amount` }, { status: 400 });
+        }
         const val = Number(p.value || 0);
         discountAmount = p.discount_type === 'percentage' ? Math.round(verifiedSubtotal * (val / 100)) : val;
         if (p.max_discount_cap) discountAmount = Math.min(discountAmount, Number(p.max_discount_cap));
         await d1.query('UPDATE promo_codes SET times_used = times_used + 1 WHERE id = ?', [p.id]).catch(() => {});
+      } else {
+        return NextResponse.json({ success: false, error: 'Invalid or inactive promo code' }, { status: 400 });
       }
     }
 
@@ -1678,7 +1686,11 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({
       success: true,
+      valid: true,
+      code: promo.code,
+      discountAmount,
       data: {
+        valid: true,
         code: promo.code,
         discount_type: promo.discount_type,
         value: val,

@@ -7,11 +7,11 @@ const SITE = 'https://www.veyrang.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Only include actual server-rendered routes in the sitemap.
-  const staticPaths = ['/'];
+  const staticPaths = ['/', '/offers'];
   const entries: MetadataRoute.Sitemap = staticPaths.map((path) => ({
     url: `${SITE}${path}`,
-    changeFrequency: path === '/' ? 'daily' : 'yearly',
-    priority: path === '/' ? 1 : 0.4
+    changeFrequency: path === '/' ? 'daily' : path === '/offers' ? 'daily' : 'yearly',
+    priority: path === '/' ? 1 : path === '/offers' ? 0.8 : 0.4
   }));
 
   // Only emit detail URLs for restaurant records that exist in D1.
