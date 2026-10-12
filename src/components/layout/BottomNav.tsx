@@ -1,57 +1,63 @@
+'use client';
+
 import React from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 import { Home, Utensils, LayoutGrid, Receipt, ShoppingCart } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
+  const router = useRouter();
+  const pathname = usePathname();
   const {
-    activePage,
-    setActivePage,
     activeRole,
-    setActiveRole,
     cart,
     isCartOpen,
     setIsCartOpen,
-    setIsRightDrawerOpen
+    setIsRightDrawerOpen,
+    setActivePage,
+    setActiveRole
   } = useDelivery();
 
   const { isAuthenticated, setIsAuthModalOpen } = useAuth();
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleTabClick = (tabId: string) => {
+  const navigate = (href: string, page: 'home' | 'restaurants' | 'offers' | 'orders') => {
     setActiveRole('customer');
     setIsRightDrawerOpen(false);
+    setIsCartOpen(false);
+    setActivePage(page);
+    if (pathname !== href) {
+      router.push(href);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
+  const handleTabClick = (tabId: string) => {
     if (tabId === 'home') {
-      setIsCartOpen(false);
-      setActivePage('home');
+      navigate('/', 'home');
     } else if (tabId === 'food') {
-      setIsCartOpen(false);
-      setActivePage('restaurants');
+      navigate('/restaurants', 'restaurants');
     } else if (tabId === 'express') {
-      setIsCartOpen(false);
-      setActivePage('offers');
+      navigate('/offers', 'offers');
     } else if (tabId === 'history') {
       if (!isAuthenticated) {
         setIsAuthModalOpen(true);
         return;
       }
-      setIsCartOpen(false);
-      setActivePage('orders');
+      navigate('/orders', 'orders');
     } else if (tabId === 'cart') {
       setIsCartOpen(true);
     }
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (activeRole !== 'customer') return null;
 
-  const isHomeActive = (activePage === 'home' || activePage === 'landing') && !isCartOpen;
-  const isFoodActive = activePage === 'restaurants' && !isCartOpen;
-  const isExpressActive = activePage === 'offers' && !isCartOpen;
-  const isHistoryActive = activePage === 'orders' && !isCartOpen;
+  const isHomeActive = (pathname === '/' || pathname === '') && !isCartOpen;
+  const isFoodActive = pathname.startsWith('/restaurants') && !isCartOpen;
+  const isExpressActive = pathname.startsWith('/offers') && !isCartOpen;
+  const isHistoryActive = pathname.startsWith('/orders') && !isCartOpen;
   const isCartActive = isCartOpen;
 
   const gridCols = isAuthenticated ? 'grid-cols-5' : 'grid-cols-3';
