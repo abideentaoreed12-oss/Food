@@ -262,7 +262,17 @@ router.get('/addresses', requireAuth, async (req: AuthRequest, res: Response) =>
         addresses.unshift({ id: 'addr-default-profile', label: 'Default Address', address: u.address.trim(), apartment: '', city: 'Lagos', isDefault: addresses.length === 0 });
       }
     }
-    return res.json({ success: true, data: addresses });
+    // Deduplicate addresses by normalized address text
+    const seen = new Set<string>();
+    const deduplicated: any[] = [];
+    for (const a of addresses) {
+      const key = String(a.address || '').trim().toLowerCase();
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        deduplicated.push(a);
+      }
+    }
+    return res.json({ success: true, data: deduplicated });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }
@@ -271,17 +281,28 @@ router.get('/addresses', requireAuth, async (req: AuthRequest, res: Response) =>
 router.post('/addresses', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const { label, address, apartment, city, isDefault } = req.body;
-    if (!address) return res.status(400).json({ success: false, error: 'Address is required' });
+    if (!address || !String(address).trim()) return res.status(400).json({ success: false, error: 'Address is required' });
+    const cleanAddress = String(address).trim();
+    const cleanKey = cleanAddress.toLowerCase();
     const userId = req.user!.id;
     const d1Res = await d1Client.query('SELECT saved_addresses FROM users WHERE id = ? LIMIT 1', [userId]);
     let list: any[] = [];
     if (d1Res.results?.[0]?.saved_addresses) {
       try { list = JSON.parse(d1Res.results[0].saved_addresses); } catch (e) {}
     }
-    const newAddr = { id: `addr-${Date.now()}`, label: label || 'Home', address, apartment: apartment || '', city: city || 'Lagos', isDefault: Boolean(isDefault) };
+    // Remove existing duplicates of this address
+    list = (Array.isArray(list) ? list : []).filter((a: any) => String(a.address || '').trim().toLowerCase() !== cleanKey);
+    const newAddr = {
+      id: `addr-${Date.now()}`,
+      label: label || 'Home',
+      address: cleanAddress,
+      apartment: apartment || '',
+      city: city || 'Lagos',
+      isDefault: Boolean(isDefault)
+    };
     if (newAddr.isDefault) list = list.map((a: any) => ({ ...a, isDefault: false }));
-    list.push(newAddr);
-    await d1Client.query('UPDATE users SET saved_addresses = ?, address = ?, updated_at = ? WHERE id = ?', [JSON.stringify(list), address, new Date().toISOString(), userId]);
+    list.unshift(newAddr);
+    await d1Client.query('UPDATE users SET saved_addresses = ?, address = ?, updated_at = ? WHERE id = ?', [JSON.stringify(list), cleanAddress, new Date().toISOString(), userId]);
     return res.json({ success: true, message: 'Address saved to Cloudflare D1', data: list });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
@@ -291,13 +312,27 @@ router.post('/addresses', requireAuth, async (req: AuthRequest, res: Response) =
 router.delete('/addresses/:id', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    const d1Res = await d1Client.query('SELECT saved_addresses FROM users WHERE id = ? LIMIT 1', [userId]);
+    const targetId = req.params.id;
+    const d1Res = await d1Client.query('SELECT saved_addresses, address FROM users WHERE id = ? LIMIT 1', [userId]);
     let list: any[] = [];
     if (d1Res.results?.[0]?.saved_addresses) {
       try { list = JSON.parse(d1Res.results[0].saved_addresses); } catch (e) {}
     }
-    list = list.filter((a: any) => a.id !== req.params.id);
-    await d1Client.query('UPDATE users SET saved_addresses = ?, updated_at = ? WHERE id = ?', [JSON.stringify(list), new Date().toISOString(), userId]);
+    const targetItem = list.find((a: any) => a.id === targetId);
+    const targetAddressKey = targetItem ? String(targetItem.address || '').trim().toLowerCase() : '';
+    
+    // Filter out by ID and by address string to purge duplicates
+    list = (Array.isArray(list) ? list : []).filter((a: any) => {
+      if (a.id === targetId) return false;
+      if (targetAddressKey && String(a.address || '').trim().toLowerCase() === targetAddressKey) return false;
+      return true;
+    });
+
+    const currentPrimary = String(d1Res.results?.[0]?.address || '').trim().toLowerCase();
+    const shouldUpdatePrimary = targetAddressKey && currentPrimary === targetAddressKey;
+    const newPrimary = shouldUpdatePrimary ? (list[0]?.address || '') : (d1Res.results?.[0]?.address || '');
+
+    await d1Client.query('UPDATE users SET saved_addresses = ?, address = ?, updated_at = ? WHERE id = ?', [JSON.stringify(list), newPrimary, new Date().toISOString(), userId]);
     return res.json({ success: true, message: 'Address removed from Cloudflare D1', data: list });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });

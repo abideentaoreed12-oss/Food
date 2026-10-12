@@ -46,18 +46,13 @@ export const Navbar: React.FC = () => {
     setActiveRole,
     walletBalanceNGN,
     setIsWalletModalOpen,
+    isAddressModalOpen,
+    setIsAddressModalOpen,
     platformSettings
   } = useDelivery();
 
   const { user, logout, setIsAuthModalOpen } = useAuth();
-  const [isZoneDropdownOpen, setIsZoneDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
-  const [isAddingAddress, setIsAddingAddress] = useState(false);
-  const [newLabel, setNewLabel] = useState('Home');
-  const [newAddress, setNewAddress] = useState('');
-  const [newApartment, setNewApartment] = useState('');
-  const [newCity, setNewCity] = useState('Lagos');
-  const [isSavingAddress, setIsSavingAddress] = useState(false);
 
   const displayName = user?.name || (user?.email ? user.email.split('@')[0] : 'User');
   const initials = (displayName.trim().split(/\s+/).map((n) => n[0]).join('') || 'U').substring(0, 2).toUpperCase();
@@ -65,17 +60,10 @@ export const Navbar: React.FC = () => {
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const closeDropdowns = () => {
-    setIsZoneDropdownOpen(false);
     setIsUserDropdownOpen(false);
-  };
-
-  const toggleZoneDropdown = () => {
-    setIsUserDropdownOpen(false);
-    setIsZoneDropdownOpen((prev) => !prev);
   };
 
   const toggleUserDropdown = () => {
-    setIsZoneDropdownOpen(false);
     setIsUserDropdownOpen((prev) => !prev);
   };
 
@@ -259,6 +247,37 @@ export const Navbar: React.FC = () => {
                   </div>
                 </button>
               </div>
+            </div>
+
+            {/* Delivery Location Pill Button */}
+            <div className="pb-2.5 pt-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  closeDropdowns();
+                  setIsAddressModalOpen(true);
+                }}
+                className={`w-full sm:w-auto inline-flex items-center justify-between sm:justify-start gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-all cursor-pointer shadow-2xs active:scale-98 ${
+                  isLanding
+                    ? 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+                    : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-[#E8F5EF] hover:border-emerald-300'
+                }`}
+                title="Change delivery location"
+                aria-label="Change delivery location"
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <MapPin className={`w-3.5 h-3.5 shrink-0 ${isLanding ? 'text-[#E8C547]' : 'text-[#0D4F3C]'}`} />
+                  <span className="truncate">
+                    Deliver to {selectedAddress?.label || 'Home'}:{' '}
+                    <span className="font-bold">
+                      {selectedAddress?.address && String(selectedAddress.address).trim()
+                        ? selectedAddress.address.trim()
+                        : 'Set delivery location'}
+                    </span>
+                  </span>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 shrink-0 ml-1 ${isLanding ? 'text-white/70' : 'text-slate-400'}`} />
+              </button>
             </div>
           </>
         )}

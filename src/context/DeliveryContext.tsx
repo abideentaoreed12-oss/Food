@@ -39,6 +39,8 @@ interface DeliveryContextType {
   savedAddresses: SavedAddress[];
   selectedAddress: SavedAddress;
   setSelectedAddress: (addr: SavedAddress) => void;
+  isAddressModalOpen: boolean;
+  setIsAddressModalOpen: (open: boolean) => void;
   addSavedAddress: (newAddr: { label?: string; address: string; apartment?: string; city?: string; isDefault?: boolean }) => Promise<SavedAddress>;
   deleteSavedAddress: (id: string) => Promise<void>;
   restaurants: Restaurant[];
@@ -268,12 +270,33 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     : Number(platformSettings.base_service_fee_ngn || 0);
   
   // D1-Authoritative Saved Addresses & Guest Persistent Delivery Address
-  // D1-Authoritative Saved Addresses associated exclusively by user account, not by browser cache
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddress, setSelectedAddressState] = useState<SavedAddress>(EMPTY_ADDRESS);
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+
+  // Initialize guest address from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !user) {
+      try {
+        const raw = localStorage.getItem('veyrang_saved_address');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.address) {
+            setSelectedAddressState(parsed);
+            setSavedAddresses([parsed]);
+          }
+        }
+      } catch (e) {}
+    }
+  }, [user]);
 
   const setSelectedAddress = useCallback(async (addr: SavedAddress) => {
     setSelectedAddressState(addr);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('veyrang_saved_address', JSON.stringify(addr));
+      } catch (e) {}
+    }
     if (user && addr.address) {
       try {
         await api.auth.updateProfile({ address: addr.address });
@@ -286,29 +309,36 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
 
   const syncUserAddresses = useCallback(async (currUser: any, d1Addresses: any[]) => {
     if (!currUser) {
-      setSavedAddresses([]);
-      setSelectedAddressState(EMPTY_ADDRESS);
+      // Retain guest address if any
       return;
     }
     
     if (Array.isArray(d1Addresses)) {
-      const list: SavedAddress[] = d1Addresses.map((a: any) => ({
-        id: a.id || `addr-${Date.now()}`,
-        label: a.label || 'Home',
-        address: a.address,
-        apartment: a.apartment || '',
-        city: a.city || 'Lagos',
-        isDefault: Boolean(a.isDefault)
-      }));
+      const seen = new Set<string>();
+      const list: SavedAddress[] = [];
+      for (const a of d1Addresses) {
+        const key = String(a.address || '').trim().toLowerCase();
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          list.push({
+            id: a.id || `addr-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            label: a.label || 'Home',
+            address: a.address.trim(),
+            apartment: a.apartment || '',
+            city: a.city || 'Lagos',
+            isDefault: Boolean(a.isDefault)
+          });
+        }
+      }
 
       // Inject default profile address if set and not in the list
       if (currUser.address && currUser.address.trim()) {
         const trimmedProfile = currUser.address.trim().toLowerCase();
-        const exists = list.some((a) => (a.address || '').trim().toLowerCase() === trimmedProfile);
-        if (!exists) {
+        if (!seen.has(trimmedProfile)) {
+          seen.add(trimmedProfile);
           list.unshift({
             id: 'addr-default-profile',
-            label: 'Default Address',
+            label: 'Home',
             address: currUser.address.trim(),
             apartment: '',
             city: 'Lagos',
@@ -318,16 +348,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
       }
 
       setSavedAddresses(list);
-      const def = list.find((a) => a.isDefault) || list[0] || EMPTY_ADDRESS;
-      setSelectedAddressState(def);
+      setSelectedAddressState((prev) => {
+        if (prev?.address && list.some((a) => a.address.toLowerCase() === prev.address.toLowerCase())) {
+          return list.find((a) => a.address.toLowerCase() === prev.address.toLowerCase()) || prev;
+        }
+        return list.find((a) => a.isDefault) || list[0] || EMPTY_ADDRESS;
+      });
     }
   }, []);
 
   // Sync strictly with Platform D1 per authenticated user
   useEffect(() => {
     if (!user) {
-      setSavedAddresses([]);
-      setSelectedAddressState(EMPTY_ADDRESS);
       return;
     }
 
@@ -343,15 +375,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     };
   }, [user?.id, syncUserAddresses]);
 
-  // Permanently add a new delivery address directly to Platform D1
+  // Permanently add a new delivery address
   const addSavedAddress = useCallback(
     async (newAddr: { label?: string; address: string; apartment?: string; city?: string; isDefault?: boolean }): Promise<SavedAddress> => {
-      if (!user) {
-        setIsAuthModalOpen(true);
-        throw new Error('Please sign in or create an account to save a delivery address');
-      }
-
-      const cleanAddress = (newAddr.address || '').trim();
+      const cleanAddress = String(newAddr.address || '').trim();
       if (!cleanAddress) {
         throw new Error('Address cannot be empty');
       }
@@ -370,32 +397,52 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         ...prev.filter((a) => a.address.trim().toLowerCase() !== cleanAddress.toLowerCase()).map((a) => ({ ...a, isDefault: false }))
       ]);
       setSelectedAddressState(created);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('veyrang_saved_address', JSON.stringify(created));
+        } catch (e) {}
+      }
 
-      try {
-        await api.auth.addAddress({
-          label: created.label,
-          address: created.address,
-          apartment: created.apartment,
-          city: created.city,
-          isDefault: true
-        });
-        await refreshUser();
-      } catch (err) {
-        console.warn('D1 address sync warning:', err);
+      if (user) {
+        try {
+          await api.auth.addAddress({
+            label: created.label,
+            address: created.address,
+            apartment: created.apartment,
+            city: created.city,
+            isDefault: true
+          });
+          await refreshUser();
+        } catch (err) {
+          console.warn('D1 address sync warning:', err);
+        }
       }
 
       return created;
     },
-    [user, setIsAuthModalOpen, refreshUser]
+    [user, refreshUser]
   );
 
-  // Permanently delete a saved delivery address directly from Platform D1
+  // Permanently delete a saved delivery address
   const deleteSavedAddress = useCallback(
     async (id: string) => {
+      let targetAddressStr = '';
       setSavedAddresses((prev) => {
-        const nextList = prev.filter((a) => a.id !== id);
-        if (selectedAddress?.id === id) {
-          setSelectedAddressState(nextList[0] || EMPTY_ADDRESS);
+        const itemToDelete = prev.find((a) => a.id === id);
+        targetAddressStr = itemToDelete ? itemToDelete.address.trim().toLowerCase() : '';
+        const nextList = prev.filter((a) => {
+          if (a.id === id) return false;
+          if (targetAddressStr && a.address.trim().toLowerCase() === targetAddressStr) return false;
+          return true;
+        });
+        if (selectedAddress?.id === id || (targetAddressStr && selectedAddress?.address?.trim().toLowerCase() === targetAddressStr)) {
+          const nextAddr = nextList[0] || EMPTY_ADDRESS;
+          setSelectedAddressState(nextAddr);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('veyrang_saved_address', JSON.stringify(nextAddr));
+            } catch (e) {}
+          }
         }
         return nextList;
       });
@@ -403,12 +450,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
       if (user) {
         try {
           await api.auth.deleteAddress(id);
+          await refreshUser();
         } catch (err) {
           console.warn('D1 address delete warning:', err);
         }
       }
     },
-    [user, selectedAddress]
+    [user, selectedAddress, refreshUser]
   );
 
   const [cmsContent, setCmsContent] = useState<Record<string, string>>({});
@@ -1357,6 +1405,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         savedAddresses,
         selectedAddress,
         setSelectedAddress,
+        isAddressModalOpen,
+        setIsAddressModalOpen,
         addSavedAddress,
         deleteSavedAddress,
         restaurants,

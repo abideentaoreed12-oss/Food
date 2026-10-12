@@ -32,6 +32,7 @@ import { OrderTrackingModal } from './components/tracking/OrderTrackingModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { PortalAuthGuard } from './components/auth/PortalAuthGuard';
 import { WalletModal } from './components/customer/WalletModal';
+import { DeliveryAddressModal } from './components/common/DeliveryAddressModal';
 import { BottomNav } from './components/layout/BottomNav';
 import { Footer } from './components/layout/Footer';
 import { LandingPage } from './components/landing/LandingPage';
@@ -120,6 +121,7 @@ const AppContent: React.FC = () => {
       <OrderTrackingModal />
       <AuthModal />
       <WalletModal isOpen={isWalletModalOpen} onClose={() => setIsWalletModalOpen(false)} />
+      <DeliveryAddressModal />
 
       {/* Corporate Multi-Column Footer — guests only (mobile app shell when logged in) */}
       {activeRole === 'customer' && !isAuthenticated && <Footer />}

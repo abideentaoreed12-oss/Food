@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 // import removed
-import { ActivePage, DeliveryZone, UserRole } from '../../types';
+import { ActivePage, DeliveryZone, UserRole, SavedAddress } from '../../types';
 import {
   X,
   MapPin,
@@ -43,7 +43,8 @@ import {
   Terminal,
   ArrowLeft,
   Utensils,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { VeyrangLogo } from '../common/VeyrangLogo';
 
@@ -66,7 +67,9 @@ export const RightDrawer: React.FC = () => {
     setSelectedAddress,
     savedAddresses,
     deliveryZones,
-    addSavedAddress
+    addSavedAddress,
+    deleteSavedAddress,
+    setIsAddressModalOpen
   } = useDelivery();
 
   const { user, logout, setIsAuthModalOpen, openAuthModalForPortal } = useAuth();
@@ -77,27 +80,38 @@ export const RightDrawer: React.FC = () => {
   const [drawerApt, setDrawerApt] = useState('');
   const [isSavingDrawer, setIsSavingDrawer] = useState(false);
 
-  // Build the menu from persisted saved addresses, while also including the active
-  // address/profile address if address syncing has not populated the list yet.
-  const deliveryAddressOptions = (() => {
-    const options = [...(savedAddresses || [])];
-    const addIfMissing = (address: any, fallbackId: string, fallbackLabel: string) => {
-      const value = String(address?.address || '').trim();
-      if (!value) return;
-      const exists = options.some((item) => String(item.address || '').trim().toLowerCase() === value.toLowerCase());
-      if (!exists) options.unshift({
-        id: address.id || fallbackId,
-        label: address.label || fallbackLabel,
-        address: value,
-        apartment: address.apartment || '',
-        city: address.city || '',
-        isDefault: true
-      } as any);
+  // Strictly deduplicated address options for the drawer
+  const deliveryAddressOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const options: SavedAddress[] = [];
+
+    const addUnique = (addr: any, fallbackId: string, fallbackLabel: string) => {
+      const val = String(addr?.address || '').trim();
+      if (!val) return;
+      const key = val.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        options.push({
+          id: addr.id || fallbackId,
+          label: addr.label || fallbackLabel,
+          address: val,
+          apartment: addr.apartment || '',
+          city: addr.city || 'Akure',
+          isDefault: Boolean(addr.isDefault)
+        });
+      }
     };
-    addIfMissing(selectedAddress, 'active-selected-address', 'Selected address');
-    addIfMissing({ address: user?.address }, 'profile-address', 'Profile address');
-    return options.filter((addr) => Boolean(addr.address && String(addr.address).trim()));
-  })();
+
+    if (selectedAddress?.address) {
+      addUnique(selectedAddress, 'selected-addr', 'Selected address');
+    }
+    (savedAddresses || []).forEach((a, i) => addUnique(a, a.id || `saved-addr-${i}`, a.label || 'Home'));
+    if (user?.address) {
+      addUnique({ address: user.address }, 'profile-addr', 'Default Address');
+    }
+
+    return options;
+  }, [savedAddresses, selectedAddress, user?.address]);
 
   if (!isRightDrawerOpen) return null;
 
@@ -423,38 +437,59 @@ export const RightDrawer: React.FC = () => {
             {/* Deliver to bar inside drawer */}
             {user && (
               <div className="px-4 py-3 bg-[#F8F9FA] border-b border-slate-100">
-                <div className="relative">
-                  <button
-                    onClick={() => setIsZoneDropdownOpen(!isZoneDropdownOpen)}
-                    className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs font-semibold text-slate-800 hover:border-[#0D4F3C] transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <MapPin className="w-4 h-4 text-[#0D4F3C] shrink-0" />
-                      <span className="text-slate-500 font-normal">Deliver to:</span>
-                      <span className="text-slate-900 font-bold truncate">
-                        {selectedAddress && selectedAddress.address && selectedAddress.address.trim()
-                          ? `${selectedAddress.label || 'Home'}: ${selectedAddress.address.trim()}`
-                          : user?.address && user.address.trim()
-                          ? user.address.trim()
-                          : 'Set Address'}
-                      </span>
-                    </div>
-                    <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 ml-1.5" />
-                  </button>
-
-                  {isZoneDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-30 py-1.5 text-xs">
-                      <div className="px-3.5 py-2 flex items-center justify-between border-b border-slate-100">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Your Saved Addresses</span>
-                        <button
-                          onClick={() => setIsAddingDrawerAddr((prev) => !prev)}
-                          className="text-[#0D4F3C] font-bold flex items-center gap-1 hover:underline cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> {isAddingDrawerAddr ? 'Cancel' : 'Add New'}
-                        </button>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsZoneDropdownOpen(!isZoneDropdownOpen)}
+                      className="flex-1 flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs font-semibold text-slate-800 hover:border-[#0D4F3C] transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <MapPin className="w-4 h-4 text-[#0D4F3C] shrink-0" />
+                        <span className="text-slate-500 font-normal">Deliver to:</span>
+                        <span className="text-slate-900 font-bold truncate">
+                          {selectedAddress && selectedAddress.address && selectedAddress.address.trim()
+                            ? `${selectedAddress.label || 'Home'}: ${selectedAddress.address.trim()}`
+                            : user?.address && user.address.trim()
+                            ? user.address.trim()
+                            : 'Set Address'}
+                        </span>
                       </div>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 ml-1.5 transition-transform ${isZoneDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRightDrawerOpen(false);
+                        setIsAddressModalOpen(true);
+                      }}
+                      className="px-3 py-2.5 rounded-2xl bg-[#E8F5EF] hover:bg-emerald-100 text-[#0D4F3C] text-xs font-bold transition cursor-pointer shrink-0"
+                      title="Open full address manager"
+                    >
+                      Manage
+                    </button>
+                  </div>
+
+                  {/* Inline Collapsible Section (NOT absolute, so it NEVER overlaps) */}
+                  {isZoneDropdownOpen && (
+                    <div className="bg-white border border-slate-200 rounded-2xl shadow-xs p-3 text-xs space-y-2.5 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Saved Addresses ({deliveryAddressOptions.length})
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setIsAddingDrawerAddr((prev) => !prev)}
+                            className="text-[#0D4F3C] font-bold text-[11px] flex items-center gap-1 hover:underline cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> {isAddingDrawerAddr ? 'Cancel' : 'Add New'}
+                          </button>
+                        </div>
+                      </div>
+
                       {isAddingDrawerAddr && (
-                        <div className="p-3 border-b border-slate-100 space-y-2 bg-slate-50">
+                        <div className="p-3 border border-slate-200 rounded-xl space-y-2 bg-slate-50">
                           <input
                             type="text"
                             value={drawerLabel}
@@ -466,7 +501,7 @@ export const RightDrawer: React.FC = () => {
                             type="text"
                             value={drawerAddress}
                             onChange={(e) => setDrawerAddress(e.target.value)}
-                            placeholder="Street Address"
+                            placeholder="Street Address (e.g. Akure South)"
                             className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
                           />
                           <input
@@ -485,7 +520,7 @@ export const RightDrawer: React.FC = () => {
                                   label: drawerLabel || 'Home',
                                   address: drawerAddress.trim(),
                                   apartment: drawerApt.trim(),
-                                  city: 'Lagos'
+                                  city: 'Akure'
                                 });
                                 setSelectedAddress(created);
                                 setIsAddingDrawerAddr(false);
@@ -504,34 +539,63 @@ export const RightDrawer: React.FC = () => {
                           </button>
                         </div>
                       )}
-                      <div className="max-h-60 overflow-y-auto py-1">
+
+                      <div className="max-h-56 overflow-y-auto space-y-1.5 py-0.5">
                         {deliveryAddressOptions.map((addr) => {
-                          const isSelected = selectedAddress?.id === addr.id || selectedAddress?.address?.trim().toLowerCase() === addr.address.trim().toLowerCase();
+                          const isSelected =
+                            selectedAddress?.id === addr.id ||
+                            (selectedAddress?.address &&
+                              selectedAddress.address.trim().toLowerCase() === addr.address.trim().toLowerCase());
                           return (
-                            <button
+                            <div
                               key={addr.id}
                               onClick={() => {
                                 setSelectedAddress(addr);
                                 setIsZoneDropdownOpen(false);
                               }}
-                              className={`w-full text-left px-3.5 py-3 flex items-start justify-between gap-3 hover:bg-[#E8F5EF]/50 transition-colors cursor-pointer ${
-                                isSelected ? 'font-bold text-[#0D4F3C] bg-[#E8F5EF]' : 'text-slate-700'
+                              className={`w-full text-left px-3 py-2 rounded-xl flex items-start justify-between gap-2.5 transition-colors cursor-pointer border ${
+                                isSelected
+                                  ? 'font-bold text-[#0D4F3C] bg-[#E8F5EF] border-emerald-300'
+                                  : 'text-slate-700 bg-slate-50/50 border-slate-100 hover:bg-[#E8F5EF]/40'
                               }`}
                             >
-                              <div className="min-w-0">
-                                <div className="font-semibold">{addr.label || 'Saved address'}</div>
-                                <div className="text-[11px] text-slate-500 font-normal whitespace-normal break-words">{addr.address}</div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-semibold">{addr.label || 'Saved address'}</span>
+                                  {isSelected && (
+                                    <span className="text-[9px] font-extrabold text-[#0D4F3C] bg-white px-1.5 py-0.2 rounded-full border border-emerald-200">
+                                      Selected
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-slate-500 font-normal whitespace-normal break-words mt-0.5">
+                                  {addr.address}
+                                </div>
                                 {(addr.apartment || addr.city) && (
-                                  <div className="text-[11px] text-slate-400 font-normal">{[addr.apartment, addr.city].filter(Boolean).join(', ')}</div>
+                                  <div className="text-[10px] text-slate-400 font-normal">
+                                    {[addr.apartment, addr.city].filter(Boolean).join(', ')}
+                                  </div>
                                 )}
                               </div>
-                              {isSelected && <span className="text-[10px] font-bold text-[#0D4F3C]">Selected</span>}
-                            </button>
+
+                              <button
+                                type="button"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await deleteSavedAddress(addr.id);
+                                }}
+                                title="Delete address"
+                                aria-label="Delete address"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer self-center"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           );
                         })}
                         {deliveryAddressOptions.length === 0 && !isAddingDrawerAddr && (
-                          <div className="px-3.5 py-3 text-slate-500">
-                            No saved addresses yet. Click "Add New" above.
+                          <div className="px-3 py-4 text-center text-slate-400 text-xs">
+                            No saved addresses yet.
                           </div>
                         )}
                       </div>
