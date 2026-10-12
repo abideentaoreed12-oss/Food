@@ -54,12 +54,14 @@ export const BottomNav: React.FC = () => {
   const isHistoryActive = activePage === 'orders' && !isCartOpen;
   const isCartActive = isCartOpen;
 
+  const gridCols = isAuthenticated ? 'grid-cols-5' : 'grid-cols-3';
+
   return (
     <nav
       aria-label="Bottom Navigation Bar"
       className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md rounded-t-3xl border-t border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.06)] py-1.5 px-4 pointer-events-auto"
     >
-      <div className={`max-w-md mx-auto grid ${isAuthenticated ? 'grid-cols-5' : 'grid-cols-3'} items-center`}>
+      <div className={`max-w-md mx-auto grid ${gridCols} items-center`}>
         <button
           type="button"
           onClick={() => handleTabClick('home')}
