@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
-import { MenuItem } from '../../types';
+import { MenuItem, Restaurant } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import {
   X,
@@ -39,7 +39,41 @@ export const RestaurantDetailModal: React.FC = () => {
     estimatedDeliveryFee: number;
   } | null>(null);
 
-  const restaurant = restaurants.find((r) => r.id === selectedRestaurantId);
+  const [fetchedRestaurant, setFetchedRestaurant] = useState<Restaurant | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+
+  const matchedRestaurant = restaurants.find((r) => r.id === selectedRestaurantId);
+  const restaurant = matchedRestaurant || fetchedRestaurant;
+
+  useEffect(() => {
+    if (!selectedRestaurantId) {
+      setFetchedRestaurant(null);
+      setIsLoadingDetail(false);
+      return;
+    }
+    if (matchedRestaurant) {
+      setIsLoadingDetail(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoadingDetail(true);
+    api.restaurants
+      .getById(selectedRestaurantId)
+      .then((res: any) => {
+        if (isMounted && res?.data) {
+          setFetchedRestaurant(res.data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsLoadingDetail(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedRestaurantId, matchedRestaurant]);
 
   useEffect(() => {
     if (!selectedRestaurantId || !restaurant) return;
@@ -66,7 +100,27 @@ export const RestaurantDetailModal: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [selectedRestaurantId, user?.address, selectedAddress?.address]);
+  }, [selectedRestaurantId, restaurant, user?.address, selectedAddress?.address]);
+
+  if (!selectedRestaurantId) return null;
+
+  if (isLoadingDetail && !restaurant) {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="relative w-full max-w-sm bg-white rounded-3xl p-8 text-center shadow-2xl">
+          <div className="w-10 h-10 border-4 border-[#0D4F3C] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm font-bold text-slate-800">Loading menu & kitchen details...</p>
+          <button
+            onClick={() => setSelectedRestaurantId(null)}
+            className="mt-4 text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!restaurant) return null;
 
   const allItems: MenuItem[] = (restaurant.categories || []).flatMap((cat) => cat?.items || []);

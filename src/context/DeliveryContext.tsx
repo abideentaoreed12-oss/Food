@@ -140,7 +140,12 @@ const EMPTY_ADDRESS: SavedAddress = {
   isDefault: false
 };
 
-export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole?: UserRole }> = ({ children, initialRole }) => {
+export const DeliveryProvider: React.FC<{
+  children: React.ReactNode;
+  initialRole?: UserRole;
+  initialPage?: ActivePage;
+  initialRestaurantId?: string;
+}> = ({ children, initialRole, initialPage, initialRestaurantId }) => {
   const { user, loading: authLoading, setIsAuthModalOpen, refreshUser, openAuthModalForPortal } = useAuth();
 
   const [activeRole, setActiveRoleState] = useState<UserRole>(initialRole || 'customer');
@@ -197,6 +202,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   }, [user, openAuthModalForPortal]);
 
   const [activePage, setActivePageState] = useState<ActivePage>(() => {
+    if (initialPage) return initialPage;
     try {
       const hasJwt = typeof window !== 'undefined' && localStorage.getItem('veyrang_jwt');
       if (!hasJwt) return 'landing';
@@ -208,9 +214,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   });
 
   // Resolve navigation only after the auth session has been checked.
-  // Guests always start on the public landing page; authenticated users keep their last page.
+  // Direct routes (/restaurants, etc.) take precedence; otherwise guests start on landing page, authenticated users keep their last page.
   useEffect(() => {
     if (authLoading) return;
+
+    if (initialPage) {
+      return;
+    }
 
     if (!user) {
       setActivePageState('landing');
@@ -224,11 +234,18 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         setActivePageState(savedPage as ActivePage);
       }
     } catch {}
-  }, [authLoading, user]);
+  }, [authLoading, user, initialPage]);
 
   const setActivePage = useCallback((page: ActivePage) => {
     setActivePageState(page);
     try { localStorage.setItem('veyrang_active_page', page); } catch {}
+    if (typeof window !== 'undefined') {
+      if (page === 'restaurants' && window.location.pathname !== '/restaurants') {
+        window.history.pushState({}, '', '/restaurants');
+      } else if ((page === 'landing' || page === 'home') && window.location.pathname === '/restaurants') {
+        window.history.pushState({}, '', '/');
+      }
+    }
   }, []);
 
   const [isRightDrawerOpen, setIsRightDrawerOpen] = useState<boolean>(false);
@@ -523,7 +540,23 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const [useWalletCredit, setUseWalletCredit] = useState<boolean>(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
 
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
+  const [selectedRestaurantId, setSelectedRestaurantIdState] = useState<string | null>(initialRestaurantId || null);
+
+  const setSelectedRestaurantId = useCallback((id: string | null) => {
+    setSelectedRestaurantIdState(id);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (id) {
+        if (url.searchParams.get('restaurant') !== id) {
+          url.searchParams.set('restaurant', id);
+          window.history.pushState({ restaurantId: id }, '', url.pathname + url.search + url.hash);
+        }
+      } else if (url.searchParams.has('restaurant')) {
+        url.searchParams.delete('restaurant');
+        window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
+      }
+    }
+  }, []);
   const [selectedRestaurantForPortal, setSelectedRestaurantForPortal] = useState<string>('rest-1');
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
   const [isCartOpen, setIsCartOpenState] = useState<boolean>(false);
@@ -795,6 +828,33 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   useEffect(() => {
     refreshDataRef.current();
   }, [user?.id, selectedAddress?.address]);
+
+  // Synchronize ?restaurant= query param from URL and handle browser back/forward (popstate)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const restParam = urlParams.get('restaurant');
+    if (restParam) {
+      setSelectedRestaurantIdState(restParam);
+      setActivePageState((prev) => (prev === 'landing' ? 'restaurants' : prev));
+    }
+
+    const handlePopState = () => {
+      const currentParams = new URLSearchParams(window.location.search);
+      const currentRest = currentParams.get('restaurant');
+      setSelectedRestaurantIdState(currentRest || null);
+
+      if (window.location.pathname === '/restaurants') {
+        setActivePageState('restaurants');
+      } else if (window.location.pathname === '/') {
+        setActivePageState((prev) => (user ? 'home' : 'landing'));
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [user]);
 
   // Cart Opening
   const setIsCartOpen = (open: boolean) => {
