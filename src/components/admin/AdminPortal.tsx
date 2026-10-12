@@ -1011,7 +1011,7 @@ export const AdminPortal: React.FC = () => {
         logoUrl: editRestLogoUrl.trim(),
         zone: editRestZone.trim()
       });
-      showActionFeedback(`✓ Restaurant "${editRestName}" updated permanently in Cloudflare D1!`);
+      showActionFeedback(`✓ Restaurant "${editRestName}" updated permanently in Platform Database!`);
       setIsEditRestaurantModalOpen(false);
       setEditingRestaurant(null);
       await refreshData();
@@ -1126,7 +1126,7 @@ export const AdminPortal: React.FC = () => {
     try {
       const merged = { ...platformSettings, ...cmsDrafts };
       await api.admin.bulkUpdateCMS(merged);
-      showActionFeedback('✓ All CMS & text changes saved successfully to Cloudflare D1!');
+      showActionFeedback('✓ All CMS & text changes saved successfully to Platform Database!');
       setPlatformSettings((prev) => ({ ...prev, ...merged }));
       setCmsCopy((prev) => ({ ...prev, ...merged }));
       await refreshData();
@@ -3544,7 +3544,7 @@ export const AdminPortal: React.FC = () => {
                         <Edit3 className="w-4 h-4 text-indigo-600" />
                         <span>Edit Restaurant: {editingRestaurant.name}</span>
                       </h4>
-                      <p className="text-[11px] text-slate-500">Updates will be saved directly into Cloudflare D1 and reflected publicly on the site.</p>
+                      <p className="text-[11px] text-slate-500">Updates will be saved directly into Platform Database and reflected publicly on the site.</p>
                     </div>
                     <button onClick={() => setIsEditRestaurantModalOpen(false)} className="text-slate-400 hover:text-slate-700">
                       <X className="w-4 h-4" />
@@ -3629,10 +3629,10 @@ export const AdminPortal: React.FC = () => {
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Banner Image URL (Cloudflare R2 or direct URL)</label>
+                      <label className="text-[11px] font-semibold text-slate-600 block mb-1">Banner Image URL (Cloud Storage or direct URL)</label>
                       <input
                         type="url"
-                        placeholder="https://... or Cloudflare R2 object URL"
+                        placeholder="https://... or Cloud Storage object URL"
                         value={editRestBannerUrl}
                         onChange={(e) => setEditRestBannerUrl(e.target.value)}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-indigo-500 outline-none"
@@ -3828,7 +3828,7 @@ export const AdminPortal: React.FC = () => {
                     <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                       <span>Website CMS & Public Content Manager</span>
                       <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
-                        Cloudflare D1 Live
+                        Cloud Database Live
                       </span>
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
@@ -4081,7 +4081,7 @@ export const AdminPortal: React.FC = () => {
                 {/* Section 9: Public Banners & R2 Assets */}
                 {cmsCategory === 'images' && (
                   <div className="space-y-4">
-                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Public Hero Images & Marketing Banners (Cloudflare R2 / CDN)</div>
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Public Hero Images & Marketing Banners (Cloud Storage / CDN)</div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {renderCmsInput('cms_hero_image_url', 'Hero Banner Visual URL', 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200', false, true)}
                       {renderCmsInput('cms_partner_banner_url', 'Partner Section Visual URL', 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1000', false, true)}
@@ -4095,7 +4095,7 @@ export const AdminPortal: React.FC = () => {
                 <div className="text-xs text-emerald-700 font-semibold bg-emerald-50 p-3.5 rounded-xl border border-emerald-200 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>✓ Real-time single source of truth: Edits persist directly to Cloudflare D1 platform_settings table and broadcast to all routes, user sessions, and public storefronts immediately.</span>
+                    <span>✓ Real-time single source of truth: Edits persist directly to Platform Database and broadcast to all routes, user sessions, and public storefronts immediately.</span>
                   </div>
                   <button
                     onClick={handleSaveAllCMS}
