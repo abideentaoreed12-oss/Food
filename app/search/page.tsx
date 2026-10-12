@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import App from '../../src/App';
+import { CustomerRouteShell } from '../../src/components/layout/CustomerRouteShell';
+import { SearchPage } from '../../src/components/pages/SearchPage';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,11 +11,10 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true }
 };
 
-/**
- * Keep the existing application shell and search implementation intact while
- * making the existing search destination a first-class App Router route.
- * The search UI and its business logic remain in src/components/pages/SearchPage.
- */
 export default function SearchRoute() {
-  return <App initialPage="search" />;
+  return (
+    <CustomerRouteShell initialPage="search">
+      <SearchPage />
+    </CustomerRouteShell>
+  );
 }
