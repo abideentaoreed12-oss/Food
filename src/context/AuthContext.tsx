@@ -126,10 +126,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
   }, []);
 
-  // Customer sessions are checked periodically so a replaced session is signed out
+  // Portal sessions are checked periodically so a replaced session is signed out
   // promptly in the old browser. The server remains the authority for every API request.
   useEffect(() => {
-    if (loading || user?.role !== 'customer' || typeof window === 'undefined') return;
+    if (loading || !user || typeof window === 'undefined') return;
 
     let checking = false;
     const checkSession = async () => {
