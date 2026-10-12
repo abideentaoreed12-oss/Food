@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
-import App from '../../src/App';
-
-export const dynamic = 'force-dynamic';
+import { OffersPage } from '../../src/components/pages/OffersPage';
 
 export const metadata: Metadata = {
   title: 'Special Offers & Promo Codes | Veyrang',
@@ -22,5 +20,5 @@ export const metadata: Metadata = {
 };
 
 export default function OffersRoute() {
-  return <App initialPage="offers" />;
+  return <OffersPage />;
 }

@@ -30,6 +30,8 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
+import { ClientProviders } from '../src/components/layout/ClientProviders';
+
 export default function RootLayout({
   children,
 }: {
@@ -46,7 +48,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased font-sans bg-[#F8F9FA] text-slate-900" suppressHydrationWarning>
-        {children}
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   );

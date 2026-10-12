@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
-import App from '../../src/App';
-
-export const dynamic = 'force-dynamic';
+import { siteDataManager } from '../../lib/siteDataSnapshot';
+import { RestaurantListClient } from '../../src/components/restaurant/RestaurantListClient';
 
 export const metadata: Metadata = {
   title: 'All Restaurants | Veyrang',
@@ -21,6 +20,11 @@ export const metadata: Metadata = {
   }
 };
 
-export default function RestaurantsRoute() {
-  return <App initialPage="restaurants" />;
+export const dynamic = 'force-dynamic';
+
+export default async function RestaurantsRoute() {
+  const snapshot = await siteDataManager.servePublicCatalogue();
+  const restaurants = snapshot?.restaurants || [];
+  
+  return <RestaurantListClient initialRestaurants={restaurants} />;
 }

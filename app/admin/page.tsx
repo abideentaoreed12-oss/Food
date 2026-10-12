@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import App from '../../src/App';
+import { AdminPortal } from '../../src/components/admin/AdminPortal';
 
 export const metadata: Metadata = {
   title: 'Admin Operations Control Center | Veyrang',
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function AdminPage() {
-  return <App initialRole="admin" />;
+  return <AdminPortal />;
 }

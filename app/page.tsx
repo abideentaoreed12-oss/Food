@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import App from '../src/App';
+import { LandingPage } from '../src/components/landing/LandingPage';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  // Render the actual app immediately. A client-only mount gate leaves the
-  // homepage showing "Loading Veyrang..." to crawlers and can appear stuck.
-  return <App />;
+  return <LandingPage />;
 }
