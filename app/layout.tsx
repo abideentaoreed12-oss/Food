@@ -4,23 +4,23 @@ import './globals.css';
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.veyrang.com'),
   title: {
-    default: 'Veyrang | Food Delivery & Cloud Kitchens',
-    template: '%s | Veyrang'
+    default: 'Veyrang Food Delivery',
+    template: '%s | Veyrang Food Delivery'
   },
-  description: 'Veyrang - Multi-restaurant food delivery platform with live GPS doorstep tracking, customizable menus, and real-time kitchen and courier portals.',
+  description: 'Multi-restaurant food delivery platform with live GPS doorstep tracking, customizable menus, and real-time kitchen and courier portals.',
   robots: { index: true, follow: true },
   openGraph: {
-    title: 'Veyrang | Food Delivery & Cloud Kitchens',
-    description: 'Veyrang - Multi-restaurant food delivery platform with live GPS doorstep tracking, customizable menus, and real-time kitchen and courier portals.',
+    title: 'Veyrang Food Delivery',
+    description: 'Multi-restaurant food delivery platform with live GPS doorstep tracking, customizable menus, and real-time kitchen and courier portals.',
     url: 'https://www.veyrang.com/',
-    siteName: 'Veyrang',
+    siteName: 'Veyrang Food Delivery',
     type: 'website',
     locale: 'en_NG'
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Veyrang | Food Delivery & Cloud Kitchens',
-    description: 'Veyrang - Multi-restaurant food delivery platform with live GPS doorstep tracking, customizable menus, and real-time kitchen and courier portals.'
+    title: 'Veyrang Food Delivery',
+    description: 'Multi-restaurant food delivery platform with live GPS doorstep tracking, customizable menus, and real-time kitchen and courier portals.'
   }
 };
 
