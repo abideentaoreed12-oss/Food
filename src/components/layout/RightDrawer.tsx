@@ -42,7 +42,8 @@ import {
   Settings,
   Terminal,
   ArrowLeft,
-  Utensils
+  Utensils,
+  Plus
 } from 'lucide-react';
 import { VeyrangLogo } from '../common/VeyrangLogo';
 
@@ -64,11 +65,17 @@ export const RightDrawer: React.FC = () => {
     selectedAddress,
     setSelectedAddress,
     savedAddresses,
-    deliveryZones
+    deliveryZones,
+    addSavedAddress
   } = useDelivery();
 
   const { user, logout, setIsAuthModalOpen, openAuthModalForPortal } = useAuth();
   const [isZoneDropdownOpen, setIsZoneDropdownOpen] = useState(false);
+  const [isAddingDrawerAddr, setIsAddingDrawerAddr] = useState(false);
+  const [drawerLabel, setDrawerLabel] = useState('Home');
+  const [drawerAddress, setDrawerAddress] = useState('');
+  const [drawerApt, setDrawerApt] = useState('');
+  const [isSavingDrawer, setIsSavingDrawer] = useState(false);
 
   // Build the menu from persisted saved addresses, while also including the active
   // address/profile address if address syncing has not populated the list yet.
@@ -437,38 +444,97 @@ export const RightDrawer: React.FC = () => {
 
                   {isZoneDropdownOpen && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-30 py-1.5 text-xs">
-                      <div className="px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Your Saved Addresses
+                      <div className="px-3.5 py-2 flex items-center justify-between border-b border-slate-100">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Your Saved Addresses</span>
+                        <button
+                          onClick={() => setIsAddingDrawerAddr((prev) => !prev)}
+                          className="text-[#0D4F3C] font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> {isAddingDrawerAddr ? 'Cancel' : 'Add New'}
+                        </button>
                       </div>
-                      {deliveryAddressOptions.map((addr) => {
-                        const isSelected = selectedAddress?.id === addr.id || selectedAddress?.address?.trim().toLowerCase() === addr.address.trim().toLowerCase();
-                        return (
+                      {isAddingDrawerAddr && (
+                        <div className="p-3 border-b border-slate-100 space-y-2 bg-slate-50">
+                          <input
+                            type="text"
+                            value={drawerLabel}
+                            onChange={(e) => setDrawerLabel(e.target.value)}
+                            placeholder="Label (Home, Work)"
+                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                          />
+                          <input
+                            type="text"
+                            value={drawerAddress}
+                            onChange={(e) => setDrawerAddress(e.target.value)}
+                            placeholder="Street Address"
+                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                          />
+                          <input
+                            type="text"
+                            value={drawerApt}
+                            onChange={(e) => setDrawerApt(e.target.value)}
+                            placeholder="Apartment / Suite (Optional)"
+                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+                          />
                           <button
-                            key={addr.id}
-                            onClick={() => {
-                              setSelectedAddress(addr);
-                              setIsZoneDropdownOpen(false);
+                            disabled={isSavingDrawer || !drawerAddress.trim()}
+                            onClick={async () => {
+                              setIsSavingDrawer(true);
+                              try {
+                                const created = await addSavedAddress({
+                                  label: drawerLabel || 'Home',
+                                  address: drawerAddress.trim(),
+                                  apartment: drawerApt.trim(),
+                                  city: 'Lagos'
+                                });
+                                setSelectedAddress(created);
+                                setIsAddingDrawerAddr(false);
+                                setDrawerAddress('');
+                                setDrawerApt('');
+                                setIsZoneDropdownOpen(false);
+                              } catch (err: any) {
+                                alert(err?.message || 'Failed to add address');
+                              } finally {
+                                setIsSavingDrawer(false);
+                              }
                             }}
-                            className={`w-full text-left px-3.5 py-3 flex items-start justify-between gap-3 hover:bg-[#E8F5EF]/50 transition-colors cursor-pointer ${
-                              isSelected ? 'font-bold text-[#0D4F3C] bg-[#E8F5EF]' : 'text-slate-700'
-                            }`}
+                            className="w-full py-2 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white font-bold rounded-lg text-xs disabled:opacity-50 cursor-pointer"
                           >
-                            <div className="min-w-0">
-                              <div className="font-semibold">{addr.label || 'Saved address'}</div>
-                              <div className="text-[11px] text-slate-500 font-normal whitespace-normal break-words">{addr.address}</div>
-                              {(addr.apartment || addr.city) && (
-                                <div className="text-[11px] text-slate-400 font-normal">{[addr.apartment, addr.city].filter(Boolean).join(', ')}</div>
-                              )}
-                            </div>
-                            {isSelected && <span className="text-[10px] font-bold text-[#0D4F3C]">Selected</span>}
+                            {isSavingDrawer ? 'Saving...' : 'Save & Select Address'}
                           </button>
-                        );
-                      })}
-                      {deliveryAddressOptions.length === 0 && (
-                        <div className="px-3.5 py-3 text-slate-500">
-                          No saved addresses yet. Add one in your account before choosing a delivery address.
                         </div>
                       )}
+                      <div className="max-h-60 overflow-y-auto py-1">
+                        {deliveryAddressOptions.map((addr) => {
+                          const isSelected = selectedAddress?.id === addr.id || selectedAddress?.address?.trim().toLowerCase() === addr.address.trim().toLowerCase();
+                          return (
+                            <button
+                              key={addr.id}
+                              onClick={() => {
+                                setSelectedAddress(addr);
+                                setIsZoneDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3.5 py-3 flex items-start justify-between gap-3 hover:bg-[#E8F5EF]/50 transition-colors cursor-pointer ${
+                                isSelected ? 'font-bold text-[#0D4F3C] bg-[#E8F5EF]' : 'text-slate-700'
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <div className="font-semibold">{addr.label || 'Saved address'}</div>
+                                <div className="text-[11px] text-slate-500 font-normal whitespace-normal break-words">{addr.address}</div>
+                                {(addr.apartment || addr.city) && (
+                                  <div className="text-[11px] text-slate-400 font-normal">{[addr.apartment, addr.city].filter(Boolean).join(', ')}</div>
+                                )}
+                              </div>
+                              {isSelected && <span className="text-[10px] font-bold text-[#0D4F3C]">Selected</span>}
+                            </button>
+                          );
+                        })}
+                        {deliveryAddressOptions.length === 0 && !isAddingDrawerAddr && (
+                          <div className="px-3.5 py-3 text-slate-500">
+                            No saved addresses yet. Click "Add New" above.
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

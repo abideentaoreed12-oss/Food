@@ -127,7 +127,7 @@ export interface WalletDepositRecord {
   paymentMethod?: string;
 }
 
-const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
+export const DeliveryContext = createContext<DeliveryContextType | undefined>(undefined);
 
 const EMPTY_ADDRESS: SavedAddress = {
   id: '',
