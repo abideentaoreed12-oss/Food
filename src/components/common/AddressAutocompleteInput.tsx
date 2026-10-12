@@ -101,13 +101,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
   const debounceTimerRef = useRef<any>(null);
 
   // Load Google Maps Places Library via vis.gl
-  let placesLib: google.maps.PlacesLibrary | null = null;
-  try {
-    placesLib = useMapsLibrary('places');
-  } catch (err) {
-    // If not within APIProvider or error, safely continue with fallback
-    placesLib = null;
-  }
+  const placesLib = useMapsLibrary('places');
 
   // Session Token for Google Places Autocomplete
   const sessionTokenRef = useRef<any>(null);

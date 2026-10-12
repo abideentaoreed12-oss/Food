@@ -1,8 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /api/
-Disallow: /admin/
-Disallow: /restaurant/
-Disallow: /courier/
-
-Sitemap: https://veyrang.com/sitemap.xml

@@ -122,13 +122,28 @@ export function loadDatabase(): DatabaseSchema {
     // Dynamic Admin Environment synchronization on every single access, even if cached in serverless memory!
     const adminEmail = (CONFIG.ADMIN_EMAIL || '').toLowerCase().trim();
     const adminPassword = (CONFIG.ADMIN_PASSWORD || '').trim();
-    const adminUser = dbCache.users.find((u) => u.role === 'admin' || u.id === 'usr-admin-1');
-    // Only update admin credentials when both env values are set — never overwrite with empty/default secrets.
-    if (adminUser && adminEmail && adminPassword) {
+    if (adminEmail && adminPassword) {
       const salt = bcrypt.genSaltSync(10);
-      adminUser.email = adminEmail;
-      adminUser.passwordHash = bcrypt.hashSync(adminPassword, salt);
-      console.log("Database hot-sync loaded. Active Admin email is set to: " + adminEmail);
+      const adminUser = dbCache.users.find((u) => u.role === 'admin' || u.id === 'usr-admin-1' || (u.email && u.email.toLowerCase().trim() === adminEmail));
+      if (adminUser) {
+        adminUser.email = adminEmail;
+        adminUser.passwordHash = bcrypt.hashSync(adminPassword, salt);
+        adminUser.role = 'admin';
+      } else {
+        dbCache.users.push({
+          id: 'usr-admin-1',
+          email: adminEmail,
+          passwordHash: bcrypt.hashSync(adminPassword, salt),
+          name: 'System Administrator',
+          role: 'admin',
+          phone: '',
+          walletBalanceUSD: 0,
+          walletBalanceNGN: 0,
+          savedAddresses: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+      }
     }
     return dbCache;
   }
@@ -176,11 +191,27 @@ export function loadDatabase(): DatabaseSchema {
         // Dynamic Admin Environment synchronization on every DB boot (env only — no default passwords)
         const adminEmail = (CONFIG.ADMIN_EMAIL || '').toLowerCase().trim();
         const adminPassword = (CONFIG.ADMIN_PASSWORD || '').trim();
-        const adminUser = dbCache!.users.find((u) => u.role === 'admin' || u.id === 'usr-admin-1');
-        if (adminUser && adminEmail && adminPassword) {
-          adminUser.email = adminEmail;
-          adminUser.passwordHash = bcrypt.hashSync(adminPassword, salt);
-          console.log("Database cold-boot loaded. Active Admin email is set to: " + adminEmail);
+        if (adminEmail && adminPassword) {
+          const adminUser = dbCache!.users.find((u) => u.role === 'admin' || u.id === 'usr-admin-1' || (u.email && u.email.toLowerCase().trim() === adminEmail));
+          if (adminUser) {
+            adminUser.email = adminEmail;
+            adminUser.passwordHash = bcrypt.hashSync(adminPassword, salt);
+            adminUser.role = 'admin';
+          } else {
+            dbCache!.users.push({
+              id: 'usr-admin-1',
+              email: adminEmail,
+              passwordHash: bcrypt.hashSync(adminPassword, salt),
+              name: 'System Administrator',
+              role: 'admin',
+              phone: '',
+              walletBalanceUSD: 0,
+              walletBalanceNGN: 0,
+              savedAddresses: [],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+          }
         }
 
         // Async Purge of demo accounts from live Cloudflare D1 database

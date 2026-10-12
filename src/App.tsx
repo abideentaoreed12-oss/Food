@@ -2,7 +2,10 @@
 
 import React from 'react';
 import { UserRole } from './types';
-const Analytics = () => null;
+
+function Analytics() {
+  return null;
+}
 import { AuthProvider } from './context/AuthContext';
 import { DeliveryProvider, useDelivery } from './context/DeliveryContext';
 import { Navbar } from './components/layout/Navbar';
@@ -127,12 +130,6 @@ const AppContent: React.FC = () => {
 };
 
 export default function App({ initialRole }: { initialRole?: UserRole } = {}) {
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const content = (
     <AuthProvider>
       <DeliveryProvider initialRole={initialRole}>
