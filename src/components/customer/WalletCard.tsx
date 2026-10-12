@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
-import { Eye, EyeOff, Plus, ChevronRight } from 'lucide-react';
+import { Eye, EyeOff, Plus, ChevronRight, Wallet } from 'lucide-react';
 
 interface WalletCardProps {
   className?: string;
@@ -12,11 +12,18 @@ export const WalletCard: React.FC<WalletCardProps> = ({ className = '' }) => {
 
   return (
     <div
-      className={`rounded-3xl bg-[#FF5500] text-white p-5 sm:p-6 shadow-md shadow-orange-500/20 select-none relative overflow-hidden ${className}`}
+      className={`rounded-3xl bg-[#0D4F3C] text-white p-5 sm:p-6 shadow-md shadow-emerald-900/20 select-none relative overflow-hidden ${className}`}
     >
-      {/* Top Row: Title + Eye toggle and "+ Fund Wallet" button */}
-      <div className="flex items-center justify-between gap-2">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.12]"
+        style={{ background: 'radial-gradient(ellipse at 90% 10%, #E8C547 0%, transparent 55%)' }}
+      />
+
+      <div className="relative flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
+          <span className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">
+            <Wallet className="w-4 h-4 text-[#E8C547]" />
+          </span>
           <span className="text-sm sm:text-base font-bold text-white tracking-tight">
             Wallet balance
           </span>
@@ -34,19 +41,17 @@ export const WalletCard: React.FC<WalletCardProps> = ({ className = '' }) => {
           </button>
         </div>
 
-        {/* "+ Fund Wallet" Button matching exact pill style */}
         <button
           type="button"
           onClick={() => setIsWalletModalOpen(true)}
-          className="rounded-full bg-white text-[#FF5500] hover:bg-orange-50 active:scale-95 text-xs sm:text-sm font-extrabold px-4 py-1.5 shadow-sm transition-all flex items-center gap-1 cursor-pointer shrink-0"
+          className="rounded-full bg-[#E8C547] text-[#0D4F3C] hover:bg-[#D4B23A] active:scale-95 text-xs sm:text-sm font-extrabold px-4 py-1.5 shadow-sm transition-all flex items-center gap-1 cursor-pointer shrink-0"
         >
           <Plus className="w-3.5 h-3.5 stroke-[3]" />
           <span>Fund Wallet</span>
         </button>
       </div>
 
-      {/* Middle Amount: ₦28,278.70 (Matching exact bold large text in IMG_5190.jpeg) */}
-      <div className="py-2.5 sm:py-3">
+      <div className="relative py-2.5 sm:py-3">
         <div className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white font-sans tracking-tight">
           {showBalance ? (
             <>
@@ -64,18 +69,16 @@ export const WalletCard: React.FC<WalletCardProps> = ({ className = '' }) => {
         </div>
       </div>
 
-      {/* Thin Horizontal Divider */}
-      <div className="border-t border-white/25 my-1" />
+      <div className="relative border-t border-white/20 my-1" />
 
-      {/* Bottom Row: Helper text & "Add Funds >" trigger */}
       <div
         onClick={() => setIsWalletModalOpen(true)}
-        className="pt-2 flex items-center justify-between text-xs sm:text-sm text-white/95 cursor-pointer group"
+        className="relative pt-2 flex items-center justify-between text-xs sm:text-sm text-white/95 cursor-pointer group"
       >
         <span className="font-medium text-[11px] sm:text-xs">
           Top up your wallet for faster checkout
         </span>
-        <span className="font-bold flex items-center gap-0.5 text-white group-hover:underline text-[11px] sm:text-xs shrink-0">
+        <span className="font-bold flex items-center gap-0.5 text-[#E8C547] group-hover:underline text-[11px] sm:text-xs shrink-0">
           <span>Add Funds</span>
           <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
         </span>
