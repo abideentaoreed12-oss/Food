@@ -9,8 +9,8 @@ import {
 } from 'lucide-react';
 
 interface WalletModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 function authHeaders(): HeadersInit {
@@ -41,8 +41,10 @@ function formatVa(data: {
   };
 }
 
-export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
-  const { walletBalanceNGN } = useDelivery();
+export const WalletModal: React.FC<WalletModalProps> = ({ isOpen: propIsOpen, onClose: propOnClose }) => {
+  const { walletBalanceNGN, isWalletModalOpen, setIsWalletModalOpen } = useDelivery();
+  const isOpen = propIsOpen !== undefined ? propIsOpen : isWalletModalOpen;
+  const onClose = propOnClose || (() => setIsWalletModalOpen(false));
   const { user, setIsAuthModalOpen } = useAuth();
   const [topUpAmount, setTopUpAmount] = useState<number>(1000);
   const [customAmount, setCustomAmount] = useState<string>('');
