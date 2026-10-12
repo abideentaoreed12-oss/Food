@@ -78,7 +78,7 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
       }
     }
     if (user) {
-      if (user.role === 'customer' && !(await isCurrentCustomerSession(String(user.id), decoded.sid))) {
+      if (!(await isCurrentCustomerSession(String(user.id), decoded.sid))) {
         return res.status(401).json({
           success: false,
           error: 'This customer session has been replaced by a newer sign-in. Please sign in again.',
