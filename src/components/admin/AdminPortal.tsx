@@ -213,7 +213,7 @@ export const AdminPortal: React.FC = () => {
   const [newStaffRestaurantAddress, setNewStaffRestaurantAddress] = useState('');
   const [newStaffRestaurantCuisine, setNewStaffRestaurantCuisine] = useState('');
   const [newStaffPhone, setNewStaffPhone] = useState('');
-  const [newStaffPassword, setNewStaffPassword] = useState('StaffPass2026!');
+  const [newStaffPassword, setNewStaffPassword] = useState('');
 
   // Search Filters
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
@@ -446,12 +446,16 @@ export const AdminPortal: React.FC = () => {
         showActionFeedback('Select an existing restaurant or choose Create new restaurant.');
         return;
       }
+      if (!newStaffPassword || newStaffPassword.trim().length < 8) {
+        showActionFeedback('Enter an initial staff password of at least 8 characters.');
+        return;
+      }
       await api.admin.createStaff({
         name: newStaffName,
         email: newStaffEmail,
         role: newStaffRole,
         phone: newStaffPhone,
-        password: newStaffPassword,
+        password: newStaffPassword.trim(),
         ...(newStaffRole === 'restaurant' ? { restaurantId } : {})
       });
 
@@ -460,6 +464,7 @@ export const AdminPortal: React.FC = () => {
       setNewStaffName('');
       setNewStaffEmail('');
       setNewStaffPhone('');
+      setNewStaffPassword('');
       setNewStaffRestaurantId('');
       setCreateRestaurantForStaff(false);
       setNewStaffRestaurantName('');

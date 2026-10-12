@@ -971,10 +971,13 @@ router.post('/staff', async (req: AuthRequest, res: Response) => {
       if (!restaurantCheck.results?.length) return res.status(404).json({ success: false, error: 'Selected restaurant does not exist' });
     }
 
+    if (typeof password !== 'string' || password.trim().length < 8) {
+      return res.status(400).json({ success: false, error: 'A staff password of at least 8 characters is required' });
+    }
     const userId = `usr-staff-${Date.now()}`;
     const now = new Date().toISOString();
     const salt = bcrypt.genSaltSync(10);
-    const passwordHash = bcrypt.hashSync(password || 'StaffPass2026!', salt);
+    const passwordHash = bcrypt.hashSync(password.trim(), salt);
 
     // 1. Authoritative persistence in local DB with atomic disk flush
     const newUser = await db.createUser({
@@ -1177,18 +1180,20 @@ router.get('/drivers', async (req: AuthRequest, res: Response) => {
 
 router.post('/drivers', async (req: AuthRequest, res: Response) => {
   try {
-    const { name, phone, email, vehicleType, plateNumber, licenseNumber, kycDocR2Url, photoR2Url, verificationStatus } = req.body;
+    const { name, phone, email, password, vehicleType, plateNumber, licenseNumber, kycDocR2Url, photoR2Url, verificationStatus } = req.body;
     if (!name || !phone) return res.status(400).json({ success: false, error: 'Name and phone required' });
+    if (typeof password !== 'string' || password.trim().length < 8) {
+      return res.status(400).json({ success: false, error: 'A courier password of at least 8 characters is required' });
+    }
 
     const userId = `usr-drv-${Date.now()}`;
     const courierId = `cp-${Date.now()}`;
     const now = new Date().toISOString();
 
-    // Create user record with secure default password
-    const defaultPasswordHash = bcrypt.hashSync('CourierPass2026!', 10);
+    const passwordHash = bcrypt.hashSync(password.trim(), 10);
     await d1Client.query(
       'INSERT INTO users (id, email, password_hash, name, role, phone, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [userId, email || `${phone.replace(/[^0-9]/g, '')}@courier.veyrang.com`, defaultPasswordHash, name, 'courier', phone, now, now]
+      [userId, email || `${phone.replace(/[^0-9]/g, '')}@courier.veyrang.com`, passwordHash, name, 'courier', phone, now, now]
     );
 
     // Create courier profile

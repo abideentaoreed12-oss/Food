@@ -236,6 +236,7 @@ export function stripRestaurantDocument(parsed: any, row: any) {
   delete base.ownerId;
   delete base.owner_id;
   delete base.ownerUserId;
+  delete base.raw_json;
   return {
     ...base,
     id: String(row.id || base.id || ''),

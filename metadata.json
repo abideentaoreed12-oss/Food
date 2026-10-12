@@ -1,0 +1,8 @@
+{
+  "name": "Veyrang Food Delivery",
+  "description": "Multi-restaurant food delivery platform with live GPS doorstep tracking, customizable menus, and real-time kitchen and courier portals.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ]
+}

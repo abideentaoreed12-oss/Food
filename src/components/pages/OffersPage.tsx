@@ -22,15 +22,17 @@ export const OffersPage: React.FC = () => {
             'from-blue-500 to-indigo-500',
             'from-purple-500 to-pink-500'
           ];
+          const minOrderVal = Number(p.min_order ?? p.min_order_amount ?? 0);
+          const maxCapVal = Number(p.max_cap ?? p.max_discount_cap ?? 2500);
           return {
             code: p.code,
             title: p.discount_type === 'percentage'
               ? `${p.value}% Off Your Order`
               : `₦${Number(p.value).toLocaleString('en-NG')} Off Instant Savings`,
             description: p.discount_type === 'percentage'
-              ? `Enjoy ${p.value}% discount up to ₦${Number(p.max_discount_cap || 2500).toLocaleString('en-NG')} on orders above ₦${Number(p.min_order_amount || 0).toLocaleString('en-NG')}.`
-              : `Take ₦${Number(p.value).toLocaleString('en-NG')} flat discount on orders over ₦${Number(p.min_order_amount || 0).toLocaleString('en-NG')}.`,
-            minOrder: `₦${Number(p.min_order_amount || 0).toLocaleString('en-NG')}`,
+              ? `Enjoy ${p.value}% discount up to ₦${maxCapVal.toLocaleString('en-NG')} on orders above ₦${minOrderVal.toLocaleString('en-NG')}.`
+              : `Take ₦${Number(p.value).toLocaleString('en-NG')} flat discount on orders over ₦${minOrderVal.toLocaleString('en-NG')}.`,
+            minOrder: `₦${minOrderVal.toLocaleString('en-NG')}`,
             badge: idx === 0 ? 'Featured Offer' : 'Active Promo',
             color: colors[idx % colors.length]
           };

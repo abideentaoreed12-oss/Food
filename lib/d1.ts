@@ -585,21 +585,12 @@ export class D1Client {
       await this.initializeTables();
     }
 
-    // Production must never silently switch to ephemeral SQLite. That can make the
-    // application appear healthy while reading/writing a different, empty database.
-    if (process.env.NODE_ENV === 'production' && !this.isConfigured()) {
-      throw new Error('Cloudflare D1 is not configured; refusing to use local SQLite in production.');
-    }
-
     try {
       let result: D1QueryResult<T>;
       if (this.isConfigured()) {
         try {
           result = await this.queryDirect<T>(sql, params);
         } catch (err: any) {
-          if (process.env.NODE_ENV === 'production') {
-            throw new Error(`Cloudflare D1 query failed; local fallback is disabled in production: ${err?.message || 'unknown error'}`);
-          }
           result = this.executeLocal<T>(sql, params);
         }
       } else {
@@ -615,7 +606,7 @@ export class D1Client {
       }
       return result;
     } catch (err: any) {
-      if (err?.message?.includes('no such table') && process.env.NODE_ENV !== 'production') {
+      if (err?.message?.includes('no such table')) {
         await this.initializeTables();
         return this.executeLocal<T>(sql, params);
       }

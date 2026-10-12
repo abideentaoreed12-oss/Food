@@ -29,11 +29,27 @@ export interface SiteDataSnapshot {
 
 const LEGACY_DEMO_PROMO_CODES = new Set(['FIRST50', 'WELCOME20', 'FREEDEL']);
 
-function sanitizePromoCodes(promos: any[] | undefined): any[] {
-  return (promos || []).filter((promo) => {
-    const code = String(promo?.code || '').trim().toUpperCase();
-    return code && !LEGACY_DEMO_PROMO_CODES.has(code);
-  });
+export function sanitizePromoCodes(promos: any[] | undefined): any[] {
+  return (promos || [])
+    .filter((promo) => {
+      const code = String(promo?.code || '').trim().toUpperCase();
+      return code && !LEGACY_DEMO_PROMO_CODES.has(code);
+    })
+    .map((promo) => {
+      const minOrder = Number(promo.min_order ?? promo.min_order_amount ?? promo.minOrderAmount ?? 0);
+      const rawCap = promo.max_cap ?? promo.max_discount_cap ?? promo.maxDiscountCap ?? null;
+      const maxCap = rawCap === null || rawCap === undefined || rawCap === '' ? null : Number(rawCap);
+      const expires = promo.expires ?? promo.expires_at ?? promo.expiresAt ?? null;
+      return {
+        code: String(promo.code || '').trim().toUpperCase(),
+        discount_type: String(promo.discount_type || promo.discountType || 'fixed'),
+        value: Number(promo.value || 0),
+        min_order: Number.isFinite(minOrder) ? minOrder : 0,
+        max_cap: maxCap !== null && Number.isFinite(maxCap) ? maxCap : null,
+        expires,
+        is_active: promo.is_active === 1 || promo.is_active === true || promo.isActive === true
+      };
+    });
 }
 
 export const PUBLIC_SETTINGS_WHITELIST = new Set([
@@ -65,7 +81,7 @@ export function isValidSiteData(
     if (!r || typeof r !== 'object') return false;
     if (typeof r.id !== 'string' || !r.id.trim()) return false;
     if (typeof r.name !== 'string' || !r.name.trim()) return false;
-    if (r.password || r.password_hash || r.token || r.secret) return false;
+    if (r.password || r.password_hash || r.token || r.secret || r.ownerId || r.owner_id || r.ownerUserId) return false;
   }
   if (candidate.deliveryZones && !Array.isArray(candidate.deliveryZones)) return false;
   if (candidate.promoCodes && !Array.isArray(candidate.promoCodes)) return false;
@@ -304,6 +320,7 @@ export class SiteDataManager {
           delete r.ownerId;
           delete r.owner_id;
           delete r.ownerUserId;
+          delete r.raw_json;
         }
         try {
           const { loadNormalizedMenu } = await import('./restaurantMenu');

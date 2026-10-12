@@ -57,7 +57,7 @@ export const CustomerView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'fast' | 'top' | 'lowFee'>('all');
   const [promoCopied, setPromoCopied] = useState(false);
-  const [activePromo, setActivePromo] = useState<{ id: string; code: string; discount_type: string; value: number; min_order_amount: number; max_discount_cap: number } | null>(null);
+  const [activePromo, setActivePromo] = useState<{ code: string; discount_type: string; value: number; min_order?: number; max_cap?: number | null } | null>(null);
 
   useEffect(() => {
     api.settings.getPromos().then((res: any) => {
