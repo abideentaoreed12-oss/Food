@@ -260,15 +260,6 @@ export const Navbar: React.FC = () => {
                 </button>
               </div>
             </div>
-            {user && (
-              <div className="pb-2.5 -mt-1">
-                <button type="button" onClick={toggleZoneDropdown} className="inline-flex items-center gap-1.5 max-w-full px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold hover:bg-[#E8F5EF] hover:border-emerald-300 transition-colors">
-                  <MapPin className="w-3.5 h-3.5 text-[#0D4F3C] shrink-0" />
-                  <span className="truncate">Deliver to {selectedAddress?.label || 'Home'}: {selectedAddress?.address || selectedAddress?.city || 'Set address'}</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                </button>
-              </div>
-            )}
           </>
         )}
       </div>
