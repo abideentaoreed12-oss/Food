@@ -285,7 +285,7 @@ export const OrdersPage: React.FC = () => {
       // 2. Otherwise start Paystack card payment
       const customerEmail = user?.email || (order as any).customerEmail || (order as any).customer_email;
       if (!customerEmail) {
-        setRetryError('A valid account email is required to pay with Paystack.');
+        setRetryError('A valid account email is required to complete payment.');
         return;
       }
 
@@ -307,7 +307,7 @@ export const OrdersPage: React.FC = () => {
         window.location.assign(authorizationUrl);
         return;
       }
-      throw new Error(payRes?.error || payRes?.message || 'Could not start Paystack checkout. Please try again.');
+      throw new Error(payRes?.error || payRes?.message || 'Could not start secure checkout. Please try again.');
     } catch (err: any) {
       setRetryError(err?.message || 'Payment initialization failed. Please try again.');
     } finally {

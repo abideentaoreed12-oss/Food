@@ -194,7 +194,7 @@ export const OrderReviewModal: React.FC<OrderReviewModalProps> = ({
       }, 1800);
     } catch (err: any) {
       console.error('D1 Review Submission Error:', err);
-      setSubmitError(err.message || 'Failed to submit review directly to Platform D1. Please try again.');
+      setSubmitError(err.message || 'Failed to submit review. Please try again.');
       setIsSubmitting(false);
     }
   };
@@ -255,11 +255,11 @@ export const OrderReviewModal: React.FC<OrderReviewModalProps> = ({
             </div>
             <h4 className="text-lg font-extrabold text-slate-900">Thank You for Your Feedback!</h4>
             <p className="text-xs text-slate-500 max-w-xs mx-auto">
-              Your review and meal photo have been saved live directly to Platform D1 database and Platform R2 storage.
+              Your review and meal photo have been published directly to the restaurant and community feed.
             </p>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Platform D1 & R2 Storage Synchronized Live</span>
+              <span>Verified Review Published Live</span>
             </div>
           </div>
         ) : (
@@ -521,12 +521,12 @@ export const OrderReviewModal: React.FC<OrderReviewModalProps> = ({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Writing directly to D1 Database...</span>
+                    <span>Submitting review...</span>
                   </>
                 ) : (
                   <>
                     <Star className="w-4 h-4 fill-white text-white" />
-                    <span>Submit Review Live to D1</span>
+                    <span>Submit Verified Review</span>
                   </>
                 )}
               </button>

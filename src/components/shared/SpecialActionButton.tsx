@@ -35,13 +35,13 @@ export const SpecialActionButton: React.FC = () => {
         className="fixed bottom-6 right-6 px-4 py-3 bg-slate-900 border border-slate-700 hover:border-[#0D4F3C] text-white rounded-2xl shadow-2xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer z-50 select-none group"
       >
         <RefreshCw className={`w-4 h-4 text-emerald-500 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-        <span>{isSyncing ? 'Syncing D1 Database...' : 'Force Live Sync'}</span>
+        <span>{isSyncing ? 'Syncing Live Updates...' : 'Force Live Sync'}</span>
       </button>
 
       {showToast && (
         <div className="fixed bottom-20 right-6 px-4 py-2.5 bg-slate-900 border border-slate-700 text-emerald-400 text-xs font-bold rounded-xl shadow-2xl flex items-center gap-2 z-50 animate-in fade-in slide-in-from-bottom-2">
           <CheckCircle className="w-4 h-4 text-emerald-400" />
-          <span>Real-time D1 Sync Completed!</span>
+          <span>Real-time Sync Completed!</span>
         </div>
       )}
     </>

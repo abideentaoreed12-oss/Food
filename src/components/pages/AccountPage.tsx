@@ -290,7 +290,7 @@ export const AccountPage: React.FC = () => {
                   Beneficiary: <span className="font-bold text-slate-700">{virtualAccount.accountName}</span>
                 </>
               ) : (
-                <span>Open <strong>Add Funds</strong> to generate a live Paystack virtual account.</span>
+                <span>Open <strong>Add Funds</strong> to generate a dedicated virtual account.</span>
               )}
             </p>
           </div>

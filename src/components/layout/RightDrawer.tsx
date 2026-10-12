@@ -226,7 +226,7 @@ export const RightDrawer: React.FC = () => {
         { id: 'staff', label: 'Staff Roles & Access Control', icon: ShieldAlert },
         { id: 'settings', label: 'Platform Financial Settings', icon: Settings },
         { id: 'security', label: 'Security & 2FA Enforcement', icon: Lock },
-        { id: 'developer', label: 'SQL Developer Console (D1)', icon: Terminal },
+        { id: 'developer', label: 'Database Developer Console', icon: Terminal },
         { id: 'audit', label: 'Admin Activity Logs', icon: FileText }
       ]
     }
@@ -285,7 +285,7 @@ export const RightDrawer: React.FC = () => {
             <div className="p-3.5 bg-[#0D4F3C]/40 border border-[#0D4F3C]/60 rounded-2xl flex items-center justify-between">
               <div>
                 <div className="text-xs font-bold text-white">Super Admin Mode</div>
-                <div className="text-[11px] text-[#E8C547]">Platform D1 & R2 Connected</div>
+                <div className="text-[11px] text-[#E8C547]">Cloud Services & Media Sync Active</div>
               </div>
             </div>
 

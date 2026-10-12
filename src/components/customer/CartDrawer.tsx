@@ -724,7 +724,7 @@ export const CartDrawer: React.FC = () => {
                         <div>
                           <div className="flex items-center gap-1.5">
                             <CreditCard className="w-3.5 h-3.5 text-[#0D4F3C]" />
-                            <span className="font-bold text-slate-900">Debit Card (Paystack)</span>
+                            <span className="font-bold text-slate-900">Debit / Credit Card</span>
                           </div>
                           <p className="text-[11px] text-slate-500 mt-0.5">
                             {!hasWalletBalance

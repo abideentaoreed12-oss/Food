@@ -172,7 +172,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                 <h3 className="text-base font-bold text-slate-900">Fund Veyrang Wallet</h3>
                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Live</span>
               </div>
-              <p className="text-xs text-slate-500">Paystack virtual account & gateway</p>
+              <p className="text-xs text-slate-500">Instant dedicated bank transfer & card gateway</p>
             </div>
           </div>
           <button type="button" onClick={onClose} className="p-2 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-200/60">
@@ -232,7 +232,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                   <Building2 className="w-4 h-4 text-[#0D4F3C]" />
                   <div>
                     <h4 className="text-xs font-extrabold text-slate-900">Direct Bank Transfer</h4>
-                    <p className="text-[11px] text-slate-500">Paystack Dedicated Virtual Account</p>
+                    <p className="text-[11px] text-slate-500">Dedicated Virtual Account (Auto-Credit)</p>
                   </div>
                 </div>
               </div>
@@ -269,7 +269,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                 </div>
               ) : (
                 <div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200 text-center space-y-2">
-                  <p className="text-xs text-slate-600">No virtual account on file yet.</p>
+                  <p className="text-xs text-slate-600">No virtual account assigned yet.</p>
                   <button
                     type="button"
                     disabled={vaLoading}
@@ -279,7 +279,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                     }}
                     className="w-full py-2.5 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white rounded-xl text-xs font-bold disabled:opacity-50 transition-colors"
                   >
-                    {vaLoading ? 'Creating with Paystack…' : 'Generate Paystack Virtual Account'}
+                    {vaLoading ? 'Creating Dedicated Account…' : 'Generate Dedicated Virtual Account'}
                   </button>
                 </div>
               )}
@@ -299,8 +299,8 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                     <Zap className="w-5 h-5 text-[#E8C547]" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-extrabold">Online Payment</h4>
-                    <p className="text-xs text-slate-600">Official Paystack checkout</p>
+                    <h4 className="text-xs font-extrabold">Instant Card Payment</h4>
+                    <p className="text-xs text-slate-600">Secure 3D-Secure checkout</p>
                   </div>
                 </div>
                 <ChevronRight
@@ -344,8 +344,8 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                   >
                     <CreditCard className="w-4 h-4" />
                     {loading
-                      ? 'Opening Paystack…'
-                      : `Pay ₦${topUpAmount.toLocaleString('en-NG')} via Paystack`}
+                      ? 'Opening Secure Checkout…'
+                      : `Pay ₦${topUpAmount.toLocaleString('en-NG')} Securely`}
                   </button>
                 </form>
               )}
@@ -353,7 +353,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
 
             <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
               <Lock className="w-3.5 h-3.5" />
-              <span>Credits only after verified Paystack payment</span>
+              <span>Wallet credited instantly upon verified transaction</span>
             </div>
           </div>
         )}

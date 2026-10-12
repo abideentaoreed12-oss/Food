@@ -1118,7 +1118,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
       // unpaid card order as successful if initialization fails.
       if (finalPayable > 0 && details.paymentMethod === 'Debit Card') {
         if (!user?.email) {
-          paystackInitializationError = 'A valid account email is required to pay securely with Paystack.';
+          paystackInitializationError = 'A valid account email is required to pay securely.';
           throw new Error(paystackInitializationError);
         }
         const payRes: any = await api.payment.initialize({
@@ -1127,7 +1127,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
           callbackUrl: `${window.location.origin}/payment/callback?order_id=${encodeURIComponent(finalOrder.id)}`,
           metadata: { orderId: finalOrder.id, userId: user.id || user.email, type: 'order_payment', provider: 'paystack' }
         }).catch((error: any) => {
-          paystackInitializationError = error?.message || 'Paystack could not start the card payment. Please try again.';
+          paystackInitializationError = error?.message || 'Could not start the card payment. Please try again.';
           return null;
         });
 
@@ -1139,7 +1139,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
           window.location.assign(authorizationUrl);
           return finalOrder;
         }
-        const initializationMessage = payRes?.error || payRes?.message || payRes?.data?.error || 'Paystack could not start the card payment. Please try again.';
+        const initializationMessage = payRes?.error || payRes?.message || payRes?.data?.error || 'Could not start the card payment. Please try again.';
         paystackInitializationError = initializationMessage;
         throw new Error(initializationMessage);
       }
@@ -1150,7 +1150,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         throw new Error(paystackInitializationError);
       }
       if (details.paymentMethod === 'Debit Card' && finalPayable > 0) {
-        throw error instanceof Error ? error : new Error('Could not complete Paystack checkout. Please try again.');
+        throw error instanceof Error ? error : new Error('Could not complete secure checkout. Please try again.');
       }
       setOrders((prev) => [newOrder, ...prev]);
       setActiveTrackingOrderId(newOrder.id);
