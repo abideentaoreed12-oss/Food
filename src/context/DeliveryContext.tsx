@@ -194,7 +194,16 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     setActiveRoleState('customer');
   }, [user, openAuthModalForPortal]);
 
-  const [activePage, setActivePageState] = useState<ActivePage>('landing');
+  const [activePage, setActivePageState] = useState<ActivePage>(() => {
+    try {
+      const hasJwt = typeof window !== 'undefined' && localStorage.getItem('veyrang_jwt');
+      if (!hasJwt) return 'landing';
+      const savedPage = localStorage.getItem('veyrang_active_page');
+      return (savedPage as ActivePage) || 'landing';
+    } catch {
+      return 'landing';
+    }
+  });
 
   // Resolve navigation only after the auth session has been checked.
   // Guests always start on the public landing page; authenticated users keep their last page.
@@ -209,9 +218,11 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
 
     try {
       const savedPage = localStorage.getItem('veyrang_active_page');
-      if (savedPage) setActivePageState(savedPage as ActivePage);
+      if (savedPage) {
+        setActivePageState(savedPage as ActivePage);
+      }
     } catch {}
-  }, [authLoading]);
+  }, [authLoading, user]);
 
   const setActivePage = useCallback((page: ActivePage) => {
     setActivePageState(page);

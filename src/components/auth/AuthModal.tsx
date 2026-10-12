@@ -278,9 +278,7 @@ export const AuthModal: React.FC = () => {
         <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between bg-white">
           <div className="flex items-center gap-3">
             <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs border ${
-              intendedPortal === 'admin'
-                ? 'bg-rose-50 border-rose-200 text-rose-600'
-                : intendedPortal === 'restaurant'
+              intendedPortal === 'restaurant'
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
                 : intendedPortal === 'courier'
                 ? 'bg-sky-50 border-sky-200 text-sky-600'
@@ -294,8 +292,6 @@ export const AuthModal: React.FC = () => {
                 <ChefHat className="w-6 h-6 stroke-[2]" />
               ) : intendedPortal === 'courier' ? (
                 <Bike className="w-6 h-6 stroke-[2]" />
-              ) : intendedPortal === 'admin' ? (
-                <ShieldAlert className="w-6 h-6 stroke-[2]" />
               ) : (
                 <Utensils className="w-6 h-6 stroke-[2]" />
               )}
@@ -305,8 +301,6 @@ export const AuthModal: React.FC = () => {
                 <h3 className="text-lg font-extrabold text-slate-900 font-display">
                   {tab === 'forgot'
                     ? 'Reset Your Password'
-                    : intendedPortal === 'admin'
-                    ? 'Admin Operations Portal'
                     : intendedPortal === 'restaurant'
                     ? 'Kitchen Merchant Portal'
                     : intendedPortal === 'courier'
@@ -317,8 +311,6 @@ export const AuthModal: React.FC = () => {
               <p className="text-xs text-slate-500 font-medium mt-0.5">
                 {tab === 'forgot'
                   ? 'Enter your email to receive a password reset link'
-                  : intendedPortal === 'admin'
-                  ? 'Sign in with your configured administrator credentials'
                   : intendedPortal
                   ? `Sign in with your ${intendedPortal} credentials`
                   : 'Sign in to place orders, track dispatches & access your wallet'}
@@ -334,26 +326,6 @@ export const AuthModal: React.FC = () => {
             <X className="w-5 h-5" />
           </button>
         </div>
-
-        {/* Admin Mode Notice / Portal Switcher */}
-        {intendedPortal === 'admin' && (
-          <div className="mx-6 mt-4 p-3 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-bold text-slate-200">System Admin Authentication</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setIntendedPortal(null);
-                setTab('login');
-              }}
-              className="text-[11px] text-[#E8C547] hover:text-[#D4B23A] font-bold underline cursor-pointer"
-            >
-              Customer Mode
-            </button>
-          </div>
-        )}
 
         {/* Tab Toggle (Sign In vs Create Account) - Hide when in Forgotten Password or Admin mode */}
         {tab !== 'forgot' && intendedPortal !== 'admin' && (
