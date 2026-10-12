@@ -66,7 +66,7 @@ export const RestaurantsPage: React.FC = () => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by restaurant or cuisine..."
-          className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#FF5500] focus:ring-2 focus:ring-orange-500/20 shadow-2xs"
+          className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0D4F3C] focus:ring-2 focus:ring-[#0D4F3C]/20 shadow-2xs"
         />
       </div>
 
@@ -76,7 +76,7 @@ export const RestaurantsPage: React.FC = () => {
           onClick={() => setFilterFast(!filterFast)}
           className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap cursor-pointer transition-all border ${
             filterFast
-              ? 'bg-[#FF5500] text-white border-[#FF5500]'
+              ? 'bg-[#0D4F3C] text-white border-[#0D4F3C]'
               : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
           }`}
         >
@@ -86,7 +86,7 @@ export const RestaurantsPage: React.FC = () => {
           onClick={() => setFilterTopRated(!filterTopRated)}
           className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap cursor-pointer transition-all border ${
             filterTopRated
-              ? 'bg-[#FF5500] text-white border-[#FF5500]'
+              ? 'bg-[#0D4F3C] text-white border-[#0D4F3C]'
               : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
           }`}
         >
@@ -96,7 +96,7 @@ export const RestaurantsPage: React.FC = () => {
           onClick={() => setFilterLowFee(!filterLowFee)}
           className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap cursor-pointer transition-all border ${
             filterLowFee
-              ? 'bg-[#FF5500] text-white border-[#FF5500]'
+              ? 'bg-[#0D4F3C] text-white border-[#0D4F3C]'
               : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
           }`}
         >
@@ -132,7 +132,7 @@ export const RestaurantsPage: React.FC = () => {
             <article
               key={restaurant.id}
               onClick={() => setSelectedRestaurantId(restaurant.id)}
-              className="group relative rounded-3xl bg-white border border-slate-200/80 overflow-hidden shadow-2xs hover:shadow-md hover:border-orange-200 transition-all cursor-pointer flex flex-col justify-between"
+              className="group relative rounded-3xl bg-white border border-slate-200/80 overflow-hidden shadow-2xs hover:shadow-md hover:border-[#0D4F3C]/40 transition-all cursor-pointer flex flex-col justify-between"
             >
               <div>
                 <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
@@ -171,7 +171,7 @@ export const RestaurantsPage: React.FC = () => {
                     <span className="px-2 py-1 rounded-xl bg-black/60 backdrop-blur-md font-mono text-[11px]">
                       {restaurant.durationText || 'Delivery time unavailable'}
                     </span>
-                    <span className="px-2 py-1 rounded-xl bg-orange-600/90 backdrop-blur-md font-mono text-[11px] flex items-center gap-0.5">
+                    <span className="px-2 py-1 rounded-xl bg-[#0D4F3C]/90 backdrop-blur-md font-mono text-[11px] flex items-center gap-0.5">
                       <MapPin className="w-3 h-3" />
                       {restaurant.distanceText || (restaurant.distanceKm ? `${restaurant.distanceKm} km` : 'Distance unavailable')}
                     </span>
@@ -183,7 +183,7 @@ export const RestaurantsPage: React.FC = () => {
 
                 <div className="p-4 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-base font-bold text-slate-900 group-hover:text-[#FF5500] transition-colors">
+                    <h2 className="text-base font-bold text-slate-900 group-hover:text-[#0D4F3C] transition-colors">
                       {restaurant.name}
                     </h2>
                     <div className="flex items-center gap-1 bg-amber-50 text-amber-800 px-2 py-0.5 rounded-lg border border-amber-200/60 text-xs font-bold font-mono">
@@ -197,7 +197,7 @@ export const RestaurantsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="px-4 pb-4 pt-0 flex items-center justify-between text-xs font-bold text-[#FF5500]">
+              <div className="px-4 pb-4 pt-0 flex items-center justify-between text-xs font-bold text-[#0D4F3C]">
                 <span>Browse Menu</span>
                 <span className="group-hover:translate-x-1 transition-transform">→</span>
               </div>

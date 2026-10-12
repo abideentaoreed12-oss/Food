@@ -139,7 +139,7 @@ export const SearchPage: React.FC = () => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search for 'Jollof', 'Burger', 'Pizza'..."
-          className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 shadow-xs"
+          className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0D4F3C] focus:ring-2 focus:ring-[#0D4F3C]/20 shadow-xs"
           autoFocus
         />
         {query && (
@@ -162,7 +162,7 @@ export const SearchPage: React.FC = () => {
             <button
               key={tag}
               onClick={() => setQuery(tag)}
-              className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-medium hover:bg-orange-50 hover:text-orange-600 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#E8F5EF] hover:text-[#0D4F3C] transition-colors cursor-pointer"
             >
               {tag}
             </button>
@@ -187,7 +187,7 @@ export const SearchPage: React.FC = () => {
           {/* Matching Dishes */}
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
-              <Utensils className="w-4 h-4 text-orange-600" />
+              <Utensils className="w-4 h-4 text-[#0D4F3C]" />
               <span>Matching Dishes ({matchingDishes.length})</span>
             </h2>
 
@@ -198,14 +198,14 @@ export const SearchPage: React.FC = () => {
                 {matchingDishes.map(({ dish, restaurantName }) => (
                   <div
                     key={dish.id}
-                    className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:border-orange-200 transition-all flex flex-col justify-between"
+                    className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:border-[#0D4F3C]/30 transition-all flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="text-sm font-bold text-slate-900 leading-snug">
                           {dish.name}
                         </h3>
-                        <span className="text-xs font-bold text-orange-600 font-mono tabular-nums shrink-0">
+                        <span className="text-xs font-bold text-[#0D4F3C] font-mono tabular-nums shrink-0">
                           {formatCurrency(dish.price, currency)}
                         </span>
                       </div>
@@ -220,7 +220,7 @@ export const SearchPage: React.FC = () => {
 
                     <button
                       onClick={() => handleAddDish(dish)}
-                      className="mt-3 w-full py-1.5 px-3 rounded-xl bg-orange-600 text-white text-xs font-bold hover:bg-orange-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                      className="mt-3 w-full py-1.5 px-3 rounded-xl bg-[#0D4F3C] text-white text-xs font-bold hover:bg-[#0A3F30] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>{dish.customizations && dish.customizations.length > 0 ? 'Customize & Add' : 'Add to Cart'}</span>
@@ -234,7 +234,7 @@ export const SearchPage: React.FC = () => {
           {/* Matching Restaurants */}
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
-              <Store className="w-4 h-4 text-orange-600" />
+              <Store className="w-4 h-4 text-[#0D4F3C]" />
               <span>Matching Kitchens ({matchingRestaurants.length})</span>
             </h2>
 
@@ -246,7 +246,7 @@ export const SearchPage: React.FC = () => {
                   <div
                     key={r.id}
                     onClick={() => setSelectedRestaurantId(r.id)}
-                    className="p-3.5 rounded-2xl bg-white border border-slate-200 hover:border-orange-300 transition-all cursor-pointer flex items-center justify-between gap-3"
+                    className="p-3.5 rounded-2xl bg-white border border-slate-200 hover:border-[#0D4F3C]/30 transition-all cursor-pointer flex items-center justify-between gap-3"
                   >
                     <div>
                       <h3 className="text-sm font-bold text-slate-900">{r.name}</h3>
@@ -258,12 +258,12 @@ export const SearchPage: React.FC = () => {
                         <span>·</span>
                         <span>{r.durationText || 'Delivery time unavailable'}</span>
                         <span>·</span>
-                        <span className="text-orange-600 font-medium">{r.distanceText || (Number.isFinite(Number(r.distanceKm)) && Number(r.distanceKm) > 0 ? `${r.distanceKm} km` : 'Distance unavailable')}</span>
+                        <span className="text-[#0D4F3C] font-medium">{r.distanceText || (Number.isFinite(Number(r.distanceKm)) && Number(r.distanceKm) > 0 ? `${r.distanceKm} km` : 'Distance unavailable')}</span>
                         <span>·</span>
                         <span>{r.calculatedDeliveryFee != null && Number.isFinite(Number(r.calculatedDeliveryFee)) ? `${formatCurrency(Number(r.calculatedDeliveryFee), currency)} fee` : 'Fee after address'}</span>
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-lg">
+                    <span className="text-xs font-bold text-[#0D4F3C] bg-[#E8F5EF] px-2.5 py-1 rounded-lg">
                       View Menu
                     </span>
                   </div>

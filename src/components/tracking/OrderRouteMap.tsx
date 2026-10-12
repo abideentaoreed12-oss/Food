@@ -20,7 +20,7 @@ interface OrderRouteMapProps {
 const GoogleMapsPolylineRoute: React.FC<{
   path: { lat: number; lng: number }[];
   color?: string;
-}> = ({ path, color = '#FF5500' }) => {
+}> = ({ path, color = '#0D4F3C' }) => {
   const map = useMap();
 
   useEffect(() => {
@@ -286,7 +286,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
             <span>Courier GPS Status</span>
           </span>
           <span className="text-slate-500">·</span>
-          <span className="text-orange-400 font-mono font-semibold">
+          <span className="text-[#E8C547] font-mono font-semibold">
             {order.status === 'delivered' ? 'Destination Reached' : Number.isFinite(remainingDistanceKm) ? `${remainingDistanceKm} km away` : 'Distance unavailable'}
           </span>
         </div>
@@ -317,11 +317,11 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
             {/* 1. Kitchen Marker */}
             <AdvancedMarker position={{ lat: kitchenCoord.lat, lng: kitchenCoord.lng }} title={kitchenCoord.name}>
               <div className="relative group cursor-pointer">
-                <div className="px-2.5 py-1 rounded-xl bg-orange-600 text-white border border-white/80 shadow-lg text-[11px] font-bold flex items-center gap-1">
+                <div className="px-2.5 py-1 rounded-xl bg-[#0D4F3C] text-white border border-white/80 shadow-lg text-[11px] font-bold flex items-center gap-1">
                   <Store className="w-3.5 h-3.5" />
                   <span className="max-w-[100px] truncate">{kitchenCoord.name}</span>
                 </div>
-                <div className="w-2 h-2 mx-auto -mt-1 rotate-45 bg-orange-600 border-r border-b border-white/80" />
+                <div className="w-2 h-2 mx-auto -mt-1 rotate-45 bg-[#0D4F3C] border-r border-b border-white/80" />
               </div>
             </AdvancedMarker>
 
@@ -349,13 +349,13 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
             </AdvancedMarker>}
 
             {/* 4. Real Route Polyline */}
-            <GoogleMapsPolylineRoute path={routeWaypoints} color="#FF5500" />
+            <GoogleMapsPolylineRoute path={routeWaypoints} color="#0D4F3C" />
           </Map>
         ) : (
           /* SVG Dynamic Vector Route Telemetry Map (Fallback & Live Vector) */
           <div className="w-full h-full relative flex flex-col justify-between p-4 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 overflow-hidden">
             {/* Background Grid Pattern */}
-            <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#FF5500_1px,transparent_1px)] [background-size:20px_20px]" />
+            <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#0D4F3C_1px,transparent_1px)] [background-size:20px_20px]" />
 
             {/* SVG Connecting Dynamic Route Vector */}
             <svg
@@ -366,7 +366,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
             >
               <defs>
                 <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#EA580C" />
+                  <stop offset="0%" stopColor="#0D4F3C" />
                   <stop offset="50%" stopColor="#10B981" />
                   <stop offset="100%" stopColor="#F43F5E" />
                 </linearGradient>
@@ -424,8 +424,8 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
             {/* Interactive Visual Waypoint Cards on Vector Map */}
             <div className="relative z-10 flex items-start justify-between">
               {/* Kitchen Origin */}
-              <div className="bg-slate-900/90 backdrop-blur-md p-2.5 rounded-xl border border-orange-500/30 text-xs shadow-md max-w-[170px]">
-                <div className="flex items-center gap-1.5 text-orange-400 font-bold uppercase text-[10px]">
+              <div className="bg-slate-900/90 backdrop-blur-md p-2.5 rounded-xl border border-[#0D4F3C]/40 text-xs shadow-md max-w-[170px]">
+                <div className="flex items-center gap-1.5 text-[#E8C547] font-bold uppercase text-[10px]">
                   <Store className="w-3.5 h-3.5" />
                   <span>Kitchen Origin</span>
                 </div>
@@ -461,7 +461,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
             {/* Bottom Turn-by-Turn GPS Callout */}
             <div className="relative z-10 bg-slate-950/80 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-800 flex items-center justify-between text-xs mt-auto">
               <div className="flex items-center gap-2">
-                <Navigation className="w-4 h-4 text-orange-400 shrink-0 rotate-45" />
+                <Navigation className="w-4 h-4 text-[#E8C547] shrink-0 rotate-45" />
                 <span className="text-slate-300 truncate">
                   {order.status === 'delivered'
                     ? 'Meal safely delivered and verified via 4-digit PIN.'
@@ -481,7 +481,7 @@ export const OrderRouteMap: React.FC<OrderRouteMapProps> = ({
       {/* Footer Location Coordinates Callout */}
       <div className="px-3.5 py-2 bg-slate-950 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
         <div className="flex items-center gap-1 font-mono">
-          <Compass className="w-3.5 h-3.5 text-orange-400" />
+          <Compass className="w-3.5 h-3.5 text-[#E8C547]" />
           <span>Origin: {kitchenCoord.lat.toFixed(4)}, {kitchenCoord.lng.toFixed(4)}</span>
         </div>
         <div className="flex items-center gap-1 font-mono">

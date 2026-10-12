@@ -101,7 +101,7 @@ export const RestaurantDetailModal: React.FC = () => {
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
       <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[94vh] flex flex-col">
         {/* Restaurant Header */}
-        <div className="relative p-5 sm:p-6 border-b border-slate-100 bg-linear-to-b from-orange-50/60 to-white">
+        <div className="relative p-5 sm:p-6 border-b border-slate-100 bg-linear-to-b from-[#E8F5EF]/60 to-white">
           <button
             onClick={() => setSelectedRestaurantId(null)}
             aria-label="Close restaurant menu"
@@ -112,7 +112,7 @@ export const RestaurantDetailModal: React.FC = () => {
 
           <div className="pr-10">
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs font-bold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-bold text-[#0D4F3C] bg-[#E8F5EF] px-2 py-0.5 rounded-md">
                 {restaurant.cuisine || restaurant.tags?.[0] || 'Kitchen'}
               </span>
               {restaurant.isBusyPaused ? (
@@ -147,7 +147,7 @@ export const RestaurantDetailModal: React.FC = () => {
                 <span>{liveMetrics?.durationText || restaurant.durationText || 'Delivery time unavailable'}</span>
               </div>
               <span>·</span>
-              <div className="flex items-center gap-1 text-orange-600 font-semibold bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200/60">
+              <div className="flex items-center gap-1 text-[#0D4F3C] font-semibold bg-[#E8F5EF] px-2 py-0.5 rounded-md border border-emerald-200">
                 <MapPin className="w-3.5 h-3.5" />
                 <span>{liveMetrics?.distanceText || restaurant.distanceText || (restaurant.distanceKm ? `${restaurant.distanceKm} km away` : 'Distance unavailable')}</span>
               </div>
@@ -173,7 +173,7 @@ export const RestaurantDetailModal: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search dishes in menu..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-orange-500"
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0D4F3C]"
             />
           </div>
 
@@ -183,7 +183,7 @@ export const RestaurantDetailModal: React.FC = () => {
               onClick={() => setActiveCategory('all')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 activeCategory === 'all'
-                  ? 'bg-orange-600 text-white shadow-xs'
+                  ? 'bg-[#0D4F3C] text-white shadow-xs'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
@@ -195,7 +195,7 @@ export const RestaurantDetailModal: React.FC = () => {
                 onClick={() => setActiveCategory(cat.name)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                   activeCategory === cat.name
-                    ? 'bg-orange-600 text-white shadow-xs'
+                    ? 'bg-[#0D4F3C] text-white shadow-xs'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
@@ -218,14 +218,14 @@ export const RestaurantDetailModal: React.FC = () => {
                 className={`p-3.5 rounded-2xl border transition-all flex items-start justify-between gap-3 ${
                   !item.isAvailable
                     ? 'bg-slate-50 border-slate-200 opacity-60'
-                    : 'bg-white border-slate-200 hover:border-orange-200 shadow-2xs'
+                    : 'bg-white border-slate-200 hover:border-emerald-200 shadow-2xs'
                 }`}
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-bold text-slate-900">{item.name}</h3>
                     {item.popular && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 bg-orange-100 text-orange-700 rounded">
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 bg-[#E8F5EF] text-[#0D4F3C] rounded">
                         Popular
                       </span>
                     )}
@@ -233,7 +233,7 @@ export const RestaurantDetailModal: React.FC = () => {
                   <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
                     {item.description}
                   </p>
-                  <div className="mt-2 text-sm font-bold text-orange-600 font-mono tabular-nums">
+                  <div className="mt-2 text-sm font-bold text-[#0D4F3C] font-mono tabular-nums">
                     {formatCurrency(item.price, currency)}
                   </div>
                 </div>
@@ -253,12 +253,12 @@ export const RestaurantDetailModal: React.FC = () => {
                       <button
                         onClick={() => handleAddItem(item)}
                         aria-label={`Add ${item.name} to cart`}
-                        className="px-3.5 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-xl bg-[#0D4F3C] hover:bg-[#0A3F30] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>Add</span>
                         {itemCountInCart > 0 && (
-                          <span className="ml-1 px-1.5 py-0.2 bg-white text-orange-600 rounded-md font-mono text-[10px] font-extrabold shadow-2xs">
+                          <span className="ml-1 px-1.5 py-0.2 bg-white text-[#0D4F3C] rounded-md font-mono text-[10px] font-extrabold shadow-2xs">
                             {itemCountInCart}
                           </span>
                         )}
@@ -279,7 +279,7 @@ export const RestaurantDetailModal: React.FC = () => {
                 setIsCartOpen(true);
                 setSelectedRestaurantId(null);
               }}
-              className="w-full py-3.5 px-4 rounded-2xl bg-orange-600 hover:bg-orange-700 active:scale-[0.99] text-white font-bold text-sm transition-all shadow-md shadow-orange-600/20 cursor-pointer flex items-center justify-between"
+              className="w-full py-3.5 px-4 rounded-2xl bg-[#E8C547] hover:bg-[#D4B23A] active:scale-[0.99] text-[#0D4F3C] font-bold text-sm transition-all shadow-md cursor-pointer flex items-center justify-between"
             >
               <div className="flex items-center gap-2">
                 <ShoppingBag className="w-4 h-4" />

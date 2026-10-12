@@ -2043,7 +2043,7 @@ export async function POST(req: NextRequest) {
     }
     const saved = await d1.query(
       `INSERT INTO restaurants (id, name, slug, cuisine, rating, review_count, delivery_time_min, delivery_time_max, delivery_fee, min_order, price_tier, address, distance_km, tags, badge, accent_color, is_open, is_busy_paused, commission_percent, zone, raw_json, created_at)
-       VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, NULL, '$', ?, 0, '[]', NULL, '#FF5500', 0, 0, 15, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, NULL, '$', ?, 0, '[]', NULL, '#0D4F3C', 0, 0, 15, ?, ?, ?)`,
       [id, name, restaurant.slug, restaurant.cuisine, prepMin, prepMax, deliveryFee, restaurant.address, String(body.zone || '').trim() || null, JSON.stringify(restaurant), now]
     );
     if (!saved.success) return NextResponse.json({ success: false, error: 'Restaurant could not be saved' }, { status: 503 });

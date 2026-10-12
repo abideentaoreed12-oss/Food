@@ -44,7 +44,7 @@ export default function Error({
                 reset();
               }
             }}
-            className="px-4 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm"
+            className="px-4 py-2 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-sm"
           >
             {isChunkError ? 'Refresh Application' : 'Try Again'}
           </button>

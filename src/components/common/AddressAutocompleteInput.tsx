@@ -468,7 +468,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
         {/* Left Status Icon */}
         <div className="absolute left-3 flex items-center pointer-events-none text-slate-400">
           {isLoading ? (
-            <Loader2 className="w-4 h-4 text-[#FF5500] animate-spin" />
+            <Loader2 className="w-4 h-4 text-[#0D4F3C] animate-spin" />
           ) : isVerified ? (
             <CheckCircle2 className="w-4 h-4 text-emerald-500 fill-emerald-50" />
           ) : (
@@ -494,7 +494,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
           className={`w-full pl-9 pr-20 py-2.5 text-xs rounded-xl bg-white border transition-all text-slate-900 placeholder-slate-400 focus:outline-none ${
             isVerified
               ? 'border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
-              : 'border-slate-200 hover:border-slate-300 focus:border-[#FF5500] focus:ring-2 focus:ring-orange-100'
+              : 'border-slate-200 hover:border-slate-300 focus:border-[#0D4F3C] focus:ring-2 focus:ring-[#E8F5EF]'
           }`}
         />
 
@@ -524,8 +524,8 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
               title="Use my live GPS location"
               className={`p-1.5 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                 isLocating
-                  ? 'bg-orange-100 text-[#FF5500] animate-pulse'
-                  : 'bg-orange-50 hover:bg-orange-100 text-[#FF5500] hover:text-[#EA4C00]'
+                  ? 'bg-[#E8F5EF] text-[#0D4F3C] animate-pulse'
+                  : 'bg-[#E8F5EF] hover:bg-[#E8F5EF]/80 text-[#0D4F3C] hover:text-[#0A3F30]'
               }`}
             >
               {isLocating ? (
@@ -555,7 +555,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
           {/* Header Bar */}
           <div className="px-3.5 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-600">
             <span className="flex items-center gap-1.5">
-              <Compass className="w-3.5 h-3.5 text-[#FF5500]" />
+              <Compass className="w-3.5 h-3.5 text-[#0D4F3C]" />
               {value.trim().length >= 2 ? 'Live Address Suggestions' : 'Popular Delivery Areas'}
             </span>
             {showCurrentLocationButton && (
@@ -563,7 +563,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
                 type="button"
                 onClick={handleDetectCurrentLocation}
                 disabled={isLocating}
-                className="text-[#FF5500] hover:text-[#EA4C00] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                className="text-[#0D4F3C] hover:text-[#0A3F30] font-bold flex items-center gap-1 cursor-pointer transition-colors"
               >
                 <Compass className="w-3 h-3" />
                 <span>{isLocating ? 'Locating...' : 'Locate Me'}</span>
@@ -584,13 +584,13 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
                     key={zone.id}
                     type="button"
                     onClick={() => handleSelectSuggestion(zone)}
-                    className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-orange-50/80 transition-colors flex items-start gap-2.5 cursor-pointer group"
+                    className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-[#E8F5EF]/80 transition-colors flex items-start gap-2.5 cursor-pointer group"
                   >
-                    <div className="w-6 h-6 rounded-lg bg-orange-100 text-[#FF5500] flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-[#FF5500] group-hover:text-white transition-colors">
+                    <div className="w-6 h-6 rounded-lg bg-[#E8F5EF] text-[#0D4F3C] flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-[#0D4F3C] group-hover:text-white transition-colors">
                       <Building className="w-3.5 h-3.5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-slate-800 group-hover:text-[#FF5500] transition-colors truncate">
+                      <p className="text-xs font-bold text-slate-800 group-hover:text-[#0D4F3C] transition-colors truncate">
                         {zone.mainText}
                       </p>
                       <p className="text-[10px] text-slate-400 truncate">{zone.secondaryText}</p>
@@ -610,11 +610,11 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
                     type="button"
                     onClick={() => handleSelectSuggestion(item)}
                     className={`w-full text-left px-3.5 py-2.5 flex items-start gap-2.5 transition-colors cursor-pointer ${
-                      isSelected ? 'bg-orange-50 text-slate-900' : 'hover:bg-slate-50 text-slate-800'
+                      isSelected ? 'bg-[#E8F5EF] text-slate-900' : 'hover:bg-slate-50 text-slate-800'
                     }`}
                   >
-                    <div className="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-orange-100 group-hover:text-[#FF5500]">
-                      <MapPin className="w-3.5 h-3.5 text-[#FF5500]" />
+                    <div className="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-[#E8F5EF] group-hover:text-[#0D4F3C]">
+                      <MapPin className="w-3.5 h-3.5 text-[#0D4F3C]" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-bold text-slate-900 truncate">
@@ -637,7 +637,7 @@ export const AddressAutocompleteInput: React.FC<AddressAutocompleteInputProps> =
             {/* Loading state indicator */}
             {value.trim().length >= 2 && isLoading && suggestions.length === 0 && (
               <div className="py-6 px-4 text-center text-slate-500">
-                <Loader2 className="w-5 h-5 text-[#FF5500] animate-spin mx-auto mb-1.5" />
+                <Loader2 className="w-5 h-5 text-[#0D4F3C] animate-spin mx-auto mb-1.5" />
                 <p className="text-xs font-semibold">Searching live addresses & places...</p>
               </div>
             )}

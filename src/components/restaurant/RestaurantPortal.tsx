@@ -201,8 +201,8 @@ export const RestaurantPortal: React.FC = () => {
 
   if (!assignedRestaurantId || !currentRestaurant) {
     return (
-      <div className="min-h-[60vh] rounded-3xl border border-orange-100 bg-white p-8 shadow-sm flex flex-col items-center justify-center text-center">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50 text-[#F26322]">
+      <div className="min-h-[60vh] rounded-3xl border border-[#E8F5EF] bg-white p-8 shadow-sm flex flex-col items-center justify-center text-center">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#F4F9F6] text-[#F26322]">
           <ChefHat className="h-8 w-8" />
         </div>
         <h1 className="text-2xl font-bold text-slate-900">Your restaurant workspace is being set up</h1>
@@ -218,9 +218,9 @@ export const RestaurantPortal: React.FC = () => {
       <SpecialActionButton />
       {/* Portal Top Bar */}
 
-      <div className="bg-white border border-orange-100 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white border border-[#E8F5EF] rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 text-[#F26322] flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-[#F4F9F6] border border-[#E8F5EF] text-[#F26322] flex items-center justify-center shrink-0">
             <ChefHat className="w-6 h-6" />
           </div>
           <div>
@@ -253,7 +253,7 @@ export const RestaurantPortal: React.FC = () => {
             {currentRestaurant.isBusyPaused ? '🔴 Busy (Paused)' : '🟢 Pause Orders (Busy Mode)'}
           </button>
 
-          <span className="inline-flex items-center gap-2 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-xs font-bold text-orange-800">
+          <span className="inline-flex items-center gap-2 rounded-xl border border-[#E8F5EF] bg-[#F4F9F6] px-3 py-2 text-xs font-bold text-[#041A14]">
             <ShieldCheck className="h-4 w-4" />
             Assigned restaurant only
           </span>
@@ -263,7 +263,7 @@ export const RestaurantPortal: React.FC = () => {
             <button
               onClick={() => setActiveTab('tickets')}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                activeTab === 'tickets' ? 'bg-[#FF5500] text-white shadow-sm' : 'text-slate-700 hover:bg-white hover:text-slate-900'
+                activeTab === 'tickets' ? 'bg-[#0D4F3C] text-white shadow-sm' : 'text-slate-700 hover:bg-white hover:text-slate-900'
               }`}
             >
               Tickets ({restaurantOrders.length})
@@ -271,7 +271,7 @@ export const RestaurantPortal: React.FC = () => {
             <button
               onClick={() => setActiveTab('menu')}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                activeTab === 'menu' ? 'bg-[#FF5500] text-white shadow-sm' : 'text-slate-700 hover:bg-white hover:text-slate-900'
+                activeTab === 'menu' ? 'bg-[#0D4F3C] text-white shadow-sm' : 'text-slate-700 hover:bg-white hover:text-slate-900'
               }`}
             >
               Stock ({liveMenu.length})
@@ -279,7 +279,7 @@ export const RestaurantPortal: React.FC = () => {
             <button
               onClick={() => setActiveTab('finance')}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                activeTab === 'finance' ? 'bg-[#FF5500] text-white shadow-sm' : 'text-slate-700 hover:bg-white hover:text-slate-900'
+                activeTab === 'finance' ? 'bg-[#0D4F3C] text-white shadow-sm' : 'text-slate-700 hover:bg-white hover:text-slate-900'
               }`}
             >
               Payouts
@@ -330,10 +330,10 @@ export const RestaurantPortal: React.FC = () => {
           <div className="space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-200">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-ping" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#0D4F3C] animate-ping" />
                 <h3 className="text-sm font-bold text-slate-900">New Tickets</h3>
               </div>
-              <span className="text-xs font-mono font-bold bg-orange-950 text-orange-400 px-2 py-0.5 rounded-full border border-orange-800">
+              <span className="text-xs font-mono font-bold bg-[#02100C] text-[#126B54] px-2 py-0.5 rounded-full border border-[#041A14]">
                 {newTickets.length}
               </span>
             </div>
@@ -346,11 +346,11 @@ export const RestaurantPortal: React.FC = () => {
               newTickets.map((ord) => (
                 <div
                   key={ord.id}
-                  className="bg-white border-2 border-orange-500/70 rounded-2xl p-4 space-y-3 shadow-lg animate-pulse"
+                  className="bg-white border-2 border-[#0D4F3C]/70 rounded-2xl p-4 space-y-3 shadow-lg animate-pulse"
                 >
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-mono font-bold text-slate-900">{ord.shortId}</span>
-                    <span className="text-orange-400 font-semibold">{ord.createdAt}</span>
+                    <span className="text-[#126B54] font-semibold">{ord.createdAt}</span>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -364,7 +364,7 @@ export const RestaurantPortal: React.FC = () => {
                     {ord.items.map((it) => (
                       <div key={it.cartItemId} className="flex justify-between">
                         <span>
-                          <strong className="text-orange-400">{it.quantity}×</strong> {it?.menuItem?.name || (it as any)?.name || 'Item'}
+                          <strong className="text-[#126B54]">{it.quantity}×</strong> {it?.menuItem?.name || (it as any)?.name || 'Item'}
                         </span>
                       </div>
                     ))}
@@ -386,7 +386,7 @@ export const RestaurantPortal: React.FC = () => {
                     </button>
                     <button
                       onClick={() => advanceOrderStatus(ord.id, 'preparing')}
-                      className="flex-1 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-xs font-bold transition-colors shadow-md"
+                      className="flex-1 py-2 bg-[#093A2D] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold transition-colors shadow-md"
                     >
                       Accept & Cook
                     </button>
@@ -512,7 +512,7 @@ export const RestaurantPortal: React.FC = () => {
                           <option value="">Select courier</option>
                           {availableCouriers.map((courier) => <option key={courier.id} value={courier.id}>{courier.name}</option>)}
                         </select>
-                        <button type="button" onClick={() => handleAssignCourier(ord.id)} disabled={assigningOrderId === ord.id || !selectedCourierByOrder[ord.id]} className="min-h-10 rounded-lg bg-[#FF5500] px-3 py-2 text-xs font-bold text-slate-900 hover:bg-[#e64b00] disabled:opacity-50">{assigningOrderId === ord.id ? 'Assigning…' : 'Assign courier'}</button>
+                        <button type="button" onClick={() => handleAssignCourier(ord.id)} disabled={assigningOrderId === ord.id || !selectedCourierByOrder[ord.id]} className="min-h-10 rounded-lg bg-[#0D4F3C] px-3 py-2 text-xs font-bold text-slate-900 hover:bg-[#e64b00] disabled:opacity-50">{assigningOrderId === ord.id ? 'Assigning…' : 'Assign courier'}</button>
                       </div>
                     </div>
                   )}
@@ -597,7 +597,7 @@ export const RestaurantPortal: React.FC = () => {
           </div>
 
           {menuMsg ? (
-            <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-950">{menuMsg}</div>
+            <div className="rounded-xl border border-[#CDEADF] bg-[#F4F9F6] px-3 py-2 text-xs font-semibold text-[#02100C]">{menuMsg}</div>
           ) : null}
 
           <form onSubmit={handleCreateDish} className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
@@ -607,13 +607,13 @@ export const RestaurantPortal: React.FC = () => {
             <input value={newDishDesc} onChange={(e) => setNewDishDesc(e.target.value)} placeholder="Short description" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-600 md:col-span-2" />
             <div className="md:col-span-2">
               <label htmlFor="restaurant-dish-category" className="mb-1.5 block text-xs font-semibold text-slate-700">Category <span className="text-rose-600">*</span></label>
-              <select id="restaurant-dish-category" required value={newDishCategoryId} onChange={(e) => setNewDishCategoryId(e.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#FF5500] focus:ring-2 focus:ring-orange-100">
+              <select id="restaurant-dish-category" required value={newDishCategoryId} onChange={(e) => setNewDishCategoryId(e.target.value)} className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#0D4F3C] focus:ring-2 focus:ring-[#E8F5EF]">
                 <option value="">Choose a category</option>
                 {menuCategories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
               </select>
               {menuCategories.length === 0 && <p className="mt-1 text-xs text-amber-700">Create a category below before adding dishes.</p>}
             </div>
-            <button type="submit" disabled={savingDish} className="md:col-span-4 min-h-11 rounded-xl bg-[#FF5500] px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm hover:bg-[#e64b00] focus:ring-2 focus:ring-orange-300 disabled:opacity-60">
+            <button type="submit" disabled={savingDish} className="md:col-span-4 min-h-11 rounded-xl bg-[#0D4F3C] px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm hover:bg-[#e64b00] focus:ring-2 focus:ring-[#98D5C3] disabled:opacity-60">
               {savingDish ? 'Saving to D1' : editingDishId ? 'Update dish' : 'Save dish to D1'}
             </button>
           </form>
@@ -641,15 +641,15 @@ export const RestaurantPortal: React.FC = () => {
           }} className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-[1fr_auto]">
             <div>
               <label htmlFor="restaurant-new-category" className="mb-1.5 block text-xs font-semibold text-slate-700">Create a category</label>
-              <input id="restaurant-new-category" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g. Rice dishes" className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-600 focus:border-[#FF5500] focus:ring-2 focus:ring-orange-100" />
+              <input id="restaurant-new-category" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g. Rice dishes" className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-600 focus:border-[#0D4F3C] focus:ring-2 focus:ring-[#E8F5EF]" />
             </div>
-            <button type="submit" disabled={savingCategory || !newCategoryName.trim()} className="self-end min-h-11 rounded-xl border border-orange-200 bg-white px-4 py-2 text-sm font-bold text-[#FF5500] hover:bg-orange-50 disabled:opacity-50">{savingCategory ? 'Saving…' : 'Add category'}</button>
+            <button type="submit" disabled={savingCategory || !newCategoryName.trim()} className="self-end min-h-11 rounded-xl border border-[#CDEADF] bg-white px-4 py-2 text-sm font-bold text-[#0D4F3C] hover:bg-[#F4F9F6] disabled:opacity-50">{savingCategory ? 'Saving…' : 'Add category'}</button>
           </form>
 
           <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold text-slate-900">Your dishes</h4>
-              <button type="button" onClick={loadLiveMenu} className="text-xs font-bold text-[#FF5500] hover:text-orange-400">Refresh</button>
+              <button type="button" onClick={loadLiveMenu} className="text-xs font-bold text-[#0D4F3C] hover:text-[#126B54]">Refresh</button>
             </div>
             {menuLoading ? (
               <p className="text-sm text-slate-600">Loading your dishes</p>
@@ -663,8 +663,8 @@ export const RestaurantPortal: React.FC = () => {
                      <div className="text-xs text-slate-700">NGN {Number(item.price || 0).toLocaleString()} - {item.is_available === 0 ? 'Hidden' : 'Available'}</div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <button type="button" onClick={() => { setEditingDishId(String(item.id)); setNewDishName(String(item.name || '')); setNewDishPrice(String(item.price ?? '')); setNewDishDesc(String(item.description || '')); setNewDishCategoryId(String(item.category_id || '')); setMenuMsg('Editing dish. Save changes to update D1.'); }} className="rounded-lg border border-slate-500 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-900 hover:border-[#FF5500]">Edit</button>
-                    <button type="button" onClick={() => handleToggleDish(item.id)} className="rounded-lg border border-slate-500 bg-white px-2.5 py-1 text-xs font-bold text-slate-900 hover:border-[#FF5500] hover:text-[#FF5500]">
+                    <button type="button" onClick={() => { setEditingDishId(String(item.id)); setNewDishName(String(item.name || '')); setNewDishPrice(String(item.price ?? '')); setNewDishDesc(String(item.description || '')); setNewDishCategoryId(String(item.category_id || '')); setMenuMsg('Editing dish. Save changes to update D1.'); }} className="rounded-lg border border-slate-500 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-900 hover:border-[#0D4F3C]">Edit</button>
+                    <button type="button" onClick={() => handleToggleDish(item.id)} className="rounded-lg border border-slate-500 bg-white px-2.5 py-1 text-xs font-bold text-slate-900 hover:border-[#0D4F3C] hover:text-[#0D4F3C]">
                       {item.is_available === 0 ? 'Restock' : 'Hide'}
                     </button>
                     <button type="button" onClick={async () => { if (!window.confirm('Delete this dish permanently?')) return; try { await api.admin.deleteMenuItem(String(item.id)); await loadLiveMenu(); await refreshData(); setMenuMsg('Dish deleted from D1 and the shared catalogue refreshed.'); } catch (err: any) { setMenuMsg(err?.message || 'Could not delete dish.'); } }} className="rounded-lg border border-rose-700 bg-rose-950 px-2.5 py-1 text-xs font-bold text-rose-200 hover:bg-rose-900">Delete</button>
@@ -678,7 +678,7 @@ export const RestaurantPortal: React.FC = () => {
           <div className="space-y-6">
             {(currentRestaurant.categories || []).map((cat) => (
               <div key={cat.id} className="space-y-3">
-                <h4 className="text-sm font-bold text-orange-400 pb-1 border-b border-slate-200">
+                <h4 className="text-sm font-bold text-[#126B54] pb-1 border-b border-slate-200">
                   {cat.name}
                 </h4>
 

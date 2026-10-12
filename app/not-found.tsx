@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 
 export default function NotFound() {
@@ -10,7 +12,7 @@ export default function NotFound() {
       </p>
       <Link
         href="/"
-        className="px-6 py-2.5 rounded-xl bg-orange-600 text-white font-medium hover:bg-orange-700 transition"
+        className="px-6 py-2.5 rounded-xl bg-[#0D4F3C] text-white font-medium hover:bg-[#0A3F30] transition"
       >
         Return to Home
       </Link>

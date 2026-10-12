@@ -1165,18 +1165,18 @@ export const AdminPortal: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-slate-900 flex flex-col font-sans selection:bg-orange-100 selection:text-[#FF5500]">
+    <div className="min-h-screen bg-[#F8F9FA] text-slate-900 flex flex-col font-sans selection:bg-[#E8F5EF] selection:text-[#0D4F3C]">
       {/* Top Bar matching site branding */}
       <header className="h-16 bg-white border-b border-slate-200/80 px-4 md:px-6 flex items-center justify-between sticky top-0 z-40 shadow-xs">
         <div className="flex items-center gap-3 md:gap-4">
           {/* Navigator Hamburger Button */}
           <button
             onClick={() => setIsMobileDrawerOpen(true)}
-            className="p-2 rounded-xl text-slate-700 hover:text-[#FF5500] hover:bg-orange-50 transition-colors cursor-pointer flex items-center justify-center border border-slate-200 bg-white shadow-xs"
+            className="p-2 rounded-xl text-slate-700 hover:text-[#0D4F3C] hover:bg-[#F4F9F6] transition-colors cursor-pointer flex items-center justify-center border border-slate-200 bg-white shadow-xs"
             aria-label="Open full admin navigator"
             title="Open Admin Navigator"
           >
-            <Menu className="w-5 h-5 text-[#FF5500]" />
+            <Menu className="w-5 h-5 text-[#0D4F3C]" />
           </button>
 
           <button
@@ -1201,8 +1201,8 @@ export const AdminPortal: React.FC = () => {
                 <ShieldAlert className="w-3 h-3 text-indigo-600" /> Sub Admin Mode
               </span>
             ) : (
-              <span className="ml-2 px-2.5 py-0.5 bg-orange-50 text-[#FF5500] border border-orange-200 rounded-full text-[10px] font-bold flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-[#FF5500]" /> Super Admin (A-Z Master)
+              <span className="ml-2 px-2.5 py-0.5 bg-[#F4F9F6] text-[#0D4F3C] border border-[#CDEADF] rounded-full text-[10px] font-bold flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-[#0D4F3C]" /> Super Admin (A-Z Master)
               </span>
             )}
           </div>
@@ -1237,7 +1237,7 @@ export const AdminPortal: React.FC = () => {
             title="Refresh database records"
             className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 bg-white transition-colors cursor-pointer shadow-xs"
           >
-            <RefreshCw className={`w-4 h-4 text-slate-700 ${loading ? 'animate-spin text-[#FF5500]' : ''}`} />
+            <RefreshCw className={`w-4 h-4 text-slate-700 ${loading ? 'animate-spin text-[#0D4F3C]' : ''}`} />
           </button>
 
           {/* Admin Profile Dropdown */}
@@ -1246,7 +1246,7 @@ export const AdminPortal: React.FC = () => {
               onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 transition-colors cursor-pointer shadow-xs"
             >
-              <div className="w-6 h-6 rounded-lg bg-[#FF5500] text-white flex items-center justify-center font-extrabold text-[11px] shadow-xs">
+              <div className="w-6 h-6 rounded-lg bg-[#0D4F3C] text-white flex items-center justify-center font-extrabold text-[11px] shadow-xs">
                 {(user?.name || 'A').charAt(0)}
               </div>
               <span className="hidden sm:inline font-semibold">{user?.name || 'Administrator'}</span>
@@ -1258,16 +1258,16 @@ export const AdminPortal: React.FC = () => {
                 <div className="px-4 py-2 border-b border-slate-100">
                   <div className="font-bold text-slate-900">{user?.name || 'Administrator'}</div>
                   <div className="text-[11px] text-slate-500 truncate">{user?.email || 'N/A'}</div>
-                  <div className="text-[10px] font-bold text-[#FF5500] uppercase mt-0.5">{user?.role === 'sub_admin' ? 'Sub Admin' : 'Super Admin'}</div>
+                  <div className="text-[10px] font-bold text-[#0D4F3C] uppercase mt-0.5">{user?.role === 'sub_admin' ? 'Sub Admin' : 'Super Admin'}</div>
                 </div>
                 {!isSubAdmin && (
                   <>
-                    <button onClick={() => { setActiveTab('settings'); setIsProfileDropdownOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-orange-50 hover:text-[#FF5500] transition-colors cursor-pointer font-medium">Delivery Zones & Settings</button>
-                    <button onClick={() => { setActiveTab('developer'); setIsProfileDropdownOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-orange-50 hover:text-[#FF5500] transition-colors cursor-pointer font-medium">D1 Database Console</button>
+                    <button onClick={() => { setActiveTab('settings'); setIsProfileDropdownOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-[#F4F9F6] hover:text-[#0D4F3C] transition-colors cursor-pointer font-medium">Delivery Zones & Settings</button>
+                    <button onClick={() => { setActiveTab('developer'); setIsProfileDropdownOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-[#F4F9F6] hover:text-[#0D4F3C] transition-colors cursor-pointer font-medium">D1 Database Console</button>
                   </>
                 )}
-                <button onClick={() => { setActiveTab('staff'); setIsProfileDropdownOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-orange-50 hover:text-[#FF5500] transition-colors cursor-pointer font-medium">Staff & RBAC</button>
-                <button onClick={() => { setActiveTab('audit'); setIsProfileDropdownOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-orange-50 hover:text-[#FF5500] transition-colors cursor-pointer font-medium">System Audit Logs</button>
+                <button onClick={() => { setActiveTab('staff'); setIsProfileDropdownOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-[#F4F9F6] hover:text-[#0D4F3C] transition-colors cursor-pointer font-medium">Staff & RBAC</button>
+                <button onClick={() => { setActiveTab('audit'); setIsProfileDropdownOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-[#F4F9F6] hover:text-[#0D4F3C] transition-colors cursor-pointer font-medium">System Audit Logs</button>
                 <div className="border-t border-slate-100 my-1" />
                 <button
                   onClick={async () => {
@@ -1293,10 +1293,10 @@ export const AdminPortal: React.FC = () => {
           <div className="relative w-80 sm:w-88 bg-white h-full flex flex-col border-r border-slate-200 z-10 shadow-2xl">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-[#FF5500] text-white flex items-center justify-center font-black shadow-xs">V</div>
+                <div className="w-8 h-8 rounded-xl bg-[#0D4F3C] text-white flex items-center justify-center font-black shadow-xs">V</div>
                 <div>
                   <div className="text-sm font-extrabold text-slate-900">VeyraNG Admin</div>
-                  <div className="text-[10px] text-[#FF5500] font-semibold uppercase tracking-wider">Edge Management</div>
+                  <div className="text-[10px] text-[#0D4F3C] font-semibold uppercase tracking-wider">Edge Management</div>
                 </div>
               </div>
               <button
@@ -1326,7 +1326,7 @@ export const AdminPortal: React.FC = () => {
                         }}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                           isActive
-                            ? 'bg-[#FF5500] text-white shadow-sm shadow-orange-500/25 font-bold'
+                            ? 'bg-[#0D4F3C] text-white shadow-sm shadow-[#0D4F3C]/25 font-bold'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                         }`}
                       >
@@ -1354,15 +1354,15 @@ export const AdminPortal: React.FC = () => {
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
             {!isSidebarCollapsed && (
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#FF5500] text-white flex items-center justify-center font-black shadow-xs">V</div>
+                <div className="w-8 h-8 rounded-xl bg-[#0D4F3C] text-white flex items-center justify-center font-black shadow-xs">V</div>
                 <div>
                   <div className="text-sm font-extrabold text-slate-900 tracking-tight">VeyraNG</div>
-                  <div className="text-[10px] text-[#FF5500] font-semibold uppercase tracking-wider">Admin Console</div>
+                  <div className="text-[10px] text-[#0D4F3C] font-semibold uppercase tracking-wider">Admin Console</div>
                 </div>
               </div>
             )}
             {isSidebarCollapsed && (
-              <div className="mx-auto w-8 h-8 rounded-xl bg-[#FF5500] text-white flex items-center justify-center font-black shadow-xs">V</div>
+              <div className="mx-auto w-8 h-8 rounded-xl bg-[#0D4F3C] text-white flex items-center justify-center font-black shadow-xs">V</div>
             )}
           </div>
 
@@ -1384,7 +1384,7 @@ export const AdminPortal: React.FC = () => {
                       title={isSidebarCollapsed ? item.label : undefined}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                         isActive
-                          ? 'bg-[#FF5500] text-white shadow-sm shadow-orange-500/25 font-bold'
+                          ? 'bg-[#0D4F3C] text-white shadow-sm shadow-[#0D4F3C]/25 font-bold'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                       }`}
                     >
@@ -1454,14 +1454,14 @@ export const AdminPortal: React.FC = () => {
                     </div>
                     <div className="px-3 py-1.5 bg-slate-800/90 rounded-xl border border-slate-700 text-center">
                       <div className="text-[10px] uppercase font-bold text-slate-400">Storage CDN</div>
-                      <div className="text-xs font-mono font-bold text-orange-400">
+                      <div className="text-xs font-mono font-bold text-[#126B54]">
                         cdn.veyrang.com
                       </div>
                     </div>
                     <button
                       onClick={handlePingDatabase}
                       disabled={isPingingD1}
-                      className="px-4 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-orange-500/30 transition-all disabled:opacity-50"
+                      className="px-4 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-[#0D4F3C]/30 transition-all disabled:opacity-50"
                     >
                       <Activity className={`w-3.5 h-3.5 ${isPingingD1 ? 'animate-spin' : ''}`} />
                       {isPingingD1 ? 'Testing...' : 'Ping D1 Edge Now'}
@@ -1513,7 +1513,7 @@ export const AdminPortal: React.FC = () => {
                   </div>
                   <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs space-y-1.5">
                     <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Platform Net Revenue (15%)</div>
-                    <div className="text-xl sm:text-2xl font-bold text-[#FF5500] font-mono">
+                    <div className="text-xl sm:text-2xl font-bold text-[#0D4F3C] font-mono">
                       ₦{(analytics?.platformNetRevenue ?? Math.round(ordersList.reduce((sum, o) => sum + (Number(o.total) || 0), 0) * 0.15)).toLocaleString('en-NG')}
                     </div>
                     <div className="text-[11px] text-slate-500">Retained revenue</div>
@@ -1546,23 +1546,23 @@ export const AdminPortal: React.FC = () => {
               <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-4">
                 <h3 className="text-sm font-bold text-slate-900">Quick Navigation & Operations</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <button onClick={() => setActiveTab('orders')} className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-orange-50 hover:border-orange-200 transition-colors text-left cursor-pointer">
-                    <ShoppingBag className="w-5 h-5 text-[#FF5500] mb-1.5" />
+                  <button onClick={() => setActiveTab('orders')} className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-[#F4F9F6] hover:border-[#CDEADF] transition-colors text-left cursor-pointer">
+                    <ShoppingBag className="w-5 h-5 text-[#0D4F3C] mb-1.5" />
                     <div className="text-xs font-bold text-slate-900">Manage Orders</div>
                     <div className="text-[11px] text-slate-500">{ordersList.length} orders in record</div>
                   </button>
-                  <button onClick={() => setActiveTab('staff')} className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-orange-50 hover:border-orange-200 transition-colors text-left cursor-pointer">
-                    <ShieldAlert className="w-5 h-5 text-[#FF5500] mb-1.5" />
+                  <button onClick={() => setActiveTab('staff')} className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-[#F4F9F6] hover:border-[#CDEADF] transition-colors text-left cursor-pointer">
+                    <ShieldAlert className="w-5 h-5 text-[#0D4F3C] mb-1.5" />
                     <div className="text-xs font-bold text-slate-900">Staff & Roles</div>
                     <div className="text-[11px] text-slate-500">4 Core Role Permissions</div>
                   </button>
-                  <button onClick={() => setActiveTab('menu')} className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-orange-50 hover:border-orange-200 transition-colors text-left cursor-pointer">
-                    <Utensils className="w-5 h-5 text-[#FF5500] mb-1.5" />
+                  <button onClick={() => setActiveTab('menu')} className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-[#F4F9F6] hover:border-[#CDEADF] transition-colors text-left cursor-pointer">
+                    <Utensils className="w-5 h-5 text-[#0D4F3C] mb-1.5" />
                     <div className="text-xs font-bold text-slate-900">Menu & Kitchen</div>
                     <div className="text-[11px] text-slate-500">{menuItemsList.length} dishes online</div>
                   </button>
-                  <button onClick={() => setActiveTab('drivers')} className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-orange-50 hover:border-orange-200 transition-colors text-left cursor-pointer">
-                    <Bike className="w-5 h-5 text-[#FF5500] mb-1.5" />
+                  <button onClick={() => setActiveTab('drivers')} className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-[#F4F9F6] hover:border-[#CDEADF] transition-colors text-left cursor-pointer">
+                    <Bike className="w-5 h-5 text-[#0D4F3C] mb-1.5" />
                     <div className="text-xs font-bold text-slate-900">Riders Fleet</div>
                     <div className="text-[11px] text-slate-500">{driversList.length} registered riders</div>
                   </button>
@@ -1585,7 +1585,7 @@ export const AdminPortal: React.FC = () => {
                     placeholder="Search by order ID, name, or phone..."
                     value={orderSearchQuery}
                     onChange={(e) => setOrderSearchQuery(e.target.value)}
-                    className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#FF5500] outline-none w-64"
+                    className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[#0D4F3C] outline-none w-64"
                   />
                   <select
                     value={orderStatusFilter}
@@ -1613,7 +1613,7 @@ export const AdminPortal: React.FC = () => {
                   <tbody className="divide-y divide-slate-100 text-slate-700">
                     {filteredOrders.map((o) => (
                       <tr key={o.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="p-3 font-mono font-bold text-[#FF5500]">#{o.shortId || o.short_id || o.id?.substring(0, 8)}</td>
+                        <td className="p-3 font-mono font-bold text-[#0D4F3C]">#{o.shortId || o.short_id || o.id?.substring(0, 8)}</td>
                         <td className="p-3">
                           <div className="font-semibold text-slate-900">{o.customerName || o.customer_name || 'Customer'}</div>
                           <div className="text-[11px] text-slate-500">{o.customerPhone || o.customer_phone || ''}</div>
@@ -1680,7 +1680,7 @@ export const AdminPortal: React.FC = () => {
                 {!isSubAdmin ? (
                   <button
                     onClick={() => setIsAddStaffModalOpen(true)}
-                    className="px-4 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-orange-500/25 shrink-0 transition-colors"
+                    className="px-4 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-[#0D4F3C]/25 shrink-0 transition-colors"
                   >
                     <UserPlus className="w-4 h-4" /> Add Staff Member
                   </button>
@@ -1693,7 +1693,7 @@ export const AdminPortal: React.FC = () => {
 
               {/* Add Staff Modal - Super Admin Only */}
               {isAddStaffModalOpen && !isSubAdmin && (
-                <div className="bg-white border border-orange-200 rounded-2xl p-5 space-y-4 shadow-xl">
+                <div className="bg-white border border-[#CDEADF] rounded-2xl p-5 space-y-4 shadow-xl">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>
                       <h4 className="text-sm font-bold text-slate-900">Add Staff Account</h4>
@@ -1713,7 +1713,7 @@ export const AdminPortal: React.FC = () => {
                           placeholder="e.g. Adeola Johnson"
                           value={newStaffName}
                           onChange={(e) => setNewStaffName(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                         />
                       </div>
                       <div>
@@ -1723,7 +1723,7 @@ export const AdminPortal: React.FC = () => {
                           required
                           value={newStaffEmail}
                           onChange={(e) => setNewStaffEmail(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#0D4F3C] outline-none"
                         />
                       </div>
                       <div>
@@ -1731,7 +1731,7 @@ export const AdminPortal: React.FC = () => {
                         <select
                           value={newStaffRole}
                           onChange={(e) => setNewStaffRole(e.target.value as UserRole)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold cursor-pointer focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold cursor-pointer focus:border-[#0D4F3C] outline-none"
                         >
 {USER_ROLES.map(role => (
                             <option key={role.value} value={role.value}>{role.label}</option>
@@ -1739,8 +1739,8 @@ export const AdminPortal: React.FC = () => {
                         </select>
                       </div>
                       {newStaffRole === 'restaurant' && (
-                        <div className="sm:col-span-2 rounded-xl border border-orange-200 bg-orange-50 p-3">
-                          <label className="text-[11px] text-orange-900 font-bold block mb-1">Restaurant setup *</label>
+                        <div className="sm:col-span-2 rounded-xl border border-[#CDEADF] bg-[#F4F9F6] p-3">
+                          <label className="text-[11px] text-[#02100C] font-bold block mb-1">Restaurant setup *</label>
                           <div className="flex flex-wrap gap-4 mb-3 text-xs font-semibold text-slate-700">
                             <label className="flex items-center gap-2"><input type="radio" checked={!createRestaurantForStaff} onChange={() => setCreateRestaurantForStaff(false)} /> Link existing</label>
                             <label className="flex items-center gap-2"><input type="radio" checked={createRestaurantForStaff} onChange={() => setCreateRestaurantForStaff(true)} /> Create new restaurant</label>
@@ -1750,7 +1750,7 @@ export const AdminPortal: React.FC = () => {
                               required={!createRestaurantForStaff}
                               value={newStaffRestaurantId}
                               onChange={(e) => setNewStaffRestaurantId(e.target.value)}
-                              className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:border-[#FF5500] outline-none"
+                              className="w-full bg-white border border-[#CDEADF] rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:border-[#0D4F3C] outline-none"
                             >
                               <option value="">Select an existing restaurant</option>
                               {restaurantsList.map((restaurant: any) => (
@@ -1759,12 +1759,12 @@ export const AdminPortal: React.FC = () => {
                             </select>
                           ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <input required placeholder="Restaurant name" value={newStaffRestaurantName} onChange={(e) => setNewStaffRestaurantName(e.target.value)} className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900" />
-                              <input required placeholder="Restaurant address" value={newStaffRestaurantAddress} onChange={(e) => setNewStaffRestaurantAddress(e.target.value)} className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900" />
-                              <input placeholder="Cuisine (optional)" value={newStaffRestaurantCuisine} onChange={(e) => setNewStaffRestaurantCuisine(e.target.value)} className="w-full bg-white border border-orange-200 rounded-xl px-3 py-2 text-xs text-slate-900 sm:col-span-2" />
+                              <input required placeholder="Restaurant name" value={newStaffRestaurantName} onChange={(e) => setNewStaffRestaurantName(e.target.value)} className="w-full bg-white border border-[#CDEADF] rounded-xl px-3 py-2 text-xs text-slate-900" />
+                              <input required placeholder="Restaurant address" value={newStaffRestaurantAddress} onChange={(e) => setNewStaffRestaurantAddress(e.target.value)} className="w-full bg-white border border-[#CDEADF] rounded-xl px-3 py-2 text-xs text-slate-900" />
+                              <input placeholder="Cuisine (optional)" value={newStaffRestaurantCuisine} onChange={(e) => setNewStaffRestaurantCuisine(e.target.value)} className="w-full bg-white border border-[#CDEADF] rounded-xl px-3 py-2 text-xs text-slate-900 sm:col-span-2" />
                             </div>
                           )}
-                          <p className="mt-1 text-[11px] text-orange-800">The account is linked to this restaurant only.</p>
+                          <p className="mt-1 text-[11px] text-[#041A14]">The account is linked to this restaurant only.</p>
                         </div>
                       )}
                       <div>
@@ -1774,7 +1774,7 @@ export const AdminPortal: React.FC = () => {
                           placeholder="+234 800 123 4567"
                           value={newStaffPhone}
                           onChange={(e) => setNewStaffPhone(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#0D4F3C] outline-none"
                         />
                       </div>
                       <div className="sm:col-span-2">
@@ -1783,7 +1783,7 @@ export const AdminPortal: React.FC = () => {
                           type="text"
                           value={newStaffPassword}
                           onChange={(e) => setNewStaffPassword(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#0D4F3C] outline-none"
                         />
                       </div>
                     </div>
@@ -1798,7 +1798,7 @@ export const AdminPortal: React.FC = () => {
                       </button>
                       <button
                         type="submit"
-                        className="px-5 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold cursor-pointer shadow-sm shadow-orange-500/25"
+                        className="px-5 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold cursor-pointer shadow-sm shadow-[#0D4F3C]/25"
                       >
                         Create Staff Account
                       </button>
@@ -1826,7 +1826,7 @@ export const AdminPortal: React.FC = () => {
                         <td className="p-3 font-mono text-slate-600">{u.email}</td>
                         <td className="p-3">
                           {u.role === 'admin' ? (
-                            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-orange-50 text-[#FF5500] border border-orange-200 uppercase">
+                            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-[#F4F9F6] text-[#0D4F3C] border border-[#CDEADF] uppercase">
                               Super Admin
                             </span>
                           ) : u.role === 'sub_admin' ? (
@@ -1852,7 +1852,7 @@ export const AdminPortal: React.FC = () => {
                             <select
                               value={u.role}
                               onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
-                              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 font-semibold cursor-pointer focus:border-[#FF5500] outline-none"
+                              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 font-semibold cursor-pointer focus:border-[#0D4F3C] outline-none"
                             >
                               {USER_ROLES.map(role => (
                                 <option key={role.value} value={role.value}>{role.label}</option>
@@ -1864,7 +1864,7 @@ export const AdminPortal: React.FC = () => {
                         </td>
                         <td className="p-3 min-w-[220px]">
                           {u.role === 'restaurant' && !isSubAdmin ? (
-                            <select value={u.restaurantId || ''} onChange={(e) => e.target.value && handleAssignRestaurant(e.target.value, u.id)} className="w-full min-w-[190px] bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-[#FF5500] outline-none" aria-label={`Assign restaurant to ${u.name}`}>
+                            <select value={u.restaurantId || ''} onChange={(e) => e.target.value && handleAssignRestaurant(e.target.value, u.id)} className="w-full min-w-[190px] bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-[#0D4F3C] outline-none" aria-label={`Assign restaurant to ${u.name}`}>
                               <option value="">Select restaurant…</option>
                               {restaurantsList.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
                             </select>
@@ -1901,14 +1901,14 @@ export const AdminPortal: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIsAddMenuModalOpen(true)}
-                  className="px-4 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-orange-500/25"
+                  className="px-4 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-[#0D4F3C]/25"
                 >
                   <Plus className="w-4 h-4" /> Add New Dish
                 </button>
               </div>
 
               {isAddMenuModalOpen && (
-                <div className="bg-white border border-orange-200 rounded-2xl p-5 space-y-4 shadow-xl">
+                <div className="bg-white border border-[#CDEADF] rounded-2xl p-5 space-y-4 shadow-xl">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h4 className="text-sm font-bold text-slate-900">Add Dish to Restaurant Menu</h4>
                     <button onClick={() => setIsAddMenuModalOpen(false)} className="text-slate-400 hover:text-slate-900 cursor-pointer p-1">
@@ -1925,7 +1925,7 @@ export const AdminPortal: React.FC = () => {
                           placeholder="e.g. Smoky Jollof Rice Special"
                           value={newMenuName}
                           onChange={(e) => setNewMenuName(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                         />
                       </div>
                       <div>
@@ -1936,12 +1936,12 @@ export const AdminPortal: React.FC = () => {
                           placeholder="e.g. 4500"
                           value={newMenuPrice}
                           onChange={(e) => setNewMenuPrice(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#0D4F3C] outline-none"
                         />
                       </div>
                       <div>
                         <label htmlFor="admin-menu-restaurant" className="text-[11px] text-slate-600 font-semibold block mb-1">Restaurant *</label>
-                        <select id="admin-menu-restaurant" required value={newMenuRestaurantId} onChange={(e) => setNewMenuRestaurantId(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none">
+                        <select id="admin-menu-restaurant" required value={newMenuRestaurantId} onChange={(e) => setNewMenuRestaurantId(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none">
                           <option value="">Select a restaurant</option>
                           {restaurantsList.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
                         </select>
@@ -1953,7 +1953,7 @@ export const AdminPortal: React.FC = () => {
                           placeholder="e.g. Rice Dishes / Grills"
                           value={newMenuCategory}
                           onChange={(e) => setNewMenuCategory(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                         />
                       </div>
                       <div>
@@ -1963,7 +1963,7 @@ export const AdminPortal: React.FC = () => {
                           placeholder="https://..."
                           value={newMenuImageUrl}
                           onChange={(e) => setNewMenuImageUrl(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                         />
                       </div>
                       <div className="sm:col-span-2">
@@ -1973,7 +1973,7 @@ export const AdminPortal: React.FC = () => {
                           placeholder="Rich ingredients and portion details..."
                           value={newMenuDesc}
                           onChange={(e) => setNewMenuDesc(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                         />
                       </div>
                     </div>
@@ -1988,7 +1988,7 @@ export const AdminPortal: React.FC = () => {
                       </button>
                       <button
                         type="submit"
-                        className="px-5 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold cursor-pointer shadow-sm shadow-orange-500/25"
+                        className="px-5 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold cursor-pointer shadow-sm shadow-[#0D4F3C]/25"
                       >
                         Add Dish to Menu
                       </button>
@@ -2015,7 +2015,7 @@ export const AdminPortal: React.FC = () => {
                           required
                           value={editMenuName}
                           onChange={(e) => setEditMenuName(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                         />
                       </div>
                       <div>
@@ -2025,7 +2025,7 @@ export const AdminPortal: React.FC = () => {
                           required
                           value={editMenuPrice}
                           onChange={(e) => setEditMenuPrice(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none font-mono"
                         />
                       </div>
                       <div>
@@ -2034,12 +2034,12 @@ export const AdminPortal: React.FC = () => {
                           type="text"
                           value={editMenuCategory}
                           onChange={(e) => setEditMenuCategory(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                         />
                       </div>
                       <div>
                         <label htmlFor="admin-edit-menu-restaurant" className="text-[11px] text-slate-600 font-semibold block mb-1">Restaurant *</label>
-                        <select id="admin-edit-menu-restaurant" required value={editMenuRestaurantId} onChange={(e) => setEditMenuRestaurantId(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none">
+                        <select id="admin-edit-menu-restaurant" required value={editMenuRestaurantId} onChange={(e) => setEditMenuRestaurantId(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none">
                           <option value="">Select a restaurant</option>
                           {restaurantsList.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
                         </select>
@@ -2050,7 +2050,7 @@ export const AdminPortal: React.FC = () => {
                           type="text"
                           value={editMenuImageUrl}
                           onChange={(e) => setEditMenuImageUrl(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                         />
                       </div>
                       <div className="sm:col-span-2">
@@ -2059,7 +2059,7 @@ export const AdminPortal: React.FC = () => {
                           rows={2}
                           value={editMenuDesc}
                           onChange={(e) => setEditMenuDesc(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                         />
                       </div>
                     </div>
@@ -2074,7 +2074,7 @@ export const AdminPortal: React.FC = () => {
                       </button>
                       <button
                         type="submit"
-                        className="px-5 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold cursor-pointer shadow-sm"
+                        className="px-5 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold cursor-pointer shadow-sm"
                       >
                         Save Changes in D1
                       </button>
@@ -2210,14 +2210,14 @@ export const AdminPortal: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIsAddZoneModalOpen(true)}
-                  className="px-4 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-orange-500/25"
+                  className="px-4 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-[#0D4F3C]/25"
                 >
                   <Plus className="w-4 h-4" /> Add Delivery Zone
                 </button>
               </div>
 
               {isAddZoneModalOpen && (
-                <div className="bg-white border border-orange-200 rounded-2xl p-5 space-y-4 shadow-xl animate-fadeIn">
+                <div className="bg-white border border-[#CDEADF] rounded-2xl p-5 space-y-4 shadow-xl animate-fadeIn">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <h4 className="text-sm font-bold text-slate-900">Add New Delivery Zone to Platform D1</h4>
                     <button onClick={() => setIsAddZoneModalOpen(false)} className="text-slate-400 hover:text-slate-900 cursor-pointer p-1">
@@ -2233,7 +2233,7 @@ export const AdminPortal: React.FC = () => {
                         placeholder="e.g. Lekki Phase 1"
                         value={newZoneName}
                         onChange={(e) => setNewZoneName(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                       />
                     </div>
                     <div>
@@ -2244,7 +2244,7 @@ export const AdminPortal: React.FC = () => {
                         placeholder="e.g. LEK-01"
                         value={newZoneCode}
                         onChange={(e) => setNewZoneCode(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none uppercase font-mono"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none uppercase font-mono"
                       />
                     </div>
                     <div>
@@ -2254,7 +2254,7 @@ export const AdminPortal: React.FC = () => {
                         required
                         value={newZoneCity}
                         onChange={(e) => setNewZoneCity(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                       />
                     </div>
                     <div>
@@ -2265,7 +2265,7 @@ export const AdminPortal: React.FC = () => {
                         min="0"
                         value={newZoneBaseFee}
                         onChange={(e) => setNewZoneBaseFee(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none font-mono"
                       />
                     </div>
                     <div>
@@ -2276,7 +2276,7 @@ export const AdminPortal: React.FC = () => {
                         min="0"
                         value={newZonePerKmFee}
                         onChange={(e) => setNewZonePerKmFee(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none font-mono"
                       />
                     </div>
                     <div>
@@ -2288,20 +2288,20 @@ export const AdminPortal: React.FC = () => {
                         step="0.1"
                         value={newZoneSurge}
                         onChange={(e) => setNewZoneSurge(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none font-mono"
                       />
                     </div>
                     <div>
                       <label className="text-[11px] text-slate-600 font-semibold block mb-1">Delivery Radius (km) *</label>
-                      <input type="number" required min="0.1" step="0.1" value={newZoneRadius} onChange={(e) => setNewZoneRadius(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono" />
+                      <input type="number" required min="0.1" step="0.1" value={newZoneRadius} onChange={(e) => setNewZoneRadius(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none font-mono" />
                     </div>
                     <div>
                       <label className="text-[11px] text-slate-600 font-semibold block mb-1">Centre Latitude *</label>
-                      <input type="number" required min="-90" max="90" step="any" value={newZoneCenterLat} onChange={(e) => setNewZoneCenterLat(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono" />
+                      <input type="number" required min="-90" max="90" step="any" value={newZoneCenterLat} onChange={(e) => setNewZoneCenterLat(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none font-mono" />
                     </div>
                     <div>
                       <label className="text-[11px] text-slate-600 font-semibold block mb-1">Centre Longitude *</label>
-                      <input type="number" required min="-180" max="180" step="any" value={newZoneCenterLng} onChange={(e) => setNewZoneCenterLng(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none font-mono" />
+                      <input type="number" required min="-180" max="180" step="any" value={newZoneCenterLng} onChange={(e) => setNewZoneCenterLng(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none font-mono" />
                     </div>
                     <div className="sm:col-span-3 flex justify-end gap-2 pt-2 border-t border-slate-100">
                       <button
@@ -2313,7 +2313,7 @@ export const AdminPortal: React.FC = () => {
                       </button>
                       <button
                         type="submit"
-                        className="px-5 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold cursor-pointer shadow-sm"
+                        className="px-5 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold cursor-pointer shadow-sm"
                       >
                         Save Zone in D1
                       </button>
@@ -2342,7 +2342,7 @@ export const AdminPortal: React.FC = () => {
                         <td className="p-3 text-slate-600">{z.city || 'City not configured'}</td>
                         <td className="p-3 font-mono font-bold text-slate-900">{Number.isFinite(Number(z.base_delivery_fee ?? z.baseFee)) ? `₦${Number(z.base_delivery_fee ?? z.baseFee).toLocaleString('en-NG')}` : 'Not configured'}</td>
                         <td className="p-3 font-mono text-slate-600">{Number.isFinite(Number(z.per_km_fee ?? z.perKmFee)) ? '₦' + Number(z.per_km_fee ?? z.perKmFee).toLocaleString('en-NG') : 'Not configured'} / km</td>
-                        <td className="p-3 font-mono font-bold text-[#FF5500]">{Number.isFinite(Number(z.surge_multiplier ?? z.surgeMultiplier)) ? Number(z.surge_multiplier ?? z.surgeMultiplier).toFixed(1) + 'x' : 'Not configured'}</td>
+                        <td className="p-3 font-mono font-bold text-[#0D4F3C]">{Number.isFinite(Number(z.surge_multiplier ?? z.surgeMultiplier)) ? Number(z.surge_multiplier ?? z.surgeMultiplier).toFixed(1) + 'x' : 'Not configured'}</td>
                         <td className="p-3">
                           <button
                             onClick={() => handleToggleZoneActive(z.id)}
@@ -2384,7 +2384,7 @@ export const AdminPortal: React.FC = () => {
                   value={devSqlQuery}
                   onChange={(e) => setDevSqlQuery(e.target.value)}
                   placeholder="Write raw SQL here or select a template below..."
-                  className="w-full bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl p-3.5 border border-slate-800 focus:border-[#FF5500] outline-none"
+                  className="w-full bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl p-3.5 border border-slate-800 focus:border-[#0D4F3C] outline-none"
                 />
                 <div className="flex flex-wrap gap-2 items-center text-[10px] pb-1">
                   <span className="text-slate-500 font-bold">Quick Templates:</span>
@@ -2409,7 +2409,7 @@ export const AdminPortal: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isExecutingSql}
-                  className="px-5 py-2.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-orange-500/25 disabled:opacity-50"
+                  className="px-5 py-2.5 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-[#0D4F3C]/25 disabled:opacity-50"
                 >
                   <Terminal className="w-4 h-4" /> {isExecutingSql ? 'Executing...' : 'Run Query on D1'}
                 </button>
@@ -2457,7 +2457,7 @@ export const AdminPortal: React.FC = () => {
                           {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Recent'}
                         </td>
                         <td className="p-3 font-semibold text-slate-900">{log.userEmail || log.user_email || 'System'}</td>
-                        <td className="p-3 font-mono text-[#FF5500] font-bold">{log.action}</td>
+                        <td className="p-3 font-mono text-[#0D4F3C] font-bold">{log.action}</td>
                         <td className="p-3 text-slate-600">{log.resource}</td>
                         <td className="p-3 font-mono text-slate-500">{log.ip || '127.0.0.1'}</td>
                       </tr>
@@ -2491,7 +2491,7 @@ export const AdminPortal: React.FC = () => {
                     required
                     value={broadcastTitle}
                     onChange={(e) => setBroadcastTitle(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                   />
                 </div>
                 <div>
@@ -2502,12 +2502,12 @@ export const AdminPortal: React.FC = () => {
                     placeholder="Enter your announcement..."
                     value={broadcastMessage}
                     onChange={(e) => setBroadcastMessage(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-orange-500/25"
+                  className="px-5 py-2.5 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-[#0D4F3C]/25"
                 >
                   <Send className="w-4 h-4" /> Send Broadcast
                 </button>
@@ -2544,7 +2544,7 @@ export const AdminPortal: React.FC = () => {
                     {transactions.map((tx) => (
                       <tr key={tx.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="p-3 font-mono font-semibold text-slate-900">{tx.reference || tx.id}</td>
-                        <td className="p-3 font-mono text-[#FF5500]">#{tx.orderId || tx.order_id || 'N/A'}</td>
+                        <td className="p-3 font-mono text-[#0D4F3C]">#{tx.orderId || tx.order_id || 'N/A'}</td>
                         <td className="p-3 font-mono font-bold text-slate-900">₦{Number(tx.amount || 0).toLocaleString('en-NG')}</td>
                         <td className="p-3 uppercase font-medium text-slate-600">{tx.paymentMethod || tx.payment_method || 'Card'}</td>
                         <td className="p-3">
@@ -2579,7 +2579,7 @@ export const AdminPortal: React.FC = () => {
                 <div className="text-xs text-slate-700">
                   Ready to export <strong className="text-slate-900">{ordersList.length} orders</strong> and <strong className="text-slate-900">{transactions.length} ledger payments</strong>.
                 </div>
-                <button onClick={handleDownloadCSV} className="px-5 py-2.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-orange-500/25">
+                <button onClick={handleDownloadCSV} className="px-5 py-2.5 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-[#0D4F3C]/25">
                   <Download className="w-4 h-4" /> Download Complete Sales Report CSV
                 </button>
               </div>
@@ -2598,13 +2598,13 @@ export const AdminPortal: React.FC = () => {
                   onClick={() => setActiveTab('settings')}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
-                  <MapPin className="w-4 h-4 text-[#FF5500]" /> Configure Zone Rates
+                  <MapPin className="w-4 h-4 text-[#0D4F3C]" /> Configure Zone Rates
                 </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-orange-50/60 border border-orange-200 rounded-2xl p-4 space-y-1">
-                  <div className="text-[11px] font-bold text-[#FF5500] uppercase tracking-wide">Active Couriers on Road</div>
+                <div className="bg-[#F4F9F6]/60 border border-[#CDEADF] rounded-2xl p-4 space-y-1">
+                  <div className="text-[11px] font-bold text-[#0D4F3C] uppercase tracking-wide">Active Couriers on Road</div>
                   <div className="text-2xl font-black text-slate-900 font-mono">
                     {driversList.filter((d) => d.is_online === 1).length} Online
                   </div>
@@ -2643,7 +2643,7 @@ export const AdminPortal: React.FC = () => {
                         <td className="p-3 font-semibold text-slate-900">{z.name}</td>
                         <td className="p-3 font-mono font-bold text-slate-900">₦{Number.isFinite(Number(z.base_delivery_fee ?? z.baseFee)) ? Number(z.base_delivery_fee ?? z.baseFee).toLocaleString('en-NG') : 'Not configured'}</td>
                         <td className="p-3 font-mono text-slate-600">{Number.isFinite(Number(z.per_km_fee ?? z.perKmFee)) ? '₦' + Number(z.per_km_fee ?? z.perKmFee).toLocaleString('en-NG') : 'Not configured'}/km</td>
-                        <td className="p-3 font-mono font-bold text-[#FF5500]">{Number.isFinite(Number(z.surge_multiplier ?? z.surgeMultiplier)) ? Number(z.surge_multiplier ?? z.surgeMultiplier).toFixed(1) + 'x' : 'Not configured'}</td>
+                        <td className="p-3 font-mono font-bold text-[#0D4F3C]">{Number.isFinite(Number(z.surge_multiplier ?? z.surgeMultiplier)) ? Number(z.surge_multiplier ?? z.surgeMultiplier).toFixed(1) + 'x' : 'Not configured'}</td>
                         <td className="p-3">
                           <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase ${
                             z.is_active === 1 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'
@@ -2697,14 +2697,14 @@ export const AdminPortal: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIsAddCatModalOpen(true)}
-                  className="px-4 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-orange-500/25"
+                  className="px-4 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-[#0D4F3C]/25"
                 >
                   <Plus className="w-4 h-4" /> Add Category
                 </button>
               </div>
 
               {isAddCatModalOpen && (
-                <div className="p-4 bg-orange-50/50 rounded-2xl border border-orange-200 space-y-4 animate-fadeIn">
+                <div className="p-4 bg-[#F4F9F6]/50 rounded-2xl border border-[#CDEADF] space-y-4 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold uppercase text-slate-900">Create New Menu Category in D1</h4>
                     <button onClick={() => setIsAddCatModalOpen(false)} className="text-slate-400 hover:text-slate-700">
@@ -2720,12 +2720,12 @@ export const AdminPortal: React.FC = () => {
                         placeholder="e.g. Swallows & Soups"
                         value={newCatName}
                         onChange={(e) => setNewCatName(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                       />
                     </div>
                     <div>
                       <label htmlFor="admin-category-restaurant" className="text-[11px] font-semibold text-slate-600 block mb-1">Restaurant *</label>
-                      <select id="admin-category-restaurant" required value={newCatRestaurantId} onChange={(e) => setNewCatRestaurantId(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none">
+                      <select id="admin-category-restaurant" required value={newCatRestaurantId} onChange={(e) => setNewCatRestaurantId(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none">
                         <option value="">Select a restaurant</option>
                         {restaurantsList.map((restaurant: any) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
                       </select>
@@ -2737,16 +2737,16 @@ export const AdminPortal: React.FC = () => {
                         placeholder="e.g. Fresh pounded yam, egusi, and native delicacies"
                         value={newCatDesc}
                         onChange={(e) => setNewCatDesc(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                       />
                     </div>
                     <div>
                       <label className="text-[11px] font-semibold text-slate-600 block mb-1">Preparation Time Min (minutes) *</label>
-                      <input type="number" required min="0" value={newRestDeliveryMin} onChange={(e) => setNewRestDeliveryMin(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-[#FF5500] outline-none" />
+                      <input type="number" required min="0" value={newRestDeliveryMin} onChange={(e) => setNewRestDeliveryMin(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-[#0D4F3C] outline-none" />
                     </div>
                     <div>
                       <label className="text-[11px] font-semibold text-slate-600 block mb-1">Preparation Time Max (minutes) *</label>
-                      <input type="number" required min="0" value={newRestDeliveryMax} onChange={(e) => setNewRestDeliveryMax(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-[#FF5500] outline-none" />
+                      <input type="number" required min="0" value={newRestDeliveryMax} onChange={(e) => setNewRestDeliveryMax(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-[#0D4F3C] outline-none" />
                     </div>
                     <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
                       <button
@@ -2758,7 +2758,7 @@ export const AdminPortal: React.FC = () => {
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-1.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold shadow-sm"
+                        className="px-4 py-1.5 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold shadow-sm"
                       >
                         Save Category to D1
                       </button>
@@ -2826,14 +2826,14 @@ export const AdminPortal: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIsAddAddonModalOpen(true)}
-                  className="px-4 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-orange-500/25"
+                  className="px-4 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-[#0D4F3C]/25"
                 >
                   <Plus className="w-4 h-4" /> Add Add-on
                 </button>
               </div>
 
               {isAddAddonModalOpen && (
-                <div className="p-4 bg-orange-50/50 rounded-2xl border border-orange-200 space-y-4 animate-fadeIn">
+                <div className="p-4 bg-[#F4F9F6]/50 rounded-2xl border border-[#CDEADF] space-y-4 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold uppercase text-slate-900">Create New Add-on / Modifier</h4>
                     <button onClick={() => setIsAddAddonModalOpen(false)} className="text-slate-400 hover:text-slate-700">
@@ -2849,7 +2849,7 @@ export const AdminPortal: React.FC = () => {
                         placeholder="e.g. Extra Grilled Chicken Portion"
                         value={newAddonName}
                         onChange={(e) => setNewAddonName(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                       />
                     </div>
                     <div>
@@ -2860,7 +2860,7 @@ export const AdminPortal: React.FC = () => {
                         placeholder="e.g. 1500"
                         value={newAddonPrice}
                         onChange={(e) => setNewAddonPrice(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#0D4F3C] outline-none"
                       />
                     </div>
                     <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
@@ -2873,7 +2873,7 @@ export const AdminPortal: React.FC = () => {
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-1.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold shadow-sm"
+                        className="px-4 py-1.5 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold shadow-sm"
                       >
                         Save Add-on to D1
                       </button>
@@ -3005,7 +3005,7 @@ export const AdminPortal: React.FC = () => {
                       placeholder="Search accounts..."
                       value={customerSearchQuery}
                       onChange={(e) => setCustomerSearchQuery(e.target.value)}
-                      className="bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 outline-none focus:border-[#FF5500]"
+                      className="bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 outline-none focus:border-[#0D4F3C]"
                     />
                   </div>
                 </div>
@@ -3014,7 +3014,7 @@ export const AdminPortal: React.FC = () => {
               {/* D1 Live Total Wallet Sum Banner */}
               <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
                 <div>
-                  <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest block">
+                  <span className="text-[10px] font-bold text-[#126B54] uppercase tracking-widest block">
                     Platform D1 Total Wallet Liabilities
                   </span>
                   <div className="text-2xl sm:text-3xl font-black font-mono mt-0.5 tracking-tight text-white">
@@ -3031,11 +3031,11 @@ export const AdminPortal: React.FC = () => {
               </div>
 
               {selectedUserForWallet && (
-                <div className="p-4 bg-orange-50/70 border border-orange-200 rounded-2xl space-y-3 animate-fadeIn">
+                <div className="p-4 bg-[#F4F9F6]/70 border border-[#CDEADF] rounded-2xl space-y-3 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="text-xs font-bold uppercase text-slate-900">
-                        Adjust Wallet Balance: <span className="text-[#FF5500]">{selectedUserForWallet.name}</span> ({selectedUserForWallet.email})
+                        Adjust Wallet Balance: <span className="text-[#0D4F3C]">{selectedUserForWallet.name}</span> ({selectedUserForWallet.email})
                       </h4>
                       <div className="text-[11px] text-slate-600 mt-0.5">
                         Current Balance: ₦{Number(selectedUserForWallet.wallet_balance_ngn || 0).toLocaleString('en-NG')}
@@ -3052,18 +3052,18 @@ export const AdminPortal: React.FC = () => {
                       placeholder="Credit amount (NGN)"
                       value={walletAdjustAmount}
                       onChange={(e) => setWalletAdjustAmount(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#FF5500] outline-none"
+                      className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:border-[#0D4F3C] outline-none"
                     />
                     <input
                       type="text"
                       placeholder="Credit reason (e.g. VIP Promotion)"
                       value={walletAdjustReason}
                       onChange={(e) => setWalletAdjustReason(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none flex-1 min-w-[200px]"
+                      className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none flex-1 min-w-[200px]"
                     />
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                      className="px-4 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                     >
                       Credit Wallet in D1
                     </button>
@@ -3104,7 +3104,7 @@ export const AdminPortal: React.FC = () => {
                               <select
                                 value={u.role}
                                 onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
-                                className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[11px] text-slate-800 font-semibold cursor-pointer focus:border-[#FF5500] outline-none"
+                                className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[11px] text-slate-800 font-semibold cursor-pointer focus:border-[#0D4F3C] outline-none"
                               >
                                 {USER_ROLES.map(role => (
                                   <option key={role.value} value={role.value}>{role.label}</option>
@@ -3126,7 +3126,7 @@ export const AdminPortal: React.FC = () => {
                                 setSelectedUserForWallet(u);
                                 setWalletAdjustAmount('1000');
                               }}
-                              className="px-2.5 py-1 bg-orange-50 hover:bg-orange-100 text-[#FF5500] border border-orange-200 rounded-lg text-[11px] font-bold cursor-pointer"
+                              className="px-2.5 py-1 bg-[#F4F9F6] hover:bg-[#E8F5EF] text-[#0D4F3C] border border-[#CDEADF] rounded-lg text-[11px] font-bold cursor-pointer"
                             >
                               Credit Wallet
                             </button>
@@ -3162,7 +3162,7 @@ export const AdminPortal: React.FC = () => {
               </div>
 
               {replyReviewId && (
-                <div className="p-4 bg-orange-50/70 border border-orange-200 rounded-2xl space-y-3 animate-fadeIn">
+                <div className="p-4 bg-[#F4F9F6]/70 border border-[#CDEADF] rounded-2xl space-y-3 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold uppercase text-slate-900">Reply to Customer Review</h4>
                     <button onClick={() => setReplyReviewId(null)} className="text-slate-400 hover:text-slate-700">
@@ -3175,11 +3175,11 @@ export const AdminPortal: React.FC = () => {
                       placeholder="Write merchant reply..."
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 flex-1 outline-none focus:border-[#FF5500]"
+                      className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 flex-1 outline-none focus:border-[#0D4F3C]"
                     />
                     <button
                       onClick={() => handleReplyReview(replyReviewId)}
-                      className="px-4 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold"
+                      className="px-4 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold"
                     >
                       Post Reply to D1
                     </button>
@@ -3207,7 +3207,7 @@ export const AdminPortal: React.FC = () => {
                         <td className="p-3 space-y-1">
                           <div className="text-slate-800 italic">"{r.comment || 'Great food and fast delivery!'}"</div>
                           {r.merchant_reply && (
-                            <div className="text-[11px] text-[#FF5500] font-medium bg-orange-50/60 px-2 py-1 rounded-md border border-orange-100">
+                            <div className="text-[11px] text-[#0D4F3C] font-medium bg-[#F4F9F6]/60 px-2 py-1 rounded-md border border-[#E8F5EF]">
                               <strong>Reply:</strong> {r.merchant_reply}
                             </div>
                           )}
@@ -3269,10 +3269,10 @@ export const AdminPortal: React.FC = () => {
                   <div className="text-base font-bold text-amber-900">2,500 - 4,999 pts</div>
                   <div className="text-xs text-amber-700">1.5x Point + Priority dispatch</div>
                 </div>
-                <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl space-y-1">
-                  <div className="text-[10px] font-bold text-[#FF5500] uppercase">Platinum Tier</div>
+                <div className="p-4 bg-[#F4F9F6] border border-[#CDEADF] rounded-2xl space-y-1">
+                  <div className="text-[10px] font-bold text-[#0D4F3C] uppercase">Platinum Tier</div>
                   <div className="text-base font-bold text-slate-900">5,000+ pts</div>
-                  <div className="text-xs text-[#FF5500]">2x Point + Zero delivery fee</div>
+                  <div className="text-xs text-[#0D4F3C]">2x Point + Zero delivery fee</div>
                 </div>
               </div>
 
@@ -3285,7 +3285,7 @@ export const AdminPortal: React.FC = () => {
                       type="number"
                       defaultValue={platformSettings['loyalty_rate'] || '1'}
                       onBlur={(e) => handleSaveCMS('loyalty_rate', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none focus:border-[#FF5500]"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none focus:border-[#0D4F3C]"
                     />
                   </div>
                   <div>
@@ -3294,7 +3294,7 @@ export const AdminPortal: React.FC = () => {
                       type="number"
                       defaultValue={platformSettings['loyalty_discount_value'] || '200'}
                       onBlur={(e) => handleSaveCMS('loyalty_discount_value', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none focus:border-[#FF5500]"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none focus:border-[#0D4F3C]"
                     />
                   </div>
                 </div>
@@ -3313,14 +3313,14 @@ export const AdminPortal: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIsAddPromoModalOpen(true)}
-                  className="px-4 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-orange-500/25"
+                  className="px-4 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-[#0D4F3C]/25"
                 >
                   <Plus className="w-4 h-4" /> Add Promo Code
                 </button>
               </div>
 
               {isAddPromoModalOpen && (
-                <div className="p-4 bg-orange-50/50 rounded-2xl border border-orange-200 space-y-4 animate-fadeIn">
+                <div className="p-4 bg-[#F4F9F6]/50 rounded-2xl border border-[#CDEADF] space-y-4 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold uppercase text-slate-900">Create New Coupon Code in D1</h4>
                     <button onClick={() => setIsAddPromoModalOpen(false)} className="text-slate-400 hover:text-slate-700">
@@ -3336,7 +3336,7 @@ export const AdminPortal: React.FC = () => {
                         placeholder="e.g. FLASH50"
                         value={newPromoCode}
                         onChange={(e) => setNewPromoCode(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono uppercase text-slate-900 focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono uppercase text-slate-900 focus:border-[#0D4F3C] outline-none"
                       />
                     </div>
                     <div>
@@ -3347,7 +3347,7 @@ export const AdminPortal: React.FC = () => {
                         placeholder="e.g. 20 (for 20% or ₦1000)"
                         value={newPromoDiscount}
                         onChange={(e) => setNewPromoDiscount(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-[#0D4F3C] outline-none"
                       />
                     </div>
                     <div>
@@ -3355,7 +3355,7 @@ export const AdminPortal: React.FC = () => {
                       <select
                         value={newPromoType}
                         onChange={(e) => setNewPromoType(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                       >
                         {DISCOUNT_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
                       </select>
@@ -3367,7 +3367,7 @@ export const AdminPortal: React.FC = () => {
                         placeholder="e.g. 2000"
                         value={newPromoMinOrder}
                         onChange={(e) => setNewPromoMinOrder(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-[#0D4F3C] outline-none"
                       />
                     </div>
                     <div className="sm:col-span-2 flex justify-end items-end gap-2">
@@ -3380,7 +3380,7 @@ export const AdminPortal: React.FC = () => {
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold shadow-sm"
+                        className="px-4 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold shadow-sm"
                       >
                         Activate Coupon in D1
                       </button>
@@ -3403,7 +3403,7 @@ export const AdminPortal: React.FC = () => {
                   <tbody className="divide-y divide-slate-100 text-slate-700">
                     {promosList.map((p) => (
                       <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="p-3 font-mono font-bold text-[#FF5500]">{p.code}</td>
+                        <td className="p-3 font-mono font-bold text-[#0D4F3C]">{p.code}</td>
                         <td className="p-3 font-semibold text-slate-900">
                           {p.discount_type === 'percentage' ? `${p.value}% Off` : `₦${Number(p.value).toLocaleString('en-NG')} Off`}
                         </td>
@@ -3452,14 +3452,14 @@ export const AdminPortal: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIsAddRestaurantModalOpen(true)}
-                  className="px-4 py-2 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-orange-500/25"
+                  className="px-4 py-2 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm shadow-[#0D4F3C]/25"
                 >
                   <Plus className="w-4 h-4" /> Add Restaurant Branch
                 </button>
               </div>
 
               {isAddRestaurantModalOpen && (
-                <div className="p-4 bg-orange-50/50 rounded-2xl border border-orange-200 space-y-4 animate-fadeIn">
+                <div className="p-4 bg-[#F4F9F6]/50 rounded-2xl border border-[#CDEADF] space-y-4 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold uppercase text-slate-900">Add New Restaurant Kitchen</h4>
                     <button onClick={() => setIsAddRestaurantModalOpen(false)} className="text-slate-400 hover:text-slate-700">
@@ -3475,7 +3475,7 @@ export const AdminPortal: React.FC = () => {
                         placeholder="e.g. Veyra Kitchen Victoria Island"
                         value={newRestName}
                         onChange={(e) => setNewRestName(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                       />
                     </div>
                     <div>
@@ -3486,7 +3486,7 @@ export const AdminPortal: React.FC = () => {
                         placeholder="e.g. 14 Adeola Odeku St, VI, Lagos"
                         value={newRestAddress}
                         onChange={(e) => setNewRestAddress(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                       />
                     </div>
                     <div>
@@ -3495,12 +3495,12 @@ export const AdminPortal: React.FC = () => {
                         type="text"
                         value={newRestCuisine}
                         onChange={(e) => setNewRestCuisine(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                       />
                     </div>
                     <div className="sm:col-span-2">
                       <label className="text-[11px] font-semibold text-slate-600 block mb-1">Assign Merchant (optional)</label>
-                      <select value={newRestOwnerUserId} onChange={(e) => setNewRestOwnerUserId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none">
+                      <select value={newRestOwnerUserId} onChange={(e) => setNewRestOwnerUserId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none">
                         <option value="">Leave unassigned</option>
                         {usersList.filter((u: any) => u.role === 'restaurant').map((merchant: any) => <option key={merchant.id} value={merchant.id}>{merchant.name} ({merchant.email})</option>)}
                       </select>
@@ -3514,7 +3514,7 @@ export const AdminPortal: React.FC = () => {
                         min="0"
                         value={newRestDeliveryFee}
                         onChange={(e) => setNewRestDeliveryFee(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-[#FF5500] outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:border-[#0D4F3C] outline-none"
                       />
                     </div>
                     <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
@@ -3527,7 +3527,7 @@ export const AdminPortal: React.FC = () => {
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-1.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold shadow-sm"
+                        className="px-4 py-1.5 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold shadow-sm"
                       >
                         Save Branch to D1
                       </button>
@@ -3691,7 +3691,7 @@ export const AdminPortal: React.FC = () => {
                         <td className="p-3 font-bold text-amber-600">⭐ {rest.rating != null && Number(rest.rating) > 0 ? Number(rest.rating).toFixed(1) : 'Not rated'}</td>
                         <td className="p-3 font-mono font-bold text-slate-900">{Number.isFinite(Number(rest.deliveryFee ?? rest.delivery_fee)) ? `₦${Number(rest.deliveryFee ?? rest.delivery_fee).toLocaleString('en-NG')}` : 'Not configured'}</td>
                         <td className="p-3 min-w-[220px]">
-                          <select value={usersList.find((u: any) => u.role === 'restaurant' && u.restaurantId === rest.id)?.id || rest.ownerId || ''} onChange={(e) => handleAssignRestaurant(rest.id, e.target.value || null)} className="w-full min-w-[190px] bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-[#FF5500] outline-none" aria-label={`Assign merchant to ${rest.name}`} disabled={isSubAdmin}>
+                          <select value={usersList.find((u: any) => u.role === 'restaurant' && u.restaurantId === rest.id)?.id || rest.ownerId || ''} onChange={(e) => handleAssignRestaurant(rest.id, e.target.value || null)} className="w-full min-w-[190px] bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:border-[#0D4F3C] outline-none" aria-label={`Assign merchant to ${rest.name}`} disabled={isSubAdmin}>
                             <option value="">Unassigned</option>
                             {usersList.filter((u: any) => u.role === 'restaurant').map((merchant: any) => <option key={merchant.id} value={merchant.id}>{merchant.name}</option>)}
                           </select>
@@ -3736,7 +3736,7 @@ export const AdminPortal: React.FC = () => {
           {activeTab === 'support' && (
             <div className="space-y-5">
               <div className="flex flex-col gap-3 rounded-2xl bg-slate-950 p-6 text-white sm:flex-row sm:items-center sm:justify-between">
-                <div><p className="text-xs font-bold uppercase tracking-widest text-orange-300">Customer experience</p><h3 className="mt-2 text-xl font-bold">Support operations</h3><p className="mt-1 text-sm text-slate-300">Review incoming requests, manage status and reply to customers. Replies are saved to D1 and shown in ticket lookup.</p></div>
+                <div><p className="text-xs font-bold uppercase tracking-widest text-[#98D5C3]">Customer experience</p><h3 className="mt-2 text-xl font-bold">Support operations</h3><p className="mt-1 text-sm text-slate-300">Review incoming requests, manage status and reply to customers. Replies are saved to D1 and shown in ticket lookup.</p></div>
                 <button onClick={() => fetchData()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold hover:bg-white/10"><RefreshCw className="h-4 w-4" /> Refresh tickets</button>
               </div>
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -3752,12 +3752,12 @@ export const AdminPortal: React.FC = () => {
                   {supportTicketsList.map((t) => (
                     <article key={t.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                       <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs font-bold text-orange-700">{t.id}</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold capitalize text-slate-700">{String(t.status || 'open').replaceAll('_',' ')}</span><span className="rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-semibold capitalize text-slate-500">{t.priority || 'normal'} priority</span></div><h4 className="mt-2 text-base font-bold text-slate-950">{t.subject || 'Support request'}</h4><p className="mt-1 text-xs text-slate-500">{t.customer_name || 'Customer'} · {t.user_email || t.email || 'No email'} · {t.created_at ? new Date(t.created_at).toLocaleString() : 'Date unavailable'}</p></div>
-                        <select aria-label="Ticket status" value={t.status || 'open'} onChange={e => handleUpdateTicketStatus(t.id, e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-orange-500"><option value="open">Open</option><option value="in_progress">In progress</option><option value="waiting_on_customer">Waiting on customer</option><option value="resolved">Resolved</option><option value="closed">Closed</option></select>
+                        <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs font-bold text-[#062820]">{t.id}</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold capitalize text-slate-700">{String(t.status || 'open').replaceAll('_',' ')}</span><span className="rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-semibold capitalize text-slate-500">{t.priority || 'normal'} priority</span></div><h4 className="mt-2 text-base font-bold text-slate-950">{t.subject || 'Support request'}</h4><p className="mt-1 text-xs text-slate-500">{t.customer_name || 'Customer'} · {t.user_email || t.email || 'No email'} · {t.created_at ? new Date(t.created_at).toLocaleString() : 'Date unavailable'}</p></div>
+                        <select aria-label="Ticket status" value={t.status || 'open'} onChange={e => handleUpdateTicketStatus(t.id, e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-[#0D4F3C]"><option value="open">Open</option><option value="in_progress">In progress</option><option value="waiting_on_customer">Waiting on customer</option><option value="resolved">Resolved</option><option value="closed">Closed</option></select>
                       </div>
                       <div className="py-4"><p className="mb-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">Customer message</p><p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{t.message}</p></div>
                       {t.admin_reply && <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4"><p className="text-[11px] font-bold uppercase tracking-widest text-emerald-800">Latest saved reply</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-emerald-950">{t.admin_reply}</p></div>}
-                      <div className="rounded-xl bg-slate-50 p-4"><label className="mb-2 block text-xs font-bold text-slate-700">Reply to customer<textarea rows={3} maxLength={4000} value={supportReplyDrafts[t.id] || ''} onChange={e => setSupportReplyDrafts(prev => ({...prev,[t.id]:e.target.value}))} placeholder="Write a clear, helpful response…" className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-100" /></label><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-slate-500">Saved replies are visible to the customer when they check this ticket.</p><button disabled={sendingSupportReply === t.id || !(supportReplyDrafts[t.id] || '').trim()} onClick={() => handleReplySupportTicket(t.id)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50">{sendingSupportReply === t.id ? 'Saving reply…' : 'Send reply'} <Send className="h-3.5 w-3.5" /></button></div></div>
+                      <div className="rounded-xl bg-slate-50 p-4"><label className="mb-2 block text-xs font-bold text-slate-700">Reply to customer<textarea rows={3} maxLength={4000} value={supportReplyDrafts[t.id] || ''} onChange={e => setSupportReplyDrafts(prev => ({...prev,[t.id]:e.target.value}))} placeholder="Write a clear, helpful response…" className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-[#0D4F3C] focus:ring-4 focus:ring-[#E8F5EF]" /></label><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-slate-500">Saved replies are visible to the customer when they check this ticket.</p><button disabled={sendingSupportReply === t.id || !(supportReplyDrafts[t.id] || '').trim()} onClick={() => handleReplySupportTicket(t.id)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#093A2D] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#062820] disabled:cursor-not-allowed disabled:opacity-50">{sendingSupportReply === t.id ? 'Saving reply…' : 'Send reply'} <Send className="h-3.5 w-3.5" /></button></div></div>
                     </article>
                   ))}
                 </div>
@@ -3782,14 +3782,14 @@ export const AdminPortal: React.FC = () => {
                         rows={3}
                         value={currentValue}
                         onChange={(e) => setCmsDrafts((prev) => ({ ...prev, [key]: e.target.value }))}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none transition-colors"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none transition-colors"
                       />
                     ) : (
                       <input
                         type={isImage ? 'url' : 'text'}
                         value={currentValue}
                         onChange={(e) => setCmsDrafts((prev) => ({ ...prev, [key]: e.target.value }))}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none transition-colors"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none transition-colors"
                       />
                     )}
                     {isImage && currentValue && (
@@ -3811,7 +3811,7 @@ export const AdminPortal: React.FC = () => {
                     <button
                       onClick={() => handleSaveCMS(key, currentValue)}
                       disabled={isSaving}
-                      className="px-3 py-1.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-xs disabled:opacity-50 transition-colors"
+                      className="px-3 py-1.5 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-xs disabled:opacity-50 transition-colors"
                     >
                       {isSaving ? 'Saving...' : 'Save to D1'}
                     </button>
@@ -3864,7 +3864,7 @@ export const AdminPortal: React.FC = () => {
                       onClick={() => setCmsCategory(sub.id as any)}
                       className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer transition-all border ${
                         cmsCategory === sub.id
-                          ? 'bg-[#FF5500] text-white border-[#FF5500] shadow-xs'
+                          ? 'bg-[#0D4F3C] text-white border-[#0D4F3C] shadow-xs'
                           : 'bg-slate-50 text-slate-600 border-slate-200/80 hover:bg-slate-100'
                       }`}
                     >
@@ -3896,8 +3896,8 @@ export const AdminPortal: React.FC = () => {
                     <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Featured Dish Cards (Homepage Visual Showcase)</div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       {/* Dish 1 */}
-                      <div className="p-4 bg-orange-50/40 border border-orange-200/70 rounded-2xl space-y-3">
-                        <div className="text-xs font-bold text-orange-900">Featured Dish #1</div>
+                      <div className="p-4 bg-[#F4F9F6]/40 border border-[#CDEADF]/70 rounded-2xl space-y-3">
+                        <div className="text-xs font-bold text-[#02100C]">Featured Dish #1</div>
                         {renderCmsInput('cms_hero_dish1_title', 'Dish Name', 'Smoky Party Jollof & Peppered Asun')}
                         {renderCmsInput('cms_hero_dish1_restaurant', 'Kitchen Name', 'Naija Kitchen')}
                         {renderCmsInput('cms_hero_dish1_price', 'Price in Naira', '3800')}
@@ -4124,7 +4124,7 @@ export const AdminPortal: React.FC = () => {
                     type="text"
                     value={seoTitle}
                     onChange={(e) => setSeoTitle(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                   />
                 </div>
                 <div>
@@ -4133,7 +4133,7 @@ export const AdminPortal: React.FC = () => {
                     rows={3}
                     value={seoDesc}
                     onChange={(e) => setSeoDesc(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                   />
                 </div>
                 <div>
@@ -4142,12 +4142,12 @@ export const AdminPortal: React.FC = () => {
                     type="text"
                     value={seoKeywords}
                     onChange={(e) => setSeoKeywords(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#FF5500] outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-[#0D4F3C] outline-none"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-orange-500/25"
+                  className="px-5 py-2.5 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-sm shadow-[#0D4F3C]/25"
                 >
                   <Globe className="w-4 h-4" /> Save SEO Tags to D1
                 </button>

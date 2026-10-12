@@ -4,7 +4,7 @@ import { useDelivery } from '../../context/DeliveryContext';
 
 type Ticket = { id: string; subject: string; message: string; status: string; admin_reply?: string; created_at?: string };
 
-const fieldClass = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 placeholder:text-slate-400';
+const fieldClass = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#0D4F3C] focus:ring-4 focus:ring-[#E8F5EF] placeholder:text-slate-400';
 const topics = [
   ['order', 'Order or delivery'], ['payment', 'Payment or wallet'], ['refund', 'Refund or missing item'],
   ['account', 'Account access'], ['restaurant', 'Restaurant partnership'], ['other', 'Something else']
@@ -68,14 +68,14 @@ export const ContactPage: React.FC = () => {
   return (
     <div className="min-h-[70vh] bg-slate-50 pb-16">
       <section className="relative overflow-hidden bg-slate-950 text-white">
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, #f97316 0, transparent 34%), radial-gradient(circle at 10% 100%, #475569 0, transparent 38%)' }} />
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, #147A5A 0, transparent 34%), radial-gradient(circle at 10% 100%, #475569 0, transparent 38%)' }} />
         <div className="relative mx-auto max-w-6xl px-5 py-12 sm:px-8 sm:py-16">
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold tracking-wide text-orange-200"><ShieldCheck className="h-4 w-4" /> VEYRANG CUSTOMER CARE</p>
+          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold tracking-wide text-[#E8C547]"><ShieldCheck className="h-4 w-4" /> VEYRANG CUSTOMER CARE</p>
           <h1 className="max-w-2xl text-3xl font-bold tracking-tight sm:text-5xl">How can we help you today?</h1>
           <p className="mt-4 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">Tell us what happened. Every support request receives a ticket reference so you can follow up and see the team's response.</p>
           <div className="mt-7 flex flex-wrap gap-3 text-xs text-slate-300">
-            <span className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2"><TicketCheck className="h-4 w-4 text-orange-300" /> Trackable support tickets</span>
-            <span className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2"><Clock3 className="h-4 w-4 text-orange-300" /> Updates saved to your ticket</span>
+            <span className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2"><TicketCheck className="h-4 w-4 text-[#E8C547]" /> Trackable support tickets</span>
+            <span className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2"><Clock3 className="h-4 w-4 text-[#E8C547]" /> Updates saved to your ticket</span>
           </div>
         </div>
       </section>
@@ -98,7 +98,7 @@ export const ContactPage: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="mb-6"><p className="text-xs font-bold uppercase tracking-widest text-orange-600">Contact support</p><h2 className="mt-2 text-2xl font-bold text-slate-950">Submit a support ticket</h2><p className="mt-2 text-sm leading-6 text-slate-500">Share enough detail for our team to investigate. Fields marked * are required.</p></div>
+              <div className="mb-6"><p className="text-xs font-bold uppercase tracking-widest text-[#0D4F3C]">Contact support</p><h2 className="mt-2 text-2xl font-bold text-slate-950">Submit a support ticket</h2><p className="mt-2 text-sm leading-6 text-slate-500">Share enough detail for our team to investigate. Fields marked * are required.</p></div>
               <form onSubmit={submitTicket} className="space-y-5">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block text-sm font-semibold text-slate-700">Full name *<input required maxLength={100} autoComplete="name" className={fieldClass + ' mt-2'} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Your name" /></label>
@@ -108,7 +108,7 @@ export const ContactPage: React.FC = () => {
                 <label className="block text-sm font-semibold text-slate-700">Order reference (optional)<input maxLength={100} className={fieldClass + ' mt-2'} value={form.orderReference} onChange={e => setForm({ ...form, orderReference: e.target.value })} placeholder="Order number, if applicable" /></label>
                 <label className="block text-sm font-semibold text-slate-700">Describe the issue *<textarea required minLength={10} maxLength={4000} rows={6} className={fieldClass + ' mt-2 resize-y'} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder="Tell us what happened and what outcome would help..." /><span className="mt-1 block text-right text-xs font-normal text-slate-400">{form.message.length}/4000</span></label>
                 {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
-                <button disabled={busy} type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">{busy ? 'Submitting request…' : 'Submit support request'} <Send className="h-4 w-4" /></button>
+                <button disabled={busy} type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0D4F3C] px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#0A3F30] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">{busy ? 'Submitting request…' : 'Submit support request'} <Send className="h-4 w-4" /></button>
                 <p className="text-xs leading-5 text-slate-400">Please do not include passwords, one-time codes, or full payment card details.</p>
               </form>
             </>
@@ -124,14 +124,14 @@ export const ContactPage: React.FC = () => {
               {lookupError && <p role="alert" className="text-xs text-rose-600">{lookupError}</p>}
               <button disabled={lookupBusy} className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-bold text-slate-800 hover:bg-slate-50 disabled:opacity-60">{lookupBusy ? 'Checking…' : 'Check ticket status'}</button>
             </form>
-            {foundTicket && <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="flex items-center justify-between gap-3"><span className="font-mono text-xs font-bold text-slate-700">{foundTicket.id}</span><span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-bold capitalize text-orange-800">{foundTicket.status}</span></div><p className="mt-3 text-sm font-semibold text-slate-900">{foundTicket.subject}</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{foundTicket.message}</p>{foundTicket.admin_reply && <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3"><p className="text-xs font-bold text-emerald-800">Support reply</p><p className="mt-1 whitespace-pre-wrap text-sm text-emerald-950">{foundTicket.admin_reply}</p></div>}</div>}
+            {foundTicket && <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="flex items-center justify-between gap-3"><span className="font-mono text-xs font-bold text-slate-700">{foundTicket.id}</span><span className="rounded-full bg-[#E8F5EF] px-2.5 py-1 text-xs font-bold capitalize text-[#0D4F3C]">{foundTicket.status}</span></div><p className="mt-3 text-sm font-semibold text-slate-900">{foundTicket.subject}</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{foundTicket.message}</p>{foundTicket.admin_reply && <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3"><p className="text-xs font-bold text-emerald-800">Support reply</p><p className="mt-1 whitespace-pre-wrap text-sm text-emerald-950">{foundTicket.admin_reply}</p></div>}</div>}
           </section>
           <section className="rounded-2xl bg-slate-950 p-5 text-white sm:p-6">
             <h2 className="text-lg font-bold">Other ways to reach us</h2><p className="mt-1 text-sm leading-6 text-slate-300">Choose a contact channel for general enquiries. For issues that need follow-up, submit a ticket so the details are recorded.</p>
             <div className="mt-5 space-y-4">
-              {supportEmail && <a href={'mailto:' + supportEmail} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"><span className="rounded-lg bg-white/10 p-2"><Mail className="h-4 w-4 text-orange-300" /></span><span><span className="block text-xs text-slate-400">Email</span><span className="mt-1 block break-all text-sm font-semibold">{supportEmail}</span></span></a>}
-              {supportPhone && <a href={'tel:' + supportPhone.replace(/[^+\d]/g, '')} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"><span className="rounded-lg bg-white/10 p-2"><Phone className="h-4 w-4 text-orange-300" /></span><span><span className="block text-xs text-slate-400">Phone</span><span className="mt-1 block text-sm font-semibold">{supportPhone}</span></span></a>}
-              <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3"><span className="rounded-lg bg-white/10 p-2"><MessageCircle className="h-4 w-4 text-orange-300" /></span><span><span className="block text-xs text-slate-400">Support hours</span><span className="mt-1 block text-sm font-semibold">{platformSettings?.cms_support_hours || 'Daily support hours are shown in the app.'}</span></span></div>
+              {supportEmail && <a href={'mailto:' + supportEmail} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"><span className="rounded-lg bg-white/10 p-2"><Mail className="h-4 w-4 text-[#E8C547]" /></span><span><span className="block text-xs text-slate-400">Email</span><span className="mt-1 block break-all text-sm font-semibold">{supportEmail}</span></span></a>}
+              {supportPhone && <a href={'tel:' + supportPhone.replace(/[^+\d]/g, '')} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10"><span className="rounded-lg bg-white/10 p-2"><Phone className="h-4 w-4 text-[#E8C547]" /></span><span><span className="block text-xs text-slate-400">Phone</span><span className="mt-1 block text-sm font-semibold">{supportPhone}</span></span></a>}
+              <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3"><span className="rounded-lg bg-white/10 p-2"><MessageCircle className="h-4 w-4 text-[#E8C547]" /></span><span><span className="block text-xs text-slate-400">Support hours</span><span className="mt-1 block text-sm font-semibold">{platformSettings?.cms_support_hours || 'Daily support hours are shown in the app.'}</span></span></div>
             </div>
           </section>
         </aside>

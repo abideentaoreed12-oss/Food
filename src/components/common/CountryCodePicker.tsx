@@ -61,7 +61,7 @@ export const CountryCodePicker: React.FC<CountryCodePickerProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="h-10 bg-white border border-slate-200 hover:border-slate-300 text-xs rounded-xl px-2.5 py-2 font-extrabold text-slate-800 flex items-center gap-1.5 focus:outline-none focus:ring-1 focus:ring-[#FF5500] cursor-pointer shadow-2xs transition-colors shrink-0"
+        className="h-10 bg-white border border-slate-200 hover:border-slate-300 text-xs rounded-xl px-2.5 py-2 font-extrabold text-slate-800 flex items-center gap-1.5 focus:outline-none focus:ring-1 focus:ring-[#0D4F3C] cursor-pointer shadow-2xs transition-colors shrink-0"
         title="Select phone country code"
       >
         <span className="text-base leading-none">{selectedCountry.flag}</span>
@@ -84,7 +84,7 @@ export const CountryCodePicker: React.FC<CountryCodePickerProps> = ({
                 }}
                 className={`w-full px-2.5 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer text-left ${
                   isSelected
-                    ? 'bg-orange-50 text-[#FF5500] font-extrabold'
+                    ? 'bg-[#E8F5EF] text-[#0D4F3C] font-extrabold'
                     : 'hover:bg-slate-50 text-slate-800'
                 }`}
               >
@@ -94,7 +94,7 @@ export const CountryCodePicker: React.FC<CountryCodePickerProps> = ({
                 </div>
                 <div className="flex items-center gap-1 font-mono text-[11px] text-slate-600">
                   <span>{country.code}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-[#FF5500]" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-[#0D4F3C]" />}
                 </div>
               </button>
             );

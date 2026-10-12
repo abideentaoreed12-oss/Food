@@ -442,10 +442,10 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
       )}
 
       {/* 1. Smart Clipboard Auto-Fill Hub */}
-      <div className="p-3.5 rounded-2xl bg-gradient-to-br from-orange-50/90 via-amber-50/50 to-slate-50 border border-orange-200/90 shadow-xs relative overflow-hidden">
+      <div className="p-3.5 rounded-2xl bg-[#E8F5EF]/60 border border-[#0D4F3C]/20 shadow-xs relative overflow-hidden">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-[#FF5500] text-white">
+            <div className="p-1.5 rounded-lg bg-[#0D4F3C] text-white">
               <Clipboard className="w-3.5 h-3.5" />
             </div>
             <div>
@@ -473,13 +473,13 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
               }
             }}
             placeholder='e.g. "Amina Bello, +1234567890, 14 Main Street, Flat 4B"'
-            className="flex-1 bg-white border border-slate-200 text-xs rounded-xl px-3 py-2 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#FF5500]"
+            className="flex-1 bg-white border border-slate-200 text-xs rounded-xl px-3 py-2 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0D4F3C]"
           />
           <button
             type="button"
             onClick={handlePasteFromClipboard}
             disabled={isReadingClipboard}
-            className="px-2.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs shrink-0 flex items-center gap-1 cursor-pointer transition-all hover:border-orange-300"
+            className="px-2.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs shrink-0 flex items-center gap-1 cursor-pointer transition-all hover:border-[#0D4F3C]/30"
             title="Paste from system clipboard and parse"
           >
             <Clipboard className="w-3.5 h-3.5 text-slate-500" />
@@ -488,7 +488,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
           <button
             type="button"
             onClick={handleAutoFillFromText}
-            className="px-3.5 py-2 rounded-xl bg-[#FF5500] hover:bg-[#EA4C00] text-white font-extrabold text-xs shrink-0 flex items-center gap-1.5 cursor-pointer shadow-md shadow-orange-500/20 transition-all"
+            className="px-3.5 py-2 rounded-xl bg-[#0D4F3C] hover:bg-[#0A3F30] text-white font-extrabold text-xs shrink-0 flex items-center gap-1.5 cursor-pointer shadow-md shadow-[#0D4F3C]/20 transition-all"
           >
             <Zap className="w-3.5 h-3.5" />
             <span>Auto Fill</span>
@@ -505,14 +505,14 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-[#FF5500]" />
+            <MapPin className="w-3.5 h-3.5 text-[#0D4F3C]" />
             <span>Street Address & Area *</span>
           </label>
           <button
             type="button"
             onClick={handleDetectLiveGPS}
             disabled={isLocatingLive}
-            className="text-[11px] font-bold text-[#FF5500] hover:text-[#EA4C00] flex items-center gap-1 hover:underline cursor-pointer disabled:opacity-50"
+            className="text-[11px] font-bold text-[#0D4F3C] hover:text-[#0A3F30] flex items-center gap-1 hover:underline cursor-pointer disabled:opacity-50"
           >
             {isLocatingLive ? (
               <>
@@ -551,7 +551,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
             value={apartment}
             onChange={(e) => setApartment(e.target.value)}
             placeholder="e.g. Apt 4B, 2nd Floor"
-            className="w-full bg-white border border-slate-200 text-xs rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#FF5500]"
+            className="w-full bg-white border border-slate-200 text-xs rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0D4F3C]"
           />
         </div>
 
@@ -562,7 +562,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
             value={buildingEstate}
             onChange={(e) => setBuildingEstate(e.target.value)}
             placeholder="e.g. Admiralty Heights or Gate 2"
-            className="w-full bg-white border border-slate-200 text-xs rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#FF5500]"
+            className="w-full bg-white border border-slate-200 text-xs rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0D4F3C]"
           />
         </div>
       </div>
@@ -579,7 +579,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
             value={recipientName}
             onChange={(e) => setRecipientName(e.target.value)}
             placeholder="Recipient's full name"
-            className="w-full bg-white border border-slate-200 text-xs rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#FF5500]"
+            className="w-full bg-white border border-slate-200 text-xs rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0D4F3C]"
           />
         </div>
 
@@ -598,7 +598,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               placeholder="0801 234 5678"
-              className="flex-1 bg-white border border-slate-200 text-xs rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#FF5500]"
+              className="flex-1 bg-white border border-slate-200 text-xs rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0D4F3C]"
             />
           </div>
         </div>
@@ -623,7 +623,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
                 onClick={() => setLabel(cat.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-[#FF5500] text-white shadow-xs ring-2 ring-[#FF5500]/30'
+                    ? 'bg-[#0D4F3C] text-white shadow-xs ring-2 ring-[#0D4F3C]/30'
                     : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
                 }`}
               >
@@ -638,7 +638,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
       {/* 6. Courier Drop-Off Method & Quick Instruction Chips */}
       <div className="space-y-2 p-3 rounded-2xl bg-slate-50 border border-slate-200">
         <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-          <ShieldCheck className="w-4 h-4 text-[#FF5500]" />
+          <ShieldCheck className="w-4 h-4 text-[#0D4F3C]" />
           <span>Courier Handover Preference</span>
         </label>
 
@@ -654,7 +654,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
               onClick={() => setDropoffPreference(mode.id as any)}
               className={`p-2 rounded-xl border text-[11px] font-bold text-center transition-all cursor-pointer ${
                 dropoffPreference === mode.id
-                  ? 'bg-orange-100/70 border-[#FF5500] text-[#FF5500] ring-1 ring-[#FF5500]/30'
+                  ? 'bg-[#E8F5EF] border-[#0D4F3C] text-[#0D4F3C] ring-1 ring-[#0D4F3C]/30'
                   : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
               }`}
             >
@@ -670,7 +670,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
             value={deliveryNotes}
             onChange={(e) => setDeliveryNotes(e.target.value)}
             placeholder="Special delivery instructions for courier (e.g. Call at gate 2, ring bell twice)..."
-            className="w-full bg-white border border-slate-200 text-xs rounded-xl p-2.5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#FF5500] resize-none"
+            className="w-full bg-white border border-slate-200 text-xs rounded-xl p-2.5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0D4F3C] resize-none"
           />
 
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -681,7 +681,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
                   key={chip}
                   type="button"
                   onClick={() => handleQuickNote(chip)}
-                  className="px-2 py-0.5 rounded-lg bg-white border border-slate-200 hover:border-orange-300 hover:bg-orange-50 text-[10px] font-bold text-slate-600 hover:text-[#FF5500] transition-colors cursor-pointer"
+                  className="px-2 py-0.5 rounded-lg bg-white border border-slate-200 hover:border-[#0D4F3C]/40 hover:bg-[#E8F5EF] text-[10px] font-bold text-slate-600 hover:text-[#0D4F3C] transition-colors cursor-pointer"
                 >
                   + {chip}
                 </button>
@@ -698,7 +698,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
             type="checkbox"
             checked={isDefault}
             onChange={(e) => setIsDefault(e.target.checked)}
-            className="w-4 h-4 rounded text-[#FF5500] focus:ring-[#FF5500] accent-[#FF5500]"
+            className="w-4 h-4 rounded text-[#0D4F3C] focus:ring-[#0D4F3C] accent-[#0D4F3C]"
           />
           <span className="text-xs font-bold text-slate-800">Set as primary default address</span>
         </label>
@@ -718,7 +718,7 @@ export const ProAddressForm: React.FC<ProAddressFormProps> = ({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 py-3 px-4 rounded-2xl bg-[#FF5500] hover:bg-[#EA4C00] text-white font-extrabold text-xs shadow-md shadow-orange-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+          className="flex-1 py-3 px-4 rounded-2xl bg-[#0D4F3C] hover:bg-[#0A3F30] text-white font-extrabold text-xs shadow-md shadow-[#0D4F3C]/20 flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
         >
           {isSubmitting ? (
             <>

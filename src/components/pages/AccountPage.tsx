@@ -159,7 +159,7 @@ export const AccountPage: React.FC = () => {
   if (loading) {
     return (
       <div className="max-w-xl mx-auto my-16 p-8 text-center space-y-4">
-        <div className="w-10 h-10 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-10 h-10 border-3 border-[#0D4F3C] border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-xs text-slate-400">Loading your account...</p>
       </div>
     );
@@ -168,7 +168,7 @@ export const AccountPage: React.FC = () => {
   if (!user) {
     return (
       <div className="max-w-md mx-auto my-12 p-6 sm:p-8 bg-white border border-slate-200/90 rounded-3xl shadow-xl text-center space-y-6">
-        <div className="w-16 h-16 rounded-3xl bg-[#FFF1E8] border border-orange-200 text-[#FF5500] flex items-center justify-center mx-auto">
+        <div className="w-16 h-16 rounded-3xl bg-[#E8F5EF] border border-[#0D4F3C]/20 text-[#0D4F3C] flex items-center justify-center mx-auto">
           <Lock className="w-8 h-8 stroke-[2]" />
         </div>
         <div className="space-y-2">
@@ -179,7 +179,7 @@ export const AccountPage: React.FC = () => {
         </div>
         <button
           onClick={() => setIsAuthModalOpen(true)}
-          className="w-full py-3.5 bg-[#FF5500] text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-2"
+          className="w-full py-3.5 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-2"
         >
           <User className="w-4 h-4" />
           Sign In to Your Account
@@ -202,7 +202,7 @@ export const AccountPage: React.FC = () => {
         </div>
         <button
           onClick={() => setIsWalletModalOpen(true)}
-          className="self-start sm:self-auto px-4 py-2 bg-[#FF5500] text-white rounded-2xl text-xs font-bold flex items-center gap-1.5"
+          className="self-start sm:self-auto px-4 py-2 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white rounded-2xl text-xs font-bold flex items-center gap-1.5"
         >
           <Plus className="w-4 h-4" />
           Add Funds
@@ -218,7 +218,7 @@ export const AccountPage: React.FC = () => {
 
       <div className="rounded-3xl bg-white border border-slate-200/90 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-[#FFF1E8] text-[#FF5500] font-extrabold text-xl flex items-center justify-center">
+          <div className="w-14 h-14 rounded-2xl bg-[#E8F5EF] text-[#0D4F3C] font-extrabold text-xl flex items-center justify-center">
             {(user.name || user.email || 'U').charAt(0).toUpperCase()}
           </div>
           <div>
@@ -237,7 +237,7 @@ export const AccountPage: React.FC = () => {
       {['admin', 'sub_admin', 'restaurant', 'courier'].includes(user.role) && (
         <div className="rounded-3xl bg-slate-900 text-white p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-orange-500/20 text-[#FF5500] flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-[#0D4F3C]/40 text-[#E8C547] flex items-center justify-center">
               {user.role === 'restaurant' ? <ChefHat className="w-6 h-6" /> : user.role === 'courier' ? <Bike className="w-6 h-6" /> : <ShieldAlert className="w-6 h-6" />}
             </div>
             <div>
@@ -250,7 +250,7 @@ export const AccountPage: React.FC = () => {
               setActiveRole(user.role === 'sub_admin' ? 'admin' : (user.role as any));
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className="px-4 py-2.5 rounded-xl bg-[#FF5500] text-white text-xs font-bold flex items-center gap-1.5"
+            className="px-4 py-2.5 rounded-xl bg-[#0D4F3C] hover:bg-[#0A3F30] text-white text-xs font-bold flex items-center gap-1.5"
           >
             Launch Control Portal
             <ArrowRight className="w-4 h-4" />
@@ -260,7 +260,7 @@ export const AccountPage: React.FC = () => {
 
       <div className="space-y-4">
         <div className="flex items-center gap-2 px-1">
-          <Wallet className="w-4 h-4 text-[#FF5500]" />
+          <Wallet className="w-4 h-4 text-[#0D4F3C]" />
           <h2 className="text-base font-bold text-slate-900">Veyrang In-App Wallet</h2>
         </div>
         <WalletCard />
@@ -269,12 +269,12 @@ export const AccountPage: React.FC = () => {
       <div className="rounded-3xl bg-white border border-slate-200/90 p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-[#FF5500]" />
+            <Building2 className="w-4 h-4 text-[#0D4F3C]" />
             <h3 className="text-sm font-bold text-slate-900">Direct Bank Transfer (Virtual Account)</h3>
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-orange-50/50 border border-orange-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-2xl bg-[#E8F5EF]/30 border border-[#0D4F3C]/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="space-y-0.5">
             <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
               Dedicated Virtual Bank Account Number
@@ -297,7 +297,7 @@ export const AccountPage: React.FC = () => {
           <button
             onClick={handleCopyAccount}
             disabled={!virtualAccount}
-            className="px-4 py-2 bg-white border border-orange-200 text-[#FF5500] rounded-xl text-xs font-bold flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-white border border-[#0D4F3C]/30 text-[#0D4F3C] hover:bg-[#E8F5EF] rounded-xl text-xs font-bold flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {copiedAccount ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
             <span>{copiedAccount ? 'Copied!' : virtualAccount ? 'Copy Account' : 'No Account'}</span>
@@ -322,7 +322,7 @@ export const AccountPage: React.FC = () => {
 
       <div className="rounded-3xl bg-white border border-slate-200/90 p-5 space-y-4">
         <div className="flex items-center gap-2">
-          <Receipt className="w-4 h-4 text-[#FF5500]" />
+          <Receipt className="w-4 h-4 text-[#0D4F3C]" />
           <h3 className="text-base font-bold text-slate-900">Wallet Activity</h3>
         </div>
         <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl self-start">
@@ -367,12 +367,12 @@ export const AccountPage: React.FC = () => {
       <div className="rounded-3xl bg-white border border-slate-200/90 p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-[#FF5500]" />
+            <MapPin className="w-4 h-4 text-[#0D4F3C]" />
             <h3 className="text-sm font-bold text-slate-900">Saved Addresses</h3>
           </div>
           <button
             onClick={() => setIsAddingAddr(true)}
-            className="text-xs font-bold text-[#FF5500] flex items-center gap-1"
+            className="text-xs font-bold text-[#0D4F3C] hover:text-[#0A3F30] flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
@@ -409,7 +409,7 @@ export const AccountPage: React.FC = () => {
                     setIsSavingAddr(false);
                   }
                 }}
-                className="px-3 py-2 bg-[#FF5500] text-white text-xs font-bold rounded-lg disabled:opacity-50"
+                className="px-3 py-2 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white text-xs font-bold rounded-lg disabled:opacity-50"
               >
                 Save
               </button>
@@ -431,7 +431,7 @@ export const AccountPage: React.FC = () => {
               <div className="flex gap-2">
                 <button
                   onClick={() => setSelectedAddress(addr)}
-                  className="text-[11px] font-bold text-[#FF5500]"
+                  className="text-[11px] font-bold text-[#0D4F3C] hover:text-[#0A3F30]"
                 >
                   Use
                 </button>

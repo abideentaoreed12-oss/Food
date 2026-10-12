@@ -62,12 +62,12 @@ export async function sendVerificationEmail({
           background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
           padding: 36px 32px;
           text-align: center;
-          border-bottom: 4px solid #ff5500;
+          border-bottom: 4px solid #0D4F3C;
         }
         .logo-badge {
           display: inline-block;
-          background: rgba(255, 85, 0, 0.15);
-          color: #ff5500;
+          background: rgba(232, 197, 71, 0.15);
+          color: #E8C547;
           font-size: 11px;
           font-weight: 700;
           text-transform: uppercase;
@@ -85,7 +85,7 @@ export async function sendVerificationEmail({
           text-transform: uppercase;
         }
         .brand span {
-          color: #ff5500;
+          color: #E8C547;
         }
         .body {
           padding: 40px 36px;
@@ -105,8 +105,8 @@ export async function sendVerificationEmail({
           margin: 0 0 32px 0;
         }
         .code-box {
-          background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
-          border: 2px dashed #ff5500;
+          background: linear-gradient(135deg, #E8F5EF 0%, #d5eee2 100%);
+          border: 2px dashed #0D4F3C;
           border-radius: 16px;
           padding: 24px;
           margin: 0 auto 32px auto;
@@ -117,7 +117,7 @@ export async function sendVerificationEmail({
           font-size: 11px;
           font-weight: 700;
           text-transform: uppercase;
-          color: #c2410c;
+          color: #0D4F3C;
           letter-spacing: 1.5px;
           margin: 0 0 8px 0;
         }
@@ -125,7 +125,7 @@ export async function sendVerificationEmail({
           font-family: 'Courier New', Courier, monospace;
           font-size: 38px;
           font-weight: 900;
-          color: #c2410c;
+          color: #0D4F3C;
           letter-spacing: 10px;
           margin: 0;
         }
@@ -156,7 +156,7 @@ export async function sendVerificationEmail({
           margin-bottom: 8px;
         }
         .footer-links a {
-          color: #ff5500;
+          color: #0D4F3C;
           text-decoration: none;
           margin: 0 10px;
           font-weight: 600;

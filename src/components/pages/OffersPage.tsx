@@ -17,7 +17,7 @@ export const OffersPage: React.FC = () => {
       if (Array.isArray(list)) {
         const mapped = list.map((p: any, idx: number) => {
           const colors = [
-            'from-orange-500 to-amber-500',
+            'from-[#0D4F3C] to-[#147A5A]',
             'from-emerald-500 to-teal-500',
             'from-blue-500 to-indigo-500',
             'from-purple-500 to-pink-500'
@@ -78,9 +78,9 @@ export const OffersPage: React.FC = () => {
       </div>
 
       {!user && (
-        <div className="p-4 rounded-3xl bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+        <div className="p-4 rounded-3xl bg-gradient-to-r from-[#E8F5EF] to-amber-50 border border-[#0D4F3C]/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#FF5500] text-white flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-[#0D4F3C] text-white flex items-center justify-center shrink-0">
               <Tag className="w-5 h-5" />
             </div>
             <div>
@@ -94,7 +94,7 @@ export const OffersPage: React.FC = () => {
           </div>
           <button
             onClick={() => setIsAuthModalOpen(true)}
-            className="py-2 px-4 rounded-xl bg-[#FF5500] hover:bg-[#EA4C00] text-white text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer"
+            className="py-2 px-4 rounded-xl bg-[#0D4F3C] hover:bg-[#0A3F30] text-white text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer"
           >
             Sign In / Register
           </button>
@@ -127,7 +127,7 @@ export const OffersPage: React.FC = () => {
             >
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-orange-100 text-orange-700">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#E8F5EF] text-[#0D4F3C]">
                     {p.badge}
                   </span>
                   <span className="text-[11px] text-slate-400">Min. spend {p.minOrder}</span>
@@ -145,7 +145,7 @@ export const OffersPage: React.FC = () => {
                   <button
                     onClick={() => handleCopy(p.code)}
                     aria-label={`Copy promo code ${p.code}`}
-                    className="p-1 rounded-md text-slate-500 hover:text-orange-600 transition-colors cursor-pointer"
+                    className="p-1 rounded-md text-slate-500 hover:text-[#0D4F3C] transition-colors cursor-pointer"
                   >
                     {isCopied ? (
                       <Check className="w-4 h-4 text-emerald-600" />
@@ -157,7 +157,7 @@ export const OffersPage: React.FC = () => {
 
                 <button
                   onClick={() => handleApplyToCart(p.code)}
-                  className="px-3.5 py-2 rounded-xl bg-[#FF5500] text-white text-xs font-bold hover:bg-[#EA4C00] transition-colors cursor-pointer shadow-xs whitespace-nowrap"
+                  className="px-3.5 py-2 rounded-xl bg-[#0D4F3C] text-white text-xs font-bold hover:bg-[#0A3F30] transition-colors cursor-pointer shadow-xs whitespace-nowrap"
                 >
                   Apply Code
                 </button>

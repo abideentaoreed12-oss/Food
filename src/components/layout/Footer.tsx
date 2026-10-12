@@ -46,7 +46,7 @@ export const Footer: React.FC = () => {
   return (
     <footer className="bg-slate-900 text-slate-300 pt-16 pb-36 sm:pb-40 border-t border-slate-800 font-sans relative overflow-hidden">
       {/* Top Ambient Glow Accent */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[1px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[1px] bg-gradient-to-r from-transparent via-[#147A5A]/50 to-transparent" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
@@ -82,11 +82,11 @@ export const Footer: React.FC = () => {
                     onChange={(e) => setNewsletterEmail(e.target.value)}
                     placeholder="Enter your email address"
                     required
-                    className="flex-1 bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-sm rounded-2xl px-4 py-3.5 focus:outline-none focus:border-[#FF5500] focus:ring-1 focus:ring-[#FF5500] transition-colors"
+                    className="flex-1 bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-sm rounded-2xl px-4 py-3.5 focus:outline-none focus:border-[#0D4F3C] focus:ring-1 focus:ring-[#0D4F3C] transition-colors"
                   />
                   <button
                     type="submit"
-                    className="bg-[#FF5500] hover:bg-[#EA4C00] text-white font-bold text-sm px-6 py-3.5 rounded-2xl transition-all shadow-lg hover:shadow-orange-500/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                    className="bg-[#0D4F3C] hover:bg-[#0A3F30] text-white font-bold text-sm px-6 py-3.5 rounded-2xl transition-all shadow-lg hover:shadow-[#0D4F3C]/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
                   >
                     <span>Subscribe</span>
                     <Send className="w-4 h-4" />
@@ -104,7 +104,7 @@ export const Footer: React.FC = () => {
           {/* Column 1: Popular Cuisines */}
           <div className="col-span-2 sm:col-span-1 lg:col-span-1">
             <h4 className="text-white font-extrabold uppercase tracking-wider text-xs mb-4 flex items-center gap-2">
-              <Utensils className="w-4 h-4 text-[#FF5500]" />
+              <Utensils className="w-4 h-4 text-[#E8C547]" />
               <span>Popular Cuisines</span>
             </h4>
             <ul className="space-y-2.5 text-slate-400">
@@ -149,7 +149,7 @@ export const Footer: React.FC = () => {
           {/* Column 2: Top Locations */}
           <div>
             <h4 className="text-white font-extrabold uppercase tracking-wider text-xs mb-4 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-[#FF5500]" />
+              <MapPin className="w-4 h-4 text-[#E8C547]" />
               <span>Delivery Zones</span>
             </h4>
             <ul className="space-y-2.5 text-slate-400">
@@ -170,7 +170,7 @@ export const Footer: React.FC = () => {
           {/* Column 3: Partner & Business */}
           <div>
             <h4 className="text-white font-extrabold uppercase tracking-wider text-xs mb-4 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-[#FF5500]" />
+              <Building2 className="w-4 h-4 text-[#E8C547]" />
               <span>Partner With Us</span>
             </h4>
             <ul className="space-y-2.5 text-slate-400">
@@ -196,7 +196,7 @@ export const Footer: React.FC = () => {
           {/* Column 4: Help & Support */}
           <div>
             <h4 className="text-white font-extrabold uppercase tracking-wider text-xs mb-4 flex items-center gap-2">
-              <HelpCircle className="w-4 h-4 text-[#FF5500]" />
+              <HelpCircle className="w-4 h-4 text-[#E8C547]" />
               <span>Company & Support</span>
             </h4>
             <ul className="space-y-2.5 text-slate-400">
@@ -226,13 +226,13 @@ export const Footer: React.FC = () => {
           {/* Column 5: Contact & Mobile App Download */}
           <div className="col-span-2 lg:col-span-1">
             <h4 className="text-white font-extrabold uppercase tracking-wider text-xs mb-4 flex items-center gap-2">
-              <Smartphone className="w-4 h-4 text-[#FF5500]" />
+              <Smartphone className="w-4 h-4 text-[#E8C547]" />
               <span>24/7 Support Hotline</span>
             </h4>
             
             <div className="space-y-3 text-slate-400 text-xs mb-6">
               <div className="flex items-start gap-2.5">
-                <Phone className="w-4 h-4 text-[#FF5500] shrink-0 mt-0.5" />
+                <Phone className="w-4 h-4 text-[#E8C547] shrink-0 mt-0.5" />
                 <div>
                   <div className="text-white font-bold">{platformSettings['cms_support_phone'] || ''}</div>
                   {platformSettings['cms_support_phone'] && <div className="text-[11px] text-slate-500">Support phone</div>}
@@ -240,7 +240,7 @@ export const Footer: React.FC = () => {
               </div>
 
               <div className="flex items-start gap-2.5">
-                <Mail className="w-4 h-4 text-[#FF5500] shrink-0 mt-0.5" />
+                <Mail className="w-4 h-4 text-[#E8C547] shrink-0 mt-0.5" />
                 <div>
                   <div className="text-white font-bold">{platformSettings['cms_support_email'] || ''}</div>
                   <div className="text-[11px] text-slate-500">10-min average response time</div>
@@ -248,7 +248,7 @@ export const Footer: React.FC = () => {
               </div>
 
               <div className="flex items-start gap-2.5">
-                <Clock className="w-4 h-4 text-[#FF5500] shrink-0 mt-0.5" />
+                <Clock className="w-4 h-4 text-[#E8C547] shrink-0 mt-0.5" />
                 <div>
                   <div className="text-white font-bold">{platformSettings['cms_support_hours'] || 'Mon – Sun: 24 Hours'}</div>
                   <div className="text-[11px] text-slate-500">Live GPS Doorstep Tracking</div>
@@ -263,7 +263,7 @@ export const Footer: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Instagram"
-                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#FF5500] hover:text-white hover:border-[#FF5500] transition-colors"
+                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#0D4F3C] hover:text-white hover:border-[#0D4F3C] transition-colors"
               >
                 <Instagram className="w-4 h-4" />
               </a>
@@ -272,7 +272,7 @@ export const Footer: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Twitter X"
-                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#FF5500] hover:text-white hover:border-[#FF5500] transition-colors"
+                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#0D4F3C] hover:text-white hover:border-[#0D4F3C] transition-colors"
               >
                 <Twitter className="w-4 h-4" />
               </a>
@@ -281,7 +281,7 @@ export const Footer: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Facebook"
-                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#FF5500] hover:text-white hover:border-[#FF5500] transition-colors"
+                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#0D4F3C] hover:text-white hover:border-[#0D4F3C] transition-colors"
               >
                 <Facebook className="w-4 h-4" />
               </a>
@@ -290,7 +290,7 @@ export const Footer: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="LinkedIn"
-                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#FF5500] hover:text-white hover:border-[#FF5500] transition-colors"
+                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-[#0D4F3C] hover:text-white hover:border-[#0D4F3C] transition-colors"
               >
                 <Linkedin className="w-4 h-4" />
               </a>

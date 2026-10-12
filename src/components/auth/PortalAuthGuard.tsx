@@ -70,7 +70,7 @@ export const PortalAuthGuard: React.FC<PortalAuthGuardProps> = ({ requiredRole, 
       <div className="rounded-3xl bg-slate-900 border border-slate-800 text-white p-6 sm:p-10 shadow-2xl space-y-6">
         {/* Header with Lock Badge */}
         <div className="flex items-start justify-between gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-orange-600/20 text-[#FF5500] border border-orange-500/30 flex items-center justify-center shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-[#0D4F3C]/40 text-[#E8C547] border border-[#E8C547]/30 flex items-center justify-center shrink-0">
             <Icon className="w-7 h-7" />
           </div>
           <span className="text-[11px] font-bold uppercase tracking-wider bg-rose-500/15 border border-rose-500/30 text-rose-300 px-3 py-1 rounded-full flex items-center gap-1.5">
@@ -90,7 +90,7 @@ export const PortalAuthGuard: React.FC<PortalAuthGuardProps> = ({ requiredRole, 
 
         {/* Security Notice Box */}
         <div className="p-4 rounded-2xl bg-slate-800/70 border border-slate-700/80 space-y-2 text-xs">
-          <div className="flex items-center gap-2 text-orange-400 font-bold">
+          <div className="flex items-center gap-2 text-[#E8C547] font-bold">
             <ShieldCheck className="w-4 h-4" />
             <span>Strict Access Control Policy</span>
           </div>
@@ -105,7 +105,7 @@ export const PortalAuthGuard: React.FC<PortalAuthGuardProps> = ({ requiredRole, 
         <div className="pt-2 space-y-3">
           <button
             onClick={() => openAuthModalForPortal(requiredRole)}
-            className="w-full py-3.5 px-4 rounded-2xl bg-[#FF5500] hover:bg-[#EA4C00] text-white text-xs sm:text-sm font-bold transition-all shadow-md shadow-orange-500/20 cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-4 rounded-2xl bg-[#0D4F3C] hover:bg-[#0A3F30] text-white text-xs sm:text-sm font-bold transition-all shadow-md shadow-[#0D4F3C]/20 cursor-pointer flex items-center justify-center gap-2"
           >
             <span>Sign In to {(portal.title || 'Portal').split(' ')[0]} Account</span>
             <ArrowRight className="w-4 h-4" />

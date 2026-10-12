@@ -114,7 +114,7 @@ export const DriverChatModal: React.FC<DriverChatModalProps> = ({ order, isOpen,
                 <div
                   className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                     isMe
-                      ? 'bg-orange-600 text-white rounded-br-none'
+                      ? 'bg-[#0D4F3C] text-white rounded-br-none'
                       : 'bg-slate-800 text-slate-100 border border-slate-700/60 rounded-bl-none'
                   }`}
                 >
@@ -151,12 +151,12 @@ export const DriverChatModal: React.FC<DriverChatModalProps> = ({ order, isOpen,
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder={`Message ${order.courier?.name?.split(' ')[0] || 'rider'}...`}
-            className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
+            className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#0D4F3C]"
           />
           <button
             type="submit"
             disabled={!inputText.trim()}
-            className="p-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:hover:bg-orange-600 text-white rounded-xl transition-colors shadow-md"
+            className="p-2.5 bg-[#0D4F3C] hover:bg-[#0A3F30] disabled:opacity-40 disabled:hover:bg-[#0D4F3C] text-white rounded-xl transition-colors shadow-md"
           >
             <Send className="w-4 h-4" />
           </button>

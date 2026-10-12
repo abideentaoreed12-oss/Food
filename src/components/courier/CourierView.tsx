@@ -207,7 +207,7 @@ export const CourierView: React.FC = () => {
       <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FF5500] to-amber-600 flex items-center justify-center text-slate-900 font-extrabold text-xl shadow-lg font-display">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0D4F3C] to-amber-600 flex items-center justify-center text-slate-900 font-extrabold text-xl shadow-lg font-display">
               {displayInitial}
             </div>
             <span
@@ -268,7 +268,7 @@ export const CourierView: React.FC = () => {
       </div>
 
       {courierMessage && (
-        <div role="status" className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">{courierMessage}</div>
+        <div role="status" className="rounded-xl border border-[#CDEADF] bg-[#F4F9F6] px-4 py-3 text-sm text-[#02100C]">{courierMessage}</div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -324,7 +324,7 @@ export const CourierView: React.FC = () => {
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-800">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-orange-50 text-[#F26322] flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-xl bg-[#F4F9F6] text-[#F26322] flex items-center justify-center">
                     <Navigation className="w-4 h-4" />
                   </div>
                   <div>
@@ -367,7 +367,7 @@ export const CourierView: React.FC = () => {
                     <span className="font-mono">{activeDelivery.customerPhone}</span>
                     <a
                       href={`tel:${activeDelivery.customerPhone}`}
-                      className="text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1"
+                      className="text-[#126B54] hover:text-[#98D5C3] font-bold flex items-center gap-1"
                     >
                       <Phone className="w-3 h-3" />
                       <span>Call</span>
@@ -377,8 +377,8 @@ export const CourierView: React.FC = () => {
               </div>
 
               {/* Handover PIN Section */}
-              <div className="p-5 bg-orange-50 rounded-2xl border border-orange-200 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-orange-400">
+              <div className="p-5 bg-[#F4F9F6] rounded-2xl border border-[#CDEADF] space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#126B54]">
                   <KeyRound className="w-4 h-4" />
                   <span>Doorstep Handover Verification</span>
                 </div>
@@ -393,7 +393,7 @@ export const CourierView: React.FC = () => {
                     value={enteredPin}
                     onChange={(e) => setEnteredPin(e.target.value.replace(/\D/g, ''))}
                     placeholder="Enter 4-digit PIN"
-                    className="w-44 px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-center font-mono font-extrabold text-lg text-white tracking-widest focus:outline-none focus:border-orange-500"
+                    className="w-44 px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-center font-mono font-extrabold text-lg text-white tracking-widest focus:outline-none focus:border-[#0D4F3C]"
                   />
                   <button
                     onClick={handleVerifyHandover}
@@ -418,7 +418,7 @@ export const CourierView: React.FC = () => {
                 {activeDelivery.status === 'ready_for_pickup' && (
                   <button
                     onClick={() => advanceOrderStatus(activeDelivery.id, 'in_transit')}
-                    className="px-4 py-2.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+                    className="px-4 py-2.5 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
                   >
                     <Bike className="w-4 h-4" />
                     <span>Confirm Meal Pickup (Start Delivery)</span>
@@ -465,7 +465,7 @@ export const CourierView: React.FC = () => {
                   <button
                     onClick={() => acceptDelivery(order.id)}
                     disabled={acceptingOrderId === order.id}
-                    className="w-full mt-1 py-1.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                    className="w-full mt-1 py-1.5 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
                   >
                     {acceptingOrderId === order.id ? 'Accepting…' : 'Accept Run & Pick Up'}
                   </button>

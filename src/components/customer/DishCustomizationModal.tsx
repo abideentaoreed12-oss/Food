@@ -94,7 +94,7 @@ export const DishCustomizationModal: React.FC = () => {
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
               {item.description}
             </p>
-            <div className="mt-2 text-base font-bold text-orange-600 font-mono tabular-nums">
+            <div className="mt-2 text-base font-bold text-[#0D4F3C] font-mono tabular-nums">
               {formatCurrency(item.price, currency)}
             </div>
           </div>
@@ -113,7 +113,7 @@ export const DishCustomizationModal: React.FC = () => {
                       {group.name}
                     </span>
                     {group.required && (
-                      <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.2 rounded">
+                      <span className="text-[10px] font-bold text-[#0D4F3C] bg-[#E8F5EF] px-1.5 py-0.2 rounded">
                         Required
                       </span>
                     )}
@@ -132,7 +132,7 @@ export const DishCustomizationModal: React.FC = () => {
                         key={opt.id}
                         className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer text-xs ${
                           isSelected
-                            ? 'border-orange-500 bg-orange-50/40 text-slate-900 font-semibold'
+                            ? 'border-[#0D4F3C] bg-[#E8F5EF]/40 text-slate-900 font-semibold'
                             : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
                         }`}
                       >
@@ -148,7 +148,7 @@ export const DishCustomizationModal: React.FC = () => {
                                 handleToggleCheckbox(group.id, group.name, opt);
                               }
                             }}
-                            className="text-orange-600 focus:ring-0 cursor-pointer"
+                            className="text-[#0D4F3C] accent-[#0D4F3C] focus:ring-0 cursor-pointer"
                           />
                           <span>{opt.name}</span>
                         </div>
@@ -176,7 +176,7 @@ export const DishCustomizationModal: React.FC = () => {
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               placeholder="e.g. Extra napkins, no pepper, please ring doorbell..."
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#0D4F3C] focus:ring-1 focus:ring-[#0D4F3C]"
             />
           </div>
         </div>
@@ -186,7 +186,7 @@ export const DishCustomizationModal: React.FC = () => {
           <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1 shrink-0">
             <button
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="w-8 h-8 rounded-lg bg-white text-slate-700 hover:text-orange-600 flex items-center justify-center shadow-xs cursor-pointer"
+              className="w-8 h-8 rounded-lg bg-white text-slate-700 hover:text-[#0D4F3C] flex items-center justify-center shadow-xs cursor-pointer"
             >
               <Minus className="w-3.5 h-3.5" />
             </button>
@@ -195,7 +195,7 @@ export const DishCustomizationModal: React.FC = () => {
             </span>
             <button
               onClick={() => setQuantity((q) => q + 1)}
-              className="w-8 h-8 rounded-lg bg-white text-slate-700 hover:text-orange-600 flex items-center justify-center shadow-xs cursor-pointer"
+              className="w-8 h-8 rounded-lg bg-white text-slate-700 hover:text-[#0D4F3C] flex items-center justify-center shadow-xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -204,7 +204,7 @@ export const DishCustomizationModal: React.FC = () => {
           <button
             onClick={handleAddToCart}
             disabled={!allRequiredChosen}
-            className="flex-1 py-3 px-4 rounded-2xl bg-orange-600 text-white font-bold text-xs sm:text-sm hover:bg-orange-700 transition-colors shadow-md shadow-orange-600/20 disabled:opacity-50 cursor-pointer flex items-center justify-between"
+            className="flex-1 py-3 px-4 rounded-2xl bg-[#0D4F3C] text-white font-bold text-xs sm:text-sm hover:bg-[#0A3F30] transition-colors shadow-md shadow-emerald-900/20 disabled:opacity-50 cursor-pointer flex items-center justify-between"
           >
             <span>{allRequiredChosen ? 'Add to cart' : 'Make required choices'}</span>
             <span className="font-mono tabular-nums">{formatCurrency(totalItemPrice, currency)}</span>

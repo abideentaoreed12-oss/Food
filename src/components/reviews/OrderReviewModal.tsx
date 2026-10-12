@@ -226,7 +226,7 @@ export const OrderReviewModal: React.FC<OrderReviewModalProps> = ({
         <div className="flex items-start justify-between border-b border-slate-100 pb-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-xl bg-orange-100 text-[#FF5500]">
+              <span className="p-1.5 rounded-xl bg-[#E8F5EF] text-[#0D4F3C]">
                 <Sparkles className="w-4 h-4" />
               </span>
               <h3 className="text-base font-extrabold text-slate-900">
@@ -276,10 +276,10 @@ export const OrderReviewModal: React.FC<OrderReviewModalProps> = ({
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
-                  <Utensils className="w-3.5 h-3.5 text-[#FF5500]" />
+                  <Utensils className="w-3.5 h-3.5 text-[#0D4F3C]" />
                   <span>Food Quality & Taste</span>
                 </span>
-                <span className="text-xs font-extrabold text-[#FF5500] font-mono">
+                <span className="text-xs font-extrabold text-[#0D4F3C] font-mono">
                   {getRatingLabel(hoverFoodRating ?? foodRating)}
                 </span>
               </div>
@@ -363,7 +363,7 @@ export const OrderReviewModal: React.FC<OrderReviewModalProps> = ({
                       onClick={() => toggleTag(tag)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                         isSelected
-                          ? 'bg-orange-50 text-[#FF5500] border-orange-300 shadow-2xs'
+                          ? 'bg-[#E8F5EF] text-[#0D4F3C] border-emerald-300 shadow-2xs'
                           : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                       }`}
                     >
@@ -390,7 +390,7 @@ export const OrderReviewModal: React.FC<OrderReviewModalProps> = ({
                 onChange={(e) => setComment(e.target.value.slice(0, 500))}
                 rows={3}
                 placeholder="Tell others what you loved about the food, portion size, or packaging..."
-                className="w-full p-3 text-xs rounded-2xl bg-white border border-slate-200 focus:outline-none focus:border-[#FF5500] focus:ring-2 focus:ring-orange-100 transition-all text-slate-900 placeholder-slate-400 resize-none"
+                className="w-full p-3 text-xs rounded-2xl bg-white border border-slate-200 focus:outline-none focus:border-[#0D4F3C] focus:ring-2 focus:ring-[#E8F5EF] transition-all text-slate-900 placeholder-slate-400 resize-none"
               />
             </div>
 
@@ -398,7 +398,7 @@ export const OrderReviewModal: React.FC<OrderReviewModalProps> = ({
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5 text-[#FF5500]" />
+                  <ImageIcon className="w-3.5 h-3.5 text-[#0D4F3C]" />
                   <span>Attach Food Photo (R2 Storage)</span>
                 </span>
                 <span className="text-[10px] font-mono text-emerald-700 font-extrabold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
@@ -423,9 +423,9 @@ export const OrderReviewModal: React.FC<OrderReviewModalProps> = ({
 
               {/* Uploading State */}
               {isUploadingPhoto ? (
-                <div className="p-4 rounded-2xl bg-orange-50/70 border border-orange-200 text-center space-y-2 animate-pulse">
-                  <Loader2 className="w-6 h-6 text-[#FF5500] animate-spin mx-auto" />
-                  <p className="text-xs font-extrabold text-[#FF5500]">
+                <div className="p-4 rounded-2xl bg-[#E8F5EF]/70 border border-emerald-200 text-center space-y-2 animate-pulse">
+                  <Loader2 className="w-6 h-6 text-[#0D4F3C] animate-spin mx-auto" />
+                  <p className="text-xs font-extrabold text-[#0D4F3C]">
                     Uploading photo live to Platform R2 bucket...
                   </p>
                   <p className="text-[10px] text-slate-500">
@@ -478,9 +478,9 @@ export const OrderReviewModal: React.FC<OrderReviewModalProps> = ({
                   <button
                     type="button"
                     onClick={() => cameraInputRef.current?.click()}
-                    className="p-3.5 rounded-2xl bg-orange-50/80 hover:bg-orange-100 border border-orange-200/90 text-[#FF5500] transition-colors flex flex-col items-center justify-center gap-1.5 cursor-pointer group shadow-2xs"
+                    className="p-3.5 rounded-2xl bg-[#E8F5EF]/80 hover:bg-[#E8F5EF] border border-emerald-200/90 text-[#0D4F3C] transition-colors flex flex-col items-center justify-center gap-1.5 cursor-pointer group shadow-2xs"
                   >
-                    <div className="p-2 rounded-xl bg-white text-[#FF5500] shadow-xs group-hover:scale-110 transition-transform">
+                    <div className="p-2 rounded-xl bg-white text-[#0D4F3C] shadow-xs group-hover:scale-110 transition-transform">
                       <Camera className="w-5 h-5" />
                     </div>
                     <span className="text-xs font-extrabold">Take Photo (Camera)</span>
@@ -516,7 +516,7 @@ export const OrderReviewModal: React.FC<OrderReviewModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || isUploadingPhoto}
-                className="w-2/3 py-3 px-4 rounded-2xl bg-[#FF5500] text-white text-xs font-extrabold hover:bg-[#EA4C00] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                className="w-2/3 py-3 px-4 rounded-2xl bg-[#0D4F3C] text-white text-xs font-extrabold hover:bg-[#0A3F30] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>

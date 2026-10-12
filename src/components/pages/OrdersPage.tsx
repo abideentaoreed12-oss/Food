@@ -423,7 +423,7 @@ export const OrdersPage: React.FC = () => {
   if (loading) {
     return (
       <div className="max-w-xl mx-auto my-16 p-8 text-center space-y-4">
-        <div className="w-10 h-10 border-3 border-[#FF5500] border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-10 h-10 border-3 border-[#0D4F3C] border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-xs text-slate-400">Verifying session...</p>
       </div>
     );
@@ -433,7 +433,7 @@ export const OrdersPage: React.FC = () => {
   if (!user) {
     return (
       <div className="max-w-md mx-auto my-12 p-6 sm:p-8 bg-white border border-slate-200/90 rounded-3xl shadow-xl text-center space-y-6 animate-in fade-in">
-        <div className="w-16 h-16 rounded-3xl bg-[#FFF1E8] border border-orange-200 text-[#FF5500] flex items-center justify-center mx-auto shadow-xs">
+        <div className="w-16 h-16 rounded-3xl bg-[#E8F5EF] border border-[#0D4F3C]/20 text-[#0D4F3C] flex items-center justify-center mx-auto shadow-xs">
           <ShoppingBag className="w-8 h-8 stroke-[2]" />
         </div>
 
@@ -449,7 +449,7 @@ export const OrdersPage: React.FC = () => {
         <div className="pt-2 space-y-3">
           <button
             onClick={() => setIsAuthModalOpen(true)}
-            className="w-full py-3.5 bg-gradient-to-r from-[#FF5500] to-[#FF7700] hover:from-[#EA4C00] hover:to-[#FF5500] text-white rounded-2xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-orange-500/25 cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+            className="w-full py-3.5 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white rounded-2xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-[#0D4F3C]/20 cursor-pointer flex items-center justify-center gap-2 active:scale-98"
           >
             <User className="w-4 h-4" />
             <span>Sign In / Create Account</span>
@@ -486,7 +486,7 @@ export const OrdersPage: React.FC = () => {
 
         <button
           onClick={() => setActivePage('restaurants')}
-          className="px-4 py-2.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#FF5500] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto"
+          className="px-4 py-2.5 rounded-xl bg-[#E8F5EF] hover:bg-[#E8F5EF]/80 text-[#0D4F3C] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto"
         >
           <Utensils className="w-3.5 h-3.5" />
           <span>Explore Restaurants</span>
@@ -496,8 +496,8 @@ export const OrdersPage: React.FC = () => {
       {/* Active Orders Section */}
       {activeOrders.length > 0 && (
         <div className="space-y-4">
-          <div className="text-xs font-extrabold uppercase tracking-wider text-[#FF5500] flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#FF5500] animate-ping" />
+          <div className="text-xs font-extrabold uppercase tracking-wider text-[#0D4F3C] flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#0D4F3C] animate-ping" />
             <span>Active Live Orders ({activeOrders.length})</span>
           </div>
 
@@ -507,7 +507,7 @@ export const OrdersPage: React.FC = () => {
             return (
               <div
                 key={order.id}
-                className="rounded-3xl bg-white border border-orange-200/90 p-4 sm:p-5 shadow-sm space-y-4 relative overflow-hidden"
+                className="rounded-3xl bg-white border border-[#0D4F3C]/20 p-4 sm:p-5 shadow-sm space-y-4 relative overflow-hidden"
               >
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
@@ -516,7 +516,7 @@ export const OrdersPage: React.FC = () => {
                       <span className="text-sm font-extrabold text-slate-900 font-mono">
                         {order.shortId}
                       </span>
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-orange-50 text-orange-700 capitalize border border-orange-200/60">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-[#E8F5EF] text-[#0D4F3C] capitalize border border-[#0D4F3C]/20">
                         {order.status.replace('_', ' ')}
                       </span>
                     </div>
@@ -548,14 +548,14 @@ export const OrdersPage: React.FC = () => {
                           <div
                             className={`h-1.5 rounded-full transition-all duration-300 ${
                               isCompleted
-                                ? 'bg-[#FF5500]'
+                                ? 'bg-[#0D4F3C]'
                                 : 'bg-slate-100'
                             }`}
                           />
                           <span
                             className={`text-[10px] block truncate font-semibold ${
                               isCurrent
-                                ? 'text-[#FF5500] font-extrabold'
+                                ? 'text-[#0D4F3C] font-extrabold'
                                 : isCompleted
                                 ? 'text-slate-700'
                                 : 'text-slate-400'
@@ -586,7 +586,7 @@ export const OrdersPage: React.FC = () => {
                         type="button"
                         disabled={retryingOrderId === order.id}
                         onClick={() => void handleRetryPayment(order)}
-                        className="py-2.5 px-4 rounded-xl bg-orange-600 text-white font-bold text-xs hover:bg-orange-700 transition-colors shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        className="py-2.5 px-4 rounded-xl bg-[#0D4F3C] text-white font-bold text-xs hover:bg-[#0A3F30] transition-colors shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                       >
                         <CreditCard className="w-4 h-4" />
                         <span>{retryingOrderId === order.id ? 'Initializing payment...' : 'Retry Payment'}</span>
@@ -602,9 +602,9 @@ export const OrdersPage: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center justify-between p-3 rounded-2xl bg-orange-50/80 border border-orange-200/70 text-xs">
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-[#E8F5EF]/60 border border-[#0D4F3C]/20 text-xs">
                       <div className="flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-[#FF5500]" />
+                        <ShieldCheck className="w-4 h-4 text-[#0D4F3C]" />
                         <div>
                           <span className="text-slate-500">Security PIN: </span>
                           <span className="font-mono font-extrabold text-slate-900 tracking-wider">
@@ -613,8 +613,8 @@ export const OrdersPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 font-bold text-orange-950 font-mono">
-                        <Clock className="w-3.5 h-3.5 text-[#FF5500]" />
+                      <div className="flex items-center gap-1 font-bold text-[#0D4F3C] font-mono">
+                        <Clock className="w-3.5 h-3.5 text-[#0D4F3C]" />
                         <span>{getRemainingEtaMinutes(order) < 0 ? 'ETA unavailable' : getRemainingEtaMinutes(order) === 0 ? 'ETA reached' : `ETA: ${getRemainingEtaMinutes(order)} min`}</span>
                       </div>
                     </div>
@@ -623,7 +623,7 @@ export const OrdersPage: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-[1.35fr_0.7fr_1fr] items-stretch gap-2 pt-1">
                       <button
                         onClick={() => openTracking(order.id)}
-                        className="min-w-0 py-2.5 px-3 rounded-xl bg-[#FF5500] text-white text-xs font-bold hover:bg-[#EA4C00] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                        className="min-w-0 py-2.5 px-3 rounded-xl bg-[#0D4F3C] text-white text-xs font-bold hover:bg-[#0A3F30] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                       >
                         <span>View Tracking Cockpit</span>
                         <ChevronRight className="w-3.5 h-3.5" />
@@ -640,7 +640,7 @@ export const OrdersPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => void openScanner(order)}
-                        className="py-2.5 px-3 rounded-xl border border-orange-200 bg-orange-50 text-[#FF5500] text-xs font-bold hover:bg-orange-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="py-2.5 px-3 rounded-xl border border-[#0D4F3C]/30 bg-[#E8F5EF] text-[#0D4F3C] text-xs font-bold hover:bg-[#E8F5EF]/80 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                         aria-label={`Scan QR code for order ${order.shortId}`}
                       >
                         <ScanLine className="w-3.5 h-3.5 shrink-0" />
@@ -672,7 +672,7 @@ export const OrdersPage: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search dish or restaurant..."
-                className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#FF5500]"
+                className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0D4F3C]"
               />
             </div>
 
@@ -803,7 +803,7 @@ export const OrdersPage: React.FC = () => {
 
                       <button
                         onClick={() => reorderPastOrder(order)}
-                        className="flex-1 sm:flex-initial py-2 px-3.5 rounded-xl bg-orange-50 text-[#FF5500] text-xs font-bold hover:bg-orange-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                        className="flex-1 sm:flex-initial py-2 px-3.5 rounded-xl bg-[#E8F5EF] text-[#0D4F3C] text-xs font-bold hover:bg-[#E8F5EF]/80 transition-colors flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                         <span>Reorder</span>
@@ -833,7 +833,7 @@ export const OrdersPage: React.FC = () => {
                     <div className="border-t border-slate-100 bg-slate-50/70 p-4 sm:p-5 space-y-4 animate-in fade-in slide-in-from-top-2">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
                         <div className="flex items-center gap-2">
-                          <Receipt className="w-4 h-4 text-[#FF5500]" />
+                          <Receipt className="w-4 h-4 text-[#0D4F3C]" />
                           <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
                             Official Itemized Receipt
                           </span>
@@ -844,7 +844,7 @@ export const OrdersPage: React.FC = () => {
                           </span>
                           <button
                             onClick={() => generateOrderReceiptPDF(order)}
-                            className="px-2.5 py-1 bg-[#FF5500] hover:bg-orange-600 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                            className="px-2.5 py-1 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
                             title="Download PDF"
                           >
                             <Download className="w-3 h-3" />
@@ -883,7 +883,7 @@ export const OrdersPage: React.FC = () => {
                             {order.customerName} ({order.customerPhone})
                           </p>
                           <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-[#FF5500] shrink-0" />
+                            <MapPin className="w-3 h-3 text-[#0D4F3C] shrink-0" />
                             <span>{order.customerAddress} {order.customerApartment ? `(${order.customerApartment})` : ''}</span>
                           </p>
                           <p className="text-[11px] text-slate-500 mt-0.5">
@@ -965,7 +965,7 @@ export const OrdersPage: React.FC = () => {
                         ) : null}
 
                         {order.walletDeduction && order.walletDeduction > 0 ? (
-                          <div className="flex justify-between text-orange-700 font-bold">
+                          <div className="flex justify-between text-[#0D4F3C] font-bold">
                             <span>Wallet Balance Applied</span>
                             <span className="font-mono">
                               - {formatCurrency(order.walletDeduction, order.currency || currency)}
@@ -975,7 +975,7 @@ export const OrdersPage: React.FC = () => {
 
                         <div className="flex justify-between items-center text-sm font-extrabold text-slate-900 pt-2 border-t border-slate-300">
                           <span>Final Receipt Price Paid</span>
-                          <span className="font-mono text-base text-[#FF5500]">
+                          <span className="font-mono text-base text-[#0D4F3C]">
                             {formatCurrency(order.total, order.currency || currency)}
                           </span>
                         </div>
@@ -991,10 +991,10 @@ export const OrdersPage: React.FC = () => {
 
       {scanOrder && (
         <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="food-qr-title">
-          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 bg-orange-50/70 px-5 py-4">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-[#E8F5EF]/70 px-5 py-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#FF5500] text-white"><QrCode className="h-5 w-5" /></div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0D4F3C] text-white"><QrCode className="h-5 w-5" /></div>
                 <div>
                   <h2 id="food-qr-title" className="font-extrabold text-slate-900">Scan Your Food</h2>
                   <p className="text-xs text-slate-500">Order {scanOrder.shortId}</p>
@@ -1007,13 +1007,13 @@ export const OrdersPage: React.FC = () => {
                 <video ref={videoRef} className="h-full w-full object-cover" playsInline muted aria-label="Camera QR scanner" />
                 {!cameraReady && !cameraError && !scanValue && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white">
-                    <Camera className="h-10 w-10 text-orange-300" />
+                    <Camera className="h-10 w-10 text-[#147A5A]" />
                     <p className="text-sm font-semibold">Starting camera…</p>
                   </div>
                 )}
-                {cameraReady && <div className="pointer-events-none absolute inset-8 rounded-2xl border-2 border-[#FF5500] shadow-[0_0_0_999px_rgba(0,0,0,0.15)]"><span className="absolute -top-1 -left-1 h-5 w-5 border-l-4 border-t-4 border-orange-400" /><span className="absolute -top-1 -right-1 h-5 w-5 border-r-4 border-t-4 border-orange-400" /><span className="absolute -bottom-1 -left-1 h-5 w-5 border-b-4 border-l-4 border-orange-400" /><span className="absolute -bottom-1 -right-1 h-5 w-5 border-b-4 border-r-4 border-orange-400" /></div>}
+                {cameraReady && <div className="pointer-events-none absolute inset-8 rounded-2xl border-2 border-[#E8C547] shadow-[0_0_0_999px_rgba(0,0,0,0.15)]"><span className="absolute -top-1 -left-1 h-5 w-5 border-l-4 border-t-4 border-[#E8C547]" /><span className="absolute -top-1 -right-1 h-5 w-5 border-r-4 border-t-4 border-[#E8C547]" /><span className="absolute -bottom-1 -left-1 h-5 w-5 border-b-4 border-l-4 border-[#E8C547]" /><span className="absolute -bottom-1 -right-1 h-5 w-5 border-b-4 border-r-4 border-[#E8C547]" /></div>}
               </div>
-              {handoverBusy && <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900">Preparing a secure QR link for order {scanOrder.shortId}…</div>}
+              {handoverBusy && <div className="rounded-xl border border-[#0D4F3C]/20 bg-[#E8F5EF] p-3 text-sm text-[#0D4F3C]">Preparing a secure QR link for order {scanOrder.shortId}…</div>}
               {handoverNotice && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{handoverNotice}</div>}
               {handoverUrl && <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3"><p className="text-sm font-bold text-emerald-800">Secure handover link ready</p><p className="break-all text-xs text-slate-700">{handoverUrl}</p><button type="button" onClick={() => { void navigator.clipboard?.writeText(handoverUrl); setHandoverNotice('Handover link copied. It expires in 30 minutes and should only be shared with the intended recipient.'); }} className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-emerald-800 border border-emerald-200">Copy handover link</button><p className="text-xs text-emerald-800">Link expires in 30 minutes. Confirmation requires the signed-in order customer.</p></div>}
               {cameraError && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{cameraError}</div>}
@@ -1021,7 +1021,7 @@ export const OrdersPage: React.FC = () => {
               <p className="text-xs leading-relaxed text-slate-500">Allow camera access and place the VeyraNG handover QR inside the frame. Camera access requires HTTPS. If your browser cannot scan QR codes, use the secure link provided above.</p>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => { stopScanner(); setScanOrder(null); }} className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">Close</button>
-                <button type="button" onClick={() => void openScanner(scanOrder)} className="rounded-xl bg-[#FF5500] px-4 py-3 text-sm font-bold text-white hover:bg-[#EA4C00]"><Camera className="mr-1.5 inline h-4 w-4" />Scan again</button>
+                <button type="button" onClick={() => void openScanner(scanOrder)} className="rounded-xl bg-[#0D4F3C] px-4 py-3 text-sm font-bold text-white hover:bg-[#0A3F30]"><Camera className="mr-1.5 inline h-4 w-4" />Scan again</button>
               </div>
             </div>
           </div>

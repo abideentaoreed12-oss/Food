@@ -39,7 +39,7 @@ export const VeyrangLogo: React.FC<VeyrangLogoProps> = ({
           viewBox="0 0 100 100"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full filter drop-shadow-[0_2px_8px_rgba(255,85,0,0.15)]"
+          className="w-full h-full filter drop-shadow-[0_2px_8px_rgba(13,79,60,0.2)]"
         >
           {/* Background Ambient Glow */}
           <circle cx="50" cy="50" r="45" fill="url(#logoGlow)" opacity="0.08" />
@@ -51,10 +51,10 @@ export const VeyrangLogo: React.FC<VeyrangLogoProps> = ({
             className="transition-colors duration-300"
           />
 
-          {/* Dynamic Core Forward Boomerang (Veyrang Orange Speed Slash) */}
+          {/* Dynamic Core Forward Boomerang (Veyrang Forest Green Speed Slash) */}
           <path
             d="M40 38C35.5817 38 32 41.5817 32 46V70C32 75.5228 36.4772 80 42 80H66C70.4183 80 74 76.4183 74 72V48C74 42.4772 69.5228 38 64 38H40Z"
-            fill="url(#orangeGradient)"
+            fill="url(#brandGreenGradient)"
           />
 
           {/* Fast-forward Chevron Spark (Tech cut-out for Speed) */}
@@ -63,25 +63,27 @@ export const VeyrangLogo: React.FC<VeyrangLogoProps> = ({
             fill="#FFFFFF"
             className="animate-pulse"
           />
+        </svg>
 
-          {/* Definition and gradients */}
+        {/* Definition and gradients */}
+        <svg className="hidden">
           <defs>
-            <linearGradient id="orangeGradient" x1="32" y1="38" x2="74" y2="80" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#FF7700" />
-              <stop offset="50%" stopColor="#FF5500" />
-              <stop offset="100%" stopColor="#E03E00" />
+            <linearGradient id="brandGreenGradient" x1="32" y1="38" x2="74" y2="80" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#147A5A" />
+              <stop offset="50%" stopColor="#0D4F3C" />
+              <stop offset="100%" stopColor="#0A3F30" />
             </linearGradient>
             <radialGradient id="logoGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#FF5500" />
-              <stop offset="100%" stopColor="#FF5500" stopOpacity="0" />
+              <stop offset="0%" stopColor="#0D4F3C" />
+              <stop offset="100%" stopColor="#0D4F3C" stopOpacity="0" />
             </radialGradient>
           </defs>
         </svg>
 
         {/* Small Active Pulse Indicator */}
         <span className="absolute top-0 right-0 flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF5500] opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FF5500]"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E8C547] opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#E8C547]"></span>
         </span>
       </div>
 
@@ -93,13 +95,13 @@ export const VeyrangLogo: React.FC<VeyrangLogoProps> = ({
             <span className={`${lightMode ? 'text-white' : 'text-slate-800 font-extrabold'} transition-colors duration-300`}>
               Vey
             </span>
-            {/* raNG part: ultra-black orange gradient */}
-            <span className="font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FF5500] to-[#FF8822] tracking-normal">
+            {/* raNG part: ultra-black brand gradient */}
+            <span className="font-black text-transparent bg-clip-text bg-gradient-to-r from-[#0D4F3C] via-[#147A5A] to-[#E8C547] tracking-normal">
               raNG
             </span>
           </div>
           {/* Subtle micro-sublabel */}
-          <span className={`text-[9px] font-mono tracking-widest uppercase font-bold text-left ml-0.5 mt-0.5 ${lightMode ? 'text-orange-800' : 'text-slate-600'}`}>
+          <span className={`text-[9px] font-mono tracking-widest uppercase font-bold text-left ml-0.5 mt-0.5 ${lightMode ? 'text-emerald-300' : 'text-slate-600'}`}>
             Delivery pro
           </span>
         </div>

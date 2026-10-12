@@ -175,7 +175,7 @@ export class D1Client {
           distance_km REAL,
           tags TEXT DEFAULT '[]',
           badge TEXT,
-          accent_color TEXT DEFAULT '#FF5500',
+          accent_color TEXT DEFAULT '#0D4F3C',
           is_open INTEGER DEFAULT 1,
           is_busy_paused INTEGER DEFAULT 0,
           commission_percent REAL DEFAULT 15.0,

@@ -23,7 +23,7 @@ export async function generateOrderReceiptPDF(order: Order): Promise<void> {
   const margin = 15;
   let y = 15;
 
-  const primaryColor = [255, 85, 0]; // #FF5500
+  const primaryColor = [13, 79, 60]; // #0D4F3C
   const darkColor = [15, 23, 42]; // slate-900
   const grayColor = [100, 116, 139]; // slate-500
   const lightBg = [248, 250, 252]; // slate-50

@@ -155,7 +155,7 @@ export const RightDrawer: React.FC = () => {
       label: 'Account & Wallet',
       icon: User,
       badge: user ? `₦${walletBalanceNGN.toLocaleString('en-NG')}` : 'Sign In',
-      badgeColor: user ? 'bg-orange-100 text-[#FF5500]' : 'bg-slate-100 text-slate-600',
+      badgeColor: user ? 'bg-[#E8F5EF] text-[#0D4F3C]' : 'bg-slate-100 text-slate-600',
       isLocked: !user
     }
   ];
@@ -252,7 +252,7 @@ export const RightDrawer: React.FC = () => {
           activeRole !== 'customer' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
         }`}>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-orange-600 text-white flex items-center justify-center font-black">V</div>
+            <div className="w-8 h-8 rounded-xl bg-[#0D4F3C] text-white flex items-center justify-center font-black">V</div>
             <div>
               <div className="text-sm font-extrabold">
                 {activeRole === 'admin' && 'VeyraNG Admin'}
@@ -260,7 +260,7 @@ export const RightDrawer: React.FC = () => {
                 {activeRole === 'courier' && 'Courier Rider Portal'}
                 {activeRole === 'customer' && 'VeyraNG'}
               </div>
-              <div className={`text-[10px] font-semibold uppercase tracking-wider ${activeRole !== 'customer' ? 'text-orange-400' : 'text-slate-400'}`}>
+              <div className={`text-[10px] font-semibold uppercase tracking-wider ${activeRole !== 'customer' ? 'text-[#E8C547]' : 'text-slate-400'}`}>
                 {activeRole === 'admin' && 'Operations Navigator'}
                 {activeRole === 'restaurant' && 'KDS Order Queue'}
                 {activeRole === 'courier' && 'Rider Dispatch'}
@@ -282,10 +282,10 @@ export const RightDrawer: React.FC = () => {
         {/* ADMIN MODE DRAWER NAVIGATION */}
         {activeRole === 'admin' ? (
           <div className="flex-1 px-4 py-4 space-y-6">
-            <div className="p-3.5 bg-orange-950/40 border border-orange-500/30 rounded-2xl flex items-center justify-between">
+            <div className="p-3.5 bg-[#0D4F3C]/40 border border-[#0D4F3C]/60 rounded-2xl flex items-center justify-between">
               <div>
                 <div className="text-xs font-bold text-white">Super Admin Mode</div>
-                <div className="text-[11px] text-orange-300">Platform D1 & R2 Connected</div>
+                <div className="text-[11px] text-[#E8C547]">Platform D1 & R2 Connected</div>
               </div>
             </div>
 
@@ -303,7 +303,7 @@ export const RightDrawer: React.FC = () => {
                       onClick={() => handleNavigateAdminTab(item.id)}
                       className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all cursor-pointer ${
                         isActive
-                          ? 'bg-[#FF5500] text-white shadow-md shadow-orange-500/25'
+                          ? 'bg-[#0D4F3C] text-white shadow-md shadow-[#0D4F3C]/25'
                           : 'text-slate-400 hover:text-white hover:bg-slate-850'
                       }`}
                     >
@@ -349,7 +349,7 @@ export const RightDrawer: React.FC = () => {
                   setIsRightDrawerOpen(false);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold bg-[#FF5500] text-white shadow-md cursor-pointer"
+                className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold bg-[#0D4F3C] text-white shadow-md cursor-pointer"
               >
                 <ChefHat className="w-4 h-4 shrink-0" />
                 <span>Live Kitchen Dashboard</span>
@@ -389,7 +389,7 @@ export const RightDrawer: React.FC = () => {
                   setIsRightDrawerOpen(false);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold bg-[#FF5500] text-white shadow-md cursor-pointer"
+                className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold bg-[#0D4F3C] text-white shadow-md cursor-pointer"
               >
                 <Bike className="w-4 h-4 shrink-0" />
                 <span>Active Deliveries Console</span>
@@ -419,10 +419,10 @@ export const RightDrawer: React.FC = () => {
                 <div className="relative">
                   <button
                     onClick={() => setIsZoneDropdownOpen(!isZoneDropdownOpen)}
-                    className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs font-semibold text-slate-800 hover:border-[#FF5500] transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs font-semibold text-slate-800 hover:border-[#0D4F3C] transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2 truncate">
-                      <MapPin className="w-4 h-4 text-[#FF5500] shrink-0" />
+                      <MapPin className="w-4 h-4 text-[#0D4F3C] shrink-0" />
                       <span className="text-slate-500 font-normal">Deliver to:</span>
                       <span className="text-slate-900 font-bold truncate">
                         {selectedAddress && selectedAddress.address && selectedAddress.address.trim()
@@ -449,8 +449,8 @@ export const RightDrawer: React.FC = () => {
                               setSelectedAddress(addr);
                               setIsZoneDropdownOpen(false);
                             }}
-                            className={`w-full text-left px-3.5 py-3 flex items-start justify-between gap-3 hover:bg-[#FFF1E8]/50 transition-colors cursor-pointer ${
-                              isSelected ? 'font-bold text-[#FF5500] bg-[#FFF1E8]' : 'text-slate-700'
+                            className={`w-full text-left px-3.5 py-3 flex items-start justify-between gap-3 hover:bg-[#E8F5EF]/50 transition-colors cursor-pointer ${
+                              isSelected ? 'font-bold text-[#0D4F3C] bg-[#E8F5EF]' : 'text-slate-700'
                             }`}
                           >
                             <div className="min-w-0">
@@ -460,7 +460,7 @@ export const RightDrawer: React.FC = () => {
                                 <div className="text-[11px] text-slate-400 font-normal">{[addr.apartment, addr.city].filter(Boolean).join(', ')}</div>
                               )}
                             </div>
-                            {isSelected && <span className="text-[10px] font-bold text-[#FF5500]">Selected</span>}
+                            {isSelected && <span className="text-[10px] font-bold text-[#0D4F3C]">Selected</span>}
                           </button>
                         );
                       })}
@@ -490,13 +490,13 @@ export const RightDrawer: React.FC = () => {
                         onClick={() => handleNavigatePage(item.id)}
                         className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 sm:py-3 rounded-2xl text-sm font-medium transition-all cursor-pointer ${
                           isActive
-                            ? 'bg-[#FFF1E8] text-[#FF5500] font-bold border-l-4 border-[#FF5500] shadow-2xs'
+                            ? 'bg-[#E8F5EF] text-[#0D4F3C] font-bold border-l-4 border-[#0D4F3C] shadow-2xs'
                             : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                       >
                         <Icon
                           className={`w-5 h-5 shrink-0 transition-colors ${
-                            isActive ? 'text-[#FF5500]' : 'text-slate-500'
+                            isActive ? 'text-[#0D4F3C]' : 'text-slate-500'
                           }`}
                         />
                         <span className="flex-1 text-left">{item.label}</span>
@@ -510,7 +510,7 @@ export const RightDrawer: React.FC = () => {
                           </span>
                         )}
                         {isActive && !item.badge && (
-                          <span className="w-2 h-2 rounded-full bg-[#FF5500]" aria-hidden="true" />
+                          <span className="w-2 h-2 rounded-full bg-[#0D4F3C]" aria-hidden="true" />
                         )}
                       </button>
                     );
@@ -531,13 +531,13 @@ export const RightDrawer: React.FC = () => {
                         onClick={() => handleNavigatePage(item.id)}
                         className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 sm:py-3 rounded-2xl text-sm font-medium transition-all cursor-pointer ${
                           isActive
-                            ? 'bg-[#FFF1E8] text-[#FF5500] font-bold border-l-4 border-[#FF5500] shadow-2xs'
+                            ? 'bg-[#E8F5EF] text-[#0D4F3C] font-bold border-l-4 border-[#0D4F3C] shadow-2xs'
                             : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                       >
                         <Icon
                           className={`w-5 h-5 shrink-0 transition-colors ${
-                            isActive ? 'text-[#FF5500]' : 'text-slate-500'
+                            isActive ? 'text-[#0D4F3C]' : 'text-slate-500'
                           }`}
                         />
                         <span className="flex-1 text-left">{item.label}</span>
@@ -551,7 +551,7 @@ export const RightDrawer: React.FC = () => {
                           </span>
                         )}
                         {isActive && !item.badge && (
-                          <span className="w-2 h-2 rounded-full bg-[#FF5500]" aria-hidden="true" />
+                          <span className="w-2 h-2 rounded-full bg-[#0D4F3C]" aria-hidden="true" />
                         )}
                       </button>
                     );
@@ -572,13 +572,13 @@ export const RightDrawer: React.FC = () => {
                         onClick={() => handleNavigatePage(item.id)}
                         className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
                           isActive
-                            ? 'bg-[#FFF1E8] text-[#FF5500] font-bold'
+                            ? 'bg-[#E8F5EF] text-[#0D4F3C] font-bold'
                             : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                         }`}
                       >
                         <Icon
                           className={`w-4 h-4 shrink-0 transition-colors ${
-                            isActive ? 'text-[#FF5500]' : 'text-slate-400'
+                            isActive ? 'text-[#0D4F3C]' : 'text-slate-400'
                           }`}
                         />
                         <span className="flex-1 text-left">{item.label}</span>
@@ -594,7 +594,7 @@ export const RightDrawer: React.FC = () => {
                   <div className="space-y-2">
                     <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-[#FF5500] text-white font-bold text-xs flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full bg-[#0D4F3C] text-white font-bold text-xs flex items-center justify-center">
                           {(user.name || user.email || 'U').charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -602,7 +602,7 @@ export const RightDrawer: React.FC = () => {
                           <div className="text-[11px] text-slate-500 truncate max-w-[140px]">{user.email}</div>
                         </div>
                       </div>
-                      <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded-md bg-orange-100 text-orange-800">
+                      <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded-md bg-[#E8F5EF] text-[#0D4F3C]">
                         {user.role}
                       </span>
                     </div>
@@ -623,7 +623,7 @@ export const RightDrawer: React.FC = () => {
                       setIsRightDrawerOpen(false);
                       setIsAuthModalOpen(true);
                     }}
-                    className="w-full py-3 px-4 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                    className="w-full py-3 px-4 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
                   >
                     <LogIn className="w-4 h-4" />
                     <span>Sign In or Register</span>

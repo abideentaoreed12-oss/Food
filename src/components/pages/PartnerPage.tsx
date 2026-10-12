@@ -37,7 +37,7 @@ export const PartnerPage: React.FC = () => {
       {/* Value Proposition Highlights */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="p-4 rounded-3xl bg-white border border-slate-200/90 shadow-2xs">
-          <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center mb-2.5">
+          <div className="w-8 h-8 rounded-xl bg-[#E8F5EF] text-[#0D4F3C] flex items-center justify-center mb-2.5">
             <TrendingUp className="w-4 h-4" />
           </div>
           <h3 className="text-sm font-bold text-slate-900">
@@ -95,7 +95,7 @@ export const PartnerPage: React.FC = () => {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-              <Store className="w-4 h-4 text-orange-600" />
+              <Store className="w-4 h-4 text-[#0D4F3C]" />
               <span>Restaurant Registration Form</span>
             </h2>
 
@@ -110,7 +110,7 @@ export const PartnerPage: React.FC = () => {
                   placeholder="e.g. Gourmet Grill & Kitchen"
                   value={formData.businessName}
                   onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-[#0D4F3C] focus:ring-1 focus:ring-[#0D4F3C]"
                 />
               </div>
 
@@ -121,7 +121,7 @@ export const PartnerPage: React.FC = () => {
                 <select
                   value={formData.cuisineType}
                   onChange={(e) => setFormData({ ...formData, cuisineType: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-orange-500 bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-[#0D4F3C] bg-white"
                 >
                   <option value="Nigerian Delicacies">Nigerian Delicacies / Jollof</option>
                   <option value="Burgers & Fast Food">Burgers & Fast Food</option>
@@ -139,7 +139,7 @@ export const PartnerPage: React.FC = () => {
                 <select
                   value={formData.city}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-orange-500 bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-[#0D4F3C] bg-white"
                 >
                   <option value="">Select operating city or zone...</option>
                   {deliveryZones.map((z: any) => (
@@ -161,7 +161,7 @@ export const PartnerPage: React.FC = () => {
                   placeholder="e.g. 12 Commercial Way or High Street"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-[#0D4F3C] focus:ring-1 focus:ring-[#0D4F3C]"
                 />
               </div>
 
@@ -175,7 +175,7 @@ export const PartnerPage: React.FC = () => {
                   placeholder="e.g. Babatunde Alabi"
                   value={formData.contactName}
                   onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-[#0D4F3C] focus:ring-1 focus:ring-[#0D4F3C]"
                 />
               </div>
 
@@ -189,14 +189,14 @@ export const PartnerPage: React.FC = () => {
                   placeholder="+234 800 000 0000"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 font-mono"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-[#0D4F3C] focus:ring-1 focus:ring-[#0D4F3C] font-mono"
                 />
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 rounded-2xl bg-orange-600 text-white font-bold text-xs sm:text-sm hover:bg-orange-700 transition-colors shadow-xs cursor-pointer"
+              className="w-full py-3 rounded-2xl bg-[#0D4F3C] text-white font-bold text-xs sm:text-sm hover:bg-[#0A3F30] transition-colors shadow-xs cursor-pointer"
             >
               Submit Partner Application
             </button>

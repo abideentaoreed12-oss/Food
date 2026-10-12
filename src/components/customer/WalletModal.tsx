@@ -164,7 +164,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
       <div className="relative w-full max-w-lg bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         <div className="p-5 pb-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/90">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#FFF1E8] text-[#FF5500] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-[#E8F5EF] text-[#0D4F3C] flex items-center justify-center">
               <Wallet className="w-5 h-5" />
             </div>
             <div>
@@ -182,21 +182,21 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
 
         {!user ? (
           <div className="p-6 text-center space-y-4">
-            <Lock className="w-6 h-6 mx-auto text-[#FF5500]" />
+            <Lock className="w-6 h-6 mx-auto text-[#0D4F3C]" />
             <p className="text-xs text-slate-600">Sign in to fund your wallet.</p>
             <button
               onClick={() => {
                 onClose();
                 setIsAuthModalOpen(true);
               }}
-              className="w-full py-3.5 bg-[#FF5500] text-white rounded-2xl text-xs font-bold"
+              className="w-full py-3.5 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white rounded-2xl text-xs font-bold transition-colors"
             >
               Sign In
             </button>
           </div>
         ) : (
           <div className="p-5 sm:p-6 overflow-y-auto space-y-5">
-            <div className="rounded-2xl bg-[#FF5500] p-4 text-white flex items-center justify-between">
+            <div className="rounded-2xl bg-[#0D4F3C] p-4 text-white flex items-center justify-between shadow-md">
               <div>
                 <span className="text-[11px] font-semibold text-white/90 uppercase">Current Wallet Balance</span>
                 <div className="text-2xl font-extrabold mt-0.5">
@@ -223,13 +223,13 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
               onClick={() => setPaymentMethod('transfer')}
               className={`p-4 rounded-2xl border-2 cursor-pointer ${
                 paymentMethod === 'transfer'
-                  ? 'border-[#FF5500] bg-orange-50/40'
+                  ? 'border-[#0D4F3C] bg-[#E8F5EF]/40'
                   : 'border-slate-200'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2.5">
-                  <Building2 className="w-4 h-4 text-[#FF5500]" />
+                  <Building2 className="w-4 h-4 text-[#0D4F3C]" />
                   <div>
                     <h4 className="text-xs font-extrabold text-slate-900">Direct Bank Transfer</h4>
                     <p className="text-[11px] text-slate-500">Paystack Dedicated Virtual Account</p>
@@ -238,7 +238,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
               </div>
 
               {liveVa ? (
-                <div className="p-3.5 bg-white rounded-xl border border-orange-200/80 space-y-2.5 mt-2">
+                <div className="p-3.5 bg-white rounded-xl border border-emerald-200 space-y-2.5 mt-2">
                   <div className="flex justify-between border-b border-slate-100 pb-2">
                     <span className="text-xs text-slate-500">Bank Name</span>
                     <span className="text-xs font-bold text-slate-900">{liveVa.bankName}</span>
@@ -256,7 +256,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                         e.stopPropagation();
                         handleCopyVirtualAccount();
                       }}
-                      className="px-3 py-1.5 bg-[#FF5500] text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
+                      className="px-3 py-1.5 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
                     >
                       {copiedAccount ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                       {copiedAccount ? 'Copied!' : 'Copy'}
@@ -277,7 +277,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                       e.stopPropagation();
                       handleGenerateVa();
                     }}
-                    className="w-full py-2.5 bg-[#FF5500] text-white rounded-xl text-xs font-bold disabled:opacity-50"
+                    className="w-full py-2.5 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white rounded-xl text-xs font-bold disabled:opacity-50 transition-colors"
                   >
                     {vaLoading ? 'Creating with Paystack…' : 'Generate Paystack Virtual Account'}
                   </button>
@@ -289,14 +289,14 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
               onClick={() => setPaymentMethod('card')}
               className={`p-4 rounded-2xl border-2 cursor-pointer ${
                 paymentMethod === 'card'
-                  ? 'border-[#FF5500] bg-orange-50/40'
+                  ? 'border-[#0D4F3C] bg-[#E8F5EF]/40'
                   : 'border-slate-200'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#FF5500] text-white flex items-center justify-center">
-                    <Zap className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-xl bg-[#0D4F3C] text-white flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-[#E8C547]" />
                   </div>
                   <div>
                     <h4 className="text-xs font-extrabold">Online Payment</h4>
@@ -304,7 +304,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                   </div>
                 </div>
                 <ChevronRight
-                  className={`w-5 h-5 text-[#FF5500] ${paymentMethod === 'card' ? 'rotate-90' : ''}`}
+                  className={`w-5 h-5 text-[#0D4F3C] ${paymentMethod === 'card' ? 'rotate-90' : ''}`}
                 />
               </div>
 
@@ -312,7 +312,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                 <form
                   onSubmit={handleTopUpSubmit}
                   onClick={(e) => e.stopPropagation()}
-                  className="mt-4 pt-4 border-t border-orange-200 space-y-3"
+                  className="mt-4 pt-4 border-t border-emerald-200 space-y-3"
                 >
                   <div className="grid grid-cols-3 gap-1.5">
                     {presetAmounts.map((amt) => (
@@ -320,10 +320,10 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                         key={amt}
                         type="button"
                         onClick={() => handleSelectPreset(amt)}
-                        className={`py-2 rounded-xl text-xs font-bold border ${
+                        className={`py-2 rounded-xl text-xs font-bold border transition-colors ${
                           !isCustom && topUpAmount === amt
-                            ? 'bg-[#FF5500] text-white border-[#FF5500]'
-                            : 'bg-white text-slate-700 border-slate-200'
+                            ? 'bg-[#0D4F3C] text-white border-[#0D4F3C]'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
                         ₦{amt >= 1000 ? `${amt / 1000}k` : amt}
@@ -335,12 +335,12 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => 
                     placeholder="Custom amount"
                     value={customAmount}
                     onChange={handleCustomChange}
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 font-mono outline-none focus:border-[#FF5500]"
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 font-mono outline-none focus:border-[#0D4F3C]"
                   />
                   <button
                     type="submit"
                     disabled={loading || topUpAmount <= 0}
-                    className="w-full py-3.5 bg-[#FF5500] text-white rounded-2xl text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-3.5 bg-[#E8C547] hover:bg-[#D4B23A] text-[#0D4F3C] rounded-2xl text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
                   >
                     <CreditCard className="w-4 h-4" />
                     {loading

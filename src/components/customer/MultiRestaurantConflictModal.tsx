@@ -21,7 +21,7 @@ export const MultiRestaurantConflictModal: React.FC = () => {
       <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col text-slate-900 font-sans">
         
         {/* Top Accent Bar */}
-        <div className="h-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500" />
+        <div className="h-1.5 bg-gradient-to-r from-emerald-600 via-[#0D4F3C] to-[#E8C547]" />
 
         {/* Modal Header */}
         <div className="p-6 pb-4 flex items-start justify-between gap-3">
@@ -48,10 +48,10 @@ export const MultiRestaurantConflictModal: React.FC = () => {
 
           <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700 space-y-1">
             <div className="font-semibold text-slate-900 flex items-center gap-1.5">
-              <ShoppingBag className="w-4 h-4 text-orange-600 shrink-0" />
+              <ShoppingBag className="w-4 h-4 text-[#0D4F3C] shrink-0" />
               <span>Item to add:</span>
             </div>
-            <p className="pl-5 font-bold text-orange-600">
+            <p className="pl-5 font-bold text-[#0D4F3C]">
               {newItem.name} <span className="font-normal text-slate-500">from {newRestaurantName}</span>
             </p>
           </div>
@@ -71,7 +71,7 @@ export const MultiRestaurantConflictModal: React.FC = () => {
           </button>
           <button
             onClick={confirmCartConflict}
-            className="flex-1 py-3 px-4 bg-[#FF5500] hover:bg-[#EA4C00] text-white font-bold text-xs rounded-2xl transition-all cursor-pointer shadow-md shadow-orange-500/20 flex items-center justify-center gap-1.5"
+            className="flex-1 py-3 px-4 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white font-bold text-xs rounded-2xl transition-all cursor-pointer shadow-md shadow-emerald-900/20 flex items-center justify-center gap-1.5"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Clear & Add New</span>

@@ -30,7 +30,7 @@ export const FavouritesPage: React.FC = () => {
   if (loading) {
     return (
       <div className="max-w-xl mx-auto my-16 p-8 text-center space-y-4">
-        <div className="w-10 h-10 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-10 h-10 border-3 border-[#0D4F3C] border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-xs text-slate-400">Loading favourites...</p>
       </div>
     );
@@ -40,7 +40,7 @@ export const FavouritesPage: React.FC = () => {
   if (!user) {
     return (
       <div className="max-w-md mx-auto my-12 p-6 sm:p-8 bg-white border border-slate-200/90 rounded-3xl shadow-xl text-center space-y-6">
-        <div className="w-16 h-16 rounded-3xl bg-[#FFF1E8] border border-orange-200 text-[#FF5500] flex items-center justify-center mx-auto shadow-xs">
+        <div className="w-16 h-16 rounded-3xl bg-[#E8F5EF] border border-[#0D4F3C]/20 text-[#0D4F3C] flex items-center justify-center mx-auto shadow-xs">
           <Heart className="w-8 h-8 stroke-[2]" />
         </div>
 
@@ -56,7 +56,7 @@ export const FavouritesPage: React.FC = () => {
         <div className="pt-2 space-y-3">
           <button
             onClick={() => setIsAuthModalOpen(true)}
-            className="w-full py-3.5 bg-gradient-to-r from-[#FF5500] to-[#FF7700] hover:from-[#EA4C00] hover:to-[#FF5500] text-white rounded-2xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-orange-500/25 cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+            className="w-full py-3.5 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white rounded-2xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-[#0D4F3C]/20 cursor-pointer flex items-center justify-center gap-2 active:scale-98"
           >
             <User className="w-4 h-4" />
             <span>Sign In to Access Favourites</span>
@@ -100,7 +100,7 @@ export const FavouritesPage: React.FC = () => {
           </p>
           <button
             onClick={() => setActivePage('restaurants')}
-            className="mt-4 px-4 py-2 bg-[#FF5500] text-white rounded-xl text-xs font-semibold hover:bg-[#EA4C00] transition-colors cursor-pointer"
+            className="mt-4 px-4 py-2 bg-[#0D4F3C] text-white rounded-xl text-xs font-semibold hover:bg-[#0A3F30] transition-colors cursor-pointer"
           >
             Browse Restaurants
           </button>
@@ -119,7 +119,7 @@ export const FavouritesPage: React.FC = () => {
               <article
                 key={restaurant.id}
                 onClick={() => setSelectedRestaurantId(restaurant.id)}
-                className="group relative rounded-3xl bg-white border border-slate-200/80 p-3.5 shadow-2xs hover:shadow-md hover:border-orange-200 transition-all cursor-pointer flex items-center gap-3.5"
+                className="group relative rounded-3xl bg-white border border-slate-200/80 p-3.5 shadow-2xs hover:shadow-md hover:border-[#0D4F3C]/30 transition-all cursor-pointer flex items-center gap-3.5"
               >
                 <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shrink-0 bg-slate-100">
                   <img
@@ -131,7 +131,7 @@ export const FavouritesPage: React.FC = () => {
                 </div>
 
                 <div className="flex-1 min-w-0 pr-6">
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-orange-600 transition-colors truncate">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-[#0D4F3C] transition-colors truncate">
                     {restaurant.name}
                   </h3>
 

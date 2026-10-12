@@ -57,16 +57,16 @@ export const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-slate-900 flex flex-col font-sans selection:bg-[#FF5500] selection:text-white">
+    <div className="min-h-screen bg-[#F8F9FA] text-slate-900 flex flex-col font-sans selection:bg-[#0D4F3C] selection:text-white">
       {/* ─────────────────────────────────────────────────────────────
           2. HERO SECTION WITH PROMOTIONAL STATS
       ───────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-orange-50/50 via-white to-[#F8F9FA] pt-12 pb-16 sm:pt-20 sm:pb-24 border-b border-slate-200/80">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#F4F9F6]/50 via-white to-[#F8F9FA] pt-12 pb-16 sm:pt-20 sm:pb-24 border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             {/* Left Hero Copy & Actions */}
             <div className="lg:col-span-7 space-y-6 text-center lg:text-left flex flex-col items-center lg:items-start">
-              <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#FFF1E8] border border-orange-200 text-[#FF5500] text-xs font-bold tracking-tight">
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#E8F5EF] border border-[#CDEADF] text-[#0D4F3C] text-xs font-bold tracking-tight">
                 <span>{platformSettings['cms_hero_badge'] || 'Global Express Food & Cloud Kitchen Network'}</span>
               </div>
 
@@ -81,7 +81,7 @@ export const LandingPage: React.FC = () => {
               {/* Delivery Zone Selector & Quick Storefront CTA */}
               <div className="p-2 sm:p-2.5 bg-white border border-slate-200 rounded-3xl shadow-lg shadow-slate-200/50 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full max-w-xl">
                 <div className="flex-1 flex items-center gap-2.5 px-3 py-2 bg-slate-50 rounded-2xl border border-slate-100 text-left">
-                  <MapPin className="w-4 h-4 text-[#FF5500] shrink-0" />
+                  <MapPin className="w-4 h-4 text-[#0D4F3C] shrink-0" />
                   <div className="flex-1 min-w-0">
                     <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       Your Delivery Zone
@@ -106,7 +106,7 @@ export const LandingPage: React.FC = () => {
 
                 <button
                   onClick={handleExploreStorefront}
-                  className="px-6 py-3.5 bg-[#FF5500] hover:bg-[#EA4C00] text-white rounded-2xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-orange-500/25 cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
+                  className="px-6 py-3.5 bg-[#0D4F3C] hover:bg-[#0D4F3C] text-white rounded-2xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-[#0D4F3C]/25 cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
                 >
                   <span>{platformSettings['cms_hero_cta_text'] || 'Find Kitchens'}</span>
                   <ArrowRight className="w-4 h-4" />
@@ -155,7 +155,7 @@ export const LandingPage: React.FC = () => {
                     <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
                     <span className="text-xs font-bold text-slate-900">Live Kitchen Dispatch</span>
                   </div>
-                  <span className="text-[11px] font-mono font-bold text-[#FF5500] bg-[#FFF1E8] px-2 py-0.5 rounded-lg">
+                  <span className="text-[11px] font-mono font-bold text-[#0D4F3C] bg-[#E8F5EF] px-2 py-0.5 rounded-lg">
                     {activeZoneConfig?.name || 'Active Delivery Hub'}
                   </span>
                 </div>
@@ -163,7 +163,7 @@ export const LandingPage: React.FC = () => {
                 {/* Hero Featured Dish 1 */}
                 <div
                   onClick={handleExploreStorefront}
-                  className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-orange-300 hover:bg-orange-50/30 transition-all cursor-pointer"
+                  className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-[#98D5C3] hover:bg-[#F4F9F6]/30 transition-all cursor-pointer"
                 >
                   {platformSettings['cms_hero_dish1_image'] ? (
                     <img
@@ -172,13 +172,13 @@ export const LandingPage: React.FC = () => {
                       className="w-16 h-16 rounded-xl object-cover shrink-0"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600">
+                    <div className="w-16 h-16 rounded-xl bg-[#F4F9F6] border border-[#CDEADF] flex items-center justify-center shrink-0 text-[#093A2D]">
                       <ChefHat className="w-6 h-6" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#FF5500] truncate">
+                      <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#0D4F3C] truncate">
                         {platformSettings['cms_hero_dish1_title'] || 'Jollof Party Special'}
                       </h4>
                       <span className="text-xs font-bold font-mono text-slate-900">
@@ -200,7 +200,7 @@ export const LandingPage: React.FC = () => {
                 {/* Hero Featured Dish 2 */}
                 <div
                   onClick={handleExploreStorefront}
-                  className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-orange-300 hover:bg-orange-50/30 transition-all cursor-pointer"
+                  className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-[#98D5C3] hover:bg-[#F4F9F6]/30 transition-all cursor-pointer"
                 >
                   {platformSettings['cms_hero_dish2_image'] ? (
                     <img
@@ -209,13 +209,13 @@ export const LandingPage: React.FC = () => {
                       className="w-16 h-16 rounded-xl object-cover shrink-0"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600">
+                    <div className="w-16 h-16 rounded-xl bg-[#F4F9F6] border border-[#CDEADF] flex items-center justify-center shrink-0 text-[#093A2D]">
                       <ChefHat className="w-6 h-6" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#FF5500] truncate">
+                      <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#0D4F3C] truncate">
                         {platformSettings['cms_hero_dish2_title'] || 'Classic Smash Cheese Burger'}
                       </h4>
                       <span className="text-xs font-bold font-mono text-slate-900">
@@ -229,7 +229,7 @@ export const LandingPage: React.FC = () => {
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                       <span className="font-bold">4.8</span>
                       <span>·</span>
-                      <span className="text-orange-600 font-semibold">Bestseller</span>
+                      <span className="text-[#093A2D] font-semibold">Bestseller</span>
                     </div>
                   </div>
                 </div>
@@ -237,7 +237,7 @@ export const LandingPage: React.FC = () => {
                 {/* Hero Featured Dish 3 */}
                 <div
                   onClick={handleExploreStorefront}
-                  className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-orange-300 hover:bg-orange-50/30 transition-all cursor-pointer"
+                  className="group flex items-center gap-3.5 p-2.5 rounded-2xl border border-slate-100 hover:border-[#98D5C3] hover:bg-[#F4F9F6]/30 transition-all cursor-pointer"
                 >
                   {platformSettings['cms_hero_dish3_image'] ? (
                     <img
@@ -246,13 +246,13 @@ export const LandingPage: React.FC = () => {
                       className="w-16 h-16 rounded-xl object-cover shrink-0"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600">
+                    <div className="w-16 h-16 rounded-xl bg-[#F4F9F6] border border-[#CDEADF] flex items-center justify-center shrink-0 text-[#093A2D]">
                       <ChefHat className="w-6 h-6" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#FF5500] truncate">
+                      <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#0D4F3C] truncate">
                         {platformSettings['cms_hero_dish3_title'] || ''}
                       </h4>
                       <span className="text-xs font-bold font-mono text-slate-900">
@@ -276,7 +276,7 @@ export const LandingPage: React.FC = () => {
                   onClick={handleExploreStorefront}
                   className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-xs"
                 >
-                  <ShoppingBag className="w-4 h-4 text-orange-400" />
+                  <ShoppingBag className="w-4 h-4 text-[#126B54]" />
                   <span>Start Ordering Now</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -292,7 +292,7 @@ export const LandingPage: React.FC = () => {
       <section id="how-it-works" className="py-16 sm:py-24 bg-[#F8F9FA] border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14 space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#FF5500]">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#0D4F3C]">
               Simple & Honest Logistics
             </span>
             <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 font-display">
@@ -306,7 +306,7 @@ export const LandingPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Step 1 */}
             <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-7 shadow-2xs space-y-3 relative">
-              <div className="w-12 h-12 rounded-2xl bg-orange-100 text-[#FF5500] font-mono font-extrabold text-lg flex items-center justify-center shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-[#E8F5EF] text-[#0D4F3C] font-mono font-extrabold text-lg flex items-center justify-center shadow-xs">
                 01
               </div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900">
@@ -319,7 +319,7 @@ export const LandingPage: React.FC = () => {
 
             {/* Step 2 */}
             <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-7 shadow-2xs space-y-3 relative">
-              <div className="w-12 h-12 rounded-2xl bg-orange-100 text-[#FF5500] font-mono font-extrabold text-lg flex items-center justify-center shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-[#E8F5EF] text-[#0D4F3C] font-mono font-extrabold text-lg flex items-center justify-center shadow-xs">
                 02
               </div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900">
@@ -332,7 +332,7 @@ export const LandingPage: React.FC = () => {
 
             {/* Step 3 */}
             <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-7 shadow-2xs space-y-3 relative">
-              <div className="w-12 h-12 rounded-2xl bg-orange-100 text-[#FF5500] font-mono font-extrabold text-lg flex items-center justify-center shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-[#E8F5EF] text-[#0D4F3C] font-mono font-extrabold text-lg flex items-center justify-center shadow-xs">
                 03
               </div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900">
@@ -353,7 +353,7 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-[#FF5500]">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#0D4F3C]">
                 Vetted Culinary Partners
               </span>
               <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 font-display mt-1">
@@ -362,7 +362,7 @@ export const LandingPage: React.FC = () => {
             </div>
             <button
               onClick={handleExploreStorefront}
-              className="text-xs font-bold text-[#FF5500] hover:text-[#EA4C00] flex items-center gap-1 cursor-pointer"
+              className="text-xs font-bold text-[#0D4F3C] hover:text-[#0D4F3C] flex items-center gap-1 cursor-pointer"
             >
               <span>View all places</span>
               <ChevronRight className="w-4 h-4" />
@@ -374,7 +374,7 @@ export const LandingPage: React.FC = () => {
               <div
                 key={restaurant.id}
                 onClick={handleExploreStorefront}
-                className="group bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-2xs hover:shadow-lg hover:border-orange-300 transition-all cursor-pointer flex flex-col justify-between"
+                className="group bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-2xs hover:shadow-lg hover:border-[#98D5C3] transition-all cursor-pointer flex flex-col justify-between"
               >
                 <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
                   <img
@@ -396,7 +396,7 @@ export const LandingPage: React.FC = () => {
 
                 <div className="p-4 sm:p-5 space-y-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold text-slate-900 group-hover:text-[#FF5500] transition-colors truncate">
+                    <h3 className="text-base font-bold text-slate-900 group-hover:text-[#0D4F3C] transition-colors truncate">
                       {restaurant.name}
                     </h3>
                     <div className="flex items-center gap-1 text-xs font-bold text-slate-900 font-mono">
@@ -431,7 +431,7 @@ export const LandingPage: React.FC = () => {
       <section id="zones" className="py-16 sm:py-24 bg-[#F8F9FA] border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14 space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#FF5500]">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#0D4F3C]">
               Wide Geographic Reach
             </span>
             <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 font-display">
@@ -453,16 +453,16 @@ export const LandingPage: React.FC = () => {
                     setSelectedZone(zoneId as DeliveryZone);
                     handleExploreStorefront();
                   }}
-                  className={`p-4 rounded-3xl bg-white border transition-all cursor-pointer text-center space-y-1 shadow-2xs hover:shadow-md hover:border-orange-300 ${
-                    selectedZone === zoneId ? 'border-[#FF5500] ring-2 ring-orange-500/10' : 'border-slate-200/90'
+                  className={`p-4 rounded-3xl bg-white border transition-all cursor-pointer text-center space-y-1 shadow-2xs hover:shadow-md hover:border-[#98D5C3] ${
+                    selectedZone === zoneId ? 'border-[#0D4F3C] ring-2 ring-[#0D4F3C]/10' : 'border-slate-200/90'
                   }`}
                 >
-                  <div className="w-9 h-9 rounded-2xl bg-orange-50 text-[#FF5500] flex items-center justify-center mx-auto mb-2">
+                  <div className="w-9 h-9 rounded-2xl bg-[#F4F9F6] text-[#0D4F3C] flex items-center justify-center mx-auto mb-2">
                     <MapPin className="w-4 h-4" />
                   </div>
                   <h4 className="text-xs font-bold text-slate-900 truncate">{zone.name}</h4>
                   <p className="text-[11px] text-slate-400">{zone.city || 'Service Area'}</p>
-                  <p className="text-[11px] font-mono font-bold text-[#FF5500] pt-1">{fee !== undefined && Number.isFinite(Number(fee)) ? `${currency === 'USD' ? '$' : '₦'}${Number(fee).toLocaleString()} Fee` : 'Fee unavailable'}</p>
+                  <p className="text-[11px] font-mono font-bold text-[#0D4F3C] pt-1">{fee !== undefined && Number.isFinite(Number(fee)) ? `${currency === 'USD' ? '$' : '₦'}${Number(fee).toLocaleString()} Fee` : 'Fee unavailable'}</p>
                 </div>
               );
             })}

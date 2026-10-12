@@ -45,13 +45,13 @@ export default function HandoverPage() {
   const expired = details ? new Date(details.expiresAt).getTime() <= Date.now() : false;
   return (
     <main className="min-h-[70vh] w-full max-w-xl mx-auto px-4 py-8 sm:py-14">
-      <button onClick={() => router.push('/')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-orange-600"><ArrowLeft className="h-4 w-4" /> Back to VeyraNG</button>
+      <button onClick={() => router.push('/')} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-[#0D4F3C]"><ArrowLeft className="h-4 w-4" /> Back to VeyraNG</button>
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
-        <div className="bg-gradient-to-r from-orange-600 to-orange-500 p-6 text-white sm:p-8">
+        <div className="bg-gradient-to-r from-[#0D4F3C] to-[#147A5A] p-6 text-white sm:p-8">
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15"><ShieldCheck className="h-6 w-6" /></div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-100">VeyraNG · Secure Handover</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#E8C547]">VeyraNG · Secure Handover</p>
           <h1 className="mt-2 text-2xl font-black sm:text-3xl">{confirmed ? 'Delivery confirmed' : 'Confirm your delivery'}</h1>
-          <p className="mt-2 text-sm leading-6 text-orange-50">Confirm receipt only when the food is physically with you. Your confirmation is checked by VeyraNG's server.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-200">Confirm receipt only when the food is physically with you. Your confirmation is checked by VeyraNG's server.</p>
         </div>
         <div className="space-y-5 p-6 sm:p-8">
           {error && <div role="alert" className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><AlertTriangle className="h-5 w-5 shrink-0" />{error}</div>}
@@ -64,7 +64,7 @@ export default function HandoverPage() {
               <p className="mt-3 flex items-center gap-2 text-xs text-slate-500"><Clock3 className="h-4 w-4" /> Link expires {new Date(details.expiresAt).toLocaleString()}</p>
             </div>
             {confirmed ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900"><CheckCircle2 className="mb-2 h-6 w-6" /><p className="font-bold">Receipt recorded securely.</p><p className="mt-1 text-sm">You can now open Order History to leave feedback for the restaurant and courier.</p><button onClick={() => router.push('/?page=orders')} className="mt-4 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-bold text-white">Go to order history</button></div>
-            : <><p className="text-sm leading-6 text-slate-600">For privacy, this page does not display your delivery address or phone number. You must be signed in to the VeyraNG account that placed this order.</p><button disabled={busy || expired || details.status === 'delivered'} onClick={() => void confirm()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF5500] px-5 py-4 font-extrabold text-white shadow-lg shadow-orange-500/20 transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50">{busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}{busy ? 'Confirming securely…' : expired ? 'Link expired' : details.status === 'delivered' ? 'Already delivered' : 'I have received my order'}</button></>}
+            : <><p className="text-sm leading-6 text-slate-600">For privacy, this page does not display your delivery address or phone number. You must be signed in to the VeyraNG account that placed this order.</p><button disabled={busy || expired || details.status === 'delivered'} onClick={() => void confirm()} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0D4F3C] px-5 py-4 font-extrabold text-white shadow-lg shadow-[#0D4F3C]/20 transition hover:bg-[#0A3F30] disabled:cursor-not-allowed disabled:opacity-50">{busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}{busy ? 'Confirming securely…' : expired ? 'Link expired' : details.status === 'delivered' ? 'Already delivered' : 'I have received my order'}</button></>}
           </>}
           <div className="flex gap-2 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500"><ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" /> QR links are temporary. Never confirm receipt before the order arrives.</div>
         </div>

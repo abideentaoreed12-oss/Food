@@ -137,7 +137,7 @@ export default async function RestaurantSeoPage({ params }: Props) {
       <header className="overflow-hidden rounded-2xl bg-slate-50">
         {restaurant.image ? <img src={restaurant.image} alt={restaurant.name || 'Restaurant'} className="h-56 w-full object-cover sm:h-80" /> : null}
         <div className="p-6 sm:p-8">
-          <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-orange-600">{restaurant.cuisine || 'Restaurant'}</p>
+          <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[#0D4F3C]">{restaurant.cuisine || 'Restaurant'}</p>
           <h1 className="text-3xl font-bold sm:text-4xl">{restaurant.name}</h1>
           {restaurant.description || restaurant.tagline ? <p className="mt-3 max-w-3xl text-slate-600">{restaurant.description || restaurant.tagline}</p> : null}
           <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-600">
@@ -146,7 +146,7 @@ export default async function RestaurantSeoPage({ params }: Props) {
             {restaurant.address ? <span>{restaurant.address}</span> : null}
             {restaurant.deliveryFee !== undefined ? <span>Delivery fee: ₦{restaurant.deliveryFee.toLocaleString('en-NG')}</span> : null}
           </div>
-          <a href={`/?restaurant=${encodeURIComponent(restaurant.id)}`} className="mt-6 inline-flex rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white">Order from this restaurant</a>
+          <a href={`/?restaurant=${encodeURIComponent(restaurant.id)}`} className="mt-6 inline-flex rounded-xl bg-[#0D4F3C] hover:bg-[#0A3F30] px-5 py-3 font-semibold text-white">Order from this restaurant</a>
         </div>
       </header>
       <section className="mt-10" aria-labelledby="menu-heading">

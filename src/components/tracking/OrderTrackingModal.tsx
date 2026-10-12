@@ -186,7 +186,7 @@ export const OrderTrackingModal: React.FC = () => {
         {/* Header bar */}
         <div className="px-5 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between no-print">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-orange-600 flex items-center gap-1.5">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[#0D4F3C] flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
               <span>Order and Courier Tracking</span>
             </div>
@@ -201,7 +201,7 @@ export const OrderTrackingModal: React.FC = () => {
               onClick={handleDownloadPdf}
               title="Download Receipt PDF"
               aria-label="Download Receipt PDF"
-              className="px-2.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#FF5500] text-xs font-bold transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
+              className="px-2.5 py-1.5 rounded-xl bg-[#E8F5EF] hover:bg-[#E8F5EF]/80 text-[#0D4F3C] text-xs font-bold transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Save PDF</span>
@@ -228,11 +228,11 @@ export const OrderTrackingModal: React.FC = () => {
         {/* Modal Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 no-scrollbar">
           {/* Instant Notification Banner */}
-          <div className="p-3.5 rounded-2xl bg-orange-50/90 border border-orange-200 flex items-center gap-3 animate-fade-in no-print">
-            <div className="w-8 h-8 rounded-xl bg-orange-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+          <div className="p-3.5 rounded-2xl bg-[#E8F5EF] border border-[#0D4F3C]/20 flex items-center gap-3 animate-fade-in no-print">
+            <div className="w-8 h-8 rounded-xl bg-[#0D4F3C] text-white flex items-center justify-center shrink-0 shadow-xs">
               <Bell className="w-4 h-4 animate-bounce" />
             </div>
-            <div className="flex-1 text-xs font-semibold text-orange-900">
+            <div className="flex-1 text-xs font-semibold text-[#0D4F3C]">
               {notificationMsg}
             </div>
           </div>
@@ -263,7 +263,7 @@ export const OrderTrackingModal: React.FC = () => {
 
             <div className="relative z-10 flex items-center justify-between mb-4">
               <div>
-                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-orange-400">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#E8C547]">
                   Distance & Buffer Countdown (ETA {totalEtaMins === null ? 'unavailable' : `${totalEtaMins}m`})
                 </span>
                 <div className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-white mt-0.5">
@@ -276,7 +276,7 @@ export const OrderTrackingModal: React.FC = () => {
 
               <div className="text-right bg-white/10 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-white/10">
                 <span className="text-[10px] uppercase font-bold text-slate-300 block">Status</span>
-                <span className="text-xs font-extrabold text-orange-400 capitalize">
+                <span className="text-xs font-extrabold text-[#E8C547] capitalize">
                   {order.status.replace('_', ' ')}
                 </span>
               </div>
@@ -286,7 +286,7 @@ export const OrderTrackingModal: React.FC = () => {
             <div className="space-y-2 pt-2 relative z-10">
               <div className="flex items-center justify-between text-[11px] font-medium text-slate-300">
                 <span className="flex items-center gap-1">
-                  <Utensils className="w-3.5 h-3.5 text-orange-400" /> Kitchen
+                  <Utensils className="w-3.5 h-3.5 text-[#E8C547]" /> Kitchen
                 </span>
                 <span className="flex items-center gap-1 font-bold text-white">
                   <Bike className="w-3.5 h-3.5 text-emerald-400 animate-pulse" /> Dispatch Rider
@@ -298,7 +298,7 @@ export const OrderTrackingModal: React.FC = () => {
 
               <div className="h-3 w-full bg-slate-700/80 rounded-full overflow-hidden p-0.5 relative">
                 <div
-                  className="h-full bg-gradient-to-r from-orange-500 via-amber-400 to-emerald-500 rounded-full transition-all duration-1000 relative"
+                  className="h-full bg-gradient-to-r from-[#0D4F3C] via-[#147A5A] to-[#E8C547] rounded-full transition-all duration-1000 relative"
                   style={{ width: `${progressPercent}%` }}
                 >
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-md flex items-center justify-center animate-ping" />
@@ -325,10 +325,10 @@ export const OrderTrackingModal: React.FC = () => {
           <div className="p-3.5 bg-slate-900 rounded-2xl border border-slate-800 text-white space-y-2 no-print shadow-sm">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-slate-200 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#FF5500] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[#0D4F3C] animate-pulse" />
                 Live Order Status
               </span>
-              <span className="text-[11px] font-mono text-orange-400">
+              <span className="text-[11px] font-mono text-[#E8C547]">
                 Current: <strong className="capitalize">{order.status.replace('_', ' ')}</strong>
               </span>
             </div>
@@ -339,7 +339,7 @@ export const OrderTrackingModal: React.FC = () => {
                   aria-current={order.status === m.key ? 'step' : undefined}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 ${
                     order.status === m.key
-                      ? 'bg-[#FF5500] text-white shadow-md ring-2 ring-orange-500/40'
+                      ? 'bg-[#0D4F3C] text-white shadow-md ring-2 ring-[#0D4F3C]/40'
                       : idx <= currentIdx
                       ? 'bg-slate-800 text-emerald-400'
                       : 'bg-slate-800/60 text-slate-400'
@@ -365,7 +365,7 @@ export const OrderTrackingModal: React.FC = () => {
                     <div
                       className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold mb-1 transition-all ${
                         isCurrent
-                          ? 'bg-orange-600 text-white ring-4 ring-orange-100 animate-pulse'
+                          ? 'bg-[#0D4F3C] text-white ring-4 ring-[#E8F5EF] animate-pulse'
                           : isCompleted
                           ? 'bg-emerald-500 text-white'
                           : 'bg-slate-200 text-slate-400'
@@ -376,7 +376,7 @@ export const OrderTrackingModal: React.FC = () => {
                     <span
                       className={`text-[10px] leading-tight truncate w-full ${
                         isCurrent
-                          ? 'font-bold text-orange-600'
+                          ? 'font-bold text-[#0D4F3C]'
                           : isCompleted
                           ? 'font-medium text-slate-700'
                           : 'text-slate-400'
@@ -396,18 +396,18 @@ export const OrderTrackingModal: React.FC = () => {
           </div>
 
           {/* Secure Handover PIN Alert */}
-          <div className="p-4 rounded-2xl bg-orange-50 border border-orange-200 flex items-center justify-between gap-3 no-print">
+          <div className="p-4 rounded-2xl bg-[#E8F5EF] border border-[#0D4F3C]/20 flex items-center justify-between gap-3 no-print">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#FF5500] text-white flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-[#0D4F3C] text-white flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-wider text-orange-700">Doorstep Handover PIN</div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-[#0D4F3C]">Doorstep Handover PIN</div>
                 <div className="text-xs text-slate-600">Provide this code to your rider upon arrival:</div>
               </div>
             </div>
 
-            <span className="text-lg font-mono font-extrabold text-slate-900 tracking-wider bg-white px-3 py-1 rounded-xl border border-orange-200">
+            <span className="text-lg font-mono font-extrabold text-slate-900 tracking-wider bg-white px-3 py-1 rounded-xl border border-[#0D4F3C]/20">
               {order.handoverPin || '—'}
             </span>
           </div>
@@ -436,7 +436,7 @@ export const OrderTrackingModal: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setIsChatOpen(true)}
-                    className="p-2.5 rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer"
+                    className="p-2.5 rounded-xl bg-[#E8F5EF] text-[#0D4F3C] hover:bg-[#E8F5EF]/80 transition-colors cursor-pointer"
                     aria-label="Chat with rider"
                   >
                     <MessageSquare className="w-4 h-4" />
@@ -457,7 +457,7 @@ export const OrderTrackingModal: React.FC = () => {
           <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-2xs">
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-[#FF5500]" />
+                <Receipt className="w-5 h-5 text-[#E8C547]" />
                 <div>
                   <h3 className="text-xs font-extrabold uppercase tracking-wider text-white">
                     Official Itemized Receipt
@@ -468,7 +468,7 @@ export const OrderTrackingModal: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleDownloadPdf}
-                  className="px-2.5 py-1.5 bg-[#FF5500] hover:bg-orange-600 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
+                  className="px-2.5 py-1.5 bg-[#0D4F3C] hover:bg-[#0A3F30] text-white rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
                   title="Save PDF file"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -503,7 +503,7 @@ export const OrderTrackingModal: React.FC = () => {
                   </span>
                   <p className="font-bold text-slate-900">{order.customerName} ({order.customerPhone})</p>
                   <p className="text-slate-500 text-[11px] mt-0.5 flex items-start gap-1">
-                    <MapPin className="w-3 h-3 text-[#FF5500] shrink-0 mt-0.5" />
+                    <MapPin className="w-3 h-3 text-[#0D4F3C] shrink-0 mt-0.5" />
                     <span>{order.customerAddress} {order.customerApartment ? `(${order.customerApartment})` : ''}</span>
                   </p>
                   <p className="text-slate-500 text-[11px] mt-0.5">
@@ -585,7 +585,7 @@ export const OrderTrackingModal: React.FC = () => {
 
                 <div className="flex justify-between items-center pt-2.5 mt-2 border-t border-slate-900 text-sm font-extrabold text-slate-900">
                   <span>Total Amount Paid</span>
-                  <span className="font-mono text-base text-[#FF5500]">
+                  <span className="font-mono text-base text-[#0D4F3C]">
                     {formatCurrency(order.total, currency)}
                   </span>
                 </div>
