@@ -125,7 +125,8 @@ router.post('/login', loginLimiter, validateBody(LoginSchema), async (req: AuthR
 
     if (configuredAdminEmail && configuredAdminPass && email === configuredAdminEmail && cleanPassword === configuredAdminPass) {
       const adminUser: any = { id: 'usr-admin-1', email: configuredAdminEmail, name: 'System Administrator', role: 'admin', phone: '', walletBalanceUSD: 0, walletBalanceNGN: 0, savedAddresses: [] };
-      const token = generateToken(adminUser);
+      const sessionId = await issueCustomerSession(String(adminUser.id));
+      const token = generateToken(adminUser, sessionId);
       res.cookie('veyrang_token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
       res.cookie('veyrang_auth_token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
       return res.json({ success: true, data: { user: adminUser, token } });
