@@ -51,7 +51,9 @@ export const CustomerView: React.FC = () => {
     applyPromoCode,
     addToCart,
     platformSettings,
-    deliveryZones
+    deliveryZones,
+    promos,
+    categories: contextCategories
   } = useDelivery();
 
   const { user, setIsAuthModalOpen } = useAuth();
@@ -63,17 +65,12 @@ export const CustomerView: React.FC = () => {
   const [activePromo, setActivePromo] = useState<{ code: string; discount_type: string; value: number; min_order?: number; max_cap?: number | null } | null>(null);
 
   useEffect(() => {
-    api.settings.getPromos().then((res: any) => {
-      const list = res?.data || res || [];
-      if (Array.isArray(list) && list.length > 0) {
-        setActivePromo(list[0]);
-      } else {
-        setActivePromo(null);
-      }
-    }).catch(() => {
+    if (promos.length > 0) {
+      setActivePromo(promos[0]);
+    } else {
       setActivePromo(null);
-    });
-  }, []);
+    }
+  }, [promos]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -90,17 +87,12 @@ export const CustomerView: React.FC = () => {
     (o) => o.status === 'in_transit' || o.status === 'preparing' || o.status === 'placed'
   );
 
-  const [categories, setCategories] = useState<{ id: string; label: string; icon: any }[]>([]);
-
-  useEffect(() => {
-    api.admin.getCategories?.().then((res: any) => {
-      const list = Array.isArray(res) ? res : (res?.data || []);
-      setCategories([
-        { id: 'All', label: 'All', icon: LayoutGrid },
-        ...list.map((c: any) => ({ id: c.name, label: c.name, icon: UtensilsCrossed }))
-      ]);
-    }).catch(() => {});
-  }, []);
+  const categories = useMemo(() => {
+    return [
+      { id: 'All', label: 'All', icon: LayoutGrid },
+      ...contextCategories.map((c: any) => ({ id: c.name, label: c.name, icon: UtensilsCrossed }))
+    ];
+  }, [contextCategories]);
 
   const restaurantImageMap: Record<string, string> = {
     'rest-1': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80',
@@ -174,43 +166,43 @@ export const CustomerView: React.FC = () => {
   };
 
   return (
-    <div className="max-w-xl sm:max-w-2xl md:max-w-4xl lg:max-w-6xl mx-auto space-y-6 pb-20">
+    <div className="max-w-xl sm:max-w-2xl md:max-w-4xl lg:max-w-6xl mx-auto space-y-5 sm:space-y-6 pb-24">
       {user && <WalletCard />}
 
       {activeOrder && (
         <div
           onClick={() => openTracking(activeOrder.id)}
-          className="rounded-3xl bg-white border border-emerald-100 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:border-emerald-200 transition-colors"
+          className="rounded-3xl bg-white border border-emerald-200/80 p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-[#E8F5EF] text-[#0D4F3C] flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-2xl bg-[#E8F5EF] text-[#0D4F3C] flex items-center justify-center shrink-0 shadow-2xs group-hover:bg-[#0D4F3C] group-hover:text-white transition-colors">
+              <Clock className="w-6 h-6 stroke-[2]" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-[#E8C547]/30 text-[#0D4F3C] px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-[#E8C547]/30 text-[#0D4F3C] px-2.5 py-0.5 rounded-full">
                   {activeOrder.status === 'in_transit' ? 'On the way' : 'Preparing in kitchen'}
                 </span>
                 <span className="text-xs font-mono font-bold text-slate-500">#{activeOrder.shortId}</span>
               </div>
-              <p className="text-xs text-slate-600 font-medium mt-1">
+              <p className="text-xs sm:text-sm text-slate-700 font-medium mt-1">
                 Estimated arrival:{' '}
-                <span className="font-bold font-mono text-slate-900 text-sm">
+                <span className="font-extrabold font-mono text-slate-900 text-sm sm:text-base">
                   {activeOrder.estimatedArrivalMinutes == null
                     ? 'ETA unavailable'
                     : `${activeOrder.estimatedArrivalMinutes} min`}
                 </span>
               </p>
-              <p className="text-[11px] text-slate-500 mt-0.5 truncate max-w-[220px] sm:max-w-xs">
-                ETA: {activeOrder.customerAddress || 'Address on file'}
+              <p className="text-[11px] text-slate-500 mt-0.5 truncate max-w-[240px] sm:max-w-md">
+                Delivery to: {activeOrder.customerAddress || 'Address on file'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-center">
-            <span className="text-xs font-bold px-4 py-2 bg-[#0D4F3C] text-white rounded-full shadow-xs flex items-center gap-1">
+            <span className="text-xs font-bold px-4 py-2 bg-[#0D4F3C] text-white hover:bg-[#0A3F30] rounded-full shadow-xs flex items-center gap-1.5 transition-colors">
               <span>Track Live</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
             </span>
           </div>
         </div>

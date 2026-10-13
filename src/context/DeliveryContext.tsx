@@ -116,6 +116,8 @@ interface DeliveryContextType {
   setBusyMode: (restaurantId: string, isBusy: boolean) => Promise<void>;
   sendChatMessage: (orderId: string, text: string, sender?: 'customer' | 'courier') => Promise<void>;
   refreshData: () => Promise<void>;
+  promos: any[];
+  categories: any[];
 }
 
 export interface WalletDepositRecord {
@@ -475,12 +477,24 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   }, [platformSettings, cmsContent]);
 
   // Server-managed catalog & server-managed orders
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>(() => {
+    try {
+      const saved = sessionStorage.getItem('veyrang_site_data_restaurants');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [orders, setOrders] = useState<Order[]>([]);
 
   // Cart persistence (loads from localStorage so guests & users never lose items)
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartLoaded, setIsCartLoaded] = useState<boolean>(false);
+
+  // Save restaurants to sessionStorage on update
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('veyrang_site_data_restaurants', JSON.stringify(restaurants));
+    } catch {}
+  }, [restaurants]);
 
   // Restore cart on client mount after hydration and purge any legacy cached orders/foods
   useEffect(() => {
@@ -525,6 +539,8 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const [walletBalanceNGN, setWalletBalanceNGN] = useState<number>(0);
   const [useWalletCredit, setUseWalletCredit] = useState<boolean>(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
+  const [promos, setPromos] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
 
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(initialRestaurantId || null);
   const [selectedRestaurantForPortal, setSelectedRestaurantForPortal] = useState<string>('rest-1');
@@ -536,7 +552,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const refreshData = useCallback(async () => {
     try {
       // All shared catalog/settings reads come from the last-known-good snapshot.
-      // A failed request preserves the last successful state; it never switches to mock/direct fallback data.
       let freshRestaurants: Restaurant[] | null = null;
       try {
         const snapRes = await api.siteData.getPublicSnapshot();
@@ -550,7 +565,7 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
             setCmsContent((prev) => ({ ...prev, ...snap.platformSettings }));
           }
 
-          // Notify other open tabs when the authoritative snapshot changes.
+          // Notify other open tabs
           if (typeof window !== 'undefined') {
             const version = Number(snap.version || 0);
             const updatedAt = String(snap.updatedAt || '');
@@ -569,16 +584,21 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
               }));
             }
           }
-        } else {
-          // No real snapshot yet: don't substitute fabricated records.
-          setRestaurants([]);
-          setDeliveryZones([]);
         }
       } catch (snapshotError) {
-        // Keep the last successfully loaded authoritative snapshot during a temporary
-        // transport/API outage. Never replace it with fabricated data or clear the UI.
         console.warn('Unable to refresh authoritative site data; preserving last successful snapshot:', snapshotError);
       }
+
+      // Fetch categories and promos
+      try {
+        const promosRes = await api.settings.getPromos();
+        setPromos(promosRes?.data || promosRes || []);
+      } catch (e) { console.warn('Failed to fetch promos:', e); }
+
+      try {
+        const catRes = await api.admin.getCategories();
+        setCategories(Array.isArray(catRes) ? catRes : (catRes?.data || []));
+      } catch (e) { console.warn('Failed to fetch categories:', e); }
 
       // Validate cart against fresh restaurant data
       setCart(prevCart => {
@@ -796,7 +816,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   }, []);
 
   useEffect(() => {
-    refreshDataRef.current();
+    const timer = setTimeout(() => {
+      refreshDataRef.current();
+    }, 500);
+    return () => clearTimeout(timer);
   }, [user?.id, selectedAddress?.address]);
 
   // Cart Opening
@@ -1465,7 +1488,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
         updateItemAvailability,
         setBusyMode,
         sendChatMessage,
-        refreshData
+        refreshData,
+        promos,
+        categories
       }}
     >
       {children}

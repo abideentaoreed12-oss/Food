@@ -96,16 +96,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     purgeLegacyAuthoritativeCaches();
     // Restore cached user shell (no wallet) on client mount after hydration
+    let hasToken = false;
     try {
       const token = safeGet(STORAGE_KEYS.JWT);
       const cached = safeGet(STORAGE_KEYS.USER_SHELL) || safeGet(STORAGE_KEYS.USER_CACHE_LEGACY);
-      if (token && cached) {
-        const sanitized = sanitizeUser(JSON.parse(cached));
-        if (sanitized) setUser(sanitized);
+      if (token) {
+        hasToken = true;
+        if (cached) {
+          const sanitized = sanitizeUser(JSON.parse(cached));
+          if (sanitized) setUser(sanitized);
+        }
       }
     } catch {}
 
-    // Check existing authenticated session
+    // If there is no JWT token, we are guaranteed unauthenticated. Stop loading instantly (0ms).
+    if (!hasToken) {
+      setLoading(false);
+      return;
+    }
+
+    // If we have a cached user shell, stop loading immediately for lightning-fast render while getMe validates in background.
+    if (safeGet(STORAGE_KEYS.USER_SHELL)) {
+      setLoading(false);
+    }
+
+    // Check existing authenticated session in background
     api.auth
       .getMe()
       .then((res) => {
@@ -117,8 +132,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           safeRemove(STORAGE_KEYS.JWT);
           safeRemove(STORAGE_KEYS.USER_SHELL); safeRemove(STORAGE_KEYS.USER_CACHE_LEGACY);
-        } else if (!res.transientError && !safeGet(STORAGE_KEYS.JWT)) {
-          setUser(null);
         }
       })
       .catch(() => {})
