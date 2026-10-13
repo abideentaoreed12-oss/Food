@@ -42,7 +42,7 @@ import {
 import { OrderReviewModal } from '../reviews/OrderReviewModal';
 
 export const OrdersPage: React.FC = () => {
-  const { orders, openTracking, reorderPastOrder, currency, setActivePage } = useDelivery();
+  const { orders, openTracking, reorderPastOrder, currency, setActivePage, refreshData } = useDelivery();
   const { user, loading, setIsAuthModalOpen } = useAuth();
 
   const [expandedReceiptId, setExpandedReceiptId] = useState<string | null>(null);
@@ -50,6 +50,7 @@ export const OrdersPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'delivered' | 'cancelled'>('all');
   const [selectedReviewOrder, setSelectedReviewOrder] = useState<Order | null>(null);
   const [clockNow, setClockNow] = useState<number>(0);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [scanOrder, setScanOrder] = useState<Order | null>(null);
   const [cameraError, setCameraError] = useState<string>('');
   const [scanValue, setScanValue] = useState<string>('');
@@ -63,6 +64,24 @@ export const OrdersPage: React.FC = () => {
   const [manualSuccess, setManualSuccess] = useState('');
   const [retryingOrderId, setRetryingOrderId] = useState<string | null>(null);
   const [retryError, setRetryError] = useState<string>('');
+
+  const syncLatestOrders = async () => {
+    if (!user) return;
+    setIsRefreshing(true);
+    try {
+      if (typeof refreshData === 'function') {
+        await refreshData();
+      }
+    } catch {} finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      syncLatestOrders();
+    }
+  }, [user?.id]);
 
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
@@ -344,19 +363,22 @@ export const OrdersPage: React.FC = () => {
     return Math.max(0, Math.ceil((created + eta * 60_000 - clockNow) / 60_000));
   };
 
-  // Filter orders associated with the authenticated user session
+  // Filter orders associated strictly with the authenticated user session
   const safeOrders = useMemo(() => {
     return (orders || []).filter((o) => {
       if (!o) return false;
       if (!user) return true; // Show all session orders if guest
+      const orderCustId = String(o.customerId || '');
+      const userUid = String(user.id || '');
+      const orderEmail = String((o as any).customerEmail || (o as any).customer_email || '').toLowerCase().trim();
+      const userEmail = String(user.email || '').toLowerCase().trim();
+      const orderPhone = String(o.customerPhone || (o as any).customer_phone || '').trim();
+      const userPhone = String(user.phone || '').trim();
+
       return (
-        o.customerId === user.id ||
-        o.customerId === 'guest' ||
-        !o.customerId ||
-        o.customerPhone === user.phone ||
-        (o as any).customerEmail === user.email ||
-        (o.customerName && user.name && o.customerName.toLowerCase() === user.name.toLowerCase()) ||
-        user.role === 'customer'
+        (orderCustId && userUid && orderCustId === userUid) ||
+        (userEmail && orderEmail && userEmail === orderEmail) ||
+        (userPhone && orderPhone && userPhone === orderPhone)
       );
     });
   }, [orders, user]);
@@ -488,14 +510,55 @@ export const OrdersPage: React.FC = () => {
           </p>
         </div>
 
-        <Link
-          href={ROUTES.RESTAURANTS}
-          className="px-4 py-2.5 rounded-xl bg-[#E8F5EF] hover:bg-[#E8F5EF]/80 text-[#0D4F3C] font-bold text-xs flex items-center gap-1.5 transition-colors self-start sm:self-auto"
-        >
-          <Utensils className="w-3.5 h-3.5" />
-          <span>Explore Restaurants</span>
-        </Link>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={syncLatestOrders}
+            disabled={isRefreshing}
+            className="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+            title="Sync latest live orders"
+          >
+            <RotateCcw className={`w-3.5 h-3.5 text-[#0D4F3C] ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Updating...' : 'Sync Orders'}</span>
+          </button>
+
+          <Link
+            href={ROUTES.RESTAURANTS}
+            prefetch={true}
+            className="px-4 py-2.5 rounded-xl bg-[#E8F5EF] hover:bg-[#E8F5EF]/80 text-[#0D4F3C] font-bold text-xs flex items-center gap-1.5 transition-colors"
+          >
+            <Utensils className="w-3.5 h-3.5" />
+            <span>Explore Restaurants</span>
+          </Link>
+        </div>
       </div>
+
+      {safeOrders.length === 0 ? (
+        <div className="text-center py-16 px-6 rounded-3xl border border-slate-200 bg-white space-y-4 max-w-md mx-auto shadow-xs">
+          <div className="w-16 h-16 rounded-3xl bg-[#E8F5EF] border border-[#0D4F3C]/20 text-[#0D4F3C] flex items-center justify-center mx-auto shadow-xs">
+            <ShoppingBag className="w-8 h-8 stroke-[2]" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-extrabold text-slate-900 font-display">
+              No orders placed yet
+            </h3>
+            <p className="text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
+              You haven&apos;t placed any orders yet. Once you place an order, live GPS dispatch tracking, PIN verification, and full official receipts will show up here.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link
+              href={ROUTES.RESTAURANTS}
+              prefetch={true}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#0D4F3C] hover:bg-[#0A3F30] text-white font-bold text-xs shadow-md shadow-[#0D4F3C]/20 transition-all cursor-pointer active:scale-95"
+            >
+              <Utensils className="w-4 h-4" />
+              <span>Browse Restaurants & Order Now</span>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
 
       {/* Active Orders Section */}
       {activeOrders.length > 0 && (
@@ -992,6 +1055,8 @@ export const OrdersPage: React.FC = () => {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {scanOrder && (
         <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="food-qr-title">

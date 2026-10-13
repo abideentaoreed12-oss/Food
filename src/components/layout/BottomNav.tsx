@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 import { ROUTES } from '../../routes';
 import { Home, Utensils, LayoutGrid, Receipt, ShoppingCart } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
-  const router = useRouter();
   const pathname = usePathname();
   const {
     activeRole,
@@ -23,24 +23,14 @@ export const BottomNav: React.FC = () => {
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Eagerly prefetch all 4 destination routes on component mount
-  useEffect(() => {
-    try {
-      router.prefetch(ROUTES.HOME);
-      router.prefetch(ROUTES.RESTAURANTS);
-      router.prefetch(ROUTES.OFFERS);
-      router.prefetch(ROUTES.ORDERS);
-    } catch {}
-  }, [router]);
-
-  // Reset optimistic tab when pathname changes or cart state changes
+  // Clear optimistic override whenever pathname or drawer state updates
   useEffect(() => {
     setOptimisticTab(null);
   }, [pathname, isCartOpen]);
 
   if (activeRole !== 'customer') return null;
 
-  // Resolve active tab with 0ms optimistic priority on user touch/click
+  // Resolve active tab: optimistic touch selection takes highest priority for instant visual feedback
   const resolvedActiveTab = (() => {
     if (optimisticTab) return optimisticTab;
     if (isCartOpen) return 'cart';
@@ -51,19 +41,29 @@ export const BottomNav: React.FC = () => {
     return 'home';
   })();
 
-  const handleNavigate = (tab: 'home' | 'food' | 'express' | 'history', href: string) => {
-    setOptimisticTab(tab);
+  const closeDrawers = () => {
     if (isCartOpen) setIsCartOpen(false);
     setIsRightDrawerOpen(false);
-    if (pathname !== href) {
-      router.push(href);
-    }
   };
 
-  const handleCartClick = () => {
+  const handleLinkTouch = (tab: 'home' | 'food' | 'express' | 'history') => {
+    setOptimisticTab(tab);
+    closeDrawers();
+  };
+
+  const handleCartClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     setOptimisticTab('cart');
     setIsRightDrawerOpen(false);
-    setIsCartOpen(true);
+    setIsCartOpen(!isCartOpen);
+  };
+
+  const handleHistoryClick = (e: React.MouseEvent) => {
+    handleLinkTouch('history');
+    if (!isAuthenticated) {
+      e.preventDefault();
+      setIsAuthModalOpen(true);
+    }
   };
 
   const isHomeActive = resolvedActiveTab === 'home';
@@ -80,11 +80,11 @@ export const BottomNav: React.FC = () => {
     >
       <div className="max-w-md mx-auto grid grid-cols-5 items-center">
         {/* 1. Home Tab */}
-        <button
-          type="button"
-          onClick={() => handleNavigate('home', ROUTES.HOME)}
-          onMouseEnter={() => router.prefetch(ROUTES.HOME)}
-          onTouchStart={() => router.prefetch(ROUTES.HOME)}
+        <Link
+          href={ROUTES.HOME}
+          prefetch={true}
+          onClick={() => handleLinkTouch('home')}
+          onTouchStart={() => setOptimisticTab('home')}
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-transform active:scale-95 touch-manipulation focus:outline-none"
           style={{ touchAction: 'manipulation' }}
           aria-label="Home"
@@ -101,14 +101,14 @@ export const BottomNav: React.FC = () => {
             Home
           </span>
           <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all duration-100 ${isHomeActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
-        </button>
+        </Link>
 
         {/* 2. Food Tab */}
-        <button
-          type="button"
-          onClick={() => handleNavigate('food', ROUTES.RESTAURANTS)}
-          onMouseEnter={() => router.prefetch(ROUTES.RESTAURANTS)}
-          onTouchStart={() => router.prefetch(ROUTES.RESTAURANTS)}
+        <Link
+          href={ROUTES.RESTAURANTS}
+          prefetch={true}
+          onClick={() => handleLinkTouch('food')}
+          onTouchStart={() => setOptimisticTab('food')}
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-transform active:scale-95 touch-manipulation focus:outline-none"
           style={{ touchAction: 'manipulation' }}
           aria-label="Food"
@@ -125,14 +125,14 @@ export const BottomNav: React.FC = () => {
             Food
           </span>
           <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all duration-100 ${isFoodActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
-        </button>
+        </Link>
 
         {/* 3. Express Tab */}
-        <button
-          type="button"
-          onClick={() => handleNavigate('express', ROUTES.OFFERS)}
-          onMouseEnter={() => router.prefetch(ROUTES.OFFERS)}
-          onTouchStart={() => router.prefetch(ROUTES.OFFERS)}
+        <Link
+          href={ROUTES.OFFERS}
+          prefetch={true}
+          onClick={() => handleLinkTouch('express')}
+          onTouchStart={() => setOptimisticTab('express')}
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-transform active:scale-95 touch-manipulation focus:outline-none relative"
           style={{ touchAction: 'manipulation' }}
           aria-label="Express Offers"
@@ -149,20 +149,16 @@ export const BottomNav: React.FC = () => {
             Express
           </span>
           <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all duration-100 ${isExpressActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
-        </button>
+        </Link>
 
         {/* 4. History Tab */}
-        <button
-          type="button"
-          onClick={() => {
-            if (!isAuthenticated) {
-              setIsAuthModalOpen(true);
-              return;
-            }
-            handleNavigate('history', ROUTES.ORDERS);
+        <Link
+          href={ROUTES.ORDERS}
+          prefetch={true}
+          onClick={handleHistoryClick}
+          onTouchStart={() => {
+            if (isAuthenticated) setOptimisticTab('history');
           }}
-          onMouseEnter={() => router.prefetch(ROUTES.ORDERS)}
-          onTouchStart={() => router.prefetch(ROUTES.ORDERS)}
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-transform active:scale-95 touch-manipulation focus:outline-none relative"
           style={{ touchAction: 'manipulation' }}
           aria-label="History"
@@ -179,7 +175,7 @@ export const BottomNav: React.FC = () => {
             History
           </span>
           <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all duration-100 ${isHistoryActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
-        </button>
+        </Link>
 
         {/* 5. Cart Tab */}
         <button

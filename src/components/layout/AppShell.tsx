@@ -19,7 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   React.useEffect(() => {
     try {
@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="flex-1">
         {children}
       </main>
-      {!user && <Footer />}
+      {!loading && !user && <Footer />}
       <BottomNav />
       <CartDrawer />
       <RightDrawer />

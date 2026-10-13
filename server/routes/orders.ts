@@ -281,13 +281,25 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         allOrders = ordersRes.results.map((o: any) => {
           let parsed: any = null;
           try { if (o.raw_json) parsed = JSON.parse(o.raw_json); } catch {}
+          let items = parsed?.items;
+          if (!items && o.items) {
+            try { items = typeof o.items === 'string' ? JSON.parse(o.items) : o.items; } catch {}
+          }
           return {
             ...(parsed || {}),
             id: o.id,
+            shortId: o.short_id || parsed?.shortId || `#${String(o.id).slice(-4)}`,
             customerId: o.customer_id || parsed?.customerId,
+            customerName: o.customer_name || parsed?.customerName,
+            customerPhone: o.customer_phone || parsed?.customerPhone,
+            customerAddress: o.customer_address || parsed?.customerAddress,
             restaurantId: o.restaurant_id || parsed?.restaurantId,
+            restaurantName: o.restaurant_name || parsed?.restaurantName,
+            items: Array.isArray(items) ? items : (parsed?.items || []),
             courierId: o.courier_id || parsed?.courierId || parsed?.courier?.id,
             total: o.total ?? parsed?.total,
+            currency: o.currency || parsed?.currency || 'NGN',
+            paymentMethod: o.payment_method || parsed?.paymentMethod || 'Digital Card',
             paymentStatus: o.payment_status || parsed?.paymentStatus,
             status: o.status || parsed?.status,
             createdAt: o.created_at || parsed?.createdAt
@@ -324,7 +336,17 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       });
     }
 
-    return res.json({ success: true, data: allOrders.filter((o) => o.customerId === userId) });
+    const userEmail = req.user?.email ? req.user.email.toLowerCase().trim() : '';
+    const userPhone = req.user?.phone ? req.user.phone.trim() : '';
+    return res.json({
+      success: true,
+      data: allOrders.filter((o) => {
+        if (o.customerId && String(o.customerId) === String(userId)) return true;
+        if (userEmail && (String(o.customerEmail || o.customer_email || '').toLowerCase().trim() === userEmail)) return true;
+        if (userPhone && String(o.customerPhone || o.customer_phone || '').trim() === userPhone) return true;
+        return false;
+      })
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }
