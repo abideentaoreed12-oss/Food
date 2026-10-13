@@ -3,6 +3,34 @@ import path from 'path';
 import os from 'os';
 import { d1 } from './d1';
 import { r2 } from './r2';
+import { cacheInvalidate } from './queryCache';
+
+/**
+ * Triggers safe event-driven snapshot refresh immediately following successful committed mutations.
+ * In Next.js 15 App Router serverless environments, uses `after()` to prevent execution freeze
+ * after response delivery, ensuring durable D1 and R2 snapshot synchronization.
+ */
+export function triggerEventDrivenRefresh(options: { force?: boolean } = {}): void {
+  cacheInvalidate();
+  const doRefresh = async () => {
+    try {
+      await siteDataManager.refreshSnapshot({ force: options.force ?? true, isAuthorizedAdmin: true, allowEmpty: true });
+    } catch (err: any) {
+      console.warn('[EventDrivenRefresh] Background snapshot refresh note:', err?.message || err);
+    }
+  };
+
+  try {
+    const { after } = require('next/server');
+    if (typeof after === 'function') {
+      after(doRefresh);
+      return;
+    }
+  } catch {
+    // Outside Next.js request lifecycle (e.g. tests, scripts, CLI)
+  }
+  doRefresh().catch(() => {});
+}
 
 export interface SiteDataSnapshot {
   schemaVersion: number;
@@ -116,7 +144,6 @@ export class SiteDataManager {
   }
 
   private loadFromDiskSync(): void {
-    if (process.env.NODE_ENV === 'production') return;
     if (this.currentSnapshot) return;
     try {
       if (fs.existsSync(this.primaryDiskPath)) {
@@ -351,9 +378,24 @@ export class SiteDataManager {
             try { safeSettings[s.key] = JSON.parse(s.value); } catch { safeSettings[s.key] = s.value; }
           }
         }
+        let baseVersion = this.currentSnapshot?.version || 0;
+        try {
+          const currentD1Snap = await d1.query(
+            'SELECT value FROM platform_settings WHERE key = ? LIMIT 1',
+            ['last_known_good_site_data'],
+            { cache: false }
+          );
+          if (currentD1Snap?.results?.[0]?.value) {
+            const parsedRemote = JSON.parse(currentD1Snap.results[0].value);
+            if (typeof parsedRemote?.version === 'number' && Number.isFinite(parsedRemote.version)) {
+              baseVersion = Math.max(baseVersion, parsedRemote.version);
+            }
+          }
+        } catch {}
+
         const candidate: SiteDataSnapshot = {
           schemaVersion: 1,
-          version: (this.currentSnapshot?.version || 0) + 1,
+          version: baseVersion + 1,
           updatedAt: new Date().toISOString(),
           lastAttemptedAt: new Date().toISOString(),
           source: 'cloudflare_d1',

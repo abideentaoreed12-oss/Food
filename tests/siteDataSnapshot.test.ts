@@ -6,7 +6,8 @@ import {
   SiteDataManager,
   isValidSiteData,
   SiteDataSnapshot,
-  PUBLIC_SETTINGS_WHITELIST
+  PUBLIC_SETTINGS_WHITELIST,
+  triggerEventDrivenRefresh
 } from '../lib/siteDataSnapshot';
 import { d1 } from '../lib/d1';
 import { r2 } from '../lib/r2';
@@ -353,4 +354,52 @@ describe('Production Last-Known-Good Site Data Snapshot Engine', () => {
     cacheInvalidate();
     expect(cacheGet('settings:public')).toBeUndefined();
   });
+
+  // 17. Event-Driven Snapshot Refresh Trigger
+  it('17. triggerEventDrivenRefresh invalidates cache and triggers durable refresh safely', async () => {
+    cacheSet('settings:public', { fee: 500 }, 5000);
+    expect(cacheGet('settings:public')).toBeDefined();
+
+    const refreshSpy = vi.spyOn(siteDataManager, 'refreshSnapshot').mockResolvedValue(null);
+    triggerEventDrivenRefresh({ force: true });
+
+    // Cache must be cleared synchronously
+    expect(cacheGet('settings:public')).toBeUndefined();
+    // Refresh was invoked
+    expect(refreshSpy).toHaveBeenCalled();
+  });
+
+  // 18. Monotonic Version Ordering with Remote D1 State
+  it('18. monotonically increments candidate version over remote D1 snapshot version', async () => {
+    const manager = new SiteDataManager({ skipDiskLoad: true });
+    vi.spyOn(d1, 'query').mockImplementation(async (sql: string, params?: any[]) => {
+      if (sql.includes('platform_settings') && params?.[0] === 'last_known_good_site_data') {
+        return {
+          results: [{
+            value: JSON.stringify({
+              schemaVersion: 1,
+              version: 88,
+              updatedAt: '2026-10-10T12:00:00Z',
+              source: 'cloudflare_d1',
+              restaurants: [{ id: 'rest-88', name: 'Remote Restaurant 88' }]
+            })
+          }],
+          success: true
+        };
+      }
+      if (sql.includes('FROM restaurants')) {
+        return {
+          results: [{ id: 'rest-new', name: 'Fresh Kitchen', raw_json: JSON.stringify({ id: 'rest-new', name: 'Fresh Kitchen' }) }],
+          success: true
+        };
+      }
+      return { results: [], success: true };
+    });
+
+    const refreshed = await manager.refreshSnapshot({ force: true });
+    expect(refreshed).not.toBeNull();
+    // Candidate version should be Math.max(local, 88) + 1 = 89
+    expect(refreshed?.version).toBe(89);
+  });
 });
+

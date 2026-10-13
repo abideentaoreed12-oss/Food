@@ -5,7 +5,7 @@ import { randomUUID, randomInt, randomBytes, createHash } from 'crypto';
 import { sendVerificationEmail } from '../../../lib/email';
 import { d1 } from '../../../lib/d1';
 import { r2 } from '../../../lib/r2';
-import { siteDataManager, PUBLIC_SETTINGS_WHITELIST, sanitizePromoCodes } from '../../../lib/siteDataSnapshot';
+import { siteDataManager, PUBLIC_SETTINGS_WHITELIST, sanitizePromoCodes, triggerEventDrivenRefresh } from '../../../lib/siteDataSnapshot';
 import { cacheInvalidate } from '../../../lib/queryCache';
 import { paymentGateway } from '../../../lib/payment';
 import {
@@ -564,7 +564,7 @@ export async function GET(req: NextRequest) {
         const d1Res = await d1.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id], { cache: false });
         if (d1Res?.results?.[0]) {
           const data = await buildPublicRestaurant(d1Res.results[0], { includeMenu: true });
-          siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+          triggerEventDrivenRefresh({ force: true });
           return NextResponse.json({ success: true, data }, { headers: { 'Cache-Control': 'no-store', 'X-Veyrang-Source': 'd1-miss' } });
         }
         if (d1Res && d1Res.success !== false) {
@@ -2042,8 +2042,7 @@ export async function POST(req: NextRequest) {
         [k, String(v), now]
       );
     }
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, message: 'Settings updated' });
   }
 
@@ -2098,8 +2097,7 @@ export async function POST(req: NextRequest) {
       [id, name, restaurant.slug, restaurant.cuisine, prepMin, prepMax, deliveryFee, restaurant.address, String(body.zone || '').trim() || null, JSON.stringify(restaurant), now]
     );
     if (!saved.success) return NextResponse.json({ success: false, error: 'Restaurant could not be saved' }, { status: 503 });
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, data: restaurant }, { status: 201 });
   }
 
@@ -2154,7 +2152,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Staff account could not be saved to the authoritative database' }, { status: 503 });
     }
 
-    siteDataManager.refreshSnapshot({ force: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({
       success: true,
       message: `Staff member "${name}" registered permanently as ${role}`,
@@ -2279,8 +2277,7 @@ export async function POST(req: NextRequest) {
       'INSERT INTO addons (id, group_id, name, price, created_at) VALUES (?, ?, ?, ?, ?)',
       [id, groupId || 'grp-default', name, Number(price), now]
     );
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, data: { id, name, price: Number(price) } }, { status: 201 });
   }
 
@@ -2317,8 +2314,7 @@ export async function POST(req: NextRequest) {
         now
       ]
     );
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, data: { id, name, code } }, { status: 201 });
   }
 
@@ -2345,8 +2341,7 @@ export async function POST(req: NextRequest) {
        VALUES (?, ?, ?, ?, ?, 1, ?)`,
       [id, codeUpper, discountType || 'fixed', Number(value), Number(minOrderAmount || 0), now]
     ).catch(() => {});
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, data: { id, code: codeUpper } }, { status: 201 });
   }
 
@@ -2837,8 +2832,7 @@ export async function PATCH(req: NextRequest) {
        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
       [key, String(value), now]
     );
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, data: { key, value } });
   }
 
@@ -2862,8 +2856,7 @@ export async function PATCH(req: NextRequest) {
         );
       }
     }
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, message: 'SEO settings updated' });
   }
 
@@ -2875,8 +2868,7 @@ export async function PATCH(req: NextRequest) {
     }
     const zoneId = decodeURIComponent(zoneToggleMatch[1]);
     await d1.query('UPDATE delivery_zones SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = ?', [zoneId]);
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, message: 'Zone toggled' });
   }
 
@@ -2888,8 +2880,7 @@ export async function PATCH(req: NextRequest) {
     }
     const promoId = decodeURIComponent(promoToggleMatch[1]);
     await d1.query('UPDATE promo_codes SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = ?', [promoId]);
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, message: 'Promo toggled' });
   }
 
@@ -2951,8 +2942,7 @@ export async function PATCH(req: NextRequest) {
     }
     const isBusyPaused = body.isBusyPaused ? 1 : 0;
     await d1.query('UPDATE restaurants SET is_busy_paused = ? WHERE id = ?', [isBusyPaused, restId]);
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, data: { restaurantId: restId, isBusyPaused: Boolean(isBusyPaused) } });
   }
 
@@ -3085,8 +3075,7 @@ export async function PATCH(req: NextRequest) {
       values.push(addonId);
       await d1.query(`UPDATE item_modifiers SET ${updates.join(', ')} WHERE id = ?`, values);
       await d1.query(`UPDATE addons SET ${updates.filter(u => !u.includes('is_available')).join(', ')} WHERE id = ?`, values.filter((_, i) => !updates[i]?.includes('is_available'))).catch(() => {});
-      cacheInvalidate();
-      siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+      triggerEventDrivenRefresh({ force: true });
     }
     return NextResponse.json({ success: true, message: 'Addon updated' });
   }
@@ -3110,8 +3099,7 @@ export async function PATCH(req: NextRequest) {
     if (updates.length > 0) {
       values.push(zoneId);
       await d1.query(`UPDATE delivery_zones SET ${updates.join(', ')} WHERE id = ?`, values);
-      cacheInvalidate();
-      siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+      triggerEventDrivenRefresh({ force: true });
     }
     return NextResponse.json({ success: true, message: 'Delivery zone updated' });
   }
@@ -3125,8 +3113,7 @@ export async function PATCH(req: NextRequest) {
     const zoneId = decodeURIComponent(zoneSurgeMatch[1]);
     const surge = Number(body.surgeMultiplier || 1.0);
     await d1.query('UPDATE delivery_zones SET surge_multiplier = ? WHERE id = ?', [surge, zoneId]);
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, message: 'Surge updated', surgeMultiplier: surge });
   }
 
@@ -3163,8 +3150,7 @@ export async function PATCH(req: NextRequest) {
     const restId = decodeURIComponent(restToggleMatch[1]);
     await d1.query('UPDATE restaurants SET is_open = CASE WHEN is_open = 1 THEN 0 ELSE 1 END WHERE id = ?', [restId]);
     // Immediate change-driven snapshot refresh
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, message: 'Restaurant status toggled' });
   }
 
@@ -3212,8 +3198,7 @@ export async function PATCH(req: NextRequest) {
         await d1.query('UPDATE users SET restaurant_id = ?, updated_at = ? WHERE id = ?', [restaurantId, now, ownerUserId]);
         await d1.query('UPDATE users SET restaurant_id = NULL, updated_at = ? WHERE role = ? AND restaurant_id = ? AND id <> ?', [now, 'restaurant', restaurantId, ownerUserId]);
       }
-      cacheInvalidate();
-      siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+      triggerEventDrivenRefresh({ force: true });
       return NextResponse.json({ success: true, data: { restaurantId, ownerUserId }, message: ownerUserId ? 'Restaurant assigned to merchant' : 'Restaurant unassigned' });
     } catch (error: any) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -3290,8 +3275,7 @@ export async function PATCH(req: NextRequest) {
         restId
       ]
     );
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, message: 'Restaurant updated' });
   }
 
@@ -3315,8 +3299,7 @@ export async function PATCH(req: NextRequest) {
     if (isAvailable === undefined) return NextResponse.json({ success: false, error: 'isAvailable is required' }, { status: 400 });
     const itemRes = await d1.query('UPDATE menu_items SET is_available = ? WHERE id = ? AND restaurant_id = ?', [isAvailable ? 1 : 0, itemId, restaurantId]);
     if (!itemRes.success) return NextResponse.json({ success: false, error: 'Menu item update failed' }, { status: 503 });
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, message: 'Item updated' });
   }
 
@@ -3425,8 +3408,7 @@ export async function DELETE(req: NextRequest) {
     }
     const targetId = decodeURIComponent(promoMatch[1]);
     await d1.query('DELETE FROM promo_codes WHERE id = ?', [targetId]);
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, message: 'Promo deleted' });
   }
 
@@ -3438,8 +3420,7 @@ export async function DELETE(req: NextRequest) {
     }
     const targetId = decodeURIComponent(zoneMatch[1]);
     await d1.query('DELETE FROM delivery_zones WHERE id = ?', [targetId]);
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, message: 'Zone deleted' });
   }
 
@@ -3511,8 +3492,7 @@ export async function DELETE(req: NextRequest) {
     const targetId = decodeURIComponent(delAddonMatch[1]);
     await d1.query('DELETE FROM item_modifiers WHERE id = ?', [targetId]);
     await d1.query('DELETE FROM addons WHERE id = ?', [targetId]);
-    cacheInvalidate();
-    siteDataManager.refreshSnapshot({ force: true, isAuthorizedAdmin: true }).catch(() => {});
+    triggerEventDrivenRefresh({ force: true });
     return NextResponse.json({ success: true, message: 'Addon deleted' });
   }
 

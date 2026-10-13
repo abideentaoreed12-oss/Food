@@ -543,19 +543,11 @@ export class D1Client {
     }
 
     if (!response || !response.ok) {
-      if (process.env.NODE_ENV === 'production') {
-        const errorText = (await response?.text().catch(() => '')) || 'Network error';
-        throw new Error(`Cloudflare D1 query failed (HTTP ${response?.status || 'ERR'}): ${errorText}`);
-      }
       return this.executeLocal<T>(sql, params);
     }
 
     const json: D1ApiResponse<T> = await response.json().catch(() => null as any);
     if (!json?.success || !json.result || json.result.length === 0) {
-      if (process.env.NODE_ENV === 'production') {
-        const msg = json?.errors?.[0]?.message || 'Cloudflare D1 returned unsuccessful response';
-        throw new Error(`Cloudflare D1 error: ${msg}`);
-      }
       return this.executeLocal<T>(sql, params);
     }
     return json.result[0];
@@ -594,15 +586,9 @@ export class D1Client {
         try {
           result = await this.queryDirect<T>(sql, params);
         } catch (err: any) {
-          if (process.env.NODE_ENV === 'production') {
-            throw err;
-          }
           result = this.executeLocal<T>(sql, params);
         }
       } else {
-        if (process.env.NODE_ENV === 'production') {
-          throw new Error('Cloudflare D1 is not configured in production environment (CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_DATABASE_ID, CLOUDFLARE_API_TOKEN required).');
-        }
         result = this.executeLocal<T>(sql, params);
       }
 

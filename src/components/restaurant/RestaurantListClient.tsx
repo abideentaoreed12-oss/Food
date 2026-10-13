@@ -42,7 +42,7 @@ function RestaurantQueryHandler() {
   const { setSelectedRestaurantId } = useDelivery();
 
   useEffect(() => {
-    const restaurantParam = searchParams.get('restaurant');
+    const restaurantParam = searchParams?.get('restaurant');
     if (restaurantParam) {
       setSelectedRestaurantId(restaurantParam);
     }

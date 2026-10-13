@@ -36,7 +36,7 @@ export const BottomNav: React.FC = () => {
     if (pathname === ROUTES.CART) return 'cart';
     if (isCartOpen) return 'cart';
     if (pathname === ROUTES.HOME) return 'home';
-    if (pathname === ROUTES.RESTAURANTS || pathname.startsWith('/restaurants/')) return 'food';
+    if (pathname === ROUTES.RESTAURANTS || Boolean(pathname?.startsWith('/restaurants/'))) return 'food';
     if (pathname === ROUTES.OFFERS) return 'express';
     if (pathname === ROUTES.ORDERS) return 'history';
     return 'home';

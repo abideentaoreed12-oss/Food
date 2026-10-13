@@ -182,7 +182,7 @@ export const Navbar: React.FC = () => {
                       if (activePage !== 'restaurants') setActivePage('restaurants');
                     }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                      pathname === ROUTES.RESTAURANTS || pathname.startsWith('/restaurants/')
+                      pathname === ROUTES.RESTAURANTS || Boolean(pathname?.startsWith('/restaurants/'))
                         ? 'bg-[#E8F5EF] text-[#0D4F3C]'
                         : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
                     }`}
