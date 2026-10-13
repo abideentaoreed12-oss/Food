@@ -33,6 +33,7 @@ export const BottomNav: React.FC = () => {
   // Resolve active tab: optimistic touch selection takes highest priority for instant visual feedback
   const resolvedActiveTab = (() => {
     if (optimisticTab) return optimisticTab;
+    if (pathname === ROUTES.CART) return 'cart';
     if (isCartOpen) return 'cart';
     if (pathname === ROUTES.HOME) return 'home';
     if (pathname === ROUTES.RESTAURANTS || pathname.startsWith('/restaurants/')) return 'food';
@@ -46,16 +47,9 @@ export const BottomNav: React.FC = () => {
     setIsRightDrawerOpen(false);
   };
 
-  const handleLinkTouch = (tab: 'home' | 'food' | 'express' | 'history') => {
+  const handleLinkTouch = (tab: 'home' | 'food' | 'express' | 'history' | 'cart') => {
     setOptimisticTab(tab);
     closeDrawers();
-  };
-
-  const handleCartClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setOptimisticTab('cart');
-    setIsRightDrawerOpen(false);
-    setIsCartOpen(!isCartOpen);
   };
 
   const handleHistoryClick = (e: React.MouseEvent) => {
@@ -178,13 +172,15 @@ export const BottomNav: React.FC = () => {
         </Link>
 
         {/* 5. Cart Tab */}
-        <button
-          type="button"
-          onClick={handleCartClick}
+        <Link
+          href={ROUTES.CART}
+          prefetch={true}
+          onClick={() => handleLinkTouch('cart')}
+          onTouchStart={() => setOptimisticTab('cart')}
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-transform active:scale-95 touch-manipulation focus:outline-none relative"
           style={{ touchAction: 'manipulation' }}
           aria-label={totalCartCount > 0 ? `Shopping Cart with ${totalCartCount} items` : 'Shopping Cart'}
-          aria-expanded={isCartActive}
+          aria-current={isCartActive ? 'page' : undefined}
         >
           <div className={`transition-colors duration-100 relative ${isCartActive ? 'text-[#0D4F3C]' : 'text-slate-400 group-hover:text-slate-700'}`}>
             <ShoppingCart className="w-5 h-5 stroke-[2.2]" />
@@ -202,7 +198,7 @@ export const BottomNav: React.FC = () => {
             Cart
           </span>
           <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all duration-100 ${isCartActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
-        </button>
+        </Link>
       </div>
     </nav>
   );

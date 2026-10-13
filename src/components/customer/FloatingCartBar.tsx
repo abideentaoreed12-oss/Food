@@ -1,13 +1,17 @@
 import React from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useDelivery } from '../../context/DeliveryContext';
 import { formatCurrency } from '../../utils/format';
+import { ROUTES } from '../../routes';
 import { ShoppingBag, ArrowRight, Utensils } from 'lucide-react';
 
 export const FloatingCartBar: React.FC = () => {
+  const pathname = usePathname();
+  const router = useRouter();
   const { cart, cartRestaurant, isCartOpen, setIsCartOpen, currency, activeRole, selectedRestaurantId } = useDelivery();
 
   if (activeRole !== 'customer') return null;
-  if (!cart || cart.length === 0 || isCartOpen || selectedRestaurantId) return null;
+  if (!cart || cart.length === 0 || isCartOpen || selectedRestaurantId || pathname === ROUTES.CART) return null;
 
   const totalItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartSubtotal = cart.reduce((sum, item) => sum + item.itemTotal, 0);

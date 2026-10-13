@@ -28,6 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       router.prefetch(ROUTES.OFFERS);
       router.prefetch(ROUTES.SEARCH);
       router.prefetch(ROUTES.ORDERS);
+      router.prefetch(ROUTES.CART);
       router.prefetch(ROUTES.HELP);
       router.prefetch(ROUTES.TERMS);
       router.prefetch(ROUTES.PRIVACY);
