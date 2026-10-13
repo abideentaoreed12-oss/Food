@@ -32,6 +32,7 @@ export const viewport: Viewport = {
 
 import { siteDataManager } from '../lib/siteDataSnapshot';
 import { Providers } from './_shell/Providers';
+import { AppLoadingScreen } from '../src/components/common/AppLoadingScreen';
 
 export default async function RootLayout({
   children,
@@ -56,8 +57,12 @@ export default async function RootLayout({
         />
       </head>
       <body className="antialiased font-sans bg-[#F8F9FA] text-slate-900" suppressHydrationWarning>
-        <Providers initialSnapshot={initialSnapshot}>{children}</Providers>
+        <AppLoadingScreen />
+        <Providers initialSnapshot={initialSnapshot}>
+          {children}
+        </Providers>
       </body>
     </html>
   );
 }
+

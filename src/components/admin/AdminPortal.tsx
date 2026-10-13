@@ -4082,7 +4082,23 @@ export const AdminPortal: React.FC = () => {
                 {/* Section 9: Public Banners & R2 Assets */}
                 {cmsCategory === 'images' && (
                   <div className="space-y-4">
-                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Public Hero Images & Marketing Banners (Cloud Storage / CDN)</div>
+                    <div className="p-5 bg-gradient-to-r from-[#0D4F3C] to-[#147A5A] text-white rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                      <div>
+                        <div className="text-xs font-bold uppercase tracking-wider text-emerald-200">Dedicated Image Manager</div>
+                        <h4 className="text-base font-extrabold mt-0.5">Green Background & Hero Image Uploader</h4>
+                        <p className="text-xs text-emerald-100 mt-1 max-w-xl">
+                          Upload, delete, and instantly update the green background banner and hero dish pictures directly via Cloudflare R2 storage without render links.
+                        </p>
+                      </div>
+                      <a
+                        href="/admin/hero"
+                        className="px-4 py-2.5 bg-[#E8C547] hover:bg-[#dfba3e] text-slate-950 rounded-xl text-xs font-extrabold shadow-md shrink-0 transition-colors"
+                      >
+                        Open Image Uploader →
+                      </a>
+                    </div>
+
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400 pt-2">Public Hero Images & Marketing Banners (Cloud Storage / CDN)</div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {renderCmsInput('cms_hero_image_url', 'Hero Banner Visual URL', 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200', false, true)}
                       {renderCmsInput('cms_partner_banner_url', 'Partner Section Visual URL', 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1000', false, true)}

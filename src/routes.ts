@@ -20,6 +20,7 @@ export const ROUTES = {
   RESTAURANT_PORTAL: '/restaurant',
   COURIER_PORTAL: '/courier',
   ADMIN_PORTAL: '/admin',
+  ADMIN_HERO: '/admin/hero',
   HANDOVER: (token: string) => `/handover/${encodeURIComponent(token)}`,
   PAYMENT_CALLBACK: '/payment/callback',
 } as const;

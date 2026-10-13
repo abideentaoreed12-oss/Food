@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDelivery } from '../../context/DeliveryContext';
 import {
   Utensils,
@@ -35,6 +35,15 @@ export const Footer: React.FC = () => {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
 
+  useEffect(() => {
+    try {
+      router.prefetch(ROUTES.RESTAURANTS);
+      router.prefetch(ROUTES.SEARCH);
+      router.prefetch(ROUTES.PARTNER);
+      router.prefetch(ROUTES.HELP);
+    } catch {}
+  }, [router]);
+
   // Login users see no footer; only public (unauthenticated) users see the footer
   if (user) {
     return null;
@@ -62,7 +71,7 @@ export const Footer: React.FC = () => {
     else if (role === 'restaurant') router.push(ROUTES.RESTAURANT_PORTAL);
     else if (role === 'courier') router.push(ROUTES.COURIER_PORTAL);
     else if (role === 'admin') router.push(ROUTES.ADMIN_PORTAL);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'auto' });
   };
 
   return (
@@ -129,39 +138,74 @@ export const Footer: React.FC = () => {
               <Utensils className="w-4 h-4 text-[#E8C547]" />
               <span>Popular Cuisines</span>
             </h4>
-            <ul className="space-y-2.5 text-slate-400">
+            <ul className="space-y-2 text-slate-400">
               <li>
-                <button onClick={() => handleNavClick('restaurants')} className="hover:text-white transition-colors cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('restaurants')}
+                  className="hover:text-white transition-all cursor-pointer text-left w-full py-1 touch-manipulation active:scale-[0.98] active:text-white focus:outline-none"
+                  style={{ touchAction: 'manipulation' }}
+                >
                   Jollof Rice & Nigerian Buka
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNavClick('restaurants')} className="hover:text-white transition-colors cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('restaurants')}
+                  className="hover:text-white transition-all cursor-pointer text-left w-full py-1 touch-manipulation active:scale-[0.98] active:text-white focus:outline-none"
+                  style={{ touchAction: 'manipulation' }}
+                >
                   Suya, Asun & Pepper Soup
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNavClick('restaurants')} className="hover:text-white transition-colors cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('restaurants')}
+                  className="hover:text-white transition-all cursor-pointer text-left w-full py-1 touch-manipulation active:scale-[0.98] active:text-white focus:outline-none"
+                  style={{ touchAction: 'manipulation' }}
+                >
                   Amala, Ewedu & Abula
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNavClick('restaurants')} className="hover:text-white transition-colors cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('restaurants')}
+                  className="hover:text-white transition-all cursor-pointer text-left w-full py-1 touch-manipulation active:scale-[0.98] active:text-white focus:outline-none"
+                  style={{ touchAction: 'manipulation' }}
+                >
                   Wood-fired Pizzas & Pasta
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNavClick('restaurants')} className="hover:text-white transition-colors cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('restaurants')}
+                  className="hover:text-white transition-all cursor-pointer text-left w-full py-1 touch-manipulation active:scale-[0.98] active:text-white focus:outline-none"
+                  style={{ touchAction: 'manipulation' }}
+                >
                   Burgers, Fries & Shawarma
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNavClick('restaurants')} className="hover:text-white transition-colors cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('restaurants')}
+                  className="hover:text-white transition-all cursor-pointer text-left w-full py-1 touch-manipulation active:scale-[0.98] active:text-white focus:outline-none"
+                  style={{ touchAction: 'manipulation' }}
+                >
                   Seafood & Grill Platter
                 </button>
               </li>
               <li>
-                <button onClick={() => handleNavClick('restaurants')} className="hover:text-white transition-colors cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => handleNavClick('restaurants')}
+                  className="hover:text-white transition-all cursor-pointer text-left w-full py-1 touch-manipulation active:scale-[0.98] active:text-white focus:outline-none"
+                  style={{ touchAction: 'manipulation' }}
+                >
                   Fresh Juices & Smoothies
                 </button>
               </li>

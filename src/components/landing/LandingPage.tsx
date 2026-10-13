@@ -85,7 +85,10 @@ export const LandingPage: React.FC = () => {
       {/* ─────────────────────────────────────────────────────────────
           1. HERO SECTION (RICH FOREST GREEN WITH HIGH-FIDELITY DISH)
       ───────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#0D4F3C] via-[#0A4333] to-[#08382B] text-white pt-6 sm:pt-12 pb-12 sm:pb-20">
+      <section 
+        className="relative overflow-hidden bg-gradient-to-b from-[#0D4F3C] via-[#0A4333] to-[#08382B] text-white pt-6 sm:pt-12 pb-12 sm:pb-20"
+        style={platformSettings['cms_hero_bg_image'] ? { backgroundImage: `linear-gradient(to bottom, rgba(13,79,60,0.92), rgba(10,67,51,0.95)), url(${platformSettings['cms_hero_bg_image']})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+      >
         {/* Subtle ambient lighting / texture */}
         <div className="absolute -top-16 -right-16 w-80 h-80 sm:w-96 sm:h-96 bg-radial from-[#188B67]/25 to-transparent blur-3xl pointer-events-none" />
         <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent pointer-events-none" />
@@ -117,7 +120,7 @@ export const LandingPage: React.FC = () => {
             <div className="w-full md:col-span-5 flex justify-center md:justify-end">
               <div className="relative w-40 h-40 sm:w-56 sm:h-56 md:w-80 md:h-80 lg:w-96 lg:h-96 rounded-full overflow-hidden shadow-2xl border-2 sm:border-4 border-[#147A5A]/60 ring-2 sm:ring-4 ring-[#E8C547]/25 shrink-0">
                 <img
-                  src="/hero_jollof_bowl.jpg"
+                  src={platformSettings['cms_hero_dish1_image'] || '/hero_jollof_bowl.jpg'}
                   alt="Authentic Nigerian Jollof Rice with grilled chicken and fried plantains"
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
