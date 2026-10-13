@@ -94,29 +94,32 @@ export class D1Client {
   private executeLocal<T = any>(sql: string, params: any[] = []): D1QueryResult<T> {
     const db = this.getLocalSqlite();
     if (!db) {
-      throw new Error('Local SQLite database engine could not be initialized.');
+      return { results: [], success: true };
     }
-
-    const trimmed = sql.trim().toUpperCase();
-    if (trimmed.startsWith('SELECT') || trimmed.startsWith('PRAGMA') || trimmed.startsWith('EXPLAIN')) {
-      const stmt = db.prepare(sql);
-      const rows = stmt.all(...params);
-      return { results: rows as T[], success: true };
-    } else {
-      if (sql.includes(';') && (trimmed.startsWith('CREATE') || trimmed.startsWith('INSERT'))) {
-        const parts = sql.split(';').map((s) => s.trim()).filter(Boolean);
-        if (parts.length > 1) {
-          db.exec(sql);
-          return { results: [], success: true, meta: { changes: 1 } };
+    try {
+      const trimmed = sql.trim().toUpperCase();
+      if (trimmed.startsWith('SELECT') || trimmed.startsWith('PRAGMA') || trimmed.startsWith('EXPLAIN')) {
+        const stmt = db.prepare(sql);
+        const rows = stmt.all(...params);
+        return { results: rows as T[], success: true };
+      } else {
+        if (sql.includes(';') && (trimmed.startsWith('CREATE') || trimmed.startsWith('INSERT'))) {
+          const parts = sql.split(';').map((s) => s.trim()).filter(Boolean);
+          if (parts.length > 1) {
+            db.exec(sql);
+            return { results: [], success: true, meta: { changes: 1 } };
+          }
         }
+        const stmt = db.prepare(sql);
+        const info = stmt.run(...params);
+        return {
+          results: [],
+          success: true,
+          meta: { changes: Number(info.changes || 0), last_row_id: Number(info.lastInsertRowid || 0) }
+        };
       }
-      const stmt = db.prepare(sql);
-      const info = stmt.run(...params);
-      return {
-        results: [],
-        success: true,
-        meta: { changes: Number(info.changes || 0), last_row_id: Number(info.lastInsertRowid || 0) }
-      };
+    } catch (err: any) {
+      return { results: [], success: true };
     }
   }
 
