@@ -15,9 +15,11 @@ import { RestaurantDetailModal } from '../customer/RestaurantDetailModal';
 
 import { useRouter } from 'next/navigation';
 import { ROUTES } from '../../routes';
+import { useAuth } from '../../context/AuthContext';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { user } = useAuth();
 
   React.useEffect(() => {
     try {
@@ -40,7 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="flex-1">
         {children}
       </main>
-      <Footer />
+      {!user && <Footer />}
       <BottomNav />
       <CartDrawer />
       <RightDrawer />
