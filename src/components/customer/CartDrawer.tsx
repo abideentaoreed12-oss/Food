@@ -52,7 +52,8 @@ export const CartDrawer: React.FC = () => {
     updateCartQuantity,
     removeFromCart,
     clearCart,
-    placeOrder
+    placeOrder,
+    promos
   } = useDelivery();
 
   const [customerName, setCustomerName] = useState(user?.name || '');
@@ -159,7 +160,7 @@ export const CartDrawer: React.FC = () => {
   );
 
   useEffect(() => {
-    if (!cartRestaurant) return;
+    if (!isCartOpen || !cartRestaurant) return;
     const targetAddr = customAddress.trim() || selectedAddress?.address?.trim() || user?.address?.trim() || '';
     if (!targetAddr) { setLiveDistanceResult(null); return; }
     const timer = setTimeout(() => {
@@ -167,7 +168,7 @@ export const CartDrawer: React.FC = () => {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [restaurantId, customAddress, user?.address, selectedAddress?.address, customCoords, calculateDistanceNow]);
+  }, [isCartOpen, restaurantId, customAddress, user?.address, selectedAddress?.address, customCoords, calculateDistanceNow]);
 
   const [selectedTipNGN, setSelectedTipNGN] = useState<number>(0);
   const hasWalletBalance = (Number(walletBalanceNGN) || 0) > 0;
@@ -189,6 +190,12 @@ export const CartDrawer: React.FC = () => {
   const [promoPlaceholder, setPromoPlaceholder] = useState<string>('Enter a promo code');
 
   useEffect(() => {
+    if (!isCartOpen) return;
+    if (Array.isArray(promos) && promos.length > 0) {
+      const codes = promos.slice(0, 2).map((p: any) => p.code).join(' or ');
+      setPromoPlaceholder(`Try ${codes}`);
+      return;
+    }
     api.settings.getPromos().then((res: any) => {
       const list = res?.data || res || [];
       if (Array.isArray(list) && list.length > 0) {
@@ -200,7 +207,7 @@ export const CartDrawer: React.FC = () => {
     }).catch(() => {
       setPromoPlaceholder('Enter promo code');
     });
-  }, []);
+  }, [isCartOpen, promos]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'checkout'>('cart');

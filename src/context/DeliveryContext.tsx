@@ -819,8 +819,11 @@ export const DeliveryProvider: React.FC<{
       refreshDataRef.current();
     }
     const interval = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
       refreshDataRef.current();
-    }, 10000);
+    }, 45000);
 
     // Fan out snapshot-change notifications to every open tab on this origin.
     let channel: BroadcastChannel | null = null;
@@ -850,10 +853,10 @@ export const DeliveryProvider: React.FC<{
     return () => clearTimeout(timer);
   }, [user?.id, selectedAddress?.address]);
 
-  // Cart Opening
-  const setIsCartOpen = (open: boolean) => {
-    setIsCartOpenState(open);
-  };
+  // Cart Opening - memoized to prevent cascading re-renders across nav and layout
+  const setIsCartOpen = useCallback((open: boolean) => {
+    setIsCartOpenState((prev) => (prev === open ? prev : open));
+  }, []);
 
   const toggleFavourite = (id: string) => {
     if (!user) {

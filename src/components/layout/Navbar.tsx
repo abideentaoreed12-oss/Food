@@ -159,7 +159,12 @@ export const Navbar: React.FC = () => {
                   <Link
                     href={ROUTES.HOME}
                     prefetch={true}
-                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage(user ? 'home' : 'landing'); }}
+                    onClick={() => {
+                      closeDropdowns();
+                      if (activeRole !== 'customer') setActiveRole('customer');
+                      const target = user ? 'home' : 'landing';
+                      if (activePage !== target) setActivePage(target);
+                    }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                       pathname === ROUTES.HOME
                         ? 'bg-[#E8F5EF] text-[#0D4F3C]'
@@ -171,9 +176,13 @@ export const Navbar: React.FC = () => {
                   <Link
                     href={ROUTES.RESTAURANTS}
                     prefetch={true}
-                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('restaurants'); }}
+                    onClick={() => {
+                      closeDropdowns();
+                      if (activeRole !== 'customer') setActiveRole('customer');
+                      if (activePage !== 'restaurants') setActivePage('restaurants');
+                    }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                      pathname === ROUTES.RESTAURANTS
+                      pathname === ROUTES.RESTAURANTS || pathname.startsWith('/restaurants/')
                         ? 'bg-[#E8F5EF] text-[#0D4F3C]'
                         : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
                     }`}
@@ -183,7 +192,11 @@ export const Navbar: React.FC = () => {
                   <Link
                     href={ROUTES.OFFERS}
                     prefetch={true}
-                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('offers'); }}
+                    onClick={() => {
+                      closeDropdowns();
+                      if (activeRole !== 'customer') setActiveRole('customer');
+                      if (activePage !== 'offers') setActivePage('offers');
+                    }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                       pathname === ROUTES.OFFERS
                         ? 'bg-[#E8F5EF] text-[#0D4F3C]'
@@ -195,7 +208,11 @@ export const Navbar: React.FC = () => {
                   <Link
                     href={ROUTES.ORDERS}
                     prefetch={true}
-                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('orders'); }}
+                    onClick={() => {
+                      closeDropdowns();
+                      if (activeRole !== 'customer') setActiveRole('customer');
+                      if (activePage !== 'orders') setActivePage('orders');
+                    }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                       pathname === ROUTES.ORDERS
                         ? 'bg-[#E8F5EF] text-[#0D4F3C]'

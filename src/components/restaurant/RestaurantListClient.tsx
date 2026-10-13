@@ -1,11 +1,23 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useDelivery } from '../../context/DeliveryContext';
 import { formatCurrency } from '../../utils/format';
-import { DeliveryMapView } from '../map/DeliveryMapView';
+
+const DeliveryMapView = dynamic(
+  () => import('../map/DeliveryMapView').then((mod) => mod.DeliveryMapView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[420px] w-full rounded-3xl bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-semibold animate-pulse border border-slate-200">
+        Loading restaurant locations map...
+      </div>
+    )
+  }
+);
 import {
   Star,
   Search,

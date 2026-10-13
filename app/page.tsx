@@ -6,8 +6,6 @@ import { useDelivery } from '../src/context/DeliveryContext';
 import { LandingPage } from '../src/components/landing/LandingPage';
 import { CustomerView } from '../src/components/customer/CustomerView';
 
-export const dynamic = 'force-dynamic';
-
 export default function HomePage() {
   const { user } = useAuth();
   const { activePage } = useDelivery();
