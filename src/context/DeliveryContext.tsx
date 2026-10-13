@@ -557,7 +557,15 @@ export const DeliveryProvider: React.FC<{
     description: string;
   } | null>(null);
 
-  const [walletBalanceNGN, setWalletBalanceNGN] = useState<number>(0);
+  const [walletBalanceNGN, setWalletBalanceNGN] = useState<number>(() => Number(user?.walletBalanceNGN || 0));
+
+  useEffect(() => {
+    if (user && user.walletBalanceNGN !== undefined) {
+      setWalletBalanceNGN(Number(user.walletBalanceNGN || 0));
+    } else if (!user) {
+      setWalletBalanceNGN(0);
+    }
+  }, [user]);
   const [useWalletCredit, setUseWalletCredit] = useState<boolean>(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
   const [promos, setPromos] = useState<any[]>(() => {

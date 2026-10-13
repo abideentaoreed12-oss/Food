@@ -26,12 +26,19 @@ import {
 import { useRouter } from 'next/navigation';
 import { ROUTES } from '../../routes';
 import { VeyrangLogo } from '../common/VeyrangLogo';
+import { useAuth } from '../../context/AuthContext';
 
 export const Footer: React.FC = () => {
+  const { user } = useAuth();
   const router = useRouter();
   const { setActiveRole, setActivePage, platformSettings, deliveryZones } = useDelivery();
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
+
+  // Login users see no footer; only public (unauthenticated) users see the footer
+  if (user) {
+    return null;
+  }
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();

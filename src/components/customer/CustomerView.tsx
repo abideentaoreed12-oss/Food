@@ -108,18 +108,74 @@ export const CustomerView: React.FC = () => {
     restaurantName: string;
     imageUrl: string;
   }[] = useMemo(() => {
+    if (!user || !orders || orders.length === 0) {
+      return [];
+    }
+
+    const seen = new Set<string>();
     const list: { item: MenuItem; restaurantName: string; imageUrl: string }[] = [];
-    (restaurants || []).forEach((r) => {
-      if (r && Array.isArray(r.categories) && r.categories.length > 0 && Array.isArray(r.categories[0]?.items) && r.categories[0].items.length > 0) {
+
+    // Traverse authenticated user's real past orders from newest to oldest
+    for (const order of orders) {
+      if (!Array.isArray(order.items)) continue;
+      for (const cartItem of order.items) {
+        const rawMi = cartItem.menuItem || (cartItem as any);
+        const itemId = rawMi?.id || (cartItem as any)?.menuItemId;
+        const name = rawMi?.name || (cartItem as any)?.name;
+        if (!name) continue;
+
+        const dedupeKey = `${order.restaurantId || ''}-${itemId || name}`.toLowerCase();
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+
+        const rest = (restaurants || []).find(
+          (r) => r.id === order.restaurantId || r.name === order.restaurantName
+        );
+
+        let liveItem: MenuItem | null = null;
+        if (rest && Array.isArray(rest.categories)) {
+          for (const cat of rest.categories) {
+            const found = (cat.items || []).find(
+              (it) => it.id === itemId || it.name.toLowerCase() === name.toLowerCase()
+            );
+            if (found) {
+              liveItem = found;
+              break;
+            }
+          }
+        }
+
+        const itemToUse: MenuItem = liveItem || {
+          id: itemId || `past-${list.length}`,
+          restaurantId: order.restaurantId || rest?.id || 'rest-1',
+          name,
+          description: rawMi?.description || '',
+          price: Number(rawMi?.price || (cartItem as any)?.price || 0),
+          category: rawMi?.category || 'Past Orders',
+          dietary: rawMi?.dietary || [],
+          prepTimeMin: 20,
+          isAvailable: true
+        };
+
+        const imageUrl =
+          rest?.bannerUrl ||
+          (rest as any)?.banner_r2_url ||
+          rest?.logoUrl ||
+          (rawMi as any)?.imageUrl ||
+          (rawMi as any)?.image ||
+          restaurantImageMap[rest?.id || ''] ||
+          '/hero_jollof_bowl.jpg';
+
         list.push({
-          item: r.categories[0].items[0],
-          restaurantName: r.name || 'Restaurant',
-          imageUrl: r.bannerUrl || (r as any).banner_r2_url || r.logoUrl || restaurantImageMap[r.id] || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80'
+          item: itemToUse,
+          restaurantName: order.restaurantName || rest?.name || 'Restaurant',
+          imageUrl
         });
       }
-    });
-    return list.slice(0, 4);
-  }, [restaurants]);
+    }
+
+    return list.slice(0, 6);
+  }, [user, orders, restaurants]);
 
   const filteredRestaurants = useMemo(() => {
     return (restaurants || []).filter((r) => {

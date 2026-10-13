@@ -35,7 +35,7 @@ export const BottomNav: React.FC = () => {
   const isHistoryActive = pathname === ROUTES.ORDERS && !isCartOpen;
   const isCartActive = isCartOpen;
 
-  const gridCols = isAuthenticated ? 'grid-cols-5' : 'grid-cols-3';
+  const gridCols = 'grid-cols-5';
 
   return (
     <nav
@@ -98,63 +98,64 @@ export const BottomNav: React.FC = () => {
           <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all duration-150 ${isFoodActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
         </Link>
 
-        {/* 3. Express Tab (Authenticated) */}
-        {isAuthenticated && (
-          <Link
-            href={ROUTES.OFFERS}
-            prefetch={true}
-            onClick={() => {
-              if (isCartOpen) setIsCartOpen(false);
-              setIsRightDrawerOpen(false);
-              if (activeRole !== 'customer') setActiveRole('customer');
-              if (activePage !== 'offers') setActivePage('offers');
-            }}
-            className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-transform active:scale-95 relative"
-            aria-label="Express Offers"
-            aria-current={isExpressActive ? 'page' : undefined}
+        {/* 3. Express Tab */}
+        <Link
+          href={ROUTES.OFFERS}
+          prefetch={true}
+          onClick={() => {
+            if (isCartOpen) setIsCartOpen(false);
+            setIsRightDrawerOpen(false);
+            if (activeRole !== 'customer') setActiveRole('customer');
+            if (activePage !== 'offers') setActivePage('offers');
+          }}
+          className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-transform active:scale-95 relative"
+          aria-label="Express Offers"
+          aria-current={isExpressActive ? 'page' : undefined}
+        >
+          <div className={`transition-colors duration-150 ${isExpressActive ? 'text-[#0D4F3C]' : 'text-slate-400 group-hover:text-slate-700'}`}>
+            <LayoutGrid className="w-5 h-5 stroke-[2.2]" />
+          </div>
+          <span
+            className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors duration-150 ${
+              isExpressActive ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
+            }`}
           >
-            <div className={`transition-colors duration-150 ${isExpressActive ? 'text-[#0D4F3C]' : 'text-slate-400 group-hover:text-slate-700'}`}>
-              <LayoutGrid className="w-5 h-5 stroke-[2.2]" />
-            </div>
-            <span
-              className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors duration-150 ${
-                isExpressActive ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
-              }`}
-            >
-              Express
-            </span>
-            <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all duration-150 ${isExpressActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
-          </Link>
-        )}
+            Express
+          </span>
+          <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all duration-150 ${isExpressActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
+        </Link>
 
-        {/* 4. History Tab (Authenticated) */}
-        {isAuthenticated && (
-          <Link
-            href={ROUTES.ORDERS}
-            prefetch={true}
-            onClick={() => {
-              if (isCartOpen) setIsCartOpen(false);
-              setIsRightDrawerOpen(false);
-              if (activeRole !== 'customer') setActiveRole('customer');
-              if (activePage !== 'orders') setActivePage('orders');
-            }}
-            className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-transform active:scale-95 relative"
-            aria-label="Order History"
-            aria-current={isHistoryActive ? 'page' : undefined}
+        {/* 4. History Tab */}
+        <Link
+          href={ROUTES.ORDERS}
+          prefetch={true}
+          onClick={(e) => {
+            if (!isAuthenticated) {
+              e.preventDefault();
+              setIsAuthModalOpen(true);
+              return;
+            }
+            if (isCartOpen) setIsCartOpen(false);
+            setIsRightDrawerOpen(false);
+            if (activeRole !== 'customer') setActiveRole('customer');
+            if (activePage !== 'orders') setActivePage('orders');
+          }}
+          className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-transform active:scale-95 relative"
+          aria-label="Order History"
+          aria-current={isHistoryActive ? 'page' : undefined}
+        >
+          <div className={`transition-colors duration-150 ${isHistoryActive ? 'text-[#0D4F3C]' : 'text-slate-400 group-hover:text-slate-700'}`}>
+            <Receipt className="w-5 h-5 stroke-[2.2]" />
+          </div>
+          <span
+            className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors duration-150 ${
+              isHistoryActive ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
+            }`}
           >
-            <div className={`transition-colors duration-150 ${isHistoryActive ? 'text-[#0D4F3C]' : 'text-slate-400 group-hover:text-slate-700'}`}>
-              <Receipt className="w-5 h-5 stroke-[2.2]" />
-            </div>
-            <span
-              className={`text-[11px] font-semibold mt-0.5 tracking-tight transition-colors duration-150 ${
-                isHistoryActive ? 'text-[#0D4F3C] font-bold' : 'text-slate-500'
-              }`}
-            >
-              History
-            </span>
-            <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all duration-150 ${isHistoryActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
-          </Link>
-        )}
+            History
+          </span>
+          <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all duration-150 ${isHistoryActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
+        </Link>
 
         {/* 5. Cart Tab */}
         <button

@@ -76,7 +76,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({ className = '' }) => {
         className="relative pt-2 flex items-center justify-between text-xs sm:text-sm text-white/95 cursor-pointer group"
       >
         <span className="font-medium text-[11px] sm:text-xs">
-          Top up your wallet for faster checkout
+          Tap up your wallet for faster checkout
         </span>
         <span className="font-bold flex items-center gap-0.5 text-[#E8C547] group-hover:underline text-[11px] sm:text-xs shrink-0">
           <span>Add Funds</span>

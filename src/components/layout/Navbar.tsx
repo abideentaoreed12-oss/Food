@@ -335,7 +335,7 @@ export const Navbar: React.FC = () => {
                     <span className="font-bold">
                       {selectedAddress?.address && String(selectedAddress.address).trim()
                         ? selectedAddress.address.trim()
-                        : 'Set delivery location'}
+                        : (user?.address && user.address.trim() ? user.address.trim() : 'Akure')}
                     </span>
                   </span>
                 </div>
