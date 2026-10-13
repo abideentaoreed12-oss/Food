@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
@@ -116,6 +117,38 @@ export const RightDrawer: React.FC = () => {
   }, [savedAddresses, selectedAddress, user?.address]);
 
   if (!isRightDrawerOpen) return null;
+
+  const getPageHref = (page: ActivePage) => {
+    switch (page) {
+      case 'home':
+      case 'landing':
+        return ROUTES.HOME;
+      case 'restaurants':
+        return ROUTES.RESTAURANTS;
+      case 'search':
+        return ROUTES.SEARCH;
+      case 'offers':
+        return ROUTES.OFFERS;
+      case 'orders':
+        return ROUTES.ORDERS;
+      case 'favourites':
+        return ROUTES.FAVOURITES;
+      case 'account':
+        return ROUTES.ACCOUNT;
+      case 'help':
+        return ROUTES.HELP;
+      case 'contact':
+        return ROUTES.CONTACT;
+      case 'partner':
+        return ROUTES.PARTNER;
+      case 'terms':
+        return ROUTES.TERMS;
+      case 'privacy':
+        return ROUTES.PRIVACY;
+      default:
+        return ROUTES.HOME;
+    }
+  };
 
   const handleNavigatePage = (page: ActivePage) => {
     setActiveRole('customer');
@@ -638,8 +671,10 @@ export const RightDrawer: React.FC = () => {
                     const isActive = activeRole === 'customer' && activePage === item.id;
 
                     return (
-                      <button
+                      <Link
                         key={item.id}
+                        href={getPageHref(item.id)}
+                        prefetch={true}
                         onClick={() => handleNavigatePage(item.id)}
                         className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 sm:py-3 rounded-2xl text-sm font-medium transition-all cursor-pointer ${
                           isActive
@@ -665,7 +700,7 @@ export const RightDrawer: React.FC = () => {
                         {isActive && !item.badge && (
                           <span className="w-2 h-2 rounded-full bg-[#0D4F3C]" aria-hidden="true" />
                         )}
-                      </button>
+                      </Link>
                     );
                   })}
                 </div>
@@ -679,9 +714,19 @@ export const RightDrawer: React.FC = () => {
                     const isActive = activeRole === 'customer' && activePage === item.id;
 
                     return (
-                      <button
+                      <Link
                         key={item.id}
-                        onClick={() => handleNavigatePage(item.id)}
+                        href={getPageHref(item.id)}
+                        prefetch={true}
+                        onClick={(e) => {
+                          if (item.isLocked) {
+                            e.preventDefault();
+                            setIsRightDrawerOpen(false);
+                            setIsAuthModalOpen(true);
+                            return;
+                          }
+                          handleNavigatePage(item.id);
+                        }}
                         className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 sm:py-3 rounded-2xl text-sm font-medium transition-all cursor-pointer ${
                           isActive
                             ? 'bg-[#E8F5EF] text-[#0D4F3C] font-bold border-l-4 border-[#0D4F3C] shadow-2xs'
@@ -706,7 +751,7 @@ export const RightDrawer: React.FC = () => {
                         {isActive && !item.badge && (
                           <span className="w-2 h-2 rounded-full bg-[#0D4F3C]" aria-hidden="true" />
                         )}
-                      </button>
+                      </Link>
                     );
                   })}
                 </div>
@@ -720,8 +765,10 @@ export const RightDrawer: React.FC = () => {
                     const isActive = activeRole === 'customer' && activePage === item.id;
 
                     return (
-                      <button
+                      <Link
                         key={item.id}
+                        href={getPageHref(item.id)}
+                        prefetch={true}
                         onClick={() => handleNavigatePage(item.id)}
                         className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
                           isActive
@@ -735,7 +782,7 @@ export const RightDrawer: React.FC = () => {
                           }`}
                         />
                         <span className="flex-1 text-left">{item.label}</span>
-                      </button>
+                      </Link>
                     );
                   })}
                 </div>

@@ -30,13 +30,21 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
+import { siteDataManager } from '../lib/siteDataSnapshot';
 import { Providers } from './_shell/Providers';
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  let initialSnapshot: any = null;
+  try {
+    initialSnapshot = siteDataManager.getLastKnownGood() || await siteDataManager.servePublicCatalogue();
+  } catch (err) {
+    console.warn('[RootLayout] Snapshot bootstrap note:', err);
+  }
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -48,7 +56,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased font-sans bg-[#F8F9FA] text-slate-900" suppressHydrationWarning>
-        <Providers>{children}</Providers>
+        <Providers initialSnapshot={initialSnapshot}>{children}</Providers>
       </body>
     </html>
   );

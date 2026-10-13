@@ -88,8 +88,28 @@ function sanitizeUser(rawUser: any): AuthUser | null {
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const token = safeGet(STORAGE_KEYS.JWT);
+      const cached = safeGet(STORAGE_KEYS.USER_SHELL) || safeGet(STORAGE_KEYS.USER_CACHE_LEGACY);
+      if (token && cached) {
+        return sanitizeUser(JSON.parse(cached));
+      }
+    } catch {}
+    return null;
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const token = safeGet(STORAGE_KEYS.JWT);
+      if (!token) return false;
+      const cached = safeGet(STORAGE_KEYS.USER_SHELL);
+      return !cached;
+    } catch {
+      return false;
+    }
+  });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [intendedPortal, setIntendedPortal] = useState<UserRole | null>(null);
 

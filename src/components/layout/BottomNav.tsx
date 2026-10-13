@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import { ROUTES } from '../../routes';
 import { Home, Utensils, LayoutGrid, Receipt, ShoppingCart } from 'lucide-react';
 
+import Link from 'next/link';
+
 export const BottomNav: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
@@ -23,37 +25,6 @@ export const BottomNav: React.FC = () => {
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleTabClick = (tabId: string) => {
-    setActiveRole('customer');
-    setIsRightDrawerOpen(false);
-
-    if (tabId === 'home') {
-      setIsCartOpen(false);
-      setActivePage(isAuthenticated ? 'home' : 'landing');
-      router.push(ROUTES.HOME);
-    } else if (tabId === 'food') {
-      setIsCartOpen(false);
-      setActivePage('restaurants');
-      router.push(ROUTES.RESTAURANTS);
-    } else if (tabId === 'express') {
-      setIsCartOpen(false);
-      setActivePage('offers');
-      router.push(ROUTES.OFFERS);
-    } else if (tabId === 'history') {
-      if (!isAuthenticated) {
-        setIsAuthModalOpen(true);
-        return;
-      }
-      setIsCartOpen(false);
-      setActivePage('orders');
-      router.push(ROUTES.ORDERS);
-    } else if (tabId === 'cart') {
-      setIsCartOpen(true);
-    }
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   if (activeRole !== 'customer') return null;
 
   const isHomeActive = pathname === ROUTES.HOME && !isCartOpen;
@@ -70,9 +41,15 @@ export const BottomNav: React.FC = () => {
       className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md rounded-t-3xl border-t border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.06)] py-1.5 px-4 pointer-events-auto"
     >
       <div className={`max-w-md mx-auto grid ${gridCols} items-center`}>
-        <button
-          type="button"
-          onClick={() => handleTabClick('home')}
+        <Link
+          href={ROUTES.HOME}
+          prefetch={true}
+          onClick={() => {
+            setActiveRole('customer');
+            setIsRightDrawerOpen(false);
+            setIsCartOpen(false);
+            setActivePage(isAuthenticated ? 'home' : 'landing');
+          }}
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors"
           aria-label="Home Page"
         >
@@ -87,11 +64,17 @@ export const BottomNav: React.FC = () => {
             Home
           </span>
           <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all ${isHomeActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
-        </button>
+        </Link>
 
-        <button
-          type="button"
-          onClick={() => handleTabClick('food')}
+        <Link
+          href={ROUTES.RESTAURANTS}
+          prefetch={true}
+          onClick={() => {
+            setActiveRole('customer');
+            setIsRightDrawerOpen(false);
+            setIsCartOpen(false);
+            setActivePage('restaurants');
+          }}
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors"
           aria-label="Food / Restaurants"
         >
@@ -106,12 +89,18 @@ export const BottomNav: React.FC = () => {
             Food
           </span>
           <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all ${isFoodActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
-        </button>
+        </Link>
 
         {isAuthenticated && (
-          <button
-            type="button"
-            onClick={() => handleTabClick('express')}
+          <Link
+            href={ROUTES.OFFERS}
+            prefetch={true}
+            onClick={() => {
+              setActiveRole('customer');
+              setIsRightDrawerOpen(false);
+              setIsCartOpen(false);
+              setActivePage('offers');
+            }}
             className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors relative"
             aria-label="Express Offers"
           >
@@ -126,13 +115,19 @@ export const BottomNav: React.FC = () => {
               Express
             </span>
             <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all ${isExpressActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
-          </button>
+          </Link>
         )}
 
         {isAuthenticated && (
-          <button
-            type="button"
-            onClick={() => handleTabClick('history')}
+          <Link
+            href={ROUTES.ORDERS}
+            prefetch={true}
+            onClick={() => {
+              setActiveRole('customer');
+              setIsRightDrawerOpen(false);
+              setIsCartOpen(false);
+              setActivePage('orders');
+            }}
             className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors relative"
             aria-label="Order History"
           >
@@ -147,12 +142,12 @@ export const BottomNav: React.FC = () => {
               History
             </span>
             <div className={`w-6 h-0.5 rounded-full mt-0.5 transition-all ${isHistoryActive ? 'bg-[#0D4F3C]' : 'bg-transparent'}`} />
-          </button>
+          </Link>
         )}
 
         <button
           type="button"
-          onClick={() => handleTabClick('cart')}
+          onClick={() => setIsCartOpen(true)}
           className="flex flex-col items-center justify-center py-1 group cursor-pointer transition-colors relative"
           aria-label="Shopping Cart"
         >

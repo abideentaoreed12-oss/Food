@@ -143,7 +143,19 @@ const EMPTY_ADDRESS: SavedAddress = {
   isDefault: false
 };
 
-export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole?: UserRole; initialPage?: ActivePage; initialRestaurantId?: string }> = ({ children, initialRole, initialPage, initialRestaurantId }) => {
+export const DeliveryProvider: React.FC<{
+  children: React.ReactNode;
+  initialRole?: UserRole;
+  initialPage?: ActivePage;
+  initialRestaurantId?: string;
+  initialSnapshot?: any;
+}> = ({
+  children,
+  initialRole,
+  initialPage,
+  initialRestaurantId,
+  initialSnapshot
+}) => {
   const { user, loading: authLoading, setIsAuthModalOpen, refreshUser, openAuthModalForPortal } = useAuth();
 
   const [activeRole, setActiveRoleState] = useState<UserRole>(initialRole || 'customer');
@@ -265,8 +277,12 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   }, [fulfillmentType]);
   
   const [walletDeposits, setWalletDeposits] = useState<WalletDepositRecord[]>([]);
-  const [platformSettings, setPlatformSettings] = useState<Record<string, string>>({});
-  const [deliveryZones, setDeliveryZones] = useState<any[]>([]);
+  const [platformSettings, setPlatformSettings] = useState<Record<string, string>>(() => {
+    return (initialSnapshot?.platformSettings as any) || {};
+  });
+  const [deliveryZones, setDeliveryZones] = useState<any[]>(() => {
+    return initialSnapshot?.deliveryZones || [];
+  });
   const [adminActiveTab, setAdminActiveTab] = useState<string>('dashboard');
 
   // Dynamic Service Fee calculated from D1 live settings based on current currency
@@ -464,11 +480,13 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
     [user, selectedAddress, refreshUser]
   );
 
-  const [cmsContent, setCmsContent] = useState<Record<string, string>>({});
+  const [cmsContent, setCmsContent] = useState<Record<string, string>>(() => {
+    return (initialSnapshot?.platformSettings as any) || {};
+  });
 
   useEffect(() => {
     api.admin.getCMS?.().then((res: any) => {
-      if (res) setCmsContent(res);
+      if (res) setCmsContent((prev) => ({ ...prev, ...res }));
     }).catch(() => {});
   }, []);
 
@@ -478,6 +496,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
 
   // Server-managed catalog & server-managed orders
   const [restaurants, setRestaurants] = useState<Restaurant[]>(() => {
+    if (initialSnapshot?.restaurants && initialSnapshot.restaurants.length > 0) {
+      return initialSnapshot.restaurants;
+    }
     try {
       const saved = sessionStorage.getItem('veyrang_site_data_restaurants');
       return saved ? JSON.parse(saved) : [];
@@ -539,7 +560,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   const [walletBalanceNGN, setWalletBalanceNGN] = useState<number>(0);
   const [useWalletCredit, setUseWalletCredit] = useState<boolean>(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
-  const [promos, setPromos] = useState<any[]>([]);
+  const [promos, setPromos] = useState<any[]>(() => {
+    return initialSnapshot?.promoCodes || [];
+  });
   const [categories, setCategories] = useState<any[]>([]);
 
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(initialRestaurantId || null);
@@ -563,6 +586,9 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
           if (snap.platformSettings && typeof snap.platformSettings === 'object') {
             setPlatformSettings((prev) => ({ ...prev, ...snap.platformSettings }));
             setCmsContent((prev) => ({ ...prev, ...snap.platformSettings }));
+          }
+          if (Array.isArray(snap.promoCodes) && snap.promoCodes.length > 0) {
+            setPromos(snap.promoCodes);
           }
 
           // Notify other open tabs
@@ -788,8 +814,10 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode; initialRole
   }, [refreshData]);
 
   useEffect(() => {
-    // Initial pull plus 10-second polling; this requests the shared last-known-good endpoint only.
-    refreshDataRef.current();
+    // If no populated initial snapshot was provided by the server, pull immediately
+    if (!initialSnapshot?.restaurants || initialSnapshot.restaurants.length === 0) {
+      refreshDataRef.current();
+    }
     const interval = window.setInterval(() => {
       refreshDataRef.current();
     }, 10000);

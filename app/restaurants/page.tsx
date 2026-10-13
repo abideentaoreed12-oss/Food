@@ -20,12 +20,12 @@ export const metadata: Metadata = {
   }
 };
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export default async function RestaurantsRoute() {
   let restaurants: any[] = [];
   try {
-    const snapshot = await siteDataManager.servePublicCatalogue();
+    const snapshot = siteDataManager.getLastKnownGood() || await siteDataManager.servePublicCatalogue();
     restaurants = snapshot?.restaurants || [];
   } catch (err) {
     console.warn('Failed to load restaurants catalog in RSC:', err);

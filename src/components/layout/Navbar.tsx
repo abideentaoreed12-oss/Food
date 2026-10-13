@@ -143,21 +143,23 @@ export const Navbar: React.FC = () => {
           <>
             <div className="h-14 sm:h-16 flex items-center justify-between gap-3">
               <div className="flex items-center gap-4">
-                <button
+                <Link
+                  href={ROUTES.HOME}
+                  prefetch={true}
                   onClick={() => {
                     closeDropdowns();
                     setActiveRole('customer');
                     setActivePage(user ? 'home' : 'landing');
-                    router.push(ROUTES.HOME);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                   className="focus-visible:outline-none focus:outline-none border-none outline-none active:scale-95 transition-transform cursor-pointer"
                 >
                   <VeyrangLogo iconSize="md" textSize="md" lightMode={isLanding} />
-                </button>
+                </Link>
                 <nav className="hidden md:flex items-center gap-1 pl-2">
-                  <button
-                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage(user ? 'home' : 'landing'); router.push(ROUTES.HOME); }}
+                  <Link
+                    href={ROUTES.HOME}
+                    prefetch={true}
+                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage(user ? 'home' : 'landing'); }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                       pathname === ROUTES.HOME
                         ? 'bg-[#E8F5EF] text-[#0D4F3C]'
@@ -165,9 +167,11 @@ export const Navbar: React.FC = () => {
                     }`}
                   >
                     Home
-                  </button>
-                  <button
-                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('restaurants'); router.push(ROUTES.RESTAURANTS); }}
+                  </Link>
+                  <Link
+                    href={ROUTES.RESTAURANTS}
+                    prefetch={true}
+                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('restaurants'); }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                       pathname === ROUTES.RESTAURANTS
                         ? 'bg-[#E8F5EF] text-[#0D4F3C]'
@@ -175,9 +179,11 @@ export const Navbar: React.FC = () => {
                     }`}
                   >
                     Restaurants
-                  </button>
-                  <button
-                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('offers'); router.push(ROUTES.OFFERS); }}
+                  </Link>
+                  <Link
+                    href={ROUTES.OFFERS}
+                    prefetch={true}
+                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('offers'); }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                       pathname === ROUTES.OFFERS
                         ? 'bg-[#E8F5EF] text-[#0D4F3C]'
@@ -185,9 +191,11 @@ export const Navbar: React.FC = () => {
                     }`}
                   >
                     Offers
-                  </button>
-                  <button
-                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('orders'); router.push(ROUTES.ORDERS); }}
+                  </Link>
+                  <Link
+                    href={ROUTES.ORDERS}
+                    prefetch={true}
+                    onClick={() => { closeDropdowns(); setActiveRole('customer'); setActivePage('orders'); }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                       pathname === ROUTES.ORDERS
                         ? 'bg-[#E8F5EF] text-[#0D4F3C]'
@@ -195,7 +203,7 @@ export const Navbar: React.FC = () => {
                     }`}
                   >
                     My Orders
-                  </button>
+                  </Link>
                 </nav>
               </div>
               <div className="flex items-center gap-2.5 sm:gap-3">

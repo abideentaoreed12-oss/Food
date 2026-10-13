@@ -6,56 +6,68 @@ import { api } from '../../services/api';
 import { Tag, Copy, Check, Percent, ShoppingBag, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export const OffersPage: React.FC = () => {
-  const { applyPromoCode, setIsCartOpen, cart, platformSettings } = useDelivery();
+  const { applyPromoCode, setIsCartOpen, cart, platformSettings, promos: contextPromos } = useDelivery();
   const { user, setIsAuthModalOpen } = useAuth();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [applyMessage, setApplyMessage] = useState<{ text: string; isError: boolean } | null>(null);
-  const [dynamicPromos, setDynamicPromos] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const mapPromoList = (list: any[]) => {
+    const colors = [
+      'from-[#0D4F3C] to-[#147A5A]',
+      'from-emerald-500 to-teal-500',
+      'from-blue-500 to-indigo-500',
+      'from-purple-500 to-pink-500'
+    ];
+    return list.map((p: any, idx: number) => {
+      const minOrderVal = Number(p.min_order ?? p.min_order_amount ?? 0);
+      const maxCapVal = Number(p.max_cap ?? p.max_discount_cap ?? 2500);
+      return {
+        code: p.code,
+        title: p.discount_type === 'percentage'
+          ? `${p.value}% Off Your Order`
+          : `₦${Number(p.value).toLocaleString('en-NG')} Off Instant Savings`,
+        description: p.discount_type === 'percentage'
+          ? `Enjoy ${p.value}% discount up to ₦${maxCapVal.toLocaleString('en-NG')} on orders above ₦${minOrderVal.toLocaleString('en-NG')}.`
+          : `Take ₦${Number(p.value).toLocaleString('en-NG')} flat discount on orders over ₦${minOrderVal.toLocaleString('en-NG')}.`,
+        minOrder: `₦${minOrderVal.toLocaleString('en-NG')}`,
+        badge: idx === 0 ? 'Featured Offer' : 'Active Promo',
+        color: colors[idx % colors.length]
+      };
+    });
+  };
+
+  const initialPromos = React.useMemo(() => {
+    return Array.isArray(contextPromos) && contextPromos.length > 0 ? mapPromoList(contextPromos) : [];
+  }, [contextPromos]);
+
+  const [dynamicPromos, setDynamicPromos] = useState<any[]>(initialPromos);
+  const [isLoading, setIsLoading] = useState<boolean>(initialPromos.length === 0);
   const [loadError, setLoadError] = useState<boolean>(false);
 
-  const fetchPromos = () => {
-    setIsLoading(true);
+  useEffect(() => {
+    if (initialPromos.length > 0) {
+      setDynamicPromos(initialPromos);
+      setIsLoading(false);
+    }
+  }, [initialPromos]);
+
+  const fetchPromos = (silent = false) => {
+    if (!silent) setIsLoading(true);
     setLoadError(false);
     api.settings.getPromos().then((res: any) => {
       const list = res?.data || res || [];
-      if (Array.isArray(list)) {
-        const mapped = list.map((p: any, idx: number) => {
-          const colors = [
-            'from-[#0D4F3C] to-[#147A5A]',
-            'from-emerald-500 to-teal-500',
-            'from-blue-500 to-indigo-500',
-            'from-purple-500 to-pink-500'
-          ];
-          const minOrderVal = Number(p.min_order ?? p.min_order_amount ?? 0);
-          const maxCapVal = Number(p.max_cap ?? p.max_discount_cap ?? 2500);
-          return {
-            code: p.code,
-            title: p.discount_type === 'percentage'
-              ? `${p.value}% Off Your Order`
-              : `₦${Number(p.value).toLocaleString('en-NG')} Off Instant Savings`,
-            description: p.discount_type === 'percentage'
-              ? `Enjoy ${p.value}% discount up to ₦${maxCapVal.toLocaleString('en-NG')} on orders above ₦${minOrderVal.toLocaleString('en-NG')}.`
-              : `Take ₦${Number(p.value).toLocaleString('en-NG')} flat discount on orders over ₦${minOrderVal.toLocaleString('en-NG')}.`,
-            minOrder: `₦${minOrderVal.toLocaleString('en-NG')}`,
-            badge: idx === 0 ? 'Featured Offer' : 'Active Promo',
-            color: colors[idx % colors.length]
-          };
-        });
-        setDynamicPromos(mapped);
-      } else {
-        setDynamicPromos([]);
+      if (Array.isArray(list) && list.length > 0) {
+        setDynamicPromos(mapPromoList(list));
       }
       setIsLoading(false);
     }).catch(() => {
-      setDynamicPromos([]);
-      setLoadError(true);
+      if (dynamicPromos.length === 0) setLoadError(true);
       setIsLoading(false);
     });
   };
 
   useEffect(() => {
-    fetchPromos();
+    fetchPromos(initialPromos.length > 0);
   }, []);
 
   const promos = dynamicPromos;
@@ -150,7 +162,7 @@ export const OffersPage: React.FC = () => {
             We encountered a network issue loading current deals. Please check your connection and retry.
           </p>
           <button
-            onClick={fetchPromos}
+            onClick={() => fetchPromos(false)}
             className="mt-4 px-4 py-2 rounded-xl bg-[#0D4F3C] text-white text-xs font-bold hover:bg-[#0A3F30] transition-colors cursor-pointer"
           >
             Retry

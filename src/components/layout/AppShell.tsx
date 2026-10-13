@@ -13,7 +13,27 @@ import { MultiRestaurantConflictModal } from '../customer/MultiRestaurantConflic
 import { DeliveryAddressModal } from '../common/DeliveryAddressModal';
 import { RestaurantDetailModal } from '../customer/RestaurantDetailModal';
 
+import { useRouter } from 'next/navigation';
+import { ROUTES } from '../../routes';
+
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+
+  React.useEffect(() => {
+    try {
+      router.prefetch(ROUTES.HOME);
+      router.prefetch(ROUTES.RESTAURANTS);
+      router.prefetch(ROUTES.OFFERS);
+      router.prefetch(ROUTES.SEARCH);
+      router.prefetch(ROUTES.ORDERS);
+      router.prefetch(ROUTES.HELP);
+      router.prefetch(ROUTES.TERMS);
+      router.prefetch(ROUTES.PRIVACY);
+      router.prefetch(ROUTES.PARTNER);
+      router.prefetch(ROUTES.CONTACT);
+    } catch {}
+  }, [router]);
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-slate-950 flex flex-col font-sans selection:bg-[#0D4F3C] selection:text-white">
       <Navbar />
