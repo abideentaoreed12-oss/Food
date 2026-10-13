@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
+import { ROUTES } from '../../routes';
 import { formatCurrency, formatOrderTime, formatOrderDate } from '../../utils/format';
 import { generateOrderReceiptPDF, printOrderReceiptWindow } from '../../utils/pdfGenerator';
 import { Order, OrderStatus } from '../../types';
@@ -486,13 +488,13 @@ export const OrdersPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setActivePage('restaurants')}
-          className="px-4 py-2.5 rounded-xl bg-[#E8F5EF] hover:bg-[#E8F5EF]/80 text-[#0D4F3C] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto"
+        <Link
+          href={ROUTES.RESTAURANTS}
+          className="px-4 py-2.5 rounded-xl bg-[#E8F5EF] hover:bg-[#E8F5EF]/80 text-[#0D4F3C] font-bold text-xs flex items-center gap-1.5 transition-colors self-start sm:self-auto"
         >
           <Utensils className="w-3.5 h-3.5" />
           <span>Explore Restaurants</span>
-        </button>
+        </Link>
       </div>
 
       {/* Active Orders Section */}
@@ -593,13 +595,13 @@ export const OrdersPage: React.FC = () => {
                         <CreditCard className="w-4 h-4" />
                         <span>{retryingOrderId === order.id ? 'Initializing payment...' : 'Retry Payment'}</span>
                       </button>
-                      <button
-                        onClick={() => setActivePage('help')}
-                        className="py-2.5 px-4 rounded-xl border border-amber-300 bg-white text-amber-900 font-bold text-xs hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      <Link
+                        href={ROUTES.HELP}
+                        className="py-2.5 px-4 rounded-xl border border-amber-300 bg-white text-amber-900 font-bold text-xs hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5"
                       >
                         <HelpCircle className="w-4 h-4 text-amber-700" />
                         <span>Help & Support</span>
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 ) : (
@@ -631,13 +633,13 @@ export const OrdersPage: React.FC = () => {
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
 
-                      <button
-                        onClick={() => setActivePage('help')}
-                        className="py-2.5 px-3 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      <Link
+                        href={ROUTES.HELP}
+                        className="py-2.5 px-3 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center justify-center gap-1"
                       >
                         <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
                         <span>Help</span>
-                      </button>
+                      </Link>
 
                       <button
                         type="button"

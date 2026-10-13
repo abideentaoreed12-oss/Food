@@ -363,6 +363,7 @@ export const RightDrawer: React.FC = () => {
                   await logout();
                   setActiveRole('customer');
                   setActivePage('home');
+                  router.push(ROUTES.HOME);
                   setIsRightDrawerOpen(false);
                 }}
                 className="w-full p-3 text-left text-rose-400 hover:bg-rose-950/30 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors"
@@ -403,6 +404,7 @@ export const RightDrawer: React.FC = () => {
                   await logout();
                   setActiveRole('customer');
                   setActivePage('home');
+                  router.push(ROUTES.HOME);
                   setIsRightDrawerOpen(false);
                 }}
                 className="w-full p-3 text-left text-rose-400 hover:bg-rose-950/30 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors"
@@ -443,6 +445,7 @@ export const RightDrawer: React.FC = () => {
                   await logout();
                   setActiveRole('customer');
                   setActivePage('home');
+                  router.push(ROUTES.HOME);
                   setIsRightDrawerOpen(false);
                 }}
                 className="w-full p-3 text-left text-rose-400 hover:bg-rose-950/30 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors"

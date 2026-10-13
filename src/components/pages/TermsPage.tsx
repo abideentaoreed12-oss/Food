@@ -1,8 +1,10 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { FileText, Clock, RefreshCw, ShieldAlert, ShoppingBag, CircleHelp } from 'lucide-react';
 import { useDelivery } from '../../context/DeliveryContext';
+import { ROUTES } from '../../routes';
 
 const sections = [
   { icon: ShoppingBag, title: 'Using the service', body: 'Veyrang provides an online service for discovering food offerings and submitting orders through participating businesses. Product availability, menu descriptions, prices and preparation times are provided through the app and may change. Review your order details before confirming. An order is subject to acceptance and availability.' },
@@ -31,7 +33,23 @@ export const TermsPage: React.FC = () => {
           <div className="space-y-8">{sections.map((section, i) => { const Icon = section.icon; const titleKey = 'cms_terms_s' + (i + 1) + '_title'; const contentKey = 'cms_terms_s' + (i + 1) + '_content'; return <section key={section.title} className="flex gap-4"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F5EF] text-[#0D4F3C]"><Icon className="h-5 w-5" /></div><div className="min-w-0"><h2 className="text-base font-bold text-slate-950">{platformSettings[titleKey] || (i + 1) + '. ' + section.title}</h2><p className="mt-2 whitespace-pre-line text-sm leading-7 text-slate-600">{platformSettings[contentKey] || section.body}</p></div></section>; })}</div>
           <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600"><strong className="text-slate-900">Need clarification?</strong> Contact the support team before proceeding if you have a question about an order or these terms.</div>
         </article>
-        <aside className="space-y-3"><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-bold uppercase tracking-wider text-[#0D4F3C]">Related information</p><button onClick={() => setActivePage('privacy')} className="mt-4 block w-full text-left text-sm font-semibold text-slate-800 hover:text-[#0D4F3C]">Privacy Policy <span aria-hidden="true">→</span></button><div className="my-3 border-t border-slate-100" /><button onClick={() => setActivePage('help')} className="block w-full text-left text-sm font-semibold text-slate-800 hover:text-[#0D4F3C]">Help Centre & FAQs <span aria-hidden="true">→</span></button><div className="my-3 border-t border-slate-100" /><button onClick={() => setActivePage('contact')} className="block w-full text-left text-sm font-semibold text-slate-800 hover:text-[#0D4F3C]">Contact Support <span aria-hidden="true">→</span></button></div><p className="px-1 text-xs leading-5 text-slate-500">For legal publication, have the final terms reviewed for the jurisdictions in which the service operates.</p></aside>
+        <aside className="space-y-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#0D4F3C]">Related information</p>
+            <Link href={ROUTES.PRIVACY} className="mt-4 block w-full text-left text-sm font-semibold text-slate-800 hover:text-[#0D4F3C]">
+              Privacy Policy <span aria-hidden="true">→</span>
+            </Link>
+            <div className="my-3 border-t border-slate-100" />
+            <Link href={ROUTES.HELP} className="block w-full text-left text-sm font-semibold text-slate-800 hover:text-[#0D4F3C]">
+              Help Centre & FAQs <span aria-hidden="true">→</span>
+            </Link>
+            <div className="my-3 border-t border-slate-100" />
+            <Link href={ROUTES.CONTACT} className="block w-full text-left text-sm font-semibold text-slate-800 hover:text-[#0D4F3C]">
+              Contact Support <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+          <p className="px-1 text-xs leading-5 text-slate-500">For legal publication, have the final terms reviewed for the jurisdictions in which the service operates.</p>
+        </aside>
       </div>
     </main>
   );

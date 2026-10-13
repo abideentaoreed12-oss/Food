@@ -1,9 +1,11 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useDelivery } from '../../context/DeliveryContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/format';
+import { ROUTES } from '../../routes';
 import { Heart, Star, Clock, Trash2, Store, User, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export const FavouritesPage: React.FC = () => {
@@ -100,12 +102,12 @@ export const FavouritesPage: React.FC = () => {
           <p className="text-xs text-slate-400 mt-1">
             Tap the heart icon on any restaurant card to save it for quick access.
           </p>
-          <button
-            onClick={() => setActivePage('restaurants')}
-            className="mt-4 px-4 py-2 bg-[#0D4F3C] text-white rounded-xl text-xs font-semibold hover:bg-[#0A3F30] transition-colors cursor-pointer"
+          <Link
+            href={ROUTES.RESTAURANTS}
+            className="mt-4 inline-block px-4 py-2 bg-[#0D4F3C] text-white rounded-xl text-xs font-semibold hover:bg-[#0A3F30] transition-colors"
           >
             Browse Restaurants
-          </button>
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">

@@ -123,7 +123,7 @@ export const Navbar: React.FC = () => {
                       <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider bg-[#E8F5EF] text-[#0D4F3C] px-2 py-0.5 rounded-md">{user.role}</span>
                     </div>
                     <div className="border-t border-slate-100 pt-1 mt-1">
-                      <button onClick={async () => { closeDropdowns(); await logout(); setActiveRole('customer'); setActivePage('home'); }} className="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-semibold">
+                      <button onClick={async () => { closeDropdowns(); await logout(); setActiveRole('customer'); setActivePage('home'); router.push(ROUTES.HOME); }} className="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-semibold">
                         <LogOut className="w-4 h-4" /><span>Sign Out</span>
                       </button>
                     </div>
