@@ -11,13 +11,26 @@ async function testRouteHandlers() {
     throw new Error('Health check failed');
   }
 
-  console.log('\n--- Testing Next.js Route Handler (/api/health/d1) ---');
-  const req2 = new NextRequest('http://localhost:3000/api/health/d1');
-  const res2 = await GET(req2);
-  const json2 = await res2.json();
-  console.log('/api/health/d1 status:', res2.status, 'connected:', json2.connected, 'latency:', json2.latencyMs);
-  if (res2.status !== 200 || !json2.connected) {
-    throw new Error('D1 health check failed');
+  console.log('\n--- Testing Next.js Route Handler (/api/health/d1 - Public Safe) ---');
+  const req2Pub = new NextRequest('http://localhost:3000/api/health/d1');
+  const res2Pub = await GET(req2Pub);
+  const json2Pub = await res2Pub.json();
+  console.log('/api/health/d1 (public) status:', res2Pub.status, json2Pub);
+  if (res2Pub.status !== 200 || json2Pub.status !== 'ok') {
+    throw new Error('Public D1 health check failed');
+  }
+
+  console.log('\n--- Testing Next.js Route Handler (/api/health/d1 - Admin Diagnostic) ---');
+  const { generateToken } = await import('../server/middleware/auth');
+  const adminToken = generateToken({ id: 'admin-1', email: 'admin@veyrang.com', role: 'admin', name: 'Admin' });
+  const req2Admin = new NextRequest('http://localhost:3000/api/health/d1', {
+    headers: { authorization: `Bearer ${adminToken}` }
+  });
+  const res2Admin = await GET(req2Admin);
+  const json2Admin = await res2Admin.json();
+  console.log('/api/health/d1 (admin) status:', res2Admin.status, 'connected:', json2Admin.connected, 'latency:', json2Admin.latencyMs);
+  if (res2Admin.status !== 200 || !json2Admin.connected) {
+    throw new Error('Admin D1 diagnostic failed');
   }
 
   console.log('\n--- Testing Next.js Route Handler (/api/storage/status) ---');

@@ -93,6 +93,9 @@ export function isValidSiteData(
   return true;
 }
 
+export const ROUTINE_SYNC_INTERVAL_MS = 20 * 60 * 1000; // 20 minutes
+export const REMOTE_CHECK_INTERVAL_MS = 60 * 1000; // 1 minute check for multi-instance updates
+
 export class SiteDataManager {
   private currentSnapshot: SiteDataSnapshot | null = null;
   private lastSyncTimestamp: number = 0;
@@ -399,7 +402,41 @@ export class SiteDataManager {
 
   public async syncIfStale(force = false): Promise<SiteDataSnapshot | null> {
     const age = Date.now() - this.lastSyncTimestamp;
-    if (!force && this.currentSnapshot && age < 10000) return this.currentSnapshot;
+    if (!force && this.currentSnapshot) {
+      // Within the 20-minute window, avoid expensive full D1/R2 aggregation.
+      if (age < ROUTINE_SYNC_INTERVAL_MS) {
+        // Multi-instance check: if at least 1 minute elapsed, verify if an admin edit
+        // on another serverless worker published a newer snapshot version to D1.
+        if (age > REMOTE_CHECK_INTERVAL_MS) {
+          try {
+            const d1Res = await d1.query(
+              'SELECT value, updated_at FROM platform_settings WHERE key = ? LIMIT 1',
+              ['last_known_good_site_data']
+            );
+            if (d1Res.results && d1Res.results.length > 0 && d1Res.results[0].value) {
+              const remoteParsed = JSON.parse(d1Res.results[0].value);
+              if (
+                isValidSiteData(remoteParsed, { allowEmpty: true }) &&
+                remoteParsed.version > this.currentSnapshot.version
+              ) {
+                this.currentSnapshot = {
+                  ...remoteParsed,
+                  schemaVersion: remoteParsed.schemaVersion || 1,
+                  source: 'cloudflare_d1',
+                  syncStatus: 'synced'
+                };
+                this.lastSyncTimestamp = Date.now();
+                this.persistToDisk(this.currentSnapshot);
+                return this.currentSnapshot;
+              }
+            }
+          } catch (e: any) {
+            // Non-critical; retain current valid snapshot if remote check fails
+          }
+        }
+        return this.currentSnapshot;
+      }
+    }
     return this.refreshSnapshot({ force });
   }
 
@@ -444,7 +481,7 @@ export class SiteDataManager {
     return this.refreshSnapshot({ force: true, allowEmpty: true, isAuthorizedAdmin: true });
   }
 
-  public startBackgroundSync(intervalMs: number = 10000): void {
+  public startBackgroundSync(intervalMs: number = ROUTINE_SYNC_INTERVAL_MS): void {
     if (this.timer) return;
     this.refreshSnapshot().catch(() => {});
     this.timer = setInterval(() => {

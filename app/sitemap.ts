@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { d1 } from '../lib/d1';
+import { siteDataManager } from '../lib/siteDataSnapshot';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,22 +28,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority
   }));
 
-  // Emit detail URLs for open restaurant records from authoritative D1
+  // Emit detail URLs for open restaurant records from authoritative snapshot first
   try {
-    const result = await d1.query('SELECT id FROM restaurants ORDER BY rating DESC LIMIT 500');
-    if (result && result.success) {
-      for (const row of result.results || []) {
-        const id = String(row.id || '');
-        if (!id || /[/?#]/.test(id)) continue;
-        entries.push({
-          url: `${SITE}/restaurants/${encodeURIComponent(id)}`,
-          changeFrequency: 'weekly',
-          priority: 0.7
-        });
+    const snapshot = siteDataManager.getLastKnownGood() || await siteDataManager.servePublicCatalogue();
+    let restaurantIds: string[] = [];
+    if (snapshot?.restaurants?.length) {
+      restaurantIds = snapshot.restaurants.map((r: any) => String(r.id || '')).filter(Boolean);
+    } else {
+      const result = await d1.query('SELECT id FROM restaurants ORDER BY rating DESC LIMIT 500');
+      if (result && result.success) {
+        restaurantIds = (result.results || []).map((row: any) => String(row.id || '')).filter(Boolean);
       }
     }
+    for (const id of restaurantIds) {
+      if (!id || /[/?#]/.test(id)) continue;
+      entries.push({
+        url: `${SITE}/restaurants/${encodeURIComponent(id)}`,
+        changeFrequency: 'weekly',
+        priority: 0.7
+      });
+    }
   } catch {
-    // Keep static sitemap routes available when D1 is temporarily unavailable.
+    // Keep static sitemap routes available when data is temporarily unavailable.
   }
 
   return entries;

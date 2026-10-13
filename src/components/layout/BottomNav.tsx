@@ -56,10 +56,10 @@ export const BottomNav: React.FC = () => {
 
   if (activeRole !== 'customer') return null;
 
-  const isHomeActive = (pathname === ROUTES.HOME || activePage === 'home' || activePage === 'landing') && !isCartOpen;
-  const isFoodActive = (pathname === ROUTES.RESTAURANTS || activePage === 'restaurants') && !isCartOpen;
-  const isExpressActive = (pathname === ROUTES.OFFERS || activePage === 'offers') && !isCartOpen;
-  const isHistoryActive = (pathname === ROUTES.ORDERS || activePage === 'orders') && !isCartOpen;
+  const isHomeActive = pathname === ROUTES.HOME && !isCartOpen;
+  const isFoodActive = pathname === ROUTES.RESTAURANTS && !isCartOpen;
+  const isExpressActive = pathname === ROUTES.OFFERS && !isCartOpen;
+  const isHistoryActive = pathname === ROUTES.ORDERS && !isCartOpen;
   const isCartActive = isCartOpen;
 
   const gridCols = isAuthenticated ? 'grid-cols-5' : 'grid-cols-3';

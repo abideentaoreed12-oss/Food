@@ -33,15 +33,17 @@ async function getRestaurant(id: string): Promise<RestaurantData | null> {
   if (!id || id.length > 160 || /[/?#]/.test(id)) return null;
   try {
     let built: any = null;
-    const result = await d1.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id], { cache: false });
-    const row = result?.results?.[0];
-    if (result?.success && row) {
-      built = await buildPublicRestaurant(row, { includeMenu: true });
+    // 1. Read from authoritative Last-Known-Good snapshot first (0 D1 queries)
+    const snapshot = siteDataManager.getLastKnownGood() || await siteDataManager.servePublicCatalogue();
+    const fromSnapshot = snapshot?.restaurants?.find((r: any) => String(r?.id) === String(id));
+    if (fromSnapshot) {
+      built = fromSnapshot;
     } else {
-      const snapshot = await siteDataManager.servePublicCatalogue();
-      const fromSnapshot = snapshot?.restaurants?.find((r: any) => String(r?.id) === String(id));
-      if (fromSnapshot) {
-        built = fromSnapshot;
+      // 2. Cache-miss fallback: query authoritative D1 directly
+      const result = await d1.query('SELECT * FROM restaurants WHERE id = ? LIMIT 1', [id], { cache: false });
+      const row = result?.results?.[0];
+      if (result?.success && row) {
+        built = await buildPublicRestaurant(row, { includeMenu: true });
       }
     }
     if (!built) return null;

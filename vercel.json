@@ -4,8 +4,8 @@
   "installCommand": "npm install --include=dev --no-fund",
   "crons": [
     {
-      "path": "/api/cron/sync",
-      "schedule": "0 0 * * *"
+      "path": "/api/cron/sync-site-data",
+      "schedule": "*/20 * * * *"
     }
   ],
   "headers": [

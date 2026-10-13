@@ -402,26 +402,46 @@ export async function calculateRestaurantDistanceMetrics(
   const { distanceKm, distanceText, durationMinutes, durationText, isLive, routingEngine } =
     await calculateDistanceAndDuration(userLocation, restaurantLocation);
 
-  // Resolve configured delivery-zone pricing from D1. Never invent a base fee,
+  // Resolve configured delivery-zone pricing from snapshot first, then D1 fallback. Never invent a base fee,
   // per-kilometre price, radius, or surge multiplier in application code.
   let matchedZone: any = null;
   const zoneRef = String(restaurant.zoneId ?? restaurant.deliveryZoneId ?? restaurant.zone ?? restaurant.delivery_zone ?? '').trim();
   try {
-    const { d1Client } = await import('../db/d1Client.ts');
-    if (zoneRef) {
-      const zoneResult = await d1Client.query(
-        'SELECT * FROM delivery_zones WHERE is_active = 1 AND (id = ? OR code = ? OR name = ?) LIMIT 1',
-        [zoneRef, zoneRef.toUpperCase(), zoneRef]
-      );
-      matchedZone = zoneResult.results?.[0] ?? null;
+    const { siteDataManager } = await import('../../lib/siteDataSnapshot.ts').catch(() => ({ siteDataManager: null } as any));
+    const cachedZones = siteDataManager?.getLastKnownGood()?.deliveryZones || [];
+    if (zoneRef && cachedZones.length > 0) {
+      matchedZone = cachedZones.find(
+        (z: any) =>
+          z.is_active !== 0 &&
+          (String(z.id) === zoneRef ||
+            String(z.code || '').toUpperCase() === zoneRef.toUpperCase() ||
+            String(z.name || '').toLowerCase() === zoneRef.toLowerCase())
+      ) ?? null;
     }
-    // If a restaurant has no explicit zone assignment, use a city match only when exactly one active zone exists there.
-    if (!matchedZone && !zoneRef && String(restaurant.city || '').trim()) {
-      const cityZones = await d1Client.query(
-        'SELECT * FROM delivery_zones WHERE is_active = 1 AND city = ?',
-        [String(restaurant.city).trim()]
+    if (!matchedZone && cachedZones.length > 0 && !zoneRef && String(restaurant.city || '').trim()) {
+      const cityMatches = cachedZones.filter(
+        (z: any) => z.is_active !== 0 && String(z.city || '').trim().toLowerCase() === String(restaurant.city).trim().toLowerCase()
       );
-      if (cityZones.results?.length === 1) matchedZone = cityZones.results[0];
+      if (cityMatches.length === 1) matchedZone = cityMatches[0];
+    }
+    // Fall back to live D1 query only if not matched in snapshot
+    if (!matchedZone) {
+      const { d1Client } = await import('../db/d1Client.ts');
+      if (zoneRef) {
+        const zoneResult = await d1Client.query(
+          'SELECT * FROM delivery_zones WHERE is_active = 1 AND (id = ? OR code = ? OR name = ?) LIMIT 1',
+          [zoneRef, zoneRef.toUpperCase(), zoneRef]
+        );
+        matchedZone = zoneResult.results?.[0] ?? null;
+      }
+      // If a restaurant has no explicit zone assignment, use a city match only when exactly one active zone exists there.
+      if (!matchedZone && !zoneRef && String(restaurant.city || '').trim()) {
+        const cityZones = await d1Client.query(
+          'SELECT * FROM delivery_zones WHERE is_active = 1 AND city = ?',
+          [String(restaurant.city).trim()]
+        );
+        if (cityZones.results?.length === 1) matchedZone = cityZones.results[0];
+      }
     }
   } catch (error) {
     console.warn('[Restaurant Distance] Configured zone lookup failed:', error instanceof Error ? error.message : String(error));

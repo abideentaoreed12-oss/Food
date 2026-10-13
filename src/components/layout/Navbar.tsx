@@ -73,7 +73,7 @@ export const Navbar: React.FC = () => {
     setIsUserDropdownOpen((prev) => !prev);
   };
 
-  const isLanding = activeRole === 'customer' && activePage === 'landing';
+  const isLanding = activeRole === 'customer' && pathname === ROUTES.HOME && !user;
 
   return (
     <header className={`sticky top-0 z-40 transition-colors duration-200 ${

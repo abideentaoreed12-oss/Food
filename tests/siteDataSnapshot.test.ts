@@ -10,6 +10,7 @@ import {
 } from '../lib/siteDataSnapshot';
 import { d1 } from '../lib/d1';
 import { r2 } from '../lib/r2';
+import { cacheGet, cacheSet, cacheInvalidate, cachedQuery } from '../lib/queryCache';
 
 describe('Production Last-Known-Good Site Data Snapshot Engine', () => {
   beforeEach(() => {
@@ -244,7 +245,7 @@ describe('Production Last-Known-Good Site Data Snapshot Engine', () => {
   });
 
   // 10. Retry throttling after failures
-  it('10. syncIfStale throttles execution within the 10-second refresh interval', async () => {
+  it('10. syncIfStale throttles execution within the 20-minute refresh interval', async () => {
     const manager = new SiteDataManager();
     await manager.saveSnapshot({
       schemaVersion: 1,
@@ -333,5 +334,23 @@ describe('Production Last-Known-Good Site Data Snapshot Engine', () => {
     manager.startBackgroundSync(10000);
     manager.stopBackgroundSync();
     expect(true).toBe(true);
+  });
+
+  // 16. Server Query Cache & Invalidation
+  it('16. verifies queryCache set, get, prefix purge, and full invalidation', async () => {
+    cacheSet('restaurants:all', [{ id: '1', name: 'Test' }], 5000);
+    cacheSet('settings:public', { fee: 500 }, 5000);
+
+    expect(cacheGet('restaurants:all')).toEqual([{ id: '1', name: 'Test' }]);
+    expect(cacheGet('settings:public')).toEqual({ fee: 500 });
+
+    // Partial invalidate by prefix
+    cacheInvalidate('restaurants');
+    expect(cacheGet('restaurants:all')).toBeUndefined();
+    expect(cacheGet('settings:public')).toEqual({ fee: 500 });
+
+    // Full invalidate
+    cacheInvalidate();
+    expect(cacheGet('settings:public')).toBeUndefined();
   });
 });
